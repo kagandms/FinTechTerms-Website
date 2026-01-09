@@ -16,6 +16,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
     const { t, language } = useLanguage();
     const [isFlipped, setIsFlipped] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [selectedLang, setSelectedLang] = useState<Language>(language);
 
     // Get term in specified language
     const getTermByLang = (lang: Language): string => {
@@ -27,14 +28,14 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
         return terms[lang];
     };
 
-    // Get definition in current language
-    const getDefinition = (): string => {
+    // Get definition in specified language
+    const getDefinitionByLang = (lang: Language): string => {
         const defs: Record<Language, string> = {
             tr: term.definition_tr,
             en: term.definition_en,
             ru: term.definition_ru,
         };
-        return defs[language];
+        return defs[lang];
     };
 
     // Handle TTS
@@ -51,18 +52,22 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
         }
     };
 
+    // Handle language selection on back side
+    const handleSelectLang = (lang: Language) => {
+        setSelectedLang(lang);
+    };
+
     // Get current language term
     const currentTerm = getTermByLang(language);
 
     // All languages for display
     const allLanguages: Language[] = ['tr', 'en', 'ru'];
-    const otherLanguages = allLanguages.filter(l => l !== language);
 
     return (
         <div className="w-full max-w-md mx-auto">
             {/* Card */}
             <div
-                className={`relative min-h-[320px] bg-white rounded-3xl shadow-card overflow-hidden transition-all duration-500 ${isFlipped ? 'bg-gradient-to-br from-primary-50 to-white' : ''
+                className={`relative min-h-[380px] bg-white rounded-3xl shadow-card overflow-hidden transition-all duration-500 ${isFlipped ? 'bg-gradient-to-br from-primary-50 to-white' : ''
                     }`}
             >
                 {/* Question Side */}
@@ -86,31 +91,33 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     </div>
 
                     {/* Question Term */}
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center py-8">
                         <h2 className="text-3xl font-bold text-primary-600 text-center">
                             {currentTerm}
                         </h2>
                     </div>
 
-                    {/* Show Answer Button */}
-                    <button
-                        onClick={() => setIsFlipped(true)}
-                        className="w-full py-4 bg-primary-500 text-white font-semibold rounded-2xl hover:bg-primary-600 transition-colors shadow-md"
-                    >
-                        {t('quiz.showAnswer')}
-                    </button>
+                    {/* Show Answer Button - with more spacing */}
+                    <div className="mt-6">
+                        <button
+                            onClick={() => setIsFlipped(true)}
+                            className="w-full py-4 bg-primary-500 text-white font-semibold rounded-2xl hover:bg-primary-600 transition-colors shadow-md"
+                        >
+                            {t('quiz.showAnswer')}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Answer Side */}
                 <div className={`p-6 h-full flex flex-col ${!isFlipped ? 'hidden' : ''}`}>
-                    {/* Language Badge */}
+                    {/* Language Badge - shows selected language */}
                     <div className="flex items-center justify-between mb-4">
                         <span className="px-3 py-1 bg-primary-100 rounded-full text-xs font-medium text-primary-600 uppercase">
-                            {language}
+                            {selectedLang}
                         </span>
 
                         <button
-                            onClick={() => handleSpeak(currentTerm, language)}
+                            onClick={() => handleSpeak(getTermByLang(selectedLang), selectedLang)}
                             disabled={isSpeaking}
                             className={`p-2 rounded-full transition-all ${isSpeaking
                                 ? 'bg-accent-100 text-accent-600 animate-pulse-soft'
@@ -121,37 +128,45 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                         </button>
                     </div>
 
-                    {/* Answer - Main Term */}
+                    {/* Answer - Main Term in selected language */}
                     <div className="flex-1 flex flex-col items-center justify-center text-center">
                         <h2 className="text-3xl font-bold text-primary-600 mb-3">
-                            {currentTerm}
+                            {getTermByLang(selectedLang)}
                         </h2>
 
-                        {/* Definition in current language */}
-                        <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                            {getDefinition()}
+                        {/* Definition in SELECTED language - dynamically changes */}
+                        <p className="text-gray-600 text-sm leading-relaxed mb-4 min-h-[60px]">
+                            {getDefinitionByLang(selectedLang)}
                         </p>
 
-                        {/* All 3 languages */}
+                        {/* All 3 languages - clickable */}
                         <div className="w-full bg-gray-50 rounded-xl p-3 space-y-2">
+                            <p className="text-xs text-gray-400 mb-2">{t('card.listen')} / {language === 'tr' ? 'Dili Değiştir' : language === 'ru' ? 'Сменить язык' : 'Change Language'}</p>
                             {allLanguages.map(lang => (
-                                <div
+                                <button
                                     key={lang}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg ${lang === language ? 'bg-primary-100' : 'bg-white'}`}
+                                    onClick={() => handleSelectLang(lang)}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${lang === selectedLang
+                                            ? 'bg-primary-100 ring-2 ring-primary-300'
+                                            : 'bg-white hover:bg-gray-100'
+                                        }`}
                                 >
                                     <span className="text-xs font-semibold text-gray-500 uppercase w-8">
                                         {lang}
                                     </span>
-                                    <span className={`font-medium ${lang === language ? 'text-primary-600' : 'text-gray-700'}`}>
+                                    <span className={`font-medium flex-1 text-left ${lang === selectedLang ? 'text-primary-600' : 'text-gray-700'}`}>
                                         {getTermByLang(lang)}
                                     </span>
                                     <button
-                                        onClick={() => handleSpeak(getTermByLang(lang), lang)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSpeak(getTermByLang(lang), lang);
+                                        }}
                                         className="p-1 text-gray-400 hover:text-primary-500 transition-colors"
                                     >
                                         <Volume2 className="w-4 h-4" />
                                     </button>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </div>
