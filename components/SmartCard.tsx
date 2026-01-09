@@ -5,6 +5,7 @@ import { Term, Language } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getMasteryLevel } from '@/utils/srsLogic';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const { language, t } = useLanguage();
     const { toggleFavorite, isFavorite, favoritesRemaining } = useSRS();
     const { isAuthenticated } = useAuth();
+    const { showToast } = useToast();
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [showLimitWarning, setShowLimitWarning] = useState(false);
@@ -100,12 +102,29 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         }
     };
 
-    // Handle favorite toggle with limit check
+    // Handle favorite toggle with limit check and toast
     const handleToggleFavorite = () => {
+        const wasFavorite = favorite;
         const result = toggleFavorite(term.id);
+
         if (result.limitReached) {
             setShowLimitWarning(true);
             setTimeout(() => setShowLimitWarning(false), 5000);
+            showToast(
+                language === 'tr'
+                    ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
+                    : language === 'ru'
+                        ? 'Лимит избранного! Войдите для неограниченного добавления.'
+                        : 'Favorite limit reached! Sign in for unlimited.',
+                'warning'
+            );
+        } else if (result.success) {
+            showToast(
+                wasFavorite
+                    ? (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites')
+                    : (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️'),
+                wasFavorite ? 'info' : 'success'
+            );
         }
     };
 

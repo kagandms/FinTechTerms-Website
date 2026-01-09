@@ -3,6 +3,7 @@ import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { SRSProvider } from '@/contexts/SRSContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 import BottomNav from '@/components/BottomNav';
 
 export const metadata: Metadata = {
@@ -54,12 +55,14 @@ export default function RootLayout({
                 <AuthProvider>
                     <LanguageProvider>
                         <SRSProvider>
-                            <div className="page-wrapper">
-                                <main className="max-w-lg mx-auto">
-                                    {children}
-                                </main>
-                                <BottomNav />
-                            </div>
+                            <ToastProvider>
+                                <div className="page-wrapper">
+                                    <main className="max-w-lg mx-auto">
+                                        {children}
+                                    </main>
+                                    <BottomNav />
+                                </div>
+                            </ToastProvider>
                         </SRSProvider>
                     </LanguageProvider>
                 </AuthProvider>
