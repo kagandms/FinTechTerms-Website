@@ -407,7 +407,7 @@ export default function ProfilePage() {
 
             {/* App Info */}
             <footer className="text-center text-xs text-gray-400">
-                <p>GlobalFinTerm v0.1.0</p>
+                <p>FinTechTerms v0.1.0</p>
                 <p className="mt-1">TR-EN-RU Ekonomi ve Bilişim Sözlüğü</p>
             </footer>
         </div>

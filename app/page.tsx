@@ -21,7 +21,7 @@ export default function HomePage() {
             <header className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-primary-500">
-                        GlobalFinTerm
+                        FinTechTerms
                     </h1>
                     <p className="text-sm text-gray-500">
                         {t('home.subtitle')}
