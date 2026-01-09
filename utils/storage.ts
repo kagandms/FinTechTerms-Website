@@ -28,6 +28,7 @@ function isLocalStorageAvailable(): boolean {
 
 /**
  * Get all terms from storage (or initialize with mock data)
+ * Always sync with mockTerms if local data is outdated
  */
 export function getTerms(): Term[] {
     if (!isLocalStorageAvailable()) return mockTerms;
@@ -35,7 +36,13 @@ export function getTerms(): Term[] {
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.TERMS);
         if (stored) {
-            return JSON.parse(stored) as Term[];
+            const parsedTerms = JSON.parse(stored) as Term[];
+            // If mockTerms has more terms, update localStorage with new data
+            if (parsedTerms.length < mockTerms.length) {
+                localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
+                return mockTerms;
+            }
+            return parsedTerms;
         }
         // Initialize with mock data
         localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
