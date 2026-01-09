@@ -9,7 +9,7 @@ import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target
 
 export default function QuizPage() {
     const { t } = useLanguage();
-    const { dueTerms, submitQuizAnswer, stats, terms, favoriteTerms } = useSRS();
+    const { dueTerms, submitQuizAnswer, stats, terms } = useSRS();
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -143,7 +143,7 @@ export default function QuizPage() {
                         </div>
                         <div className="bg-gray-50 rounded-xl p-4 text-center">
                             <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900">{favoriteTerms.length}</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalFavorites}</p>
                             <p className="text-xs text-gray-500">{t('quiz.favorites')}</p>
                         </div>
                     </div>
