@@ -2,5 +2,12 @@
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://globalfinterm.vercel.app/sitemap.xml
+# Sitemaps
+Sitemap: https://fintechterms.vercel.app/sitemap.xml
+
+# Crawl-delay for polite crawlers
+Crawl-delay: 1
+
+# Disallow admin/internal paths (future-proofing)
+Disallow: /api/
+Disallow: /_next/
