@@ -1,0 +1,84 @@
+{
+    "common": {
+        "search": "Поиск",
+        "home": "Главная",
+        "quiz": "Практика",
+        "profile": "Профиль",
+        "favorites": "Избранное",
+        "settings": "Настройки"
+    },
+    "home": {
+        "welcomeTitle": "Добро пожаловать в GlobalFinTerm",
+        "subtitle": "Словарь экономики и ИТ TR-EN-RU",
+        "dailyReview": "Ежедневный повтор",
+        "dueToday": "карточек на сегодня",
+        "startQuiz": "Начать практику",
+        "noCardsDue": "На сегодня нет карточек для повторения!",
+        "recentTerms": "Последние термины",
+        "addToFavorites": "Добавьте термины в избранное для практики",
+        "exploreWords": "Изучить слова",
+        "categories": "Категории"
+    },
+    "search": {
+        "placeholder": "Поиск на турецком, английском или русском...",
+        "noResults": "Ничего не найдено",
+        "categories": "Категории",
+        "allTerms": "Все термины",
+        "results": "результатов найдено"
+    },
+    "quiz": {
+        "title": "Практика",
+        "showAnswer": "Показать ответ",
+        "knew": "Знаю",
+        "didntKnow": "Не знаю",
+        "complete": "Практика завершена!",
+        "nextReview": "Следующий повтор",
+        "noCards": "Добавьте слова в избранное, чтобы начать практику.",
+        "progress": "Прогресс",
+        "correctStreak": "Правильных подряд"
+    },
+    "card": {
+        "listen": "Слушать",
+        "addFavorite": "В избранное",
+        "removeFavorite": "Убрать из избранного",
+        "category": "Категория",
+        "example": "Пример",
+        "definition": "Определение",
+        "phonetic": "Фонетика",
+        "favoriteLimit": "Лимит избранного достигнут! Войдите для безлимитного добавления."
+    },
+    "profile": {
+        "title": "Профиль",
+        "statistics": "Статистика",
+        "wordsLearned": "Выучено слов",
+        "currentStreak": "Текущая серия",
+        "accuracy": "Точность",
+        "totalReviews": "Всего повторов",
+        "favoriteCount": "Избранных слов",
+        "masteredWords": "Освоено",
+        "learningWords": "Изучается",
+        "resetData": "Сбросить данные",
+        "language": "Язык",
+        "days": "дней"
+    },
+    "auth": {
+        "login": "Войти",
+        "register": "Регистрация",
+        "logout": "Выйти",
+        "email": "Эл. почта",
+        "password": "Пароль",
+        "confirmPassword": "Подтвердите пароль",
+        "name": "Имя и фамилия",
+        "loginSuccess": "Вход выполнен!",
+        "registerSuccess": "Регистрация успешна!",
+        "guest": "Продолжить как гость",
+        "or": "или",
+        "alreadyHaveAccount": "Уже есть аккаунт?",
+        "noAccount": "Нет аккаунта?"
+    },
+    "categories": {
+        "Fintech": "Финтех",
+        "Economics": "Экономика",
+        "Computer Science": "Информатика"
+    }
+}

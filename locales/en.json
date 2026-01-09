@@ -1,0 +1,84 @@
+{
+    "common": {
+        "search": "Search",
+        "home": "Home",
+        "quiz": "Practice",
+        "profile": "Profile",
+        "favorites": "Favorites",
+        "settings": "Settings"
+    },
+    "home": {
+        "welcomeTitle": "Welcome to GlobalFinTerm",
+        "subtitle": "TR-EN-RU Economics & IT Dictionary",
+        "dailyReview": "Daily Review",
+        "dueToday": "cards due today",
+        "startQuiz": "Start Practice",
+        "noCardsDue": "No cards due for review today!",
+        "recentTerms": "Recent Terms",
+        "addToFavorites": "Add terms to favorites to review them in Practice",
+        "exploreWords": "Explore Words",
+        "categories": "Categories"
+    },
+    "search": {
+        "placeholder": "Search in Turkish, English or Russian...",
+        "noResults": "No results found",
+        "categories": "Categories",
+        "allTerms": "All Terms",
+        "results": "results found"
+    },
+    "quiz": {
+        "title": "Practice",
+        "showAnswer": "Show Answer",
+        "knew": "I Knew It",
+        "didntKnow": "I Didn't Know",
+        "complete": "Practice Complete!",
+        "nextReview": "Next review",
+        "noCards": "Add words to favorites to start practice.",
+        "progress": "Progress",
+        "correctStreak": "Correct Streak"
+    },
+    "card": {
+        "listen": "Listen",
+        "addFavorite": "Add to Favorites",
+        "removeFavorite": "Remove from Favorites",
+        "category": "Category",
+        "example": "Example Sentence",
+        "definition": "Definition",
+        "phonetic": "Phonetic",
+        "favoriteLimit": "Favorite limit reached! Sign in for unlimited favorites."
+    },
+    "profile": {
+        "title": "Profile",
+        "statistics": "Statistics",
+        "wordsLearned": "Words Learned",
+        "currentStreak": "Current Streak",
+        "accuracy": "Accuracy",
+        "totalReviews": "Total Reviews",
+        "favoriteCount": "Favorite Words",
+        "masteredWords": "Mastered",
+        "learningWords": "Learning",
+        "resetData": "Reset Data",
+        "language": "Language",
+        "days": "days"
+    },
+    "auth": {
+        "login": "Sign In",
+        "register": "Sign Up",
+        "logout": "Sign Out",
+        "email": "Email",
+        "password": "Password",
+        "confirmPassword": "Confirm Password",
+        "name": "Full Name",
+        "loginSuccess": "Login successful!",
+        "registerSuccess": "Registration successful!",
+        "guest": "Continue as guest",
+        "or": "or",
+        "alreadyHaveAccount": "Already have an account?",
+        "noAccount": "Don't have an account?"
+    },
+    "categories": {
+        "Fintech": "Fintech",
+        "Economics": "Economics",
+        "Computer Science": "Computer Science"
+    }
+}

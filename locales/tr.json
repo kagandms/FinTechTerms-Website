@@ -1,0 +1,84 @@
+{
+    "common": {
+        "search": "Ara",
+        "home": "Ana Sayfa",
+        "quiz": "Pratik",
+        "profile": "Profil",
+        "favorites": "Favoriler",
+        "settings": "Ayarlar"
+    },
+    "home": {
+        "welcomeTitle": "FinTechTerms'e Hoş Geldiniz",
+        "subtitle": "TR-EN-RU Ekonomi, Fintek ve Bilişim Sözlüğü",
+        "dailyReview": "Günlük Tekrar",
+        "dueToday": "Bugün tekrar edilecek kart",
+        "startQuiz": "Pratiğe Başla",
+        "noCardsDue": "Bugün için tekrar edilecek kart yok!",
+        "recentTerms": "Son Terimler",
+        "addToFavorites": "Favorilere ekleyerek Pratik'te tekrar edin",
+        "exploreWords": "Kelimeleri Keşfet",
+        "categories": "Kategoriler"
+    },
+    "search": {
+        "placeholder": "Türkçe, İngilizce veya Rusça ara...",
+        "noResults": "Sonuç bulunamadı",
+        "categories": "Kategoriler",
+        "allTerms": "Tüm Terimler",
+        "results": "sonuç bulundu"
+    },
+    "quiz": {
+        "title": "Pratik",
+        "showAnswer": "Cevabı Göster",
+        "knew": "Biliyorum",
+        "didntKnow": "Bilmiyorum",
+        "complete": "Pratik Tamamlandı!",
+        "nextReview": "Sonraki tekrar",
+        "noCards": "Pratik için favorilere kelime eklemeniz gerekiyor.",
+        "progress": "İlerleme",
+        "correctStreak": "Doğru Seri"
+    },
+    "card": {
+        "listen": "Seslendir",
+        "addFavorite": "Favorilere Ekle",
+        "removeFavorite": "Favorilerden Çıkar",
+        "category": "Kategori",
+        "example": "Örnek Cümle",
+        "definition": "Tanım",
+        "phonetic": "Fonetik",
+        "favoriteLimit": "Favori limiti doldu! Giriş yaparak sınırsız ekleme yapabilirsiniz."
+    },
+    "profile": {
+        "title": "Profil",
+        "statistics": "İstatistikler",
+        "wordsLearned": "Öğrenilen Kelime",
+        "currentStreak": "Günlük Seri",
+        "accuracy": "Doğruluk Oranı",
+        "totalReviews": "Toplam Tekrar",
+        "favoriteCount": "Favori Kelime",
+        "masteredWords": "Ustalaşılan",
+        "learningWords": "Öğreniliyor",
+        "resetData": "Verileri Sıfırla",
+        "language": "Dil",
+        "days": "gün"
+    },
+    "auth": {
+        "login": "Giriş Yap",
+        "register": "Kayıt Ol",
+        "logout": "Çıkış Yap",
+        "email": "E-posta",
+        "password": "Şifre",
+        "confirmPassword": "Şifreyi Onayla",
+        "name": "Ad Soyad",
+        "loginSuccess": "Giriş başarılı!",
+        "registerSuccess": "Kayıt başarılı!",
+        "guest": "Misafir olarak devam et",
+        "or": "veya",
+        "alreadyHaveAccount": "Zaten hesabınız var mı?",
+        "noAccount": "Hesabınız yok mu?"
+    },
+    "categories": {
+        "Fintech": "Fintek",
+        "Economics": "Ekonomi",
+        "Computer Science": "Bilgisayar Bilimi"
+    }
+}
