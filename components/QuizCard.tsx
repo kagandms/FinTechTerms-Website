@@ -38,6 +38,16 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
         return defs[lang];
     };
 
+    // Get phonetic (pronunciation) in specified language
+    const getPhoneticByLang = (lang: Language): string | undefined => {
+        const phonetics: Record<Language, string | undefined> = {
+            tr: term.phonetic_tr,
+            en: term.phonetic_en,
+            ru: term.phonetic_ru,
+        };
+        return phonetics[lang];
+    };
+
     // Handle TTS
     const handleSpeak = async (text: string, lang: Language) => {
         if (!isSpeechAvailable()) return;
@@ -91,10 +101,15 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     </div>
 
                     {/* Question Term */}
-                    <div className="flex-1 flex items-center justify-center py-8">
+                    <div className="flex-1 flex flex-col items-center justify-center py-8">
                         <h2 className="text-3xl font-bold text-primary-600 text-center">
                             {currentTerm}
                         </h2>
+                        {getPhoneticByLang(language) && (
+                            <p className="text-sm text-gray-500 font-mono mt-1">
+                                {getPhoneticByLang(language)}
+                            </p>
+                        )}
                     </div>
 
                     {/* Show Answer Button - with more spacing */}
@@ -130,9 +145,14 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
 
                     {/* Answer - Main Term in selected language */}
                     <div className="flex-1 flex flex-col items-center justify-center text-center">
-                        <h2 className="text-3xl font-bold text-primary-600 mb-3">
+                        <h2 className="text-3xl font-bold text-primary-600 mb-1">
                             {getTermByLang(selectedLang)}
                         </h2>
+                        {getPhoneticByLang(selectedLang) && (
+                            <p className="text-sm text-gray-500 font-mono mb-3">
+                                {getPhoneticByLang(selectedLang)}
+                            </p>
+                        )}
 
                         {/* Definition in SELECTED language - dynamically changes */}
                         <p className="text-gray-600 text-sm leading-relaxed mb-4 min-h-[60px]">
@@ -147,8 +167,8 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                                     key={lang}
                                     onClick={() => handleSelectLang(lang)}
                                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${lang === selectedLang
-                                            ? 'bg-primary-100 ring-2 ring-primary-300'
-                                            : 'bg-white hover:bg-gray-100'
+                                        ? 'bg-primary-100 ring-2 ring-primary-300'
+                                        : 'bg-white hover:bg-gray-100'
                                         }`}
                                 >
                                     <span className="text-xs font-semibold text-gray-500 uppercase w-8">
