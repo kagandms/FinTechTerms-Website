@@ -16,6 +16,9 @@ export default function QuizPage() {
     const [isComplete, setIsComplete] = useState(false);
     const [sessionTerms, setSessionTerms] = useState(dueTerms);
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
+    const [showQuizOptions, setShowQuizOptions] = useState(false);
+
+    const quizOptions = [5, 10, 20, 50];
 
     // Initialize session terms
     useEffect(() => {
@@ -26,15 +29,16 @@ export default function QuizPage() {
 
     const currentTerm = sessionTerms[currentIndex];
 
-    // Start quick quiz with random 5 words
-    const startQuickQuiz = () => {
+    // Start quick quiz with selected word count
+    const startQuickQuiz = (count: number) => {
         const shuffled = [...terms].sort(() => Math.random() - 0.5);
-        const quizTerms = shuffled.slice(0, 5);
+        const quizTerms = shuffled.slice(0, Math.min(count, terms.length));
         setSessionTerms(quizTerms);
         setCurrentIndex(0);
         setCorrectCount(0);
         setIsComplete(false);
         setIsQuickQuiz(true);
+        setShowQuizOptions(false);
     };
 
     const handleAnswer = (isCorrect: boolean) => {
@@ -79,44 +83,60 @@ export default function QuizPage() {
                     <h1 className="text-2xl font-bold text-gray-900">{t('quiz.title')}</h1>
                 </header>
 
-                {/* Daily Streak Card */}
-                <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-5 text-white mb-6 shadow-lg">
+                {/* Daily Streak Card - Compact */}
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3 text-white mb-4 shadow-md">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-white/20 rounded-full">
-                                <Flame className="w-8 h-8" />
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-white/20 rounded-full">
+                                <Flame className="w-5 h-5" />
                             </div>
                             <div>
-                                <p className="text-white/80 text-sm">{t('quiz.dailyStreak')}</p>
-                                <p className="text-3xl font-bold">{stats.streak} {t('quiz.days')}</p>
+                                <p className="text-white/80 text-xs">{t('quiz.dailyStreak')}</p>
+                                <p className="text-xl font-bold">{stats.streak || 0} {t('quiz.days')}</p>
                             </div>
                         </div>
-                        {stats.streak > 0 && (
-                            <div className="text-right">
-                                <p className="text-white/80 text-sm">🔥</p>
-                                <p className="text-sm font-medium">{t('quiz.keepItUp')}</p>
-                            </div>
+                        {(stats.streak || 0) > 0 && (
+                            <p className="text-lg">🔥</p>
                         )}
                     </div>
                 </div>
 
                 {/* Quick Quiz Card */}
-                <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-6 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 bg-white/20 rounded-full">
-                            <Zap className="w-6 h-6" />
+                <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-white/20 rounded-full">
+                            <Zap className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="font-bold text-lg">{t('quiz.quickQuiz')}</p>
-                            <p className="text-white/80 text-sm">{t('quiz.quickQuizDesc')}</p>
+                            <p className="font-bold">{t('quiz.quickQuiz')}</p>
+                            <p className="text-white/80 text-xs">{t('quiz.quickQuizDesc')}</p>
                         </div>
                     </div>
-                    <button
-                        onClick={startQuickQuiz}
-                        className="w-full py-3 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                    >
-                        {t('quiz.startQuickQuiz')}
-                    </button>
+
+                    {!showQuizOptions ? (
+                        <button
+                            onClick={() => setShowQuizOptions(true)}
+                            className="w-full py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                        >
+                            {t('quiz.startQuickQuiz')}
+                        </button>
+                    ) : (
+                        <div className="grid grid-cols-4 gap-2">
+                            {quizOptions.map(count => (
+                                <button
+                                    key={count}
+                                    onClick={() => startQuickQuiz(count)}
+                                    disabled={terms.length < count}
+                                    className={`py-2.5 font-bold rounded-xl transition-colors ${terms.length >= count
+                                        ? 'bg-white text-primary-600 hover:bg-gray-100'
+                                        : 'bg-white/30 text-white/50 cursor-not-allowed'
+                                        }`}
+                                >
+                                    {count}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Statistics */}
@@ -208,7 +228,7 @@ export default function QuizPage() {
                         {isQuickQuiz ? (
                             <>
                                 <button
-                                    onClick={startQuickQuiz}
+                                    onClick={() => startQuickQuiz(5)}
                                     className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
                                 >
                                     <Zap className="w-5 h-5" />
