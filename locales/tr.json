@@ -5,7 +5,8 @@
         "quiz": "Pratik",
         "profile": "Profil",
         "favorites": "Favoriler",
-        "settings": "Ayarlar"
+        "settings": "Ayarlar",
+        "day": "gün"
     },
     "home": {
         "welcomeTitle": "FinTechTerms'e Hoş Geldiniz",
@@ -35,7 +36,9 @@
         "nextReview": "Sonraki tekrar",
         "noCards": "Pratik için favorilere kelime eklemeniz gerekiyor.",
         "progress": "İlerleme",
-        "correctStreak": "Doğru Seri"
+        "correctStreak": "Doğru Seri",
+        "flipCard": "Kartı Çevir",
+        "exploreWords": "Kelime Keşfet"
     },
     "card": {
         "listen": "Seslendir",

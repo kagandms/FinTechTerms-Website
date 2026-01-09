@@ -4,28 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import QuizCard from '@/components/QuizCard';
-import { Language } from '@/types';
 import Link from 'next/link';
 import { Trophy, ArrowRight, Heart, Sparkles } from 'lucide-react';
 
 export default function QuizPage() {
-    const { t, language } = useLanguage();
+    const { t } = useLanguage();
     const { dueTerms, submitQuizAnswer, stats } = useSRS();
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
     const [sessionTerms, setSessionTerms] = useState(dueTerms);
-
-    // Determine question and answer languages
-    // Question in user's language, answer in others randomly
-    const getLanguages = (): { question: Language; answer: Language } => {
-        const others: Language[] = (['tr', 'en', 'ru'] as Language[]).filter(l => l !== language);
-        const randomOther = others[Math.floor(Math.random() * others.length)] ?? 'en';
-        return { question: language, answer: randomOther };
-    };
-
-    const [languages] = useState(getLanguages);
 
     // Initialize session terms
     useEffect(() => {
@@ -70,7 +59,7 @@ export default function QuizPage() {
                         href="/search"
                         className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
                     >
-                        <span>Kelime Keşfet</span>
+                        <span>{t('quiz.exploreWords')}</span>
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                 </div>
@@ -154,8 +143,6 @@ export default function QuizPage() {
                 <QuizCard
                     term={currentTerm}
                     onAnswer={handleAnswer}
-                    questionLanguage={languages.question}
-                    answerLanguage={languages.answer}
                 />
             )}
 

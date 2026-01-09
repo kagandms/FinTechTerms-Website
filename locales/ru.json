@@ -5,7 +5,8 @@
         "quiz": "Практика",
         "profile": "Профиль",
         "favorites": "Избранное",
-        "settings": "Настройки"
+        "settings": "Настройки",
+        "day": "день"
     },
     "home": {
         "welcomeTitle": "Добро пожаловать в FinTechTerms",
@@ -35,7 +36,9 @@
         "nextReview": "Следующий повтор",
         "noCards": "Добавьте слова в избранное, чтобы начать практику.",
         "progress": "Прогресс",
-        "correctStreak": "Правильных подряд"
+        "correctStreak": "Правильных подряд",
+        "flipCard": "Перевернуть",
+        "exploreWords": "Изучить слова"
     },
     "card": {
         "listen": "Слушать",

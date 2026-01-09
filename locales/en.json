@@ -5,7 +5,8 @@
         "quiz": "Practice",
         "profile": "Profile",
         "favorites": "Favorites",
-        "settings": "Settings"
+        "settings": "Settings",
+        "day": "day"
     },
     "home": {
         "welcomeTitle": "Welcome to FinTechTerms",
@@ -35,7 +36,9 @@
         "nextReview": "Next review",
         "noCards": "Add words to favorites to start practice.",
         "progress": "Progress",
-        "correctStreak": "Correct Streak"
+        "correctStreak": "Correct Streak",
+        "flipCard": "Flip Card",
+        "exploreWords": "Explore Words"
     },
     "card": {
         "listen": "Listen",
