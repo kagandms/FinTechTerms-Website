@@ -18,7 +18,7 @@ export default function QuizPage() {
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
     const [showQuizOptions, setShowQuizOptions] = useState(false);
 
-    const quizOptions = [5, 10, 20, 50, 100];
+    const quizOptions = [5, 10, 20, 50];
 
     // Initialize session terms
     useEffect(() => {
@@ -121,7 +121,7 @@ export default function QuizPage() {
                             {t('quiz.startQuickQuiz')}
                         </button>
                     ) : (
-                        <div className="grid grid-cols-5 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             {quizOptions.map(count => (
                                 <button
                                     key={count}
