@@ -41,9 +41,68 @@ export default function ProfilePage() {
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-    const [authForm, setAuthForm] = useState({ email: '', password: '', name: '' });
+    const [authForm, setAuthForm] = useState({
+        email: '',
+        password: '',
+        name: '',
+        surname: '',
+        birthYear: ''
+    });
     const [authError, setAuthError] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
+
+    // Password validation
+    const validatePassword = (password: string): { valid: boolean; message: string } => {
+        if (password.length < 8) {
+            return {
+                valid: false,
+                message: language === 'tr'
+                    ? 'Şifre en az 8 karakter olmalı'
+                    : language === 'ru'
+                        ? 'Пароль минимум 8 символов'
+                        : 'Password must be at least 8 characters'
+            };
+        }
+        if (!/[A-Z]/.test(password)) {
+            return {
+                valid: false,
+                message: language === 'tr'
+                    ? 'Şifre en az bir büyük harf içermeli'
+                    : language === 'ru'
+                        ? 'Пароль должен содержать заглавную букву'
+                        : 'Password must contain at least one uppercase letter'
+            };
+        }
+        if (!/[a-z]/.test(password)) {
+            return {
+                valid: false,
+                message: language === 'tr'
+                    ? 'Şifre en az bir küçük harf içermeli'
+                    : language === 'ru'
+                        ? 'Пароль должен содержать строчную букву'
+                        : 'Password must contain at least one lowercase letter'
+            };
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>0-9]/.test(password)) {
+            return {
+                valid: false,
+                message: language === 'tr'
+                    ? 'Şifre en az bir sembol veya rakam içermeli'
+                    : language === 'ru'
+                        ? 'Пароль должен содержать символ или цифру'
+                        : 'Password must contain at least one symbol or number'
+            };
+        }
+        return { valid: true, message: '' };
+    };
+
+    // Age validation
+    const validateAge = (birthYear: string): boolean => {
+        const year = parseInt(birthYear);
+        const currentYear = new Date().getFullYear();
+        const age = currentYear - year;
+        return age >= 13 && age <= 120;
+    };
 
     const handleReset = () => {
         resetAllData();
@@ -53,6 +112,42 @@ export default function ProfilePage() {
 
     const handleAuth = async () => {
         setAuthError('');
+
+        // Validation for register mode
+        if (authMode === 'register') {
+            // Name validation
+            if (!authForm.name.trim()) {
+                setAuthError(language === 'tr'
+                    ? 'Ad alanı zorunludur'
+                    : language === 'ru'
+                        ? 'Имя обязательно'
+                        : 'First name is required');
+                return;
+            }
+            if (!authForm.surname.trim()) {
+                setAuthError(language === 'tr'
+                    ? 'Soyad alanı zorunludur'
+                    : language === 'ru'
+                        ? 'Фамилия обязательна'
+                        : 'Last name is required');
+                return;
+            }
+            if (!authForm.birthYear || !validateAge(authForm.birthYear)) {
+                setAuthError(language === 'tr'
+                    ? 'Geçerli bir doğum yılı girin (13 yaş ve üzeri)'
+                    : language === 'ru'
+                        ? 'Введите год рождения (13+ лет)'
+                        : 'Enter a valid birth year (13 years or older)');
+                return;
+            }
+            // Password validation
+            const passwordCheck = validatePassword(authForm.password);
+            if (!passwordCheck.valid) {
+                setAuthError(passwordCheck.message);
+                return;
+            }
+        }
+
         setAuthLoading(true);
 
         try {
@@ -60,7 +155,8 @@ export default function ProfilePage() {
             if (authMode === 'login') {
                 result = await login(authForm.email, authForm.password);
             } else {
-                result = await register(authForm.email, authForm.password, authForm.name);
+                const fullName = `${authForm.name.trim()} ${authForm.surname.trim()}`;
+                result = await register(authForm.email, authForm.password, fullName);
             }
 
             if (result.success) {
@@ -71,11 +167,11 @@ export default function ProfilePage() {
                         : language === 'ru'
                             ? '✅ Регистрация успешна! Проверьте почту и подтвердите email.'
                             : '✅ Registration successful! Please check your email and click the verification link.');
-                    setAuthForm({ email: '', password: '', name: '' });
+                    setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
                     // Don't close modal yet, let user see the message
                 } else {
                     setShowAuthModal(false);
-                    setAuthForm({ email: '', password: '', name: '' });
+                    setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
                 }
             } else {
                 setAuthError(result.error || (language === 'tr'
@@ -107,11 +203,11 @@ export default function ProfilePage() {
                 <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
                     <User className="w-10 h-10 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                     {isAuthenticated ? user?.name : t('profile.title')}
                 </h1>
                 {isAuthenticated && (
-                    <p className="text-sm text-gray-500">{user?.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
                 )}
             </header>
 
@@ -151,7 +247,7 @@ export default function ProfilePage() {
                 <section className="mb-6">
                     <button
                         onClick={logout}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                         <LogOut className="w-5 h-5" />
                         {t('auth.logout')}
@@ -161,20 +257,20 @@ export default function ProfilePage() {
 
             {/* Statistics Grid */}
             <section className="mb-8">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                     {t('profile.statistics')}
                 </h2>
 
                 <div className="grid grid-cols-2 gap-4">
                     {/* Streak */}
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-orange-100 rounded-xl">
+                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
                                 <Flame className="w-5 h-5 text-orange-500" />
                             </div>
-                            <span className="text-sm text-gray-500">{t('profile.currentStreak')}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.currentStreak')}</span>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
                             {userProgress.current_streak} <span className="text-sm font-normal text-gray-400">{t('profile.days')}</span>
                         </p>
                     </div>
@@ -384,39 +480,81 @@ export default function ProfilePage() {
             {/* Auth Modal */}
             {showAuthModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center gap-3 mb-6">
                             {authMode === 'login' ? (
                                 <LogIn className="w-6 h-6 text-primary-500" />
                             ) : (
                                 <UserPlus className="w-6 h-6 text-primary-500" />
                             )}
-                            <h3 className="text-lg font-bold text-gray-900">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                 {authMode === 'login' ? t('auth.login') : t('auth.register')}
                             </h3>
                         </div>
 
                         <div className="space-y-4">
                             {authMode === 'register' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {t('auth.name')}
-                                    </label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={authForm.name}
-                                            onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                            placeholder={t('auth.name')}
-                                        />
+                                <>
+                                    {/* Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {language === 'tr' ? 'Ad *' : language === 'ru' ? 'Имя *' : 'First Name *'}
+                                        </label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={authForm.name}
+                                                onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder={language === 'tr' ? 'Adınız' : language === 'ru' ? 'Ваше имя' : 'Your first name'}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+
+                                    {/* Surname */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {language === 'tr' ? 'Soyad *' : language === 'ru' ? 'Фамилия *' : 'Last Name *'}
+                                        </label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={authForm.surname}
+                                                onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder={language === 'tr' ? 'Soyadınız' : language === 'ru' ? 'Ваша фамилия' : 'Your last name'}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Birth Year */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {language === 'tr' ? 'Doğum Yılı *' : language === 'ru' ? 'Год рождения *' : 'Birth Year *'}
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                min="1900"
+                                                max={new Date().getFullYear() - 13}
+                                                value={authForm.birthYear}
+                                                onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
+                                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder={language === 'tr' ? 'Örn: 1995' : language === 'ru' ? 'Напр: 1995' : 'e.g. 1995'}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            {language === 'tr' ? '13 yaş ve üzeri' : language === 'ru' ? '13 лет и старше' : '13 years or older'}
+                                        </p>
+                                    </div>
+                                </>
                             )}
 
+                            {/* Email */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     {t('auth.email')}
                                 </label>
                                 <div className="relative">
@@ -425,14 +563,15 @@ export default function ProfilePage() {
                                         type="email"
                                         value={authForm.email}
                                         onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                         placeholder={t('auth.email')}
                                     />
                                 </div>
                             </div>
 
+                            {/* Password */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     {t('auth.password')}
                                 </label>
                                 <div className="relative">
@@ -441,14 +580,25 @@ export default function ProfilePage() {
                                         type="password"
                                         value={authForm.password}
                                         onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                         placeholder={t('auth.password')}
                                     />
                                 </div>
+                                {authMode === 'register' && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {language === 'tr'
+                                            ? '8+ karakter, büyük/küçük harf, sembol veya rakam'
+                                            : language === 'ru'
+                                                ? '8+ символов, заглавная/строчная, символ или цифра'
+                                                : '8+ chars, upper/lowercase, symbol or number'}
+                                    </p>
+                                )}
                             </div>
 
                             {authError && (
-                                <p className="text-sm text-red-500">{authError}</p>
+                                <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
+                                    {authError}
+                                </p>
                             )}
 
                             <button
@@ -466,14 +616,14 @@ export default function ProfilePage() {
 
                             <button
                                 onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                                className="w-full text-sm text-gray-500 hover:text-primary-500"
+                                className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500"
                             >
                                 {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
                             </button>
 
                             <button
                                 onClick={() => setShowAuthModal(false)}
-                                className="w-full py-2 text-gray-500 hover:text-gray-700"
+                                className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                                 {t('auth.guest')}
                             </button>
