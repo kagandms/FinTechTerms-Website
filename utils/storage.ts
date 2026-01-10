@@ -26,15 +26,26 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
+const DATA_VERSION = '2026-01-10-v1'; // Update this to force data refresh
+
 /**
  * Get all terms from storage (or initialize with mock data)
- * Always sync with mockTerms if local data is outdated
+ * Always sync with mockTerms if local data is outdated or version mismatch
  */
 export function getTerms(): Term[] {
     if (!isLocalStorageAvailable()) return mockTerms;
 
     try {
+        const storedVersion = localStorage.getItem('globalfinterm_data_version');
         const stored = localStorage.getItem(STORAGE_KEYS.TERMS);
+
+        // Force update if version mismatch
+        if (storedVersion !== DATA_VERSION) {
+            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
+            localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
+            return mockTerms;
+        }
+
         if (stored) {
             const parsedTerms = JSON.parse(stored) as Term[];
             // If mockTerms has more terms, update localStorage with new data
@@ -44,8 +55,10 @@ export function getTerms(): Term[] {
             }
             return parsedTerms;
         }
+
         // Initialize with mock data
         localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
+        localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
         return mockTerms;
     } catch {
         return mockTerms;
