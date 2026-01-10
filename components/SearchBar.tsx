@@ -11,7 +11,7 @@ interface SearchBarProps {
     onClear?: () => void;
 }
 
-const categories: Category[] = ['Fintech', 'Economics', 'Computer Science'];
+const categories: Category[] = ['Economics', 'Finance', 'Digital Finance', 'Computer Science', 'Fintech', 'Accounting'];
 
 export default function SearchBar({ onResults, onClear }: SearchBarProps) {
     const { t } = useLanguage();
@@ -81,8 +81,8 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`p-2 rounded-xl transition-all duration-200 ${showFilters || selectedCategory
-                                ? 'bg-primary-100 text-primary-600'
-                                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                            ? 'bg-primary-100 text-primary-600'
+                            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                             }`}
                     >
                         <Filter className="w-5 h-5" />
@@ -96,8 +96,8 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                     <button
                         onClick={() => setSelectedCategory(null)}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${!selectedCategory
-                                ? 'bg-primary-500 text-white shadow-md'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-primary-500 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         {t('search.allTerms')}
@@ -108,8 +108,8 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selectedCategory === cat
-                                    ? 'bg-primary-500 text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                ? 'bg-primary-500 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                         >
                             {t(`categories.${cat}`)}

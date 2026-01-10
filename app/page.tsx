@@ -93,9 +93,12 @@ export default function HomePage() {
 
                 <div className="grid grid-cols-3 gap-3">
                     {[
-                        { key: 'Fintech', color: 'from-amber-400 to-orange-500', icon: '💳' },
-                        { key: 'Economics', color: 'from-blue-400 to-primary-500', icon: '📈' },
-                        { key: 'Computer Science', color: 'from-purple-400 to-indigo-500', icon: '💻' },
+                        { key: 'Economics', color: 'from-blue-400 to-indigo-500', icon: '📈' },
+                        { key: 'Finance', color: 'from-emerald-400 to-green-600', icon: '💰' },
+                        { key: 'Digital Finance', color: 'from-orange-400 to-red-500', icon: '🪙' },
+                        { key: 'Computer Science', color: 'from-slate-700 to-black', icon: '💻' },
+                        { key: 'Fintech', color: 'from-violet-500 to-purple-600', icon: '💳' },
+                        { key: 'Accounting', color: 'from-teal-400 to-cyan-600', icon: '📒' },
                     ].map((cat) => {
                         const count = terms.filter(t => t.category === cat.key).length;
                         return (

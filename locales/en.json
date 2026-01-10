@@ -94,6 +94,9 @@
     "categories": {
         "Fintech": "Fintech",
         "Economics": "Economics",
-        "Computer Science": "Computer Science"
+        "Finance": "Finance",
+        "Digital Finance": "Digital Finance",
+        "Computer Science": "Computer Science",
+        "Accounting": "Accounting"
     }
 }

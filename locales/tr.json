@@ -94,6 +94,9 @@
     "categories": {
         "Fintech": "Fintek",
         "Economics": "Ekonomi",
-        "Computer Science": "Bilgisayar Bilimi"
+        "Finance": "Finans",
+        "Digital Finance": "Dijital Finans",
+        "Computer Science": "Bilgisayar Bilimi",
+        "Accounting": "Muhasebe"
     }
 }

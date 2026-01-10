@@ -94,6 +94,9 @@
     "categories": {
         "Fintech": "Финтех",
         "Economics": "Экономика",
-        "Computer Science": "Информатика"
+        "Finance": "Финансы",
+        "Digital Finance": "Цифровые финансы",
+        "Computer Science": "Информатика",
+        "Accounting": "Бухгалтерия"
     }
 }
