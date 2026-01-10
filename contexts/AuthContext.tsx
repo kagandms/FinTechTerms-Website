@@ -155,17 +155,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return { success: false, error: error.message };
             }
 
-            if (data.user) {
-                // Check if email confirmation is required
-                // If identities array is empty or email is not confirmed, user needs to verify email
-                const needsConfirmation = !data.user.email_confirmed_at;
-
-                if (needsConfirmation) {
-                    // Don't auto-login, return that email confirmation is needed
-                    return { success: true, needsEmailConfirmation: true };
-                }
-
-                // Email is already confirmed (shouldn't happen with confirm email ON)
+            if (data.user && data.session) {
+                // User is signed in (Email confirmation might be off)
                 try {
                     await createUserProgress(data.user.id);
                 } catch (progressError) {
@@ -174,6 +165,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 setUser(mapSupabaseUser(data.user));
                 return { success: true };
+            }
+
+            if (data.user && !data.session) {
+                // User created but no session => Email confirmation required
+                return { success: true, needsEmailConfirmation: true };
             }
 
             return { success: false, error: 'Unknown error occurred' };
