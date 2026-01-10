@@ -184,10 +184,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
      */
     const logout = useCallback(async () => {
         try {
+            // Clear local storage for SRS data
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('srs_user_progress');
+            }
             await supabase.auth.signOut();
-            setUser(null);
         } catch (error) {
             console.error('Logout error:', error);
+        } finally {
+            // Always set user to null, even if signOut fails
+            setUser(null);
         }
     }, []);
 
