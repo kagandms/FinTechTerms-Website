@@ -6,7 +6,8 @@
         "profile": "Профиль",
         "favorites": "Избранное",
         "settings": "Настройки",
-        "day": "день"
+        "day": "день",
+        "about": "О проекте"
     },
     "home": {
         "welcomeTitle": "Добро пожаловать в FinTechTerms",
@@ -95,5 +96,9 @@
         "Fintech": "Финтех",
         "Finance": "Финансы",
         "Technology": "Технологии"
+    },
+    "about": {
+        "title": "О проекте",
+        "viewAbout": "О проекте"
     }
 }

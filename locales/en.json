@@ -6,7 +6,8 @@
         "profile": "Profile",
         "favorites": "Favorites",
         "settings": "Settings",
-        "day": "day"
+        "day": "day",
+        "about": "About"
     },
     "home": {
         "welcomeTitle": "Welcome to FinTechTerms",
@@ -95,5 +96,9 @@
         "Fintech": "Fintech",
         "Finance": "Finance",
         "Technology": "Technology"
+    },
+    "about": {
+        "title": "About",
+        "viewAbout": "About the Project"
     }
 }

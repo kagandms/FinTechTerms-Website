@@ -6,7 +6,8 @@
         "profile": "Profil",
         "favorites": "Favoriler",
         "settings": "Ayarlar",
-        "day": "gün"
+        "day": "gün",
+        "about": "Hakkında"
     },
     "home": {
         "welcomeTitle": "FinTechTerms'e Hoş Geldiniz",
@@ -95,5 +96,9 @@
         "Fintech": "Fintek",
         "Finance": "Finans",
         "Technology": "Teknoloji"
+    },
+    "about": {
+        "title": "Hakkında",
+        "viewAbout": "Proje Hakkında"
     }
 }

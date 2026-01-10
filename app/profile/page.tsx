@@ -22,7 +22,11 @@ import {
     Mail,
     Lock,
     UserPlus,
+    Info,
+    Brain,
+    BarChart3,
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ProfilePage() {
     const { t, language, setLanguage } = useLanguage();
@@ -262,6 +266,46 @@ export default function ProfilePage() {
                             ))}
                         </div>
                     </div>
+
+                    {/* Analytics */}
+                    <Link
+                        href="/analytics"
+                        className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    >
+                        <div className="flex items-center gap-3">
+                            <BarChart3 className="w-5 h-5 text-gray-400" />
+                            <span className="font-medium">
+                                {language === 'tr' ? 'Analitik' : language === 'ru' ? 'Аналитика' : 'Analytics'}
+                            </span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </Link>
+
+                    {/* About */}
+                    <Link
+                        href="/about"
+                        className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Info className="w-5 h-5 text-gray-400" />
+                            <span className="font-medium">{t('about.viewAbout')}</span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </Link>
+
+                    {/* Methodology */}
+                    <Link
+                        href="/methodology"
+                        className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Brain className="w-5 h-5 text-gray-400" />
+                            <span className="font-medium">
+                                {language === 'tr' ? 'Metodoloji' : language === 'ru' ? 'Методология' : 'Methodology'}
+                            </span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </Link>
 
                     {/* Reset Data */}
                     <button
