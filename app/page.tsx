@@ -23,7 +23,7 @@ export default function HomePage() {
                     <img
                         src="/logo_ftt.png"
                         alt="FinTechTerms Logo"
-                        className="w-16 h-16 object-contain"
+                        className="w-12 h-12 object-contain"
                     />
                     <div>
                         <h1 className="text-2xl font-bold text-primary-500 leading-tight">
