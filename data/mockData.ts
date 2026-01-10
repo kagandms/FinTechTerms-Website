@@ -1,6 +1,7 @@
 // ============================================
 // GlobalFinTerm - Mock Data
 // Supabase-Ready Structure with 95 Trilingual Terms
+// Last Updated: 2026-01-10 - Categories consolidated to Fintech, Finance, Technology
 // ============================================
 
 import { Term } from '@/types';
