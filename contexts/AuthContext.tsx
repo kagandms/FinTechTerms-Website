@@ -128,7 +128,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     /**
      * Register a new user
      */
-    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -146,7 +146,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user) {
-                // Create initial progress
+                // Check if email confirmation is required
+                // If identities array is empty or email is not confirmed, user needs to verify email
+                const needsConfirmation = !data.user.email_confirmed_at;
+
+                if (needsConfirmation) {
+                    // Don't auto-login, return that email confirmation is needed
+                    return { success: true, needsEmailConfirmation: true };
+                }
+
+                // Email is already confirmed (shouldn't happen with confirm email ON)
                 try {
                     await createUserProgress(data.user.id);
                 } catch (progressError) {

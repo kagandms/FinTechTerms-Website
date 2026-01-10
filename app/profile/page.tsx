@@ -47,7 +47,7 @@ export default function ProfilePage() {
         setAuthLoading(true);
 
         try {
-            let result: { success: boolean; error?: string };
+            let result: { success: boolean; error?: string; needsEmailConfirmation?: boolean };
             if (authMode === 'login') {
                 result = await login(authForm.email, authForm.password);
             } else {
@@ -55,8 +55,19 @@ export default function ProfilePage() {
             }
 
             if (result.success) {
-                setShowAuthModal(false);
-                setAuthForm({ email: '', password: '', name: '' });
+                if (result.needsEmailConfirmation) {
+                    // Show email confirmation message
+                    setAuthError(language === 'tr'
+                        ? '✅ Kayıt başarılı! Lütfen email adresinizi kontrol edin ve doğrulama linkine tıklayın.'
+                        : language === 'ru'
+                            ? '✅ Регистрация успешна! Проверьте почту и подтвердите email.'
+                            : '✅ Registration successful! Please check your email and click the verification link.');
+                    setAuthForm({ email: '', password: '', name: '' });
+                    // Don't close modal yet, let user see the message
+                } else {
+                    setShowAuthModal(false);
+                    setAuthForm({ email: '', password: '', name: '' });
+                }
             } else {
                 setAuthError(result.error || (language === 'tr'
                     ? 'Geçersiz bilgiler. Lütfen tekrar deneyin.'
