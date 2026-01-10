@@ -135,10 +135,13 @@ export default function AnalyticsPage() {
 
     // Calculate category statistics
     const categoryStats = useMemo((): CategoryStats[] => {
-        const categories = ['Fintech', 'Finance', 'Technology'] as const;
-        const colors = ['#8b5cf6', '#10b981', '#475569'];
+        const categoryConfig: Array<{ key: 'Fintech' | 'Finance' | 'Technology'; color: string }> = [
+            { key: 'Fintech', color: '#8b5cf6' },
+            { key: 'Finance', color: '#10b981' },
+            { key: 'Technology', color: '#475569' },
+        ];
 
-        return categories.map((cat, i) => {
+        return categoryConfig.map(({ key: cat, color }) => {
             const catTerms = terms.filter(term => term.category === cat);
             const reviewed = catTerms.filter(term => term.times_reviewed > 0);
             const avgDifficulty = catTerms.length > 0
@@ -154,7 +157,7 @@ export default function AnalyticsPage() {
                 avgDifficulty: Math.round(avgDifficulty * 10) / 10,
                 avgRetention: Math.round(avgRetention * 100),
                 reviewed: reviewed.length,
-                color: colors[i],
+                color,
             };
         });
     }, [terms, t.categories]);
@@ -162,11 +165,12 @@ export default function AnalyticsPage() {
     // Calculate SRS level distribution
     const srsDistribution = useMemo((): SRSLevelStats[] => {
         const favoriteTerms = terms.filter(term => userProgress.favorites.includes(term.id));
+        const srsLevelLabels = t.srsLevels;
 
         return [1, 2, 3, 4, 5].map(level => ({
             level,
             count: favoriteTerms.filter(t => t.srs_level === level).length,
-            label: t.srsLevels[level - 1],
+            label: srsLevelLabels[level - 1] || `Level ${level}`,
         }));
     }, [terms, userProgress.favorites, t.srsLevels]);
 
