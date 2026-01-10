@@ -93,10 +93,7 @@
     },
     "categories": {
         "Fintech": "Fintech",
-        "Economics": "Economics",
         "Finance": "Finance",
-        "Digital Finance": "Digital Finance",
-        "Computer Science": "Computer Science",
-        "Accounting": "Accounting"
+        "Technology": "Technology"
     }
 }

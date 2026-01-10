@@ -43,7 +43,7 @@ const createTerm = (
  */
 export const mockTerms: Term[] = [
     // [ECONOMICS - MACRO/MICRO] (1-20)
-    createTerm('term_001', 'Gross Domestic Product (GDP)', 'Валовой внутренний продукт (ВВП)', 'Gayri Safi Yurt İçi Hasıla (GSYİH)', 'Economics',
+    createTerm('term_001', 'Gross Domestic Product (GDP)', 'Валовой внутренний продукт (ВВП)', 'Gayri Safi Yurt İçi Hasıla (GSYİH)', 'Finance',
         'Total value of goods and services produced in a country.',
         'Общая стоимость товаров и услуг, произведённых в стране.',
         'Bir ülkede üretilen mal ve hizmetlerin toplam değeri.',
@@ -51,7 +51,7 @@ export const mockTerms: Term[] = [
         'Рост ВВП указывает на здоровую экономику.',
         'GSYİH büyümesi sağlıklı bir ekonomiye işaret eder.'),
 
-    createTerm('term_002', 'Gross National Product (GNP)', 'Валовой национальный продукт (ВНП)', 'Gayri Safi Milli Hasıla (GSMH)', 'Economics',
+    createTerm('term_002', 'Gross National Product (GNP)', 'Валовой национальный продукт (ВНП)', 'Gayri Safi Milli Hasıla (GSMH)', 'Finance',
         'Total value of goods and services produced by a country\'s residents.',
         'Общая стоимость товаров и услуг, произведённых резидентами страны.',
         'Bir ülkenin vatandaşları tarafından üretilen mal ve hizmetlerin toplam değeri.',
@@ -59,7 +59,7 @@ export const mockTerms: Term[] = [
         'ВНП включает доход от зарубежных инвестиций.',
         'GSMH yurtdışı yatırımlarından elde edilen geliri içerir.'),
 
-    createTerm('term_003', 'Inflation', 'Инфляция', 'Enflasyon', 'Economics',
+    createTerm('term_003', 'Inflation', 'Инфляция', 'Enflasyon', 'Finance',
         'A sustained increase in the general price level.',
         'Устойчивое повышение общего уровня цен.',
         'Genel fiyat düzeyinde sürekli artış.',
@@ -67,7 +67,7 @@ export const mockTerms: Term[] = [
         'Центробанки повышают ставки для борьбы с инфляцией.',
         'Merkez bankaları enflasyonla mücadele için oranları artırır.'),
 
-    createTerm('term_004', 'Deflation', 'Дефляция', 'Deflasyon', 'Economics',
+    createTerm('term_004', 'Deflation', 'Дефляция', 'Deflasyon', 'Finance',
         'Decrease in the general price level of goods and services.',
         'Снижение общего уровня цен на товары и услуги.',
         'Mal ve hizmetlerin genel fiyat düzeyinde düşüş.',
@@ -75,7 +75,7 @@ export const mockTerms: Term[] = [
         'Дефляция может привести к снижению потребительских расходов.',
         'Deflasyon tüketici harcamalarının azalmasına yol açabilir.'),
 
-    createTerm('term_005', 'Stagflation', 'Стагфляция', 'Stagflasyon', 'Economics',
+    createTerm('term_005', 'Stagflation', 'Стагфляция', 'Stagflasyon', 'Finance',
         'High inflation combined with high unemployment and stagnant demand.',
         'Высокая инфляция в сочетании с высокой безработицей и стагнацией спроса.',
         'Yüksek enflasyonun yüksek işsizlik ve durgun taleple birleşmesi.',
@@ -83,7 +83,7 @@ export const mockTerms: Term[] = [
         'Стагфляция трудна для решения политиками.',
         'Stagflasyonun politika yapıcılar tarafından çözülmesi zordur.'),
 
-    createTerm('term_006', 'Recession', 'Рецессия', 'Durgunluk (Resesyon)', 'Economics',
+    createTerm('term_006', 'Recession', 'Рецессия', 'Durgunluk (Resesyon)', 'Finance',
         'Period of temporary economic decline.',
         'Период временного экономического спада.',
         'Geçici ekonomik düşüş dönemi.',
@@ -91,7 +91,7 @@ export const mockTerms: Term[] = [
         'Эксперты предсказывают мягкую рецессию в следующем году.',
         'Uzmanlar gelecek yıl hafif bir durgunluk öngörüyor.'),
 
-    createTerm('term_007', 'Hyperinflation', 'Гиперинфляция', 'Hiperenflasyon', 'Economics',
+    createTerm('term_007', 'Hyperinflation', 'Гиперинфляция', 'Hiperenflasyon', 'Finance',
         'Extremely rapid and out-of-control inflation.',
         'Чрезвычайно быстрая и неконтролируемая инфляция.',
         'Son derece hızlı ve kontrol dışı enflasyon.',
@@ -99,7 +99,7 @@ export const mockTerms: Term[] = [
         'Гиперинфляция уничтожает стоимость валюты.',
         'Hiperenflasyon para biriminin değerini yok eder.'),
 
-    createTerm('term_008', 'Supply and Demand', 'Спрос и предложение', 'Arz ve Talep', 'Economics',
+    createTerm('term_008', 'Supply and Demand', 'Спрос и предложение', 'Arz ve Talep', 'Finance',
         'The relationship between the quantity of a commodity and its price.',
         'Взаимосвязь между количеством товара и его ценой.',
         'Bir malın miktarı ile fiyatı arasındaki ilişki.',
@@ -107,7 +107,7 @@ export const mockTerms: Term[] = [
         'Цены определяются спросом и предложением.',
         'Fiyatlar arz ve talep tarafından belirlenir.'),
 
-    createTerm('term_009', 'Elasticity', 'Эластичность', 'Esneklik', 'Economics',
+    createTerm('term_009', 'Elasticity', 'Эластичность', 'Esneklik', 'Finance',
         'Measure of a variable\'s sensitivity to a change in another variable.',
         'Меру чувствительности одной переменной к изменению другой.',
         'Bir değişkenin diğerindeki değişime duyarlılığının ölçüsü.',
@@ -115,7 +115,7 @@ export const mockTerms: Term[] = [
         'Ценовая эластичность спроса влияет на выручку.',
         'Talebin fiyat esnekliği geliri etkiler.'),
 
-    createTerm('term_010', 'Opportunity Cost', 'Альтернативная стоимость', 'Fırsat Maliyeti', 'Economics',
+    createTerm('term_010', 'Opportunity Cost', 'Альтернативная стоимость', 'Fırsat Maliyeti', 'Finance',
         'The loss of potential gain from other alternatives when one alternative is chosen.',
         'Потеря потенциальной выгоды от других альтернатив при выборе одной.',
         'Bir alternatif seçildiğinde diğerlerinden vazgeçilen potansiyel kazanç.',
@@ -123,7 +123,7 @@ export const mockTerms: Term[] = [
         'Альтернативная стоимость учёбы — потерянная зарплата.',
         'Okumanın fırsat maliyeti kaybedilen maaştır.'),
 
-    createTerm('term_011', 'Monopoly', 'Монополия', 'Tekel', 'Economics',
+    createTerm('term_011', 'Monopoly', 'Монополия', 'Tekel', 'Finance',
         'A market structure characterized by a single seller.',
         'Рыночная структура, характеризующаяся одним продавцом.',
         'Tek bir satıcı ile karakterize edilen piyasa yapısı.',
@@ -131,7 +131,7 @@ export const mockTerms: Term[] = [
         'Монополии могут устанавливать более высокие цены.',
         'Tekeller daha yüksek fiyatlar belirleyebilir.'),
 
-    createTerm('term_012', 'Oligopoly', 'Олигополия', 'Oligopol', 'Economics',
+    createTerm('term_012', 'Oligopoly', 'Олигополия', 'Oligopol', 'Finance',
         'A market structure in which a few firms dominate.',
         'Рыночная структура, в которой доминируют несколько фирм.',
         'Az sayıda firmanın hakim olduğu piyasa yapısı.',
@@ -139,7 +139,7 @@ export const mockTerms: Term[] = [
         'Авиаиндустрия — пример олигополии.',
         'Havacılık sektörü bir oligopol örneğidir.'),
 
-    createTerm('term_013', 'Fiscal Policy', 'Фискальная политика', 'Maliye Politikası', 'Economics',
+    createTerm('term_013', 'Fiscal Policy', 'Фискальная политика', 'Maliye Politikası', 'Finance',
         'Use of government spending and tax policies to influence economic conditions.',
         'Использование госрасходов и налоговой политики для влияния на экономику.',
         'Ekonomik koşulları etkilemek için hükümet harcamaları ve vergi politikalarının kullanımı.',
@@ -147,7 +147,7 @@ export const mockTerms: Term[] = [
         'Стимулирующая фискальная политика может ускорить рост.',
         'Genişletici maliye politikası büyümeyi artırabilir.'),
 
-    createTerm('term_014', 'Monetary Policy', 'Денежно-кредитная политика', 'Para Politikası', 'Economics',
+    createTerm('term_014', 'Monetary Policy', 'Денежно-кредитная политика', 'Para Politikası', 'Finance',
         'Central bank actions to manage money supply.',
         'Действия ЦБ по управлению денежной массой.',
         'Para arzını yönetmek için merkez bankası eylemleri.',
@@ -155,7 +155,7 @@ export const mockTerms: Term[] = [
         'Жёсткая денежно-кредитная политика направлена на снижение инфляции.',
         'Sıkı para politikası enflasyonu düşürmeyi amaçlar.'),
 
-    createTerm('term_015', 'Purchasing Power Parity (PPP)', 'Паритет покупательной способности (ППС)', 'Satın Alma Gücü Paritesi (SGP)', 'Economics',
+    createTerm('term_015', 'Purchasing Power Parity (PPP)', 'Паритет покупательной способности (ППС)', 'Satın Alma Gücü Paritesi (SGP)', 'Finance',
         'Theory comparing currencies through a "basket of goods".',
         'Теория, сравнивающая валюты через "корзину товаров".',
         'Para birimlerini bir "mal sepeti" üzerinden karşılaştıran teori.',
@@ -163,7 +163,7 @@ export const mockTerms: Term[] = [
         'ППС корректирует ВВП с учётом разницы в стоимости жизни.',
         'SGP, GSYİH\'yi yaşam maliyeti farklarına göre ayarlar.'),
 
-    createTerm('term_016', 'Trade Deficit', 'Торговый дефицит', 'Dış Ticaret Açığı', 'Economics',
+    createTerm('term_016', 'Trade Deficit', 'Торговый дефицит', 'Dış Ticaret Açığı', 'Finance',
         'When a country\'s imports exceed its exports.',
         'Когда импорт страны превышает её экспорт.',
         'Bir ülkenin ithalatının ihracatını aşması durumu.',
@@ -171,7 +171,7 @@ export const mockTerms: Term[] = [
         'Большой торговый дефицит может ослабить валюту.',
         'Büyük bir dış ticaret açığı para birimini zayıflatabilir.'),
 
-    createTerm('term_017', 'Surplus', 'Профицит', 'Fazla', 'Economics',
+    createTerm('term_017', 'Surplus', 'Профицит', 'Fazla', 'Finance',
         'An amount of something left over when requirements have been met.',
         'Количество чего-либо, оставшееся после выполнения требований.',
         'Gereksinimler karşılandıktan sonra geriye kalan miktar.',
@@ -179,7 +179,7 @@ export const mockTerms: Term[] = [
         'Бюджетный профицит позволяет погашать долг.',
         'Bütçe fazlası borç ödemeye olanak tanır.'),
 
-    createTerm('term_018', 'Subsidy', 'Субсидия', 'Sübvansiyon (Destek)', 'Economics',
+    createTerm('term_018', 'Subsidy', 'Субсидия', 'Sübvansiyon (Destek)', 'Finance',
         'Government financial support to a business or sector.',
         'Государственная финансовая поддержка бизнеса или сектора.',
         'Bir işletme veya sektöre devletin finansal desteği.',
@@ -187,7 +187,7 @@ export const mockTerms: Term[] = [
         'Фермеры получают субсидии для сдерживания цен на еду.',
         'Çiftçiler gıda fiyatlarını düşük tutmak için destek alır.'),
 
-    createTerm('term_019', 'Tariff', 'Тариф (Пошлина)', 'Gümrük Vergisi (Tarife)', 'Economics',
+    createTerm('term_019', 'Tariff', 'Тариф (Пошлина)', 'Gümrük Vergisi (Tarife)', 'Finance',
         'Tax imposed on imported goods and services.',
         'Налог на импортируемые товары и услуги.',
         'İthal edilen mal ve hizmetlere uygulanan vergi.',
@@ -195,7 +195,7 @@ export const mockTerms: Term[] = [
         'Тарифы защищают отечественные отрасли.',
         'Gümrük tarifeleri yerli sanayiyi korur.'),
 
-    createTerm('term_020', 'Central Bank', 'Центральный банк', 'Merkez Bankası', 'Economics',
+    createTerm('term_020', 'Central Bank', 'Центральный банк', 'Merkez Bankası', 'Finance',
         'Institution that manages a state\'s currency and monetary policy.',
         'Институт, управляющий валютой и монетарной политикой государства.',
         'Bir devletin para birimini ve para politikasını yöneten kurum.',
@@ -405,7 +405,7 @@ export const mockTerms: Term[] = [
         'Apple en yüksek piyasa değerine sahiptir.'),
 
     // [FINTECH & KRİPTO - DIGITAL FINANCE] (46-63)
-    createTerm('term_046', 'Blockchain', 'Блокчейн', 'Blokzinciri', 'Digital Finance',
+    createTerm('term_046', 'Blockchain', 'Блокчейн', 'Blokzinciri', 'Fintech',
         'Distributed ledger technology recording transactions.',
         'Технология распределённого реестра, записывающая транзакции.',
         'İşlemleri kaydeden dağıtık defter teknolojisi.',
@@ -413,7 +413,7 @@ export const mockTerms: Term[] = [
         'Блокчейн обеспечивает прозрачность и безопасность.',
         'Blokzinciri şeffaflık ve güvenlik sağlar.'),
 
-    createTerm('term_047', 'Cryptocurrency', 'Криптовалюта', 'Kripto Para', 'Digital Finance',
+    createTerm('term_047', 'Cryptocurrency', 'Криптовалюта', 'Kripto Para', 'Fintech',
         'Digital or virtual currency secured by cryptography.',
         'Цифровая или виртуальная валюта, защищённая криптографией.',
         'Kriptografi ile güvence altına alınmış dijital veya sanal para.',
@@ -421,7 +421,7 @@ export const mockTerms: Term[] = [
         'Биткоин — первая криптовалюта.',
         'Bitcoin ilk kripto paradır.'),
 
-    createTerm('term_048', 'Bitcoin', 'Биткоин', 'Bitcoin', 'Digital Finance',
+    createTerm('term_048', 'Bitcoin', 'Биткоин', 'Bitcoin', 'Fintech',
         'First decentralized digital currency.',
         'Первая децентрализованная цифровая валюта.',
         'İlk merkeziyetsiz dijital para birimi.',
@@ -429,7 +429,7 @@ export const mockTerms: Term[] = [
         'Биткоин часто называют цифровым золотом.',
         'Bitcoin sıklıkla dijital altın olarak adlandırılır.'),
 
-    createTerm('term_049', 'Ethereum', 'Эфириум', 'Ethereum', 'Digital Finance',
+    createTerm('term_049', 'Ethereum', 'Эфириум', 'Ethereum', 'Fintech',
         'Blockchain platform enabling smart contracts.',
         'Блокчейн-платформа, позволяющая смарт-контракты.',
         'Akıllı sözleşmelere olanak sağlayan blokzinciri platformu.',
@@ -437,7 +437,7 @@ export const mockTerms: Term[] = [
         'Эфириум поддерживает децентрализованные приложения.',
         'Ethereum merkeziyetsiz uygulamaları (dApps) destekler.'),
 
-    createTerm('term_050', 'Wallet (Digital)', 'Цифровой кошелёк', 'Dijital Cüzdan', 'Digital Finance',
+    createTerm('term_050', 'Wallet (Digital)', 'Цифровой кошелёк', 'Dijital Cüzdan', 'Fintech',
         'Software or device to store crypto keys.',
         'Программа или устройство для хранения криптоключей.',
         'Kripto anahtarları saklamak için yazılım veya cihaz.',
@@ -445,7 +445,7 @@ export const mockTerms: Term[] = [
         'Никогда не делитесь сид-фразой кошелька.',
         'Cüzdan kurtarma ifadenizi asla paylaşmayın.'),
 
-    createTerm('term_051', 'Private Key', 'Закрытый ключ', 'Özel Anahtar', 'Digital Finance',
+    createTerm('term_051', 'Private Key', 'Закрытый ключ', 'Özel Anahtar', 'Fintech',
         'Code allowing access to cryptocurrency funds.',
         'Код, дающий доступ к криптовалютным средствам.',
         'Kripto para fonlarına erişim sağlayan kod.',
@@ -453,7 +453,7 @@ export const mockTerms: Term[] = [
         'Потеряв закрытый ключ, вы теряете монеты.',
         'Özel anahtarınızı kaybederseniz coinlerinizi kaybedersiniz.'),
 
-    createTerm('term_052', 'Public Key', 'Открытый ключ', 'Genel Anahtar', 'Digital Finance',
+    createTerm('term_052', 'Public Key', 'Открытый ключ', 'Genel Anahtar', 'Fintech',
         'Code used to receive cryptocurrency.',
         'Код, используемый для получения криптовалюты.',
         'Kripto para almak için kullanılan kod.',
@@ -461,7 +461,7 @@ export const mockTerms: Term[] = [
         'Вы можете безопасно делиться открытым ключом.',
         'Genel anahtarınızı güvenle paylaşabilirsiniz.'),
 
-    createTerm('term_053', 'Smart Contract', 'Смарт-контракт', 'Akıllı Sözleşme', 'Digital Finance',
+    createTerm('term_053', 'Smart Contract', 'Смарт-контракт', 'Akıllı Sözleşme', 'Fintech',
         'Self-executing contract with code.',
         'Самоисполняемый контракт с кодом.',
         'Kod içeren kendi kendini yürüten sözleşme.',
@@ -469,7 +469,7 @@ export const mockTerms: Term[] = [
         'Смарт-контракты автоматизируют исполнение соглашений.',
         'Akıllı sözleşmeler anlaşma uygulamasını otomatikleştirir.'),
 
-    createTerm('term_054', 'DeFi', 'DeFi', 'DeFi (Merkeziyetsiz Finans)', 'Digital Finance',
+    createTerm('term_054', 'DeFi', 'DeFi', 'DeFi (Merkeziyetsiz Finans)', 'Fintech',
         'Decentralized Finance; financial services without intermediaries.',
         'Децентрализованные финансы; услуги без посредников.',
         'Merkeziyetsiz Finans; aracısız finansal hizmetler.',
@@ -477,7 +477,7 @@ export const mockTerms: Term[] = [
         'DeFi предлагает возможности высокодоходного фарминга.',
         'DeFi yüksek getirili farming fırsatları sunar.'),
 
-    createTerm('term_055', 'NFT', 'NFT', 'NFT', 'Digital Finance',
+    createTerm('term_055', 'NFT', 'NFT', 'NFT', 'Fintech',
         'Non-Fungible Token; unique digital identifier.',
         'Невзаимозаменяемый токен; уникальный цифровой идентификатор.',
         'Değiştirilemez Token; benzersiz dijital tanımlayıcı.',
@@ -485,7 +485,7 @@ export const mockTerms: Term[] = [
         'Произведение искусства продано как NFT за миллионы.',
         'Sanat eseri NFT olarak milyonlara satıldı.'),
 
-    createTerm('term_056', 'P2P Lending', 'P2P-кредитование', 'P2P Kredilendirme', 'Digital Finance',
+    createTerm('term_056', 'P2P Lending', 'P2P-кредитование', 'P2P Kredilendirme', 'Fintech',
         'Lending money to individuals without financial institutions.',
         'Кредитование физлиц без финансовых институтов.',
         'Finansal kurumlar olmadan bireylere borç verme.',
@@ -493,7 +493,7 @@ export const mockTerms: Term[] = [
         'P2P-кредитование исключает банк-посредника.',
         'P2P kredilendirme banka aracısını ortadan kaldırır.'),
 
-    createTerm('term_057', 'Crowdfunding', 'Краудфандинг', 'Kitle Fonlaması', 'Digital Finance',
+    createTerm('term_057', 'Crowdfunding', 'Краудфандинг', 'Kitle Fonlaması', 'Fintech',
         'Raising small amounts of money from many people.',
         'Сбор небольших сумм денег от множества людей.',
         'Birçok kişiden küçük miktarlarda para toplama.',
@@ -501,7 +501,7 @@ export const mockTerms: Term[] = [
         'Kickstarter — популярная платформа краудфандинга.',
         'Kickstarter popüler bir kitle fonlaması platformudur.'),
 
-    createTerm('term_058', 'Robo-advisor', 'Робо-консультант', 'Robo-Danışman', 'Digital Finance',
+    createTerm('term_058', 'Robo-advisor', 'Робо-консультант', 'Robo-Danışman', 'Fintech',
         'Digital platforms providing automated financial advice.',
         'Цифровые платформы, дающие автоматические советы.',
         'Otomatik finansal tavsiye veren dijital platformlar.',
@@ -509,7 +509,7 @@ export const mockTerms: Term[] = [
         'Робо-консультанты используют алгоритмы для портфелей.',
         'Robo-danışmanlar portföyleri yönetmek için algoritma kullanır.'),
 
-    createTerm('term_059', 'Neobank', 'Необанк', 'Neobank', 'Digital Finance',
+    createTerm('term_059', 'Neobank', 'Необанк', 'Neobank', 'Fintech',
         'Digital-only bank without physical branches.',
         'Цифровой банк без физических отделений.',
         'Fiziksel şubesi olmayan sadece dijital banka.',
@@ -517,7 +517,7 @@ export const mockTerms: Term[] = [
         'Необанки привлекают молодое поколение.',
         'Neobanklar genç teknoloji nesline hitap ediyor.'),
 
-    createTerm('term_060', 'Open Banking', 'Открытый банкинг', 'Açık Bankacılık', 'Digital Finance',
+    createTerm('term_060', 'Open Banking', 'Открытый банкинг', 'Açık Bankacılık', 'Fintech',
         'System providing third-party access to financial data through APIs.',
         'Система доступа третьих лиц к финданным через API.',
         'API\'ler aracılığıyla finansal verilere üçüncü taraf erişimi sağlayan sistem.',
@@ -525,7 +525,7 @@ export const mockTerms: Term[] = [
         'Открытый банкинг способствует конкуренции в финансах.',
         'Açık bankacılık finansta rekabeti teşvik eder.'),
 
-    createTerm('term_061', 'Fintech', 'Финтех', 'Fintek', 'Digital Finance',
+    createTerm('term_061', 'Fintech', 'Финтех', 'Fintek', 'Fintech',
         'Financial Technology; innovation in financial services.',
         'Финансовые технологии; инновации в услугах.',
         'Finansal Teknoloji; finansal hizmetlerde inovasyon.',
@@ -533,7 +533,7 @@ export const mockTerms: Term[] = [
         'Лондон — глобальный финтех-хаб.',
         'Londra küresel bir fintek merkezidir.'),
 
-    createTerm('term_062', 'Insurtech', 'Иншуртех', 'Insurtech', 'Digital Finance',
+    createTerm('term_062', 'Insurtech', 'Иншуртех', 'Insurtech', 'Fintech',
         'Technology innovations in the insurance industry.',
         'Технологические инновации в страховой отрасли.',
         'Sigorta sektöründe teknolojik inovasyonlar.',
@@ -541,7 +541,7 @@ export const mockTerms: Term[] = [
         'Иншуртех упрощает процесс заявлений.',
         'Insurtech talep sürecini basitleştirir.'),
 
-    createTerm('term_063', 'Regtech', 'Регтех', 'Regtech', 'Digital Finance',
+    createTerm('term_063', 'Regtech', 'Регтех', 'Regtech', 'Fintech',
         'Technology to help companies comply with regulations.',
         'Технологии для соблюдения нормативных требований.',
         'Şirketlerin düzenlemelere uymasına yardımcı olan teknoloji.',
@@ -550,7 +550,7 @@ export const mockTerms: Term[] = [
         'Regtech uyumluluk maliyetlerini düşürür.'),
 
     // [YÖNETİM BİLİŞİM SİSTEMLERİ - MIS/IT] (64-83)
-    createTerm('term_064', 'Database', 'База данных', 'Veritabanı', 'Computer Science',
+    createTerm('term_064', 'Database', 'База данных', 'Veritabanı', 'Technology',
         'Organized collection of data.',
         'Организованная коллекция данных.',
         'Organize edilmiş veri koleksiyonu.',
@@ -558,7 +558,7 @@ export const mockTerms: Term[] = [
         'SQL используется для запросов к базе.',
         'SQL veritabanını sorgulamak için kullanılır.'),
 
-    createTerm('term_065', 'SQL', 'SQL', 'SQL', 'Computer Science',
+    createTerm('term_065', 'SQL', 'SQL', 'SQL', 'Technology',
         'Structured Query Language.',
         'Структурированный язык запросов.',
         'Yapılandırılmış Sorgu Dili.',
@@ -566,7 +566,7 @@ export const mockTerms: Term[] = [
         'Разработчики используют SQL для управления данными.',
         'Geliştiriciler veriyi yönetmek için SQL kullanır.'),
 
-    createTerm('term_066', 'Primary Key', 'Первичный ключ', 'Birincil Anahtar', 'Computer Science',
+    createTerm('term_066', 'Primary Key', 'Первичный ключ', 'Birincil Anahtar', 'Technology',
         'Unique identifier for a record in a table.',
         'Уникальный идентификатор записи в таблице.',
         'Tablodaki bir kayıt için benzersiz tanımlayıcı.',
@@ -574,7 +574,7 @@ export const mockTerms: Term[] = [
         'ID часто используется как первичный ключ.',
         'ID genellikle birincil anahtar olarak kullanılır.'),
 
-    createTerm('term_067', 'Foreign Key', 'Внешний ключ', 'Yabancı Anahtar', 'Computer Science',
+    createTerm('term_067', 'Foreign Key', 'Внешний ключ', 'Yabancı Anahtar', 'Technology',
         'Field linking to the primary key of another table.',
         'Поле, ссылающееся на первичный ключ другой таблицы.',
         'Başka bir tablonun birincil anahtarına bağlanan alan.',
@@ -582,7 +582,7 @@ export const mockTerms: Term[] = [
         'Внешние ключи устанавливают связи между таблицами.',
         'Yabancı anahtarlar tablolar arası ilişkileri kurar.'),
 
-    createTerm('term_068', 'Algorithm', 'Алгоритм', 'Algoritma', 'Computer Science',
+    createTerm('term_068', 'Algorithm', 'Алгоритм', 'Algoritma', 'Technology',
         'Set of rules to solve a problem.',
         'Набор правил для решения задачи.',
         'Bir problemi çözmek için kurallar dizisi.',
@@ -590,7 +590,7 @@ export const mockTerms: Term[] = [
         'Поисковики используют сложные алгоритмы.',
         'Arama motorları karmaşık algoritmalar kullanır.'),
 
-    createTerm('term_069', 'Cloud Computing', 'Облачные вычисления', 'Bulut Bilişim', 'Computer Science',
+    createTerm('term_069', 'Cloud Computing', 'Облачные вычисления', 'Bulut Bilişim', 'Technology',
         'Delivery of computing services over the internet.',
         'Предоставление выч. услуг через интернет.',
         'İnternet üzerinden bilişim hizmetleri sunumu.',
@@ -598,7 +598,7 @@ export const mockTerms: Term[] = [
         'Компании переходят на облачные вычисления.',
         'Şirketler bulut bilişime geçiyor.'),
 
-    createTerm('term_070', 'Big Data', 'Большие данные', 'Büyük Veri', 'Computer Science',
+    createTerm('term_070', 'Big Data', 'Большие данные', 'Büyük Veri', 'Technology',
         'Large, complex datasets.',
         'Большие, сложные наборы данных.',
         'Büyük, karmaşık veri kümeleri.',
@@ -606,7 +606,7 @@ export const mockTerms: Term[] = [
         'Аналитика больших данных движет принятием решений.',
         'Büyük veri analitiği karar vermeyi yönlendirir.'),
 
-    createTerm('term_071', 'Machine Learning', 'Машинное обучение', 'Makine Öğrenmesi', 'Computer Science',
+    createTerm('term_071', 'Machine Learning', 'Машинное обучение', 'Makine Öğrenmesi', 'Technology',
         'AI that learns from data.',
         'ИИ, который учится на данных.',
         'Veriden öğrenen yapay zeka.',
@@ -614,7 +614,7 @@ export const mockTerms: Term[] = [
         'Машинное обучение питает рекомендательные движки.',
         'Makine öğrenmesi öneri motorlarına güç verir.'),
 
-    createTerm('term_072', 'AI', 'Искусственный интеллект', 'Yapay Zeka (AI)', 'Computer Science',
+    createTerm('term_072', 'AI', 'Искусственный интеллект', 'Yapay Zeka (AI)', 'Technology',
         'Simulation of human intelligence by machines.',
         'Симуляция человеческого интеллекта машинами.',
         'Makineler tarafından insan zekasının simülasyonu.',
@@ -622,7 +622,7 @@ export const mockTerms: Term[] = [
         'ИИ трансформирует каждую индустрию.',
         'Yapay zeka her sektörü dönüştürüyor.'),
 
-    createTerm('term_073', 'API', 'API', 'API', 'Computer Science',
+    createTerm('term_073', 'API', 'API', 'API', 'Technology',
         'Application Programming Interface.',
         'Интерфейс программирования приложений.',
         'Uygulama Programlama Arayüzü.',
@@ -630,7 +630,7 @@ export const mockTerms: Term[] = [
         'API позволяют приложениям общаться.',
         'API\'ler uygulamaların birbiriyle konuşmasını sağlar.'),
 
-    createTerm('term_074', 'Backend', 'Бэкенд', 'Backend', 'Computer Science',
+    createTerm('term_074', 'Backend', 'Бэкенд', 'Backend', 'Technology',
         'Server-side of an application.',
         'Серверная сторона приложения.',
         'Bir uygulamanın sunucu tarafı.',
@@ -638,7 +638,7 @@ export const mockTerms: Term[] = [
         'Node.js популярен для бэкенда.',
         'Node.js backend için popülerdir.'),
 
-    createTerm('term_075', 'Frontend', 'Фронтенд', 'Frontend', 'Computer Science',
+    createTerm('term_075', 'Frontend', 'Фронтенд', 'Frontend', 'Technology',
         'Client-side of an application.',
         'Клиентская сторона приложения.',
         'Bir uygulamanın istemci tarafı.',
@@ -646,7 +646,7 @@ export const mockTerms: Term[] = [
         'React — это фронтенд-библиотека.',
         'React bir frontend kütüphanesidir.'),
 
-    createTerm('term_076', 'Full Stack', 'Фулстек', 'Full Stack', 'Computer Science',
+    createTerm('term_076', 'Full Stack', 'Фулстек', 'Full Stack', 'Technology',
         'Development of both frontend and backend.',
         'Разработка и фронтенда, и бэкенда.',
         'Hem frontend hem backend geliştirme.',
@@ -654,7 +654,7 @@ export const mockTerms: Term[] = [
         'Фулстек-разработчики пользуются высоким спросом.',
         'Full stack geliştiriciler yüksek talep görüyor.'),
 
-    createTerm('term_077', 'Agile', 'Agile', 'Agile (Çevik)', 'Computer Science',
+    createTerm('term_077', 'Agile', 'Agile', 'Agile (Çevik)', 'Technology',
         'Iterative software development methodology.',
         'Итеративная методология разработки ПО.',
         'Yinelemeli yazılım geliştirme metodolojisi.',
@@ -662,7 +662,7 @@ export const mockTerms: Term[] = [
         'Agile-команды быстро адаптируются к изменениям.',
         'Agile takımları değişime hızlı uyum sağlar.'),
 
-    createTerm('term_078', 'Scrum', 'Scrum', 'Scrum', 'Computer Science',
+    createTerm('term_078', 'Scrum', 'Scrum', 'Scrum', 'Technology',
         'Framework implementing Agile.',
         'Фреймворк, реализующий Agile.',
         'Agile uygulayan bir çerçeve.',
@@ -670,7 +670,7 @@ export const mockTerms: Term[] = [
         'Ежедневные стендапы — часть Scrum.',
         'Günlük ayaküstü toplantılar Scrum\'ın parçasıdır.'),
 
-    createTerm('term_079', 'ERP', 'ERP', 'ERP (Kurumsal Kaynak Planlama)', 'Computer Science',
+    createTerm('term_079', 'ERP', 'ERP', 'ERP (Kurumsal Kaynak Planlama)', 'Technology',
         'Enterprise Resource Planning software.',
         'ПО планирования ресурсов предприятия.',
         'Kurumsal Kaynak Planlama yazılımı.',
@@ -678,7 +678,7 @@ export const mockTerms: Term[] = [
         'SAP — крупный поставщик ERP.',
         'SAP büyük bir ERP sağlayıcısıdır.'),
 
-    createTerm('term_080', 'CRM', 'CRM', 'CRM (Müşteri İlişkileri Yönetimi)', 'Computer Science',
+    createTerm('term_080', 'CRM', 'CRM', 'CRM (Müşteri İlişkileri Yönetimi)', 'Technology',
         'Customer Relationship Management system.',
         'Система управления взаимоотношениями с клиентами.',
         'Müşteri İlişkileri Yönetimi sistemi.',
@@ -686,7 +686,7 @@ export const mockTerms: Term[] = [
         'Salesforce — ведущая CRM.',
         'Salesforce lider CRM\'dir.'),
 
-    createTerm('term_081', 'SaaS', 'SaaS', 'SaaS (Hizmet Olarak Yazılım)', 'Computer Science',
+    createTerm('term_081', 'SaaS', 'SaaS', 'SaaS (Hizmet Olarak Yazılım)', 'Technology',
         'Software as a Service; cloud-based software.',
         'ПО как услуга; облачное ПО.',
         'Hizmet Olarak Yazılım; bulut tabanlı yazılım.',
@@ -694,7 +694,7 @@ export const mockTerms: Term[] = [
         'Google Docs — это SaaS-приложение.',
         'Google Docs bir SaaS uygulamasıdır.'),
 
-    createTerm('term_082', 'UI', 'UI', 'UI (Kullanıcı Arayüzü)', 'Computer Science',
+    createTerm('term_082', 'UI', 'UI', 'UI (Kullanıcı Arayüzü)', 'Technology',
         'User Interface; visual part of app.',
         'Пользовательский интерфейс; визуальная часть.',
         'Kullanıcı Arayüzü; uygulamanın görsel kısmı.',
@@ -702,7 +702,7 @@ export const mockTerms: Term[] = [
         'Хороший UI интуитивен и чист.',
         'İyi bir UI sezgisel ve temizdir.'),
 
-    createTerm('term_083', 'UX', 'UX', 'UX (Kullanıcı Deneyimi)', 'Computer Science',
+    createTerm('term_083', 'UX', 'UX', 'UX (Kullanıcı Deneyimi)', 'Technology',
         'User Experience; how user feels using app.',
         'Пользовательский опыт; ощущения от использования.',
         'Kullanıcı Deneyimi; kullanıcının uygulamayı kullanırken hissettikleri.',
@@ -711,7 +711,7 @@ export const mockTerms: Term[] = [
         'UX tasarımı kullanılabilirliğe odaklanır.'),
 
     // [MUHASEBE - ACCOUNTING] (84-95)
-    createTerm('term_084', 'Debit', 'Дебет', 'Borç (Debit)', 'Accounting',
+    createTerm('term_084', 'Debit', 'Дебет', 'Borç (Debit)', 'Finance',
         'Entry recording an amount owed.',
         'Запись, регистрирующая сумму долга.',
         'Borçlanılan tutarı kaydeden giriş.',
@@ -719,7 +719,7 @@ export const mockTerms: Term[] = [
         'Дебеты увеличивают счета активов.',
         'Borç kayıtları varlık hesaplarını artırır.'),
 
-    createTerm('term_085', 'Credit', 'Кредит', 'Alacak (Credit)', 'Accounting',
+    createTerm('term_085', 'Credit', 'Кредит', 'Alacak (Credit)', 'Finance',
         'Entry recording a sum received.',
         'Запись, регистрирующая полученную сумму.',
         'Alınan tutarı kaydeden giriş.',
@@ -727,7 +727,7 @@ export const mockTerms: Term[] = [
         'Кредиты увеличивают счета обязательств.',
         'Alacak kayıtları yükümlülük hesaplarını artırır.'),
 
-    createTerm('term_086', 'General Ledger', 'Главная книга', 'Defter-i Kebir', 'Accounting',
+    createTerm('term_086', 'General Ledger', 'Главная книга', 'Defter-i Kebir', 'Finance',
         'Master record of all financial transactions.',
         'Главная запись всех финансовых транзакций.',
         'Tüm finansal işlemlerin ana kaydı.',
@@ -735,7 +735,7 @@ export const mockTerms: Term[] = [
         'Главная книга центральна для бухгалтерии.',
         'Defter-i kebir muhasebenin merkezindedir.'),
 
-    createTerm('term_087', 'Trial Balance', 'Пробный баланс', 'Mizan', 'Accounting',
+    createTerm('term_087', 'Trial Balance', 'Пробный баланс', 'Mizan', 'Finance',
         'Report ensuring debits equal credits.',
         'Отчёт, гарантирующий равенство дебета и кредита.',
         'Borçların alacaklara eşit olduğunu doğrulayan rapor.',
@@ -743,7 +743,7 @@ export const mockTerms: Term[] = [
         'Бухгалтер подготовил пробный баланс.',
         'Muhasebeci mizanı hazırladı.'),
 
-    createTerm('term_088', 'Amortization', 'Амортизация (НМА)', 'İtfa Payı (Amortisman)', 'Accounting',
+    createTerm('term_088', 'Amortization', 'Амортизация (НМА)', 'İtfa Payı (Amortisman)', 'Finance',
         'Spreading cost of intangible assets over time.',
         'Распределение стоимости нематериальных активов во времени.',
         'Maddi olmayan varlıkların maliyetinin zamana yayılması.',
@@ -751,7 +751,7 @@ export const mockTerms: Term[] = [
         'Амортизация применяется к патентам.',
         'İtfa payı patentlere uygulanır.'),
 
-    createTerm('term_089', 'Depreciation', 'Износ (Амортизация)', 'Yıpranma Payı (Amortisman)', 'Accounting',
+    createTerm('term_089', 'Depreciation', 'Износ (Амортизация)', 'Yıpranma Payı (Amortisman)', 'Finance',
         'Allocating cost of tangible assets over useful life.',
         'Распределение стоимости мат. активов на срок службы.',
         'Maddi varlıkların maliyetinin kullanım ömrüne yayılması.',
@@ -759,7 +759,7 @@ export const mockTerms: Term[] = [
         'Амортизация авто — налоговый вычет.',
         'Araç amortismanı vergi matrahından düşülür.'),
 
-    createTerm('term_090', 'Net Income', 'Чистая прибыль', 'Net Gelir', 'Accounting',
+    createTerm('term_090', 'Net Income', 'Чистая прибыль', 'Net Gelir', 'Finance',
         'Revenue minus expenses, taxes, and costs.',
         'Выручка минус расходы, налоги и затраты.',
         'Gelirden giderler, vergiler ve maliyetlerin düşülmesi.',
@@ -767,7 +767,7 @@ export const mockTerms: Term[] = [
         'Чистая прибыль — это итоговый результат.',
         'Net gelir bilançonun alt satırıdır.'),
 
-    createTerm('term_091', 'Gross Margin', 'Валовая маржа', 'Brüt Kar Marjı', 'Accounting',
+    createTerm('term_091', 'Gross Margin', 'Валовая маржа', 'Brüt Kar Marjı', 'Finance',
         'Revenue minus cost of goods sold (COGS).',
         'Выручка минус себестоимость проданных товаров.',
         'Gelir eksi Satılan Malın Maliyeti (SMM).',
@@ -775,7 +775,7 @@ export const mockTerms: Term[] = [
         'Высокая валовая маржа указывает на эффективность.',
         'Yüksek brüt kar marjı verimliliği gösterir.'),
 
-    createTerm('term_092', 'Break-even Point', 'Точка безубыточности', 'Başa Baş Noktası', 'Accounting',
+    createTerm('term_092', 'Break-even Point', 'Точка безубыточности', 'Başa Baş Noktası', 'Finance',
         'Point where revenue equals costs.',
         'Точка, где выручка равна затратам.',
         'Gelirin maliyetlere eşit olduğu nokta.',
@@ -783,7 +783,7 @@ export const mockTerms: Term[] = [
         'Стартап достиг точки безубыточности.',
         'Girişim başa baş noktasına ulaştı.'),
 
-    createTerm('term_093', 'Revenue', 'Выручка', 'Hasılat (Ciro)', 'Accounting',
+    createTerm('term_093', 'Revenue', 'Выручка', 'Hasılat (Ciro)', 'Finance',
         'Income generated from normal business operations.',
         'Доход от обычной деятельности бизнеса.',
         'Normal ticari faaliyetlerden elde edilen gelir.',
@@ -791,7 +791,7 @@ export const mockTerms: Term[] = [
         'Выручка выросла на 20% в этом квартале.',
         'Hasılat bu çeyrekte %20 arttı.'),
 
-    createTerm('term_094', 'Expense', 'Расход', 'Gider', 'Accounting',
+    createTerm('term_094', 'Expense', 'Расход', 'Gider', 'Finance',
         'Cost incurred to generate revenue.',
         'Затраты, понесённые для получения выручки.',
         'Gelir elde etmek için katlanılan maliyet.',
@@ -799,7 +799,7 @@ export const mockTerms: Term[] = [
         'Снижение расходов увеличивает прибыль.',
         'Giderleri azaltmak karı artırır.'),
 
-    createTerm('term_095', 'Audit', 'Аудит', 'Denetim', 'Accounting',
+    createTerm('term_095', 'Audit', 'Аудит', 'Denetim', 'Finance',
         'Official examination of financial accounts.',
         'Официальная проверка финансовых счетов.',
         'Finansal hesapların resmi incelenmesi.',

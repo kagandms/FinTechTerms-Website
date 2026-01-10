@@ -93,10 +93,7 @@
     },
     "categories": {
         "Fintech": "Финтех",
-        "Economics": "Экономика",
         "Finance": "Финансы",
-        "Digital Finance": "Цифровые финансы",
-        "Computer Science": "Информатика",
-        "Accounting": "Бухгалтерия"
+        "Technology": "Технологии"
     }
 }

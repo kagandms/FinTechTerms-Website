@@ -5,7 +5,7 @@
 
 export type Language = 'tr' | 'en' | 'ru';
 
-export type Category = 'Fintech' | 'Economics' | 'Finance' | 'Digital Finance' | 'Computer Science' | 'Accounting';
+export type Category = 'Fintech' | 'Finance' | 'Technology';
 
 /**
  * Main Term interface - represents a trilingual dictionary entry

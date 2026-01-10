@@ -93,10 +93,7 @@
     },
     "categories": {
         "Fintech": "Fintek",
-        "Economics": "Ekonomi",
         "Finance": "Finans",
-        "Digital Finance": "Dijital Finans",
-        "Computer Science": "Bilgisayar Bilimi",
-        "Accounting": "Muhasebe"
+        "Technology": "Teknoloji"
     }
 }

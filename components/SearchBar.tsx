@@ -11,7 +11,7 @@ interface SearchBarProps {
     onClear?: () => void;
 }
 
-const categories: Category[] = ['Economics', 'Finance', 'Digital Finance', 'Computer Science', 'Fintech', 'Accounting'];
+const categories: Category[] = ['Fintech', 'Finance', 'Technology'];
 
 export default function SearchBar({ onResults, onClear }: SearchBarProps) {
     const { t } = useLanguage();
