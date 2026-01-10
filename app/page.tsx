@@ -19,13 +19,20 @@ export default function HomePage() {
         <div className="page-content px-4 py-6">
             {/* Header */}
             <header className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-primary-500">
-                        FinTechTerms
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        {t('home.subtitle')}
-                    </p>
+                <div className="flex items-center gap-3">
+                    <img
+                        src="/logo_ftt.png"
+                        alt="FinTechTerms Logo"
+                        className="w-16 h-16 object-contain"
+                    />
+                    <div>
+                        <h1 className="text-2xl font-bold text-primary-500 leading-tight">
+                            FinTechTerms
+                        </h1>
+                        <p className="text-xs text-gray-500 font-medium">
+                            {t('home.subtitle')}
+                        </p>
+                    </div>
                 </div>
                 <LanguageSwitcher />
             </header>
