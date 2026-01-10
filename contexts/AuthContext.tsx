@@ -65,7 +65,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-                setUser(mapSupabaseUser(session.user));
+                // Only set user if email is confirmed
+                if (session.user.email_confirmed_at) {
+                    setUser(mapSupabaseUser(session.user));
+                }
             }
             setIsLoading(false);
         });
@@ -75,6 +78,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
+                // Only allow login if email is confirmed
+                if (!session.user.email_confirmed_at) {
+                    // Email not confirmed, don't set user as logged in
+                    setUser(null);
+                    return;
+                }
+
                 setUser(mapSupabaseUser(session.user));
 
                 // Check if user has progress, if not create it
