@@ -9,7 +9,7 @@ import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target
 
 export default function QuizPage() {
     const { t } = useLanguage();
-    const { dueTerms, submitQuizAnswer, stats, terms } = useSRS();
+    const { dueTerms, submitQuizAnswer, stats, terms, userProgress } = useSRS();
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -92,10 +92,10 @@ export default function QuizPage() {
                             </div>
                             <div>
                                 <p className="text-white/80 text-xs">{t('quiz.dailyStreak')}</p>
-                                <p className="text-xl font-bold">{stats.streak || 0} {t('quiz.days')}</p>
+                                <p className="text-xl font-bold">{userProgress.current_streak || 0} {t('quiz.days')}</p>
                             </div>
                         </div>
-                        {(stats.streak || 0) > 0 && (
+                        {(userProgress.current_streak || 0) > 0 && (
                             <p className="text-lg">🔥</p>
                         )}
                     </div>

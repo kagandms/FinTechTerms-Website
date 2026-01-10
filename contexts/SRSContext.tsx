@@ -5,9 +5,10 @@ import { Term, UserProgress, QuizAttempt } from '@/types';
 import {
     getTerms,
     updateTerm as updateTermInStorage,
-    getUserProgress,
+    getUserProgress as getLocalUserProgress,
     toggleFavorite as toggleFavoriteInStorage,
     addQuizAttempt as addQuizAttemptToStorage,
+    saveUserProgress as saveLocalUserProgress,
 } from '@/utils/storage';
 import {
     getTermsDueForReview,
@@ -15,6 +16,15 @@ import {
     calculateProgressStats
 } from '@/utils/srsLogic';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+    getUserProgressFromSupabase,
+    saveUserProgressToSupabase,
+    toggleFavoriteInSupabase,
+    saveQuizAttemptToSupabase,
+    saveTermSRSToSupabase,
+    getAllTermSRSFromSupabase,
+    updateStreakInSupabase,
+} from '@/lib/supabaseStorage';
 
 interface SRSContextType {
     terms: Term[];
@@ -26,6 +36,7 @@ interface SRSContextType {
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
+    isSyncing: boolean;
     stats: {
         totalFavorites: number;
         mastered: number;
@@ -42,19 +53,65 @@ interface SRSProviderProps {
 }
 
 export function SRSProvider({ children }: SRSProviderProps) {
-    const { favoriteLimit, isAuthenticated } = useAuth();
+    const { favoriteLimit, isAuthenticated, user } = useAuth();
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
     const [isHydrated, setIsHydrated] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    // Load data on mount
-    useEffect(() => {
+    /**
+     * Load data from appropriate source (Supabase for auth users, localStorage for guests)
+     */
+    const loadData = useCallback(async () => {
+        // Always load terms from mockData (via localStorage wrapper)
         const loadedTerms = getTerms();
-        const loadedProgress = getUserProgress();
-        setTerms(loadedTerms);
-        setUserProgress(loadedProgress);
+
+        if (isAuthenticated && user) {
+            // Load from Supabase for authenticated users
+            setIsSyncing(true);
+            try {
+                const cloudProgress = await getUserProgressFromSupabase(user.id);
+
+                if (cloudProgress) {
+                    // Load user's SRS overrides for terms
+                    const srsData = await getAllTermSRSFromSupabase(user.id);
+
+                    // Merge SRS data with base terms
+                    const mergedTerms = loadedTerms.map(term => {
+                        const override = srsData.get(term.id);
+                        if (override) {
+                            return { ...term, ...override };
+                        }
+                        return term;
+                    });
+
+                    setTerms(mergedTerms);
+                    setUserProgress(cloudProgress);
+                } else {
+                    // New user, use default progress
+                    setTerms(loadedTerms);
+                    setUserProgress(getLocalUserProgress());
+                }
+            } catch (error) {
+                console.error('Failed to load from Supabase, falling back to local:', error);
+                setTerms(loadedTerms);
+                setUserProgress(getLocalUserProgress());
+            } finally {
+                setIsSyncing(false);
+            }
+        } else {
+            // Guest mode: use localStorage
+            setTerms(loadedTerms);
+            setUserProgress(getLocalUserProgress());
+        }
+
         setIsHydrated(true);
-    }, []);
+    }, [isAuthenticated, user]);
+
+    // Load data on mount and when auth state changes
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     // Calculate due terms
     const dueTerms = userProgress
@@ -84,10 +141,22 @@ export function SRSProvider({ children }: SRSProviderProps) {
             return { success: false, limitReached: true };
         }
 
+        if (isAuthenticated && user) {
+            // Sync to Supabase
+            toggleFavoriteInSupabase(user.id, termId, currentFavorites)
+                .then(newFavorites => {
+                    setUserProgress(prev => prev ? { ...prev, favorites: newFavorites } : prev);
+                })
+                .catch(error => {
+                    console.error('Failed to sync favorite to cloud:', error);
+                });
+        }
+
+        // Always update local state immediately for responsiveness
         const updated = toggleFavoriteInStorage(termId);
         setUserProgress(updated);
         return { success: true, limitReached: false };
-    }, [userProgress, favoriteLimit, isAuthenticated]);
+    }, [userProgress, favoriteLimit, isAuthenticated, user]);
 
     /**
      * Check if a term is favorited
@@ -99,7 +168,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     /**
      * Submit a quiz answer and update SRS data
      */
-    const submitQuizAnswer = useCallback((termId: string, isCorrect: boolean) => {
+    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean) => {
         const term = terms.find(t => t.id === termId);
         if (!term) return;
 
@@ -119,15 +188,41 @@ export function SRSProvider({ children }: SRSProviderProps) {
         };
         const updatedProgress = addQuizAttemptToStorage(attempt);
         setUserProgress(updatedProgress);
-    }, [terms]);
+
+        // Sync to Supabase if authenticated
+        if (isAuthenticated && user) {
+            try {
+                await saveQuizAttemptToSupabase(user.id, attempt);
+                await saveTermSRSToSupabase(user.id, termId, {
+                    srs_level: updatedTerm.srs_level,
+                    next_review_date: updatedTerm.next_review_date,
+                    last_reviewed: updatedTerm.last_reviewed,
+                    difficulty_score: updatedTerm.difficulty_score,
+                    retention_rate: updatedTerm.retention_rate,
+                    times_reviewed: updatedTerm.times_reviewed,
+                    times_correct: updatedTerm.times_correct,
+                });
+                await updateStreakInSupabase(user.id);
+
+                // Sync progress
+                await saveUserProgressToSupabase(user.id, {
+                    favorites: updatedProgress.favorites,
+                    current_streak: updatedProgress.current_streak,
+                    last_study_date: updatedProgress.last_study_date,
+                    total_words_learned: updatedProgress.total_words_learned,
+                });
+            } catch (error) {
+                console.error('Failed to sync quiz answer to cloud:', error);
+            }
+        }
+    }, [terms, isAuthenticated, user]);
 
     /**
      * Manually refresh all data from storage
      */
     const refreshData = useCallback(() => {
-        setTerms(getTerms());
-        setUserProgress(getUserProgress());
-    }, []);
+        loadData();
+    }, [loadData]);
 
     // Use default progress if not yet hydrated
     const safeProgress = userProgress ?? {
@@ -154,6 +249,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 refreshData,
                 canAddMoreFavorites,
                 favoritesRemaining,
+                isSyncing,
                 stats,
             }}
         >

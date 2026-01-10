@@ -47,22 +47,22 @@ export default function ProfilePage() {
         setAuthLoading(true);
 
         try {
-            let success = false;
+            let result: { success: boolean; error?: string };
             if (authMode === 'login') {
-                success = await login(authForm.email, authForm.password);
+                result = await login(authForm.email, authForm.password);
             } else {
-                success = await register(authForm.email, authForm.password, authForm.name);
+                result = await register(authForm.email, authForm.password, authForm.name);
             }
 
-            if (success) {
+            if (result.success) {
                 setShowAuthModal(false);
                 setAuthForm({ email: '', password: '', name: '' });
             } else {
-                setAuthError(language === 'tr'
+                setAuthError(result.error || (language === 'tr'
                     ? 'Geçersiz bilgiler. Lütfen tekrar deneyin.'
                     : language === 'ru'
                         ? 'Неверные данные. Попробуйте снова.'
-                        : 'Invalid credentials. Please try again.');
+                        : 'Invalid credentials. Please try again.'));
             }
         } catch {
             setAuthError(language === 'tr'

@@ -1,6 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import {
+    getUserProgressFromSupabase,
+    createUserProgress,
+} from '@/lib/supabaseStorage';
 
 interface User {
     id: string;
@@ -13,15 +19,14 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (email: string, password: string) => Promise<boolean>;
-    register: (email: string, password: string, name: string) => Promise<boolean>;
-    logout: () => void;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+    logout: () => Promise<void>;
     favoriteLimit: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'globalfinterm_auth';
 const GUEST_FAVORITE_LIMIT = 50;
 const AUTHENTICATED_FAVORITE_LIMIT = Infinity;
 
@@ -29,93 +34,147 @@ interface AuthProviderProps {
     children: ReactNode;
 }
 
+/**
+ * Convert Supabase user to our User type
+ */
+function mapSupabaseUser(supabaseUser: SupabaseUser): User {
+    return {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+        createdAt: supabaseUser.created_at,
+    };
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load user from localStorage on mount
+    // Initialize auth state and listen for changes
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed.user) {
-                    setUser(parsed.user);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load auth state:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        // Check if we have Supabase configured
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    // Save user to localStorage when changed
-    const saveAuthState = useCallback((userData: User | null) => {
-        try {
-            if (userData) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userData }));
-            } else {
-                localStorage.removeItem(STORAGE_KEY);
-            }
-        } catch (error) {
-            console.error('Failed to save auth state:', error);
+        if (!supabaseUrl || !supabaseKey || supabaseKey === 'your_anon_key_here') {
+            console.warn('Supabase not configured, running in guest-only mode');
+            setIsLoading(false);
+            return;
         }
+
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                setUser(mapSupabaseUser(session.user));
+            }
+            setIsLoading(false);
+        });
+
+        // Listen for auth changes
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                setUser(mapSupabaseUser(session.user));
+
+                // Check if user has progress, if not create it
+                if (event === 'SIGNED_IN') {
+                    try {
+                        const progress = await getUserProgressFromSupabase(session.user.id);
+                        if (!progress) {
+                            await createUserProgress(session.user.id);
+                        }
+                    } catch (error) {
+                        console.error('Failed to initialize user progress:', error);
+                    }
+                }
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     /**
      * Login with email and password
-     * Note: This is a mock implementation. In production, use Supabase Auth.
      */
-    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Mock validation (in production, this would be a real API call)
-        if (email && password.length >= 6) {
-            const mockUser: User = {
-                id: `user_${Date.now()}`,
+    const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
-                name: email.split('@')[0] ?? 'User',
-                createdAt: new Date().toISOString(),
-            };
-            setUser(mockUser);
-            saveAuthState(mockUser);
-            return true;
+                password,
+            });
+
+            if (error) {
+                console.error('Login error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            if (data.user) {
+                setUser(mapSupabaseUser(data.user));
+                return { success: true };
+            }
+
+            return { success: false, error: 'Unknown error occurred' };
+        } catch (error) {
+            console.error('Login exception:', error);
+            return { success: false, error: 'Login failed' };
         }
-        return false;
-    }, [saveAuthState]);
+    }, []);
 
     /**
      * Register a new user
-     * Note: This is a mock implementation. In production, use Supabase Auth.
      */
-    const register = useCallback(async (email: string, password: string, name: string): Promise<boolean> => {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Mock validation
-        if (email && password.length >= 6 && name) {
-            const mockUser: User = {
-                id: `user_${Date.now()}`,
+    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { data, error } = await supabase.auth.signUp({
                 email,
-                name,
-                createdAt: new Date().toISOString(),
-            };
-            setUser(mockUser);
-            saveAuthState(mockUser);
-            return true;
+                password,
+                options: {
+                    data: {
+                        name,
+                    },
+                },
+            });
+
+            if (error) {
+                console.error('Register error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            if (data.user) {
+                // Create initial progress
+                try {
+                    await createUserProgress(data.user.id);
+                } catch (progressError) {
+                    console.error('Failed to create user progress:', progressError);
+                }
+
+                setUser(mapSupabaseUser(data.user));
+                return { success: true };
+            }
+
+            return { success: false, error: 'Unknown error occurred' };
+        } catch (error) {
+            console.error('Register exception:', error);
+            return { success: false, error: 'Registration failed' };
         }
-        return false;
-    }, [saveAuthState]);
+    }, []);
 
     /**
      * Logout the current user
      */
-    const logout = useCallback(() => {
-        setUser(null);
-        saveAuthState(null);
-    }, [saveAuthState]);
+    const logout = useCallback(async () => {
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    }, []);
 
     const isAuthenticated = user !== null;
     const favoriteLimit = isAuthenticated ? AUTHENTICATED_FAVORITE_LIMIT : GUEST_FAVORITE_LIMIT;
