@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-    darkMode: 'media', // Use 'class' for manual toggle, 'media' for system preference
+    darkMode: 'class', // Changed from 'media' to 'class' for manual toggle
     content: [
         './pages/**/*.{js,ts,jsx,tsx,mdx}',
         './components/**/*.{js,ts,jsx,tsx,mdx}',

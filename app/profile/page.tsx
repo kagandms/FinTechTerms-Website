@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useLanguage, languageNames, languageFlags } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Language } from '@/types';
 import { resetAllData } from '@/utils/storage';
 import {
@@ -25,6 +26,9 @@ import {
     Info,
     Brain,
     BarChart3,
+    Sun,
+    Moon,
+    Monitor,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,6 +36,7 @@ export default function ProfilePage() {
     const { t, language, setLanguage } = useLanguage();
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
     const { user, isAuthenticated, login, register, logout } = useAuth();
+    const { theme, setTheme } = useTheme();
 
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -257,13 +262,68 @@ export default function ProfilePage() {
                                     onClick={() => setLanguage(lang)}
                                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${language === lang
                                         ? 'bg-primary-500 text-white shadow-md'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
                                         }`}
                                 >
                                     <span>{languageFlags[lang]}</span>
                                     <span className="text-sm">{languageNames[lang].native}</span>
                                 </button>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Theme Selection */}
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-3 mb-3">
+                            {theme === 'dark' ? (
+                                <Moon className="w-5 h-5 text-gray-400" />
+                            ) : theme === 'light' ? (
+                                <Sun className="w-5 h-5 text-gray-400" />
+                            ) : (
+                                <Monitor className="w-5 h-5 text-gray-400" />
+                            )}
+                            <span className="font-medium text-gray-900 dark:text-white">
+                                {language === 'tr' ? 'Tema' : language === 'ru' ? 'Тема' : 'Theme'}
+                            </span>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setTheme('light')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'light'
+                                    ? 'bg-primary-500 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                    }`}
+                            >
+                                <Sun className="w-4 h-4" />
+                                <span className="text-sm">
+                                    {language === 'tr' ? 'Açık' : language === 'ru' ? 'Светлая' : 'Light'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setTheme('dark')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'dark'
+                                    ? 'bg-primary-500 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                    }`}
+                            >
+                                <Moon className="w-4 h-4" />
+                                <span className="text-sm">
+                                    {language === 'tr' ? 'Koyu' : language === 'ru' ? 'Тёмная' : 'Dark'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setTheme('system')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'system'
+                                    ? 'bg-primary-500 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                    }`}
+                            >
+                                <Monitor className="w-4 h-4" />
+                                <span className="text-sm">
+                                    {language === 'tr' ? 'Sistem' : language === 'ru' ? 'Система' : 'System'}
+                                </span>
+                            </button>
                         </div>
                     </div>
 

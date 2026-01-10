@@ -20,20 +20,18 @@
   --shadow-color: rgba(14, 59, 94, 0.08);
 }
 
-/* Dark mode colors */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-primary: #3b82f6;
-    --color-accent: #fbbf24;
-    --bg-primary: #0f172a;
-    --bg-card: #1e293b;
-    --bg-input: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-tertiary: #64748b;
-    --border-color: #334155;
-    --shadow-color: rgba(0, 0, 0, 0.3);
-  }
+/* Dark mode colors - class based */
+.dark {
+  --color-primary: #3b82f6;
+  --color-accent: #fbbf24;
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --border-color: #334155;
+  --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -78,18 +76,16 @@ body {
   background: #94a3b8;
 }
 
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    background: #1e293b;
-  }
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
 
-  ::-webkit-scrollbar-thumb {
-    background: #475569;
-  }
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
-  }
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Focus styles */
