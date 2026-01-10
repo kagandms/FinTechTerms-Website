@@ -3,17 +3,28 @@
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import DailyReview from '@/components/DailyReview';
 import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Flame, BookMarked, TrendingUp } from 'lucide-react';
+import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
 
 export default function HomePage() {
     const { t } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
+    const { theme, resolvedTheme, setTheme } = useTheme();
 
     // Get 3 random terms to display
     const recentTerms = terms.slice(0, 3);
+
+    // Toggle theme quickly
+    const toggleTheme = () => {
+        if (resolvedTheme === 'dark') {
+            setTheme('light');
+        } else {
+            setTheme('dark');
+        }
+    };
 
     return (
         <div className="page-content px-4 py-6">
@@ -26,15 +37,29 @@ export default function HomePage() {
                         className="w-12 h-12 object-contain"
                     />
                     <div>
-                        <h1 className="text-2xl font-bold text-primary-500 leading-tight">
+                        <h1 className="text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight">
                             FinTechTerms
                         </h1>
-                        <p className="text-xs text-gray-500 font-medium">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                             {t('home.subtitle')}
                         </p>
                     </div>
                 </div>
-                <LanguageSwitcher />
+                <div className="flex items-center gap-2">
+                    {/* Theme Toggle Button */}
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="Toggle theme"
+                    >
+                        {resolvedTheme === 'dark' ? (
+                            <Sun className="w-5 h-5 text-yellow-500" />
+                        ) : (
+                            <Moon className="w-5 h-5 text-gray-600" />
+                        )}
+                    </button>
+                    <LanguageSwitcher />
+                </div>
             </header>
 
             {/* Daily Review Card */}
@@ -45,34 +70,34 @@ export default function HomePage() {
             {/* Quick Stats */}
             {userProgress.quiz_history.length > 0 && (
                 <section className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
-                            <div className="p-2 bg-orange-100 rounded-lg">
+                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                                 <Flame className="w-5 h-5 text-orange-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">{userProgress.current_streak}</p>
-                        <p className="text-xs text-gray-500">{t('profile.days')}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{userProgress.current_streak}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.days')}</p>
                     </div>
 
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
-                            <div className="p-2 bg-primary-100 rounded-lg">
+                            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                                 <BookMarked className="w-5 h-5 text-primary-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.totalFavorites}</p>
-                        <p className="text-xs text-gray-500">{t('profile.favoriteCount')}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
                     </div>
 
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
-                            <div className="p-2 bg-green-100 rounded-lg">
+                            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">%{stats.averageRetention}</p>
-                        <p className="text-xs text-gray-500">{t('profile.accuracy')}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">%{stats.averageRetention}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</p>
                     </div>
                 </section>
             )}
@@ -80,7 +105,7 @@ export default function HomePage() {
             {/* Recent Terms */}
             <section>
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {t('home.recentTerms')}
                     </h2>
                 </div>
@@ -94,7 +119,7 @@ export default function HomePage() {
 
             {/* Categories Preview */}
             <section className="mt-8">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     {t('home.categories')}
                 </h2>
 
