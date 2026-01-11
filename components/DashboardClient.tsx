@@ -127,16 +127,23 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             {/* 1. Learning Curve */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">The Learning Curve (Average Accuracy)</h2>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={learningCurve}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="day" label={{ value: 'Day', position: 'insideBottom', offset: -5 }} />
-                            <YAxis label={{ value: 'Accuracy %', angle: -90, position: 'insideLeft' }} domain={[0, 100]} />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="accuracy" stroke="#8884d8" fill="#8884d8" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                <div className="h-96">
+                    {learningCurve.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={learningCurve}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="day" label={{ value: 'Day', position: 'insideBottom', offset: -5 }} />
+                                <YAxis label={{ value: 'Accuracy %', angle: -90, position: 'insideLeft' }} domain={[0, 100]} />
+                                <Tooltip />
+                                <Area type="monotone" dataKey="accuracy" stroke="#8884d8" fill="#8884d8" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                            <p>No data available yet.</p>
+                            <p className="text-sm mt-2">Check 'SUPABASE_SERVICE_ROLE_KEY' in Vercel.</p>
+                        </div>
+                    )}
                 </div>
                 <p className="text-sm text-gray-500 mt-2">Expectation: Starts low, increases over time as SRS reinforces memory.</p>
             </div>
@@ -144,40 +151,57 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             {/* 2. Fatigue Analysis */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Cognitive Fatigue (Error Rate by Question Order)</h2>
-                {fatigueChart.length > 0 ? (
-                    <div className="h-64">
+                <div className="h-96">
+                    {fatigueChart.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={fatigueChart}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="order" label={{ value: 'Question Number', position: 'insideBottom', offset: -5 }} />
                                 <YAxis label={{ value: 'Error Rate %', angle: -90, position: 'insideLeft' }} />
                                 <Tooltip />
-                                <Line type="monotone" dataKey="errorRate" stroke="#ff7300" strokeWidth={2} />
+                                <Line type="monotone" dataKey="errorRate" stroke="#ff7300" strokeWidth={3} dot={{ r: 4 }} />
                             </LineChart>
                         </ResponsiveContainer>
-                    </div>
-                ) : (
-                    <div className="h-64 flex items-center justify-center text-red-500 border border-dashed border-red-300">
-                        Data missing session_id link. Please run SQL migration.
-                    </div>
-                )}
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-red-500 border border-dashed border-red-300 rounded bg-red-50 p-4 text-center">
+                            {fatigueRaw.length === 0 ? (
+                                <>
+                                    <p className="font-bold">No Data Found</p>
+                                    <p className="text-sm mt-1 text-red-400">Please check Vercel Environment Variables.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-bold">Missing 'session_id' in Database</p>
+                                    <p className="text-sm mt-1">Run SQL migration 'lib/add_session_id.sql'</p>
+                                    <p className="text-sm">Then restart simulation script.</p>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
                 <p className="text-sm text-gray-500 mt-2">Expectation: Error rate spikes after ~15th question.</p>
             </div>
 
             {/* 3. Response Latency */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Response Latency (Hesitation Analysis)</h2>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={latencyChart}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis label={{ value: 'Milliseconds', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="ms" fill="#82ca9d" barSize={50} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="h-96">
+                    {latencyChart.some(x => x.ms > 0) ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={latencyChart}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis label={{ value: 'Milliseconds', angle: -90, position: 'insideLeft' }} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="ms" fill="#82ca9d" barSize={80} radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                            Waiting for data...
+                        </div>
+                    )}
                 </div>
                 <p className="text-sm text-gray-500 mt-2">Expectation: Incorrect answers take longer (hesitation).</p>
             </div>
@@ -185,16 +209,22 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             {/* 4. Class Distribution */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Class Performance Distribution (Bell Curve)</h2>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={distributionChart}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="range" />
-                            <YAxis label={{ value: 'Student Count', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Bar dataKey="count" fill="#8884d8" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div className="h-96">
+                    {distributionChart.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={distributionChart}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="range" />
+                                <YAxis label={{ value: 'Student Count', angle: -90, position: 'insideLeft' }} />
+                                <Tooltip />
+                                <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                            Not enough user data yet...
+                        </div>
+                    )}
                 </div>
                 <p className="text-sm text-gray-500 mt-2">Expectation: Normal distribution of student accuracies.</p>
             </div>
