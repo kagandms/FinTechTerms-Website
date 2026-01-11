@@ -123,7 +123,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     }, [distributionRaw]);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-12">
             {/* 1. Learning Curve */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">The Learning Curve (Average Accuracy)</h2>
