@@ -3,7 +3,7 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://fintechterms.vercel.app/</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="tr" href="https://fintechterms.vercel.app/"/>
@@ -13,20 +13,50 @@
   </url>
   <url>
     <loc>https://fintechterms.vercel.app/search</loc>
-    <lastmod>2026-01-09</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://fintechterms.vercel.app/search"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fintechterms.vercel.app/search"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://fintechterms.vercel.app/search"/>
   </url>
   <url>
     <loc>https://fintechterms.vercel.app/quiz</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://fintechterms.vercel.app/quiz"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fintechterms.vercel.app/quiz"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://fintechterms.vercel.app/quiz"/>
   </url>
   <url>
     <loc>https://fintechterms.vercel.app/profile</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://fintechterms.vercel.app/about</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://fintechterms.vercel.app/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fintechterms.vercel.app/about"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://fintechterms.vercel.app/about"/>
+  </url>
+  <url>
+    <loc>https://fintechterms.vercel.app/analytics</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://fintechterms.vercel.app/methodology</loc>
+    <lastmod>2026-01-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="tr" href="https://fintechterms.vercel.app/methodology"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fintechterms.vercel.app/methodology"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://fintechterms.vercel.app/methodology"/>
   </url>
 </urlset>
