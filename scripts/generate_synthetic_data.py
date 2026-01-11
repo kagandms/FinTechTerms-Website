@@ -15,7 +15,7 @@ from supabase import create_client, Client
 # CONFIGURATION
 # ==========================================
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://hdhytostmmrvwuluogpq.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_fju53ntrI24ye_B00RX3CA_KBanYNHF")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "your_supabase_service_role_key_here")
 
 NUM_BOTS = 50
 DAYS_TO_SIMULATE = 30
@@ -168,20 +168,51 @@ class Bot:
         study_queue = study_queue[:max_session_terms]
         
         session_id = str(uuid.uuid4())
-        session_attempts = 0
         
+        # Pre-calculate session stats so we can insert Parent first (FK Constraint)
+        actual_attempts_count = len(study_queue)
+        duration_seconds = int((actual_attempts_count * 5) + (sum([random.randint(1,4) for _ in range(actual_attempts_count)])))
+        session_end = session_start + timedelta(seconds=duration_seconds)
+
+        # 1. Insert SESSION first (Parent)
+        session_data = {
+            "id": session_id,
+            "anonymous_id": self.id,
+            "session_start": session_start.isoformat(),
+            "session_end": session_end.isoformat(),
+            "duration_seconds": duration_seconds,
+            "page_views": actual_attempts_count + random.randint(1, 10),
+            "quiz_attempts": actual_attempts_count,
+            "device_type": self.device,
+            "user_agent": self.user_agent,
+            "consent_given": True,
+            "consent_timestamp": self.start_date.isoformat(),
+            "created_at": session_start.isoformat()
+        }
+        
+        try:
+             supabase.table("study_sessions").insert(session_data).execute()
+             global total_sessions, total_attempts
+             total_sessions += 1
+             total_attempts += actual_attempts_count
+        except Exception as e:
+             print(f"❌ Error inserting session: {e}")
+             return # If session fails, don't try to insert attempts
+        
+        # 2. Insert ATTEMPTS (Children)
+        session_attempts = 0
         for i, term_id in enumerate(study_queue):
             # Fatigue Check
-            is_fatigued = i > 15 # After 15 cards, fatigue starts setting in
+            is_fatigued = i > 15 
             
             is_correct, response_ms = self.calculate_human_response(term_id, is_fatigued)
             
             # Record Attempt
-            attempt_time = session_start + timedelta(seconds=session_attempts * (response_ms/1000 + 2))
+            attempt_time = session_start + timedelta(seconds=i * (response_ms/1000 + 2))
             
             attempt_data = {
-                "user_id": None, # Maps to anonymous user
-                "session_id": session_id, # Link to session for analytics
+                "user_id": None, 
+                "session_id": session_id, 
                 "term_id": term_id,
                 "is_correct": is_correct,
                 "response_time_ms": response_ms,
@@ -190,41 +221,11 @@ class Bot:
             }
             
             try:
-                # Batch insert is better but row-by-row for simplicity in logic
                 supabase.table("quiz_attempts").insert(attempt_data).execute()
-                
-                # Update Internal Memory
                 self.update_srs(term_id, is_correct, attempt_time)
-                
                 session_attempts += 1
-                
             except Exception as e:
-                pass # Ignore occasional DB glitches
-
-        # Log Session
-        if session_attempts > 0:
-            duration_seconds = int((session_attempts * 5) + (sum([random.randint(1,4) for _ in range(session_attempts)]))) 
-            
-            session_data = {
-                "id": session_id,
-                "anonymous_id": self.id,
-                "session_start": session_start.isoformat(),
-                "session_end": (session_start + timedelta(seconds=duration_seconds)).isoformat(),
-                "duration_seconds": duration_seconds,
-                "page_views": session_attempts + random.randint(1, 10),
-                "quiz_attempts": session_attempts,
-                "device_type": self.device,
-                "user_agent": self.user_agent,
-                "consent_given": True,
-                "consent_timestamp": self.start_date.isoformat(),
-                "created_at": session_start.isoformat()
-            }
-            try:
-                supabase.table("study_sessions").insert(session_data).execute()
-                global total_sessions, total_attempts
-                total_sessions += 1
-                total_attempts += session_attempts
-            except:
+                print(f"❌ Error inserting attempt: {e}")
                 pass
 
 def main():
