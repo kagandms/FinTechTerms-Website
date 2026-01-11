@@ -7,7 +7,8 @@
         "favorites": "Favorites",
         "settings": "Settings",
         "day": "day",
-        "about": "About"
+        "about": "About",
+        "dashboard": "Dashboard"
     },
     "home": {
         "welcomeTitle": "Welcome to FinTechTerms",

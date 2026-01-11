@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
-import { Home, Search, BookOpen, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Home, Search, BookOpen, User, BarChart2 } from 'lucide-react';
 
 interface NavItem {
     href: string;
@@ -18,6 +19,8 @@ export default function BottomNav() {
     const pathname = usePathname();
     const { t } = useLanguage();
     const { dueTerms } = useSRS();
+    const { user } = useAuth();
+    const ADMIN_EMAIL = 'kagan.durmus61@mail.ru';
 
     const navItems: NavItem[] = [
         {
@@ -43,6 +46,14 @@ export default function BottomNav() {
         },
     ];
 
+    if (user?.email === ADMIN_EMAIL) {
+        navItems.push({
+            href: '/admin/dashboard',
+            labelKey: 'common.dashboard', // Might need to add this key or just hardcode text if translation missing
+            icon: <BarChart2 className="w-6 h-6" />,
+        });
+    }
+
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-nav safe-area-bottom">
             <div className="max-w-lg mx-auto px-4">
@@ -55,8 +66,8 @@ export default function BottomNav() {
                                 key={item.href}
                                 href={item.href}
                                 className={`flex flex-col items-center justify-center py-2 px-3 min-w-[64px] transition-all duration-200 ${isActive
-                                        ? 'text-primary-500'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                    ? 'text-primary-500'
+                                    : 'text-gray-400 hover:text-gray-600'
                                     }`}
                             >
                                 <div className="relative">
