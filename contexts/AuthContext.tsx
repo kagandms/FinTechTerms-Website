@@ -175,7 +175,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user && !data.session) {
-                // User created but no session => OTP verification required
+                // Check if user already exists (identities will be empty for existing users)
+                if (data.user.identities && data.user.identities.length === 0) {
+                    return {
+                        success: false,
+                        error: 'This email is already registered. Please log in instead.'
+                    };
+                }
+
+                // New user created, OTP verification required
                 setPendingVerificationEmail(email);
                 return { success: true, needsOTPVerification: true };
             }
