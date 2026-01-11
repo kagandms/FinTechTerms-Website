@@ -5,11 +5,12 @@ import { Term, Language } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getIntervalDescription } from '@/utils/srsLogic';
+import { useResponseTimer } from '@/hooks/useResponseTimer';
 import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 
 interface QuizCardProps {
     term: Term;
-    onAnswer: (isCorrect: boolean) => void;
+    onAnswer: (isCorrect: boolean, responseTimeMs: number) => void;
 }
 
 export default function QuizCard({ term, onAnswer }: QuizCardProps) {
@@ -17,6 +18,21 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
     const [isFlipped, setIsFlipped] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [selectedLang, setSelectedLang] = useState<Language>(language);
+
+    // Timer hook for academic research
+    const { startTimer, stopTimer } = useResponseTimer();
+    const [recallTime, setRecallTime] = useState(0);
+
+    // Start timer on mount
+    useEffect(() => {
+        startTimer();
+    }, [startTimer]);
+
+    const handleFlip = () => {
+        const time = stopTimer();
+        setRecallTime(time);
+        setIsFlipped(true);
+    };
 
     // Get term in specified language
     const getTermByLang = (lang: Language): string => {
@@ -115,7 +131,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     {/* Show Answer Button - with more spacing */}
                     <div className="mt-6">
                         <button
-                            onClick={() => setIsFlipped(true)}
+                            onClick={handleFlip}
                             className="w-full py-4 bg-primary-500 text-white font-semibold rounded-2xl hover:bg-primary-600 transition-colors shadow-md"
                         >
                             {t('quiz.showAnswer')}
@@ -199,7 +215,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     {/* Answer Buttons */}
                     <div className="flex gap-3">
                         <button
-                            onClick={() => onAnswer(false)}
+                            onClick={() => onAnswer(false, recallTime)}
                             className="flex-1 flex items-center justify-center gap-2 py-4 bg-red-500 text-white font-semibold rounded-2xl hover:bg-red-600 transition-colors shadow-md"
                         >
                             <X className="w-5 h-5" />
@@ -207,7 +223,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                         </button>
 
                         <button
-                            onClick={() => onAnswer(true)}
+                            onClick={() => onAnswer(true, recallTime)}
                             className="flex-1 flex items-center justify-center gap-2 py-4 bg-green-500 text-white font-semibold rounded-2xl hover:bg-green-600 transition-colors shadow-md"
                         >
                             <Check className="w-5 h-5" />

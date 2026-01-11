@@ -7,6 +7,8 @@ import QuizCard from '@/components/QuizCard';
 import Link from 'next/link';
 import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target } from 'lucide-react';
 
+import { incrementQuizAttempt } from '@/components/SessionTracker';
+
 export default function QuizPage() {
     const { t } = useLanguage();
     const { dueTerms, submitQuizAnswer, stats, terms, userProgress } = useSRS();
@@ -41,12 +43,15 @@ export default function QuizPage() {
         setShowQuizOptions(false);
     };
 
-    const handleAnswer = (isCorrect: boolean) => {
+    const handleAnswer = (isCorrect: boolean, responseTimeMs: number) => {
         if (!currentTerm) return;
+
+        // Increment session counter
+        incrementQuizAttempt();
 
         // Submit to SRS system (only for actual favorites, not quick quiz)
         if (!isQuickQuiz) {
-            submitQuizAnswer(currentTerm.id, isCorrect);
+            submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs);
         }
 
         if (isCorrect) {
@@ -290,6 +295,7 @@ export default function QuizPage() {
             {/* Quiz Card */}
             {currentTerm && (
                 <QuizCard
+                    key={currentTerm.id}
                     term={currentTerm}
                     onAnswer={handleAnswer}
                 />

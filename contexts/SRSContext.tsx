@@ -32,7 +32,7 @@ interface SRSContextType {
     dueTerms: Term[];
     toggleFavorite: (termId: string) => { success: boolean; limitReached: boolean };
     isFavorite: (termId: string) => boolean;
-    submitQuizAnswer: (termId: string, isCorrect: boolean) => void;
+    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs?: number) => void;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
@@ -168,7 +168,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     /**
      * Submit a quiz answer and update SRS data
      */
-    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean) => {
+    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean, responseTimeMs: number = 0) => {
         const term = terms.find(t => t.id === termId);
         if (!term) return;
 
@@ -182,7 +182,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             id: `attempt_${Date.now()}`,
             term_id: termId,
             is_correct: isCorrect,
-            response_time_ms: 0,
+            response_time_ms: responseTimeMs,
             timestamp: new Date().toISOString(),
             quiz_type: 'daily',
         };

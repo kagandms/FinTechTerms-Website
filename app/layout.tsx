@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { SRSProvider } from '@/contexts/SRSContext';
@@ -6,8 +7,11 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import BottomNav from '@/components/BottomNav';
+import ConsentModal from '@/components/ConsentModal';
+import SessionTracker from '@/components/SessionTracker';
 
 const siteUrl = 'https://fintechterms.vercel.app';
+
 
 export const metadata: Metadata = {
     // Basic Meta
@@ -146,12 +150,27 @@ export default function RootLayout({
                                             {children}
                                         </main>
                                         <BottomNav />
+                                        <ConsentModal />
+                                        <SessionTracker />
                                     </div>
                                 </ToastProvider>
                             </SRSProvider>
                         </LanguageProvider>
                     </AuthProvider>
                 </ThemeProvider>
+                <Script
+                    src="https://www.googletagmanager.com/gtag/js?id=G-XMLQTYLY25"
+                    strategy="afterInteractive"
+                />
+                <Script id="google-analytics" strategy="afterInteractive">
+                    {`
+                        window.dataLayer = window.dataLayer || [];
+                        function gtag(){dataLayer.push(arguments);}
+                        gtag('js', new Date());
+
+                        gtag('config', 'G-XMLQTYLY25');
+                    `}
+                </Script>
             </body>
         </html>
     );
