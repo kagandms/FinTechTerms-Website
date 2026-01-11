@@ -2,7 +2,7 @@
 // Supabase Client Configuration
 // ============================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -12,16 +12,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Supabase client for client-side operations
- * Uses anon key which respects Row Level Security (RLS)
+ * Supabase client for client-side operations (Browser)
+ * Uses cookies for session storage, allowing server-side access.
  */
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
-    auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-    },
-});
+export const supabase = createBrowserClient(supabaseUrl || '', supabaseAnonKey || '');
 
 /**
  * Database Types (generated from schema)
