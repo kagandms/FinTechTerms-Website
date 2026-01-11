@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Term, Language } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { speakText, isSpeechAvailable } from '@/utils/tts';

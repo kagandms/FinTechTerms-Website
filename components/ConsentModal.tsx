@@ -19,16 +19,19 @@ export default function ConsentModal() {
 
     // Check if consent was already given
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
         try {
             const stored = localStorage.getItem(CONSENT_KEY);
             if (!stored) {
                 // Delay showing modal for better UX
-                const timer = setTimeout(() => setIsOpen(true), 1500);
-                return () => clearTimeout(timer);
+                timer = setTimeout(() => setIsOpen(true), 1500);
             }
         } catch {
             // localStorage not available
         }
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, []);
 
     const handleAccept = () => {
