@@ -35,7 +35,7 @@ import Link from 'next/link';
 export default function ProfilePage() {
     const { t, language, setLanguage } = useLanguage();
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
-    const { user, isAuthenticated, login, register, logout } = useAuth();
+    const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification } = useAuth();
     const { theme, setTheme } = useTheme();
 
     const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -48,8 +48,10 @@ export default function ProfilePage() {
         surname: '',
         birthYear: ''
     });
+    const [otpCode, setOtpCode] = useState('');
     const [authError, setAuthError] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     // Password validation
     const validatePassword = (password: string): { valid: boolean; message: string } => {
@@ -151,7 +153,7 @@ export default function ProfilePage() {
         setAuthLoading(true);
 
         try {
-            let result: { success: boolean; error?: string; needsEmailConfirmation?: boolean };
+            let result: { success: boolean; error?: string; needsOTPVerification?: boolean };
             if (authMode === 'login') {
                 result = await login(authForm.email, authForm.password);
             } else {
@@ -160,15 +162,21 @@ export default function ProfilePage() {
             }
 
             if (result.success) {
-                if (result.needsEmailConfirmation) {
-                    // Show email confirmation message
-                    setAuthError(language === 'tr'
-                        ? '✅ Kayıt başarılı! Lütfen email adresinizi kontrol edin ve doğrulama linkine tıklayın.'
-                        : language === 'ru'
-                            ? '✅ Регистрация успешна! Проверьте почту и подтвердите email.'
-                            : '✅ Registration successful! Please check your email and click the verification link.');
-                    setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
-                    // Don't close modal yet, let user see the message
+                if (result.needsOTPVerification) {
+                    // OTP verification needed - modal will show OTP input via pendingVerificationEmail
+                    setAuthError('');
+                    setOtpCode('');
+                    // Start resend cooldown
+                    setResendCooldown(60);
+                    const interval = setInterval(() => {
+                        setResendCooldown(prev => {
+                            if (prev <= 1) {
+                                clearInterval(interval);
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
                 } else {
                     setShowAuthModal(false);
                     setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
@@ -478,156 +486,269 @@ export default function ProfilePage() {
             </section>
 
             {/* Auth Modal */}
-            {showAuthModal && (
+            {(showAuthModal || pendingVerificationEmail) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center gap-3 mb-6">
-                            {authMode === 'login' ? (
-                                <LogIn className="w-6 h-6 text-primary-500" />
-                            ) : (
-                                <UserPlus className="w-6 h-6 text-primary-500" />
-                            )}
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {authMode === 'login' ? t('auth.login') : t('auth.register')}
-                            </h3>
-                        </div>
 
-                        <div className="space-y-4">
-                            {authMode === 'register' && (
-                                <>
-                                    {/* Name */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            {language === 'tr' ? 'Ad *' : language === 'ru' ? 'Имя *' : 'First Name *'}
-                                        </label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                value={authForm.name}
-                                                onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                placeholder={language === 'tr' ? 'Adınız' : language === 'ru' ? 'Ваше имя' : 'Your first name'}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Surname */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            {language === 'tr' ? 'Soyad *' : language === 'ru' ? 'Фамилия *' : 'Last Name *'}
-                                        </label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                value={authForm.surname}
-                                                onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                placeholder={language === 'tr' ? 'Soyadınız' : language === 'ru' ? 'Ваша фамилия' : 'Your last name'}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Birth Year */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            {language === 'tr' ? 'Doğum Yılı *' : language === 'ru' ? 'Год рождения *' : 'Birth Year *'}
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                min="1900"
-                                                max={new Date().getFullYear() - 13}
-                                                value={authForm.birthYear}
-                                                onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
-                                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                placeholder={language === 'tr' ? 'Örn: 1995' : language === 'ru' ? 'Напр: 1995' : 'e.g. 1995'}
-                                            />
-                                        </div>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {language === 'tr' ? '13 yaş ve üzeri' : language === 'ru' ? '13 лет и старше' : '13 years or older'}
-                                        </p>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Email */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    {t('auth.email')}
-                                </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <input
-                                        type="email"
-                                        value={authForm.email}
-                                        onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                        placeholder={t('auth.email')}
-                                    />
+                        {/* OTP Verification Screen */}
+                        {pendingVerificationEmail ? (
+                            <>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <Mail className="w-6 h-6 text-primary-500" />
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {language === 'tr' ? 'E-posta Doğrulama' : language === 'ru' ? 'Подтверждение email' : 'Email Verification'}
+                                    </h3>
                                 </div>
-                            </div>
 
-                            {/* Password */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    {t('auth.password')}
-                                </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <input
-                                        type="password"
-                                        value={authForm.password}
-                                        onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                        placeholder={t('auth.password')}
-                                    />
-                                </div>
-                                {authMode === 'register' && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        {language === 'tr'
-                                            ? '8+ karakter, büyük/küçük harf, sembol veya rakam'
-                                            : language === 'ru'
-                                                ? '8+ символов, заглавная/строчная, символ или цифра'
-                                                : '8+ chars, upper/lowercase, symbol or number'}
-                                    </p>
-                                )}
-                            </div>
-
-                            {authError && (
-                                <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
-                                    {authError}
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                    {language === 'tr'
+                                        ? `${pendingVerificationEmail} adresine 6 haneli bir kod gönderdik.`
+                                        : language === 'ru'
+                                            ? `Мы отправили 6-значный код на ${pendingVerificationEmail}.`
+                                            : `We sent a 6-digit code to ${pendingVerificationEmail}.`}
                                 </p>
-                            )}
 
-                            <button
-                                onClick={handleAuth}
-                                disabled={authLoading}
-                                className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
-                            >
-                                {authLoading
-                                    ? '...'
-                                    : authMode === 'login'
-                                        ? t('auth.login')
-                                        : t('auth.register')
-                                }
-                            </button>
+                                <div className="space-y-4">
+                                    {/* OTP Input */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            {language === 'tr' ? 'Doğrulama Kodu' : language === 'ru' ? 'Код подтверждения' : 'Verification Code'}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={6}
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.5em] border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                            placeholder="000000"
+                                            autoFocus
+                                        />
+                                    </div>
 
-                            <button
-                                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                                className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500"
-                            >
-                                {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
-                            </button>
+                                    {authError && (
+                                        <p className="text-sm text-red-500">{authError}</p>
+                                    )}
 
-                            <button
-                                onClick={() => setShowAuthModal(false)}
-                                className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                            >
-                                {t('auth.guest')}
-                            </button>
-                        </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (otpCode.length !== 6) {
+                                                setAuthError(language === 'tr' ? '6 haneli kodu girin' : language === 'ru' ? 'Введите 6-значный код' : 'Enter 6-digit code');
+                                                return;
+                                            }
+                                            setAuthLoading(true);
+                                            setAuthError('');
+                                            const result = await verifyOTP(pendingVerificationEmail, otpCode);
+                                            setAuthLoading(false);
+                                            if (result.success) {
+                                                setShowAuthModal(false);
+                                                setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
+                                                setOtpCode('');
+                                            } else {
+                                                setAuthError(result.error || (language === 'tr' ? 'Geçersiz kod' : language === 'ru' ? 'Неверный код' : 'Invalid code'));
+                                            }
+                                        }}
+                                        disabled={authLoading || otpCode.length !== 6}
+                                        className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                    >
+                                        {authLoading ? '...' : (language === 'tr' ? 'Doğrula' : language === 'ru' ? 'Подтвердить' : 'Verify')}
+                                    </button>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (resendCooldown > 0) return;
+                                            setAuthLoading(true);
+                                            const result = await resendOTP(pendingVerificationEmail);
+                                            setAuthLoading(false);
+                                            if (result.success) {
+                                                setResendCooldown(60);
+                                                const interval = setInterval(() => {
+                                                    setResendCooldown(prev => {
+                                                        if (prev <= 1) {
+                                                            clearInterval(interval);
+                                                            return 0;
+                                                        }
+                                                        return prev - 1;
+                                                    });
+                                                }, 1000);
+                                                setAuthError(language === 'tr' ? '✅ Yeni kod gönderildi!' : language === 'ru' ? '✅ Новый код отправлен!' : '✅ New code sent!');
+                                            } else {
+                                                setAuthError(result.error || (language === 'tr' ? 'Kod gönderilemedi' : language === 'ru' ? 'Не удалось отправить код' : 'Failed to send code'));
+                                            }
+                                        }}
+                                        disabled={authLoading || resendCooldown > 0}
+                                        className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 disabled:opacity-50"
+                                    >
+                                        {resendCooldown > 0
+                                            ? `${language === 'tr' ? 'Tekrar gönder' : language === 'ru' ? 'Отправить снова' : 'Resend'} (${resendCooldown}s)`
+                                            : (language === 'tr' ? 'Kodu tekrar gönder' : language === 'ru' ? 'Отправить код снова' : 'Resend code')}
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            cancelVerification();
+                                            setShowAuthModal(false);
+                                            setOtpCode('');
+                                            setAuthError('');
+                                        }}
+                                        className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                    >
+                                        {language === 'tr' ? 'İptal' : language === 'ru' ? 'Отмена' : 'Cancel'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            /* Normal Auth Form */
+                            <>
+                                <div className="flex items-center gap-3 mb-6">
+                                    {authMode === 'login' ? (
+                                        <LogIn className="w-6 h-6 text-primary-500" />
+                                    ) : (
+                                        <UserPlus className="w-6 h-6 text-primary-500" />
+                                    )}
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {authMode === 'login' ? t('auth.login') : t('auth.register')}
+                                    </h3>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {authMode === 'register' && (
+                                        <>
+                                            {/* Name */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {language === 'tr' ? 'Ad *' : language === 'ru' ? 'Имя *' : 'First Name *'}
+                                                </label>
+                                                <div className="relative">
+                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        value={authForm.name}
+                                                        onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        placeholder={language === 'tr' ? 'Adınız' : language === 'ru' ? 'Ваше имя' : 'Your first name'}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Surname */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {language === 'tr' ? 'Soyad *' : language === 'ru' ? 'Фамилия *' : 'Last Name *'}
+                                                </label>
+                                                <div className="relative">
+                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        value={authForm.surname}
+                                                        onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        placeholder={language === 'tr' ? 'Soyadınız' : language === 'ru' ? 'Ваша фамилия' : 'Your last name'}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Birth Year */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {language === 'tr' ? 'Doğum Yılı *' : language === 'ru' ? 'Год рождения *' : 'Birth Year *'}
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        min="1900"
+                                                        max={new Date().getFullYear() - 13}
+                                                        value={authForm.birthYear}
+                                                        onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
+                                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        placeholder={language === 'tr' ? 'Örn: 1995' : language === 'ru' ? 'Напр: 1995' : 'e.g. 1995'}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {language === 'tr' ? '13 yaş ve üzeri' : language === 'ru' ? '13 лет и старше' : '13 years or older'}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {t('auth.email')}
+                                        </label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="email"
+                                                value={authForm.email}
+                                                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder={t('auth.email')}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Password */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {t('auth.password')}
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={authForm.password}
+                                                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder={t('auth.password')}
+                                            />
+                                        </div>
+                                        {authMode === 'register' && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {language === 'tr'
+                                                    ? '8+ karakter, büyük/küçük harf, sembol veya rakam'
+                                                    : language === 'ru'
+                                                        ? '8+ символов, заглавная/строчная, символ или цифра'
+                                                        : '8+ chars, upper/lowercase, symbol or number'}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {authError && (
+                                        <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
+                                            {authError}
+                                        </p>
+                                    )}
+
+                                    <button
+                                        onClick={handleAuth}
+                                        disabled={authLoading}
+                                        className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                    >
+                                        {authLoading
+                                            ? '...'
+                                            : authMode === 'login'
+                                                ? t('auth.login')
+                                                : t('auth.register')
+                                        }
+                                    </button>
+
+                                    <button
+                                        onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                                        className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500"
+                                    >
+                                        {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowAuthModal(false)}
+                                        className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                    >
+                                        {t('auth.guest')}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

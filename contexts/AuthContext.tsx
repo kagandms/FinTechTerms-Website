@@ -19,8 +19,12 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    pendingVerificationEmail: string | null;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+    register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }>;
+    verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+    resendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
+    cancelVerification: () => void;
     logout: () => Promise<void>;
     favoriteLimit: number;
 }
@@ -49,6 +53,7 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
 
     // Initialize auth state and listen for changes
     useEffect(() => {
@@ -136,9 +141,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     /**
-     * Register a new user
+     * Register a new user with OTP verification
      */
-    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
+    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }> => {
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -147,6 +152,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     data: {
                         name,
                     },
+                    // Use OTP instead of magic link
+                    emailRedirectTo: undefined,
                 },
             });
 
@@ -168,8 +175,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user && !data.session) {
-                // User created but no session => Email confirmation required
-                return { success: true, needsEmailConfirmation: true };
+                // User created but no session => OTP verification required
+                setPendingVerificationEmail(email);
+                return { success: true, needsOTPVerification: true };
             }
 
             return { success: false, error: 'Unknown error occurred' };
@@ -177,6 +185,71 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.error('Register exception:', error);
             return { success: false, error: 'Registration failed' };
         }
+    }, []);
+
+    /**
+     * Verify OTP code sent to email
+     */
+    const verifyOTP = useCallback(async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token,
+                type: 'signup',
+            });
+
+            if (error) {
+                console.error('OTP verification error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            if (data.user && data.session) {
+                // OTP verified, user is now logged in
+                try {
+                    await createUserProgress(data.user.id);
+                } catch (progressError) {
+                    console.error('Failed to create user progress:', progressError);
+                }
+
+                setUser(mapSupabaseUser(data.user));
+                setPendingVerificationEmail(null);
+                return { success: true };
+            }
+
+            return { success: false, error: 'Verification failed' };
+        } catch (error) {
+            console.error('OTP verification exception:', error);
+            return { success: false, error: 'Verification failed' };
+        }
+    }, []);
+
+    /**
+     * Resend OTP code
+     */
+    const resendOTP = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email,
+            });
+
+            if (error) {
+                console.error('Resend OTP error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Resend OTP exception:', error);
+            return { success: false, error: 'Failed to resend code' };
+        }
+    }, []);
+
+    /**
+     * Cancel pending verification
+     */
+    const cancelVerification = useCallback(() => {
+        setPendingVerificationEmail(null);
     }, []);
 
     /**
@@ -206,8 +279,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 user,
                 isAuthenticated,
                 isLoading,
+                pendingVerificationEmail,
                 login,
                 register,
+                verifyOTP,
+                resendOTP,
+                cancelVerification,
                 logout,
                 favoriteLimit,
             }}

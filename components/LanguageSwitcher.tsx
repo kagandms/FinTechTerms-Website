@@ -15,11 +15,10 @@ export default function LanguageSwitcher() {
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-2.5 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
             >
-                <Globe className="w-4 h-4 text-gray-500" />
                 <span className="text-lg">{languageFlags[language]}</span>
-                <span className="text-sm font-medium text-gray-700">
+                <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300">
                     {languageNames[language].native}
                 </span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -34,7 +33,7 @@ export default function LanguageSwitcher() {
                     />
 
                     {/* Dropdown */}
-                    <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50 min-w-[160px] animate-fade-in">
+                    <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden z-50 min-w-[160px] animate-fade-in">
                         {languages.map((lang) => (
                             <button
                                 key={lang}

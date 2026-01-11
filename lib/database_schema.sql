@@ -133,6 +133,130 @@ CREATE TRIGGER update_user_progress_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- User Achievements Table (Gamification)
+-- Tracks user badges and milestones
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_achievements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    achievement_type TEXT NOT NULL, -- '7_day_streak', 'first_100_words', 'all_categories_mastered', etc.
+    earned_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT user_achievements_unique UNIQUE(user_id, achievement_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
+
+-- ============================================
+-- User Settings Table (Preferences Sync)
+-- Stores user preferences across devices
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    preferred_language TEXT DEFAULT 'tr', -- 'tr', 'en', 'ru'
+    theme TEXT DEFAULT 'system', -- 'light', 'dark', 'system'
+    daily_goal INTEGER DEFAULT 10, -- Daily word goal
+    notification_enabled BOOLEAN DEFAULT true,
+    sound_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT user_settings_user_id_unique UNIQUE(user_id)
+);
+
+-- ============================================
+-- Daily Learning Log Table (Analytics)
+-- Tracks daily learning statistics for graphs
+-- ============================================
+CREATE TABLE IF NOT EXISTS daily_learning_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    words_reviewed INTEGER DEFAULT 0,
+    words_correct INTEGER DEFAULT 0,
+    words_incorrect INTEGER DEFAULT 0,
+    new_words_learned INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER DEFAULT 0,
+    session_count INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT daily_learning_log_unique UNIQUE(user_id, log_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_learning_log_user_id ON daily_learning_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_learning_log_date ON daily_learning_log(log_date);
+
+-- ============================================
+-- Enable RLS on new tables
+-- ============================================
+ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_learning_log ENABLE ROW LEVEL SECURITY;
+
+-- ============================================
+-- User Achievements Policies
+-- ============================================
+DROP POLICY IF EXISTS "Users can view own achievements" ON user_achievements;
+CREATE POLICY "Users can view own achievements"
+    ON user_achievements FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own achievements" ON user_achievements;
+CREATE POLICY "Users can insert own achievements"
+    ON user_achievements FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- ============================================
+-- User Settings Policies
+-- ============================================
+DROP POLICY IF EXISTS "Users can view own settings" ON user_settings;
+CREATE POLICY "Users can view own settings"
+    ON user_settings FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own settings" ON user_settings;
+CREATE POLICY "Users can insert own settings"
+    ON user_settings FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own settings" ON user_settings;
+CREATE POLICY "Users can update own settings"
+    ON user_settings FOR UPDATE
+    USING (auth.uid() = user_id);
+
+-- ============================================
+-- Daily Learning Log Policies
+-- ============================================
+DROP POLICY IF EXISTS "Users can view own daily logs" ON daily_learning_log;
+CREATE POLICY "Users can view own daily logs"
+    ON daily_learning_log FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own daily logs" ON daily_learning_log;
+CREATE POLICY "Users can insert own daily logs"
+    ON daily_learning_log FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own daily logs" ON daily_learning_log;
+CREATE POLICY "Users can update own daily logs"
+    ON daily_learning_log FOR UPDATE
+    USING (auth.uid() = user_id);
+
+-- ============================================
+-- Auto-update triggers for new tables
+-- ============================================
+DROP TRIGGER IF EXISTS update_user_settings_updated_at ON user_settings;
+CREATE TRIGGER update_user_settings_updated_at
+    BEFORE UPDATE ON user_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_daily_learning_log_updated_at ON daily_learning_log;
+CREATE TRIGGER update_daily_learning_log_updated_at
+    BEFORE UPDATE ON daily_learning_log
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
 -- Success message
 -- ============================================
 SELECT 'Database schema created successfully!' as message;

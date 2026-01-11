@@ -30,17 +30,17 @@ export default function HomePage() {
         <div className="page-content px-4 py-6">
             {/* Header */}
             <header className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <img
                         src="/logo_ftt.png"
                         alt="FinTechTerms Logo"
-                        className="w-12 h-12 object-contain"
+                        className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                     />
-                    <div>
-                        <h1 className="text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight">
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate">
                             FinTechTerms
                         </h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                             {t('home.subtitle')}
                         </p>
                     </div>
