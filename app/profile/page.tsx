@@ -502,10 +502,10 @@ export default function ProfilePage() {
 
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                                     {language === 'tr'
-                                        ? `${pendingVerificationEmail} adresine 6 haneli bir kod gönderdik.`
+                                        ? `${pendingVerificationEmail} adresine 8 haneli bir kod gönderdik.`
                                         : language === 'ru'
-                                            ? `Мы отправили 6-значный код на ${pendingVerificationEmail}.`
-                                            : `We sent a 6-digit code to ${pendingVerificationEmail}.`}
+                                            ? `Мы отправили 8-значный код на ${pendingVerificationEmail}.`
+                                            : `We sent an 8-digit code to ${pendingVerificationEmail}.`}
                                 </p>
 
                                 <div className="space-y-4">
@@ -517,11 +517,11 @@ export default function ProfilePage() {
                                         <input
                                             type="text"
                                             inputMode="numeric"
-                                            maxLength={6}
+                                            maxLength={8}
                                             value={otpCode}
-                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.5em] border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                            placeholder="000000"
+                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                                            className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                            placeholder="00000000"
                                             autoFocus
                                         />
                                     </div>
@@ -532,8 +532,8 @@ export default function ProfilePage() {
 
                                     <button
                                         onClick={async () => {
-                                            if (otpCode.length !== 6) {
-                                                setAuthError(language === 'tr' ? '6 haneli kodu girin' : language === 'ru' ? 'Введите 6-значный код' : 'Enter 6-digit code');
+                                            if (otpCode.length !== 8) {
+                                                setAuthError(language === 'tr' ? '8 haneli kodu girin' : language === 'ru' ? 'Введите 8-значный код' : 'Enter 8-digit code');
                                                 return;
                                             }
                                             setAuthLoading(true);
@@ -548,7 +548,7 @@ export default function ProfilePage() {
                                                 setAuthError(result.error || (language === 'tr' ? 'Geçersiz kod' : language === 'ru' ? 'Неверный код' : 'Invalid code'));
                                             }
                                         }}
-                                        disabled={authLoading || otpCode.length !== 6}
+                                        disabled={authLoading || otpCode.length !== 8}
                                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
                                     >
                                         {authLoading ? '...' : (language === 'tr' ? 'Doğrula' : language === 'ru' ? 'Подтвердить' : 'Verify')}
