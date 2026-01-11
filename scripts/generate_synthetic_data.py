@@ -19,7 +19,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_fju53ntrI24ye_B00RX3CA_
 
 NUM_BOTS = 50
 DAYS_TO_SIMULATE = 30
-TOTAL_TERMS = 500  # Increased to 500 as requested
+TOTAL_TERMS = 505  # Updated to match actual count
 NEW_TERMS_PER_DAY_LIMIT = 15
 
 # Terms to simulate: term_001 ... term_500
@@ -181,6 +181,7 @@ class Bot:
             
             attempt_data = {
                 "user_id": None, # Maps to anonymous user
+                "session_id": session_id, # Link to session for analytics
                 "term_id": term_id,
                 "is_correct": is_correct,
                 "response_time_ms": response_ms,
