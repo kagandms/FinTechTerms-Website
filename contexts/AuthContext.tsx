@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
@@ -51,6 +52,7 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
@@ -269,14 +271,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('srs_user_progress');
             }
-            await supabase.auth.signOut();
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Supabase signOut error:', error);
+            }
         } catch (error) {
-            console.error('Logout error:', error);
+            console.error('Logout handler error:', error);
         } finally {
             // Always set user to null, even if signOut fails
             setUser(null);
+            // Refresh the page to ensure all auth state is cleared from UI
+            router.refresh();
         }
-    }, []);
+    }, [router]);
 
     const isAuthenticated = user !== null;
     const favoriteLimit = isAuthenticated ? AUTHENTICATED_FAVORITE_LIMIT : GUEST_FAVORITE_LIMIT;
