@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Term, UserProgress, QuizAttempt } from '@/types';
 import {
     getTerms,
+    saveTerms,
     updateTerm as updateTermInStorage,
     getUserProgress as getLocalUserProgress,
     toggleFavorite as toggleFavoriteInStorage,
@@ -24,6 +25,7 @@ import {
     saveTermSRSToSupabase,
     getAllTermSRSFromSupabase,
     updateStreakInSupabase,
+    fetchTermsFromSupabase,
 } from '@/lib/supabaseStorage';
 
 interface SRSContextType {
@@ -60,24 +62,47 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const [isSyncing, setIsSyncing] = useState(false);
 
     /**
-     * Load data from appropriate source (Supabase for auth users, localStorage for guests)
+     * Load data from appropriate source
      */
     const loadData = useCallback(async () => {
-        // Always load terms from mockData (via localStorage wrapper)
-        const loadedTerms = getTerms();
+        setIsSyncing(true);
+        let currentTerms = getTerms();
+
+        // 1. Fetch latest terms content from Supabase (if online)
+        try {
+            const dbTerms = await fetchTermsFromSupabase();
+            if (dbTerms.length > 0) {
+                // Merge DB content with local SRS data
+                currentTerms = dbTerms.map(dbTerm => {
+                    const localTerm = currentTerms.find(t => t.id === dbTerm.id);
+                    // Use DB content + Local SRS (or default SRS if new)
+                    return {
+                        ...dbTerm,
+                        srs_level: localTerm?.srs_level ?? 1,
+                        next_review_date: localTerm?.next_review_date ?? new Date().toISOString(),
+                        last_reviewed: localTerm?.last_reviewed ?? null,
+                        difficulty_score: localTerm?.difficulty_score ?? 2.5,
+                        retention_rate: localTerm?.retention_rate ?? 0,
+                        times_reviewed: localTerm?.times_reviewed ?? 0,
+                        times_correct: localTerm?.times_correct ?? 0,
+                    } as Term;
+                });
+                // Update local storage cache
+                saveTerms(currentTerms);
+            }
+        } catch (error) {
+            console.warn('Could not fetch terms from Supabase, using local.', error);
+            // Fallback to currentTerms (which is getTerms() result)
+        }
 
         if (isAuthenticated && user) {
-            // Load from Supabase for authenticated users
-            setIsSyncing(true);
+            // ... (rest of auth logic matches existing)
             try {
                 const cloudProgress = await getUserProgressFromSupabase(user.id);
 
                 if (cloudProgress) {
-                    // Load user's SRS overrides for terms
                     const srsData = await getAllTermSRSFromSupabase(user.id);
-
-                    // Merge SRS data with base terms
-                    const mergedTerms = loadedTerms.map(term => {
+                    const mergedTerms = currentTerms.map(term => {
                         const override = srsData.get(term.id);
                         if (override) {
                             return { ...term, ...override };
@@ -88,23 +113,21 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     setTerms(mergedTerms);
                     setUserProgress(cloudProgress);
                 } else {
-                    // New user, use default progress
-                    setTerms(loadedTerms);
+                    setTerms(currentTerms);
                     setUserProgress(getLocalUserProgress());
                 }
             } catch (error) {
-                console.error('Failed to load from Supabase, falling back to local:', error);
-                setTerms(loadedTerms);
+                console.error('Failed to load user data from cloud:', error);
+                setTerms(currentTerms);
                 setUserProgress(getLocalUserProgress());
-            } finally {
-                setIsSyncing(false);
             }
         } else {
-            // Guest mode: use localStorage
-            setTerms(loadedTerms);
+            // Guest mode
+            setTerms(currentTerms);
             setUserProgress(getLocalUserProgress());
         }
 
+        setIsSyncing(false);
         setIsHydrated(true);
     }, [isAuthenticated, user]);
 

@@ -4,7 +4,7 @@
 // Last Updated: 2026-01-10 - Categories consolidated to Fintech, Finance, Technology
 // ============================================
 
-import { Term } from '@/types';
+import { Term } from '../types';
 
 // Helper to create a term with default SRS values
 const createTerm = (

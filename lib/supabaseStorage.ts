@@ -279,3 +279,22 @@ export async function updateStreakInSupabase(userId: string): Promise<number> {
 
     return newStreak;
 }
+
+/**
+ * Fetch all static terms from Supabase
+ * Returns just the content, not user SRS data
+ */
+export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
+    const { data, error } = await supabase
+        .from('terms')
+        .select('*');
+
+    if (error) {
+        console.error('Failed to fetch terms:', error);
+        throw error;
+    }
+
+    // Map DB columns to Term interface (partial, as SRS data is separate)
+    // Note: The DB columns match the Term interface fields exactly for content
+    return data as unknown as Partial<Term>[];
+}
