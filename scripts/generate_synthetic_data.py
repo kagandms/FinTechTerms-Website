@@ -14,8 +14,43 @@ from supabase import create_client, Client
 # ==========================================
 # CONFIGURATION
 # ==========================================
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://hdhytostmmrvwuluogpq.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "your_supabase_service_role_key_here")
+# Helper to load .env.local manually (avoids python-dotenv dependency if not installed)
+def load_env_local():
+    # Look for .env.local in current or parent dirs
+    current_dir = os.path.dirname(os.path.abspath(__file__)) # scripts/
+    parent_dir = os.path.dirname(current_dir) # root/
+    
+    env_path = os.path.join(parent_dir, '.env.local')
+    if not os.path.exists(env_path):
+        env_path = os.path.join(current_dir, '.env.local')
+        
+    if os.path.exists(env_path):
+        print(f"📖 Loading credentials from {env_path}")
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'): continue
+                if '=' in line:
+                    key, val = line.split('=', 1)
+                    # Remove quotes if present
+                    val = val.strip().strip("'").strip('"')
+                    os.environ[key] = val
+    else:
+        print("⚠️ .env.local not found. Relying on existing environment variables.")
+
+load_env_local()
+
+# ==========================================
+# CONFIGURATION
+# ==========================================
+# Try standard names first, then Next.js specific names
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ERROR: Missing Supabase Credentials.")
+    print("Please ensure .env.local exists in the project root with NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
+    exit(1)
 
 NUM_BOTS = 50
 DAYS_TO_SIMULATE = 30
@@ -82,19 +117,20 @@ class Bot:
         
         return due
 
-    def calculate_human_response(self, term_id: str, is_fatigued: bool) -> tuple[bool, int]:
+    def calculate_human_response(self, term_id: str, fatigue_idx: int) -> tuple[bool, int]:
         state = self.term_states[term_id]
         
         # Base probability calculation based on SRS Level
-        # Level 1: 50%, Level 5: 95%
-        base_correct_prob = 0.5 + (state.level * 0.1) 
+        # Level 1: 60%, Level 5: 95% (Increased base from 50% to 60% for better visual)
+        base_correct_prob = 0.6 + (state.level * 0.08) 
         
         # Adjust for user intelligence and term difficulty bias
         adjusted_prob = base_correct_prob * self.intelligence / state.difficulty_bias
         
-        # Fatigue penalty
-        if is_fatigued:
-            adjusted_prob -= 0.15
+        # Gradual Fatigue penalty
+        # e.g. fatigue_idx=5 (Question 15) * 0.02 (rate) = 10% penalty
+        penalty = fatigue_idx * self.fatigue_rate
+        adjusted_prob -= penalty
             
         # Cap probability
         adjusted_prob = max(0.2, min(0.99, adjusted_prob))
@@ -167,6 +203,10 @@ class Bot:
         max_session_terms = random.randint(10, 50)
         study_queue = study_queue[:max_session_terms]
         
+        # Shuffle to mix New Terms (hard) with Reviews (easier)
+        # This prevents the "20th question cliff" where all new terms appear at the end
+        random.shuffle(study_queue)
+        
         session_id = str(uuid.uuid4())
         
         # Pre-calculate session stats so we can insert Parent first (FK Constraint)
@@ -202,10 +242,11 @@ class Bot:
         # 2. Insert ATTEMPTS (Children)
         session_attempts = 0
         for i, term_id in enumerate(study_queue):
-            # Fatigue Check
-            is_fatigued = i > 15 
+            # Gradual Fatigue: Starts kicking in after question 10
+            # Increases by 'fatigue_rate' per question
+            fatigue_idx = max(0, i - 10)
             
-            is_correct, response_ms = self.calculate_human_response(term_id, is_fatigued)
+            is_correct, response_ms = self.calculate_human_response(term_id, fatigue_idx)
             
             # Record Attempt
             attempt_time = session_start + timedelta(seconds=i * (response_ms/1000 + 2))
@@ -228,6 +269,20 @@ class Bot:
                 print(f"❌ Error inserting attempt: {e}")
                 pass
 
+def clean_db(supabase: Client):
+    print("🧹 Cleaning database (removing old simulation data)...")
+    try:
+        # Delete children first (FK constraint)
+        supabase.table("quiz_attempts").delete().eq("quiz_type", "simulation").execute()
+        # Delete parents (only those created by bots in this simulation config would be ideal, 
+        # but for simplicity in this script we delete based on our bot prefix or just clean all if it's a dev env)
+        # Note: supabase-js delete needs a filter. We'll use the fact that our bots have specific IDs or just clean all sessions for safety if user wants a full reset.
+        # For safety, let's only delete sessions where anonymous_id starts with 'bot_'
+        supabase.table("study_sessions").delete().like("anonymous_id", "bot_%").execute()
+        print("✅ Database cleaned.")
+    except Exception as e:
+        print(f"⚠️ Warning during cleanup: {e}")
+
 def main():
     print(f"🚀 ULTRA SIMULATION STARTED")
     print(f"Configurations:")
@@ -238,6 +293,9 @@ def main():
     
     fake = Faker()
     supabase = init_supabase()
+    
+    # 0. Clean old data
+    clean_db(supabase)
     
     bots = [Bot(fake) for _ in range(NUM_BOTS)]
     

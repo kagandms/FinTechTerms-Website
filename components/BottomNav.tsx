@@ -40,6 +40,11 @@ export default function BottomNav() {
             badge: dueTerms.length > 0 ? dueTerms.length : undefined,
         },
         {
+            href: '/about-project',
+            labelKey: 'common.about',
+            icon: <BarChart2 className="w-6 h-6" />,
+        },
+        {
             href: '/profile',
             labelKey: 'common.profile',
             icon: <User className="w-6 h-6" />,

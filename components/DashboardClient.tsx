@@ -109,17 +109,26 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
 
         // Binning for Bell Curve (5% intervals)
         const bins: any = {};
-        for (let i = 0; i <= 100; i += 5) bins[i] = 0;
+        for (let i = 0; i < 100; i += 5) bins[i] = 0;
+        bins[100] = 0; // Separate bin for perfect scores
 
         studentAccuracies.forEach(acc => {
-            const bin = Math.floor(acc / 5) * 5;
-            bins[bin] = (bins[bin] || 0) + 1;
+            if (acc === 100) {
+                bins[100] = (bins[100] || 0) + 1;
+            } else {
+                const bin = Math.floor(acc / 5) * 5;
+                bins[bin] = (bins[bin] || 0) + 1;
+            }
         });
 
-        return Object.keys(bins).map(bin => ({
-            range: `${bin}-${parseInt(bin) + 5}%`,
-            count: bins[bin]
-        }));
+        return Object.keys(bins).map(bin => {
+            const b = parseInt(bin);
+            if (b === 100) return { range: '100%', count: bins[bin] };
+            return {
+                range: `${b}-${b + 5}%`,
+                count: bins[bin]
+            };
+        });
     }, [distributionRaw]);
 
     return (

@@ -15,6 +15,7 @@ interface QuizCardProps {
 
 export default function QuizCard({ term, onAnswer }: QuizCardProps) {
     const { t, language } = useLanguage();
+
     const [isFlipped, setIsFlipped] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [selectedLang, setSelectedLang] = useState<Language>(language);
