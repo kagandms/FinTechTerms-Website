@@ -292,12 +292,13 @@ export default function QuizPage() {
                 </div>
             </header>
 
-            <QuizCard
-                key={currentTerm.id}
-                term={currentTerm}
-                onAnswer={handleAnswer}
-                forcedQuestionLanguage={isRussianMode ? 'ru' : undefined}
-            />
+            {currentTerm && (
+                <QuizCard
+                    key={currentTerm.id}
+                    term={currentTerm}
+                    onAnswer={handleAnswer}
+                />
+            )}
 
             {/* Correct Streak */}
             {correctCount > 0 && (
