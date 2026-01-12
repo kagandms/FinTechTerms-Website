@@ -298,3 +298,23 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
     // Note: The DB columns match the Term interface fields exactly for content
     return data as unknown as Partial<Term>[];
 }
+
+/**
+ * Fetch a single term by ID from Supabase
+ */
+export async function getTermById(termId: string): Promise<Partial<Term> | null> {
+    const { data, error } = await supabase
+        .from('terms')
+        .select('*')
+        .eq('id', termId)
+        .single();
+
+    if (error) {
+        // If error is "PGRST116" (no rows), return null
+        if (error.code === 'PGRST116') return null;
+        console.error('Failed to fetch term:', error);
+        return null;
+    }
+
+    return data as unknown as Partial<Term>;
+}
