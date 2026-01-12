@@ -7,6 +7,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import DailyReview from '@/components/DailyReview';
 import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
 
 export default function HomePage() {
@@ -31,10 +33,13 @@ export default function HomePage() {
             {/* Header */}
             <header className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <img
+                    <Image
                         src="/logo_ftt.png"
                         alt="FinTechTerms Logo"
+                        width={48}
+                        height={48}
                         className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+                        priority
                     />
                     <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate">

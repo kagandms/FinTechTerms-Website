@@ -20,7 +20,7 @@ export default function BottomNav() {
     const { t } = useLanguage();
     const { dueTerms } = useSRS();
     const { user } = useAuth();
-    const ADMIN_EMAIL = 'kagan.durmus61@mail.ru';
+    const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
     const navItems: NavItem[] = [
         {
