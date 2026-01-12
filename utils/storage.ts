@@ -26,7 +26,7 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-01-10-v1'; // Update this to force data refresh
+const DATA_VERSION = '2026-01-13-v1'; // Force data refresh
 
 /**
  * Get all terms from storage (or initialize with mock data)

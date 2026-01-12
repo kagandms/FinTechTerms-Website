@@ -67,11 +67,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const loadData = useCallback(async () => {
         setIsSyncing(true);
         let currentTerms = getTerms();
+        console.log('[LoadData] Initial terms from local/mock:', currentTerms.length);
 
         // 1. Fetch latest terms content from Supabase (if online)
         try {
+            console.log('[LoadData] Fetching from Supabase...');
             const dbTerms = await fetchTermsFromSupabase();
-            if (dbTerms.length > 0) {
+            console.log('[LoadData] Supabase response count:', dbTerms?.length);
+
+            if (dbTerms && dbTerms.length > 0) {
                 // Merge DB content with local SRS data
                 currentTerms = dbTerms.map(dbTerm => {
                     const localTerm = currentTerms.find(t => t.id === dbTerm.id);
@@ -87,11 +91,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         times_correct: localTerm?.times_correct ?? 0,
                     } as Term;
                 });
+                console.log('[LoadData] Merged terms count:', currentTerms.length);
                 // Update local storage cache
                 saveTerms(currentTerms);
+            } else {
+                console.warn('[LoadData] Supabase returned empty terms array. Keeping local data.');
             }
         } catch (error) {
-            console.warn('Could not fetch terms from Supabase, using local.', error);
+            console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
             // Fallback to currentTerms (which is getTerms() result)
         }
 
