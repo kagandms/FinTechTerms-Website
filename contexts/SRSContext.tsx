@@ -146,7 +146,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }
 
         // Final safety check: if we somehow definitely have 0 terms, force reload from utils
-        if (currentTerms.length === 0) {
+        if (!currentTerms || currentTerms.length === 0) {
+            console.warn('[LoadData] Terms are still empty. FORCING mock data reload.');
             const { mockTerms } = await import('@/data/mockData');
             currentTerms = mockTerms;
             saveTerms(currentTerms);

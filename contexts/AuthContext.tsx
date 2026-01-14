@@ -269,7 +269,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             // Clear local storage for SRS data
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('srs_user_progress');
+                localStorage.removeItem('globalfinterm_user_progress');
+                // Also clear terms to force a fresh fetch next time ensuring data consistency
+                // localStorage.removeItem('globalfinterm_terms'); 
             }
             const { error } = await supabase.auth.signOut();
             if (error) {
