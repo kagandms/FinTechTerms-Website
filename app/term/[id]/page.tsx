@@ -20,13 +20,43 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
+    const title = `${term.term_en || 'Term'} (${term.term_tr || ''} / ${term.term_ru || ''}) | FinTechTerms`;
+    const description = `What is ${term.term_en || 'this term'}? ${(term.definition_en || '').slice(0, 100)}...  ${term.term_tr || ''} nedir? ${term.term_ru || ''} что это?`;
+
+    // Filter out undefined tags
+    const tags = [term.category, 'FinTech', 'Dictionary'].filter((tag): tag is string => !!tag);
+
     return {
-        title: `${term.term_en} - What is it? | FinTechTerms`,
-        description: term.definition_en,
+        title: title,
+        description: description,
+        keywords: [
+            term.term_en || '', term.term_tr || '', term.term_ru || '',
+            `${term.term_en || ''} meaning`, `${term.term_tr || ''} nedir`, `${term.term_ru || ''} что это`,
+            'fintech terms', 'finans terimleri', 'SRS dictionary'
+        ].filter(Boolean),
+        alternates: {
+            canonical: `/term/${id}`,
+        },
         openGraph: {
-            title: `${term.term_en} (${term.term_tr}) | FinTechTerms`,
-            description: term.definition_en,
+            title: title,
+            description: description,
             type: 'article',
+            publishedTime: (term as any).created_at || new Date().toISOString(),
+            tags: tags,
+            images: [
+                {
+                    url: '/og-image.png',
+                    width: 1200,
+                    height: 630,
+                    alt: `${term.term_en || 'FinTechTerms'} Definition`,
+                },
+            ],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: title,
+            description: description,
+            images: ['/og-image.png'],
         },
     };
 }
@@ -78,6 +108,25 @@ export default async function TermPage({ params }: Props) {
                 <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8">
                     <SmartCard term={fullTerm} showFullDetails={true} />
                 </div>
+
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify({
+                            '@context': 'https://schema.org',
+                            '@type': 'DefinedTerm',
+                            name: fullTerm.term_en,
+                            alternateName: [fullTerm.term_tr, fullTerm.term_ru],
+                            description: fullTerm.definition_en,
+                            inDefinedTermSet: {
+                                '@type': 'DefinedTermSet',
+                                name: 'FinTechTerms Dictionary',
+                                url: 'https://fintechterms.vercel.app'
+                            },
+                            termCode: fullTerm.id
+                        }),
+                    }}
+                />
 
                 <div className="mt-8 text-center text-sm text-gray-400">
                     <p>FinTechTerms - The Trilingual Financial Dictionary</p>

@@ -66,7 +66,17 @@ export function SRSProvider({ children }: SRSProviderProps) {
      */
     const loadData = useCallback(async () => {
         setIsSyncing(true);
+        // Default to local storage or mock data initially
         let currentTerms = getTerms();
+
+        // If local storage returned empty (shouldn't happen due to getTerms logic, but safety first), use mockTerms
+        if (!currentTerms || currentTerms.length === 0) {
+            console.log('[LoadData] Local terms empty, using mockTerms directly');
+            // We need to import mockTerms dynamically or assume getTerms() handles it.
+            // Actually getTerms() in utils/storage.ts ALREADY handles the mock fallback.
+            // But let's be double sure and check if we need to force reload.
+        }
+
         console.log('[LoadData] Initial terms from local/mock:', currentTerms.length);
 
         // 1. Fetch latest terms content from Supabase (if online)
@@ -96,11 +106,26 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 saveTerms(currentTerms);
             } else {
                 console.warn('[LoadData] Supabase returned empty terms array. Keeping local data.');
+                // If local data is also somehow empty (rare), we must ensure we have something
+                if (currentTerms.length === 0) {
+                    // getTerms() handles this, but let's re-verify
+                    console.warn('[LoadData] CRITICAL: No terms found. Resetting to defaults.');
+                    // We can rely on the fact getTerms returns mockTerms if storage empty
+                }
             }
         } catch (error) {
             console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
             // Fallback to currentTerms (which is getTerms() result)
         }
+
+        // Final safety check: if we somehow definitely have 0 terms, force reload from utils
+        if (currentTerms.length === 0) {
+            const { mockTerms } = await import('@/data/mockData');
+            currentTerms = mockTerms;
+            saveTerms(currentTerms);
+        }
+
+        setTerms(currentTerms);
 
         if (isAuthenticated && user) {
             // ... (rest of auth logic matches existing)

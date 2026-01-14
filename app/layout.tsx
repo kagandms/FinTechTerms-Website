@@ -16,14 +16,33 @@ const siteUrl = 'https://fintechterms.vercel.app';
 export const metadata: Metadata = {
     // Basic Meta
     title: {
-        default: 'FinTechTerms | TR-EN-RU Ekonomi ve Bilişim Sözlüğü',
-        template: '%s | FinTechTerms',
+        default: 'FinTechTerms | Finans ve Teknoloji Sözlüğü (TR-EN-RU)',
+        template: '%s | FinTechTerms - Finansal Sözlük',
     },
-    description: 'Türkçe, İngilizce ve Rusça ekonomi, fintek ve bilişim terimlerini öğrenmek için SRS tabanlı akıllı sözlük uygulaması. 100+ terim, flashcard sistemi.',
-    keywords: ['fintech', 'ekonomi', 'bilişim', 'sözlük', 'türkçe', 'ingilizce', 'rusça', 'SRS', 'flashcard', 'dictionary', 'финтех', 'словарь', 'экономика'],
-    authors: [{ name: 'FinTechTerms', url: siteUrl }],
+    description: 'FinTechTerms ile Finans, Bilişim, Yapay Zeka ve Blockchain terimlerini öğrenin. Türkçe, İngilizce ve Rusça açıklamalı, SRS tabanlı akıllı sözlük ve flashcard uygulaması.',
+    keywords: [
+        // Brand
+        'FinTechTerms', 'FinTerms', 'FTT',
+        // General
+        'Finans Sözlüğü', 'Fintech Sözlüğü', 'Ekonomi Terimleri', 'Bilişim Sözlüğü',
+        'Financial Dictionary', 'Fintech Dictionary', 'Economic Terms', 'IT Dictionary',
+        'Финансовый словарь', 'Финтех словарь', 'Экономические термины', 'IT словарь',
+        // Specific Topics
+        'Blockchain', 'Kripto Para', 'Yapay Zeka', 'Machine Learning', 'AI Terms',
+        'DeFi', 'NFT', 'SaaS', 'PaaS', 'IaaS', 'Cloud Computing',
+        // Education/Method
+        'SRS', 'Spaced Repetition', 'Aralıklı Tekrar', 'Flashcard', 'Kelime Ezberleme',
+        'İngilizce Öğren', 'Rusça Öğren', 'Finansal Okuryazarlık',
+        // Variations
+        'nedir', 'ne demek', 'anlamı', 'what is', 'meaning', 'что это', 'значение',
+        'Terimler', 'Kavramlar', 'Terminology', 'Vocabulary',
+        'Bankacılık', 'Banking', 'Банковское дело',
+        'Yatırım', 'Investment', 'Инвестиции'
+    ],
+    authors: [{ name: 'FinTechTerms Team', url: siteUrl }],
     creator: 'FinTechTerms',
     publisher: 'FinTechTerms',
+    applicationName: 'FinTechTerms',
 
     // Canonical & Alternates (hreflang)
     metadataBase: new URL(siteUrl),
@@ -40,6 +59,7 @@ export const metadata: Metadata = {
     robots: {
         index: true,
         follow: true,
+        nocache: false,
         googleBot: {
             index: true,
             follow: true,
@@ -51,8 +71,8 @@ export const metadata: Metadata = {
 
     // Open Graph
     openGraph: {
-        title: 'FinTechTerms | TR-EN-RU Ekonomi ve Bilişim Sözlüğü',
-        description: 'Türkçe, İngilizce ve Rusça ekonomi, fintek ve bilişim terimlerini öğrenmek için SRS tabanlı akıllı sözlük uygulaması.',
+        title: 'FinTechTerms | Küresel Finans ve Teknoloji Sözlüğü',
+        description: 'Fintech, Ekonomi ve Yazılım dünyasına hakim olun. Türkçe, İngilizce ve Rusça terimler, akıllı öğrenme sistemi ile cebinizde.',
         url: siteUrl,
         siteName: 'FinTechTerms',
         locale: 'tr_TR',
@@ -60,10 +80,10 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/og-image.png',
+                url: '/og-image.png', // Ensure this exists or use ftt.png as fallback if dedicated generic card absent
                 width: 1200,
                 height: 630,
-                alt: 'FinTechTerms - TR/EN/RU Trilingual Dictionary',
+                alt: 'FinTechTerms - Trilingual Dictionary Interface',
             },
         ],
     },
@@ -71,10 +91,11 @@ export const metadata: Metadata = {
     // Twitter
     twitter: {
         card: 'summary_large_image',
-        title: 'FinTechTerms | TR-EN-RU Ekonomi ve Bilişim Sözlüğü',
-        description: 'Trilingual ekonomi ve bilişim sözlüğü - SRS tabanlı akıllı öğrenme. 100+ terim.',
+        title: 'FinTechTerms | Finans ve Teknoloji Dünyası',
+        description: 'Fintech, Ekonomi ve Yazılım terimlerini 3 dilde öğrenin. SRS algoritması ile unutmaya son.',
         images: ['/og-image.png'],
         creator: '@fintechterms',
+        site: '@fintechterms',
     },
 
     // Category & Classification
@@ -82,17 +103,28 @@ export const metadata: Metadata = {
 
     // PWA
     manifest: '/manifest.json',
+    icons: {
+        icon: '/favicon.ico',
+        shortcut: '/favicon.ico',
+        apple: '/icons/icon-192.png',
+        other: [
+            {
+                rel: 'apple-touch-icon-precomposed',
+                url: '/icons/icon-192.png',
+            },
+        ],
+    },
     appleWebApp: {
         capable: true,
         statusBarStyle: 'default',
         title: 'FinTechTerms',
     },
 
-    // Verification (placeholder - replace with actual codes)
-    // verification: {
-    //     google: 'your-google-verification-code',
-    //     yandex: 'your-yandex-verification-code',
-    // },
+    // Search Engine Checks
+    verification: {
+        google: 'google-site-verification-code', // User needs to provide this actually
+        // yandex: 'yandex-verification',
+    },
 };
 
 export const viewport: Viewport = {
