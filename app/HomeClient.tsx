@@ -87,51 +87,59 @@ export default function HomePage() {
             </header>
 
             {/* Desktop Header (Spacious) */}
-            <header className="hidden md:flex items-center justify-between mb-10 py-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-4">
-                    <Image
-                        src="/ftt.png"
-                        alt="FinTechTerms Logo"
-                        width={80}
-                        height={80}
-                        className="w-20 h-20 object-contain drop-shadow-sm hover:scale-105 transition-transform"
-                        priority
-                    />
-                    <div>
-                        <h1 className="text-3xl font-bold text-primary-600 dark:text-primary-400 tracking-tight">
+            {/* Desktop Header (Hero Style) */}
+            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm">
+                <div className="flex items-center gap-8">
+                    <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                        <Image
+                            src="/ftt.png"
+                            alt="FinTechTerms Logo"
+                            width={160}
+                            height={160}
+                            className="relative w-40 h-40 object-contain drop-shadow-xl transform transition duration-500 group-hover:scale-110"
+                            priority
+                        />
+                    </div>
+                    <div className="flex flex-col justify-center h-40">
+                        <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tighter mb-2">
                             FinTechTerms
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">
+                        <p className="text-lg text-gray-500 dark:text-gray-400 font-medium max-w-md leading-relaxed">
                             {t('home.subtitle')}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 mr-4">
+                <div className="flex flex-col items-end gap-6 h-40 justify-center">
+                    {/* Streak Badge */}
+                    <div className="px-6 py-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3">
                         <div className="flex flex-col items-end">
-                            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{t('profile.days')}</span>
-                            <span className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-1">
-                                <Flame className="w-4 h-4 text-orange-500" />
+                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{t('profile.days')}</span>
+                            <span className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                <Flame className="w-6 h-6 text-orange-500 fill-orange-500 animate-pulse" />
                                 {userProgress.current_streak}
                             </span>
                         </div>
                     </div>
 
-                    <InstallButton />
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3">
+                        <InstallButton />
 
-                    <button
-                        onClick={toggleTheme}
-                        className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
-                        aria-label="Toggle theme"
-                    >
-                        {resolvedTheme === 'dark' ? (
-                            <Sun className="w-5 h-5 text-yellow-500" />
-                        ) : (
-                            <Moon className="w-5 h-5 text-gray-600" />
-                        )}
-                    </button>
-                    <div className="ml-2">
+                        <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+
+                        <button
+                            onClick={toggleTheme}
+                            className="p-3 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-all border border-gray-100 dark:border-gray-700 shadow-sm"
+                            aria-label="Toggle theme"
+                        >
+                            {resolvedTheme === 'dark' ? (
+                                <Sun className="w-5 h-5" />
+                            ) : (
+                                <Moon className="w-5 h-5" />
+                            )}
+                        </button>
                         <LanguageSwitcher />
                     </div>
                 </div>
