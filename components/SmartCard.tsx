@@ -170,11 +170,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 {/* Main Term */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                        <h3 className="text-xl font-bold text-primary-500 mb-1">
+                        <h3 className="text-xl font-bold text-primary-500 dark:text-primary-300 mb-1">
                             {getTermByLang(language)}
                         </h3>
                         {getPhonetic() && (
-                            <p className="text-sm text-gray-500 font-mono">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                                 {getPhonetic()}
                             </p>
                         )}
