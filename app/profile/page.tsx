@@ -664,17 +664,27 @@ function ProfileContent() {
 
                                             setAuthLoading(true);
                                             setAuthError('');
-                                            const result = await updatePassword(authForm.password);
-                                            setAuthLoading(false);
-                                            if (result.success) {
-                                                setAuthError(language === 'tr' ? '✅ Şifre güncellendi!' : language === 'ru' ? '✅ Пароль обновлен!' : '✅ Password updated!');
-                                                setTimeout(() => {
-                                                    setShowAuthModal(false);
-                                                    setAuthMode('login');
-                                                    setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
-                                                }, 2000);
-                                            } else {
-                                                setAuthError(result.error || 'Error');
+
+                                            try {
+                                                console.log('Calling updatePassword...');
+                                                const result = await updatePassword(authForm.password);
+                                                console.log('updatePassword result:', result);
+
+                                                if (result.success) {
+                                                    setAuthError(language === 'tr' ? '✅ Şifre güncellendi!' : language === 'ru' ? '✅ Пароль обновлен!' : '✅ Password updated!');
+                                                    setTimeout(() => {
+                                                        setShowAuthModal(false);
+                                                        setAuthMode('login');
+                                                        setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
+                                                    }, 2000);
+                                                } else {
+                                                    setAuthError(result.error || 'Error');
+                                                }
+                                            } catch (e: any) {
+                                                console.error('Unexpected error in Update Password UI:', e);
+                                                setAuthError(`Unexpected error: ${e.message}`);
+                                            } finally {
+                                                setAuthLoading(false);
                                             }
                                         }}
                                         disabled={authLoading}

@@ -296,19 +296,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            const { error } = await supabase.auth.updateUser({
-                password: password
+            console.log('Update password requested...');
+            // Create a timeout promise to prevent infinite hanging
+            const timeoutPromise = new Promise<{ error: string }>((_, reject) => {
+                setTimeout(() => reject(new Error('Update timed out. Please try again.')), 15000);
             });
+
+            // Race between actual update and timeout
+            const { error }: any = await Promise.race([
+                supabase.auth.updateUser({ password: password }),
+                timeoutPromise
+            ]);
 
             if (error) {
                 console.error('Update password error:', error.message);
                 return { success: false, error: error.message };
             }
 
+            console.log('Update password success');
             return { success: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Update password exception:', error);
-            return { success: false, error: 'Failed to update password' };
+            return { success: false, error: error.message || 'Failed to update password' };
         }
     }, []);
 
