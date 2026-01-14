@@ -129,13 +129,13 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     };
 
     return (
-        <div className="bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
             {/* Limit Warning */}
             {showLimitWarning && (
-                <div className="bg-amber-50 border-b border-amber-100 px-4 py-3 flex items-start gap-3 animate-fade-in">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800 px-4 py-3 flex items-start gap-3 animate-fade-in">
                     <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm text-amber-700">{t('card.favoriteLimit')}</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">{t('card.favoriteLimit')}</p>
                         <Link
                             href="/profile"
                             className="text-sm font-medium text-primary-500 hover:underline"

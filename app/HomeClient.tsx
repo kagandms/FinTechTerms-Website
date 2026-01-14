@@ -88,10 +88,10 @@ export default function HomePage() {
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm">
+            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm relative z-50">
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                        {/* Blur effect removed */}
                         <Image
                             src="/ftt.png"
                             alt="FinTechTerms Logo"
@@ -194,9 +194,17 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-4">
-                    {recentTerms.map((term) => (
-                        <SmartCard key={term.id} term={term} />
-                    ))}
+                    {recentTerms.length > 0 ? (
+                        recentTerms.map((term) => (
+                            <SmartCard key={term.id} term={term} />
+                        ))
+                    ) : (
+                        <div className="p-8 text-center rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
+                            <p className="text-gray-500 dark:text-gray-400">
+                                {t('home.noTerms') || 'Term data loading...'}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </section>
 
