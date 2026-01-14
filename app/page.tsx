@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import DailyReview from '@/components/DailyReview';
 import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import InstallButton from '@/components/InstallButton';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
@@ -34,7 +35,7 @@ export default function HomePage() {
             <header className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                     <Image
-                        src="/logo_ftt.png"
+                        src="/ftt.png"
                         alt="FinTechTerms Logo"
                         width={48}
                         height={48}
@@ -51,6 +52,7 @@ export default function HomePage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <InstallButton />
                     {/* Theme Toggle Button */}
                     <button
                         onClick={toggleTheme}
