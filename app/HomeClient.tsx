@@ -49,32 +49,80 @@ export default function HomePage() {
                     }),
                 }}
             />
-            {/* Header */}
-            <header className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
+            {/* Mobile Header (Compact) */}
+            <header className="flex md:hidden items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
                     <Image
                         src="/ftt.png"
                         alt="FinTechTerms Logo"
-                        width={128}
-                        height={128}
-                        className="w-16 h-16 md:w-28 md:h-28 object-contain drop-shadow-sm transition-all hover:scale-105"
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 object-contain"
                         priority
                     />
-                    <div className="min-w-0 flex flex-col justify-center">
-                        <h1 className="text-xl sm:text-2xl md:text-5xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate tracking-tight">
+                    <div className="min-w-0">
+                        <h1 className="text-xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate">
                             FinTechTerms
                         </h1>
-                        <p className="text-[10px] sm:text-xs md:text-base text-gray-500 dark:text-gray-400 font-medium truncate opacity-90">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate">
                             {t('home.subtitle')}
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     <InstallButton />
-                    {/* Theme Toggle Button */}
                     <button
                         onClick={toggleTheme}
-                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="Toggle theme"
+                    >
+                        {resolvedTheme === 'dark' ? (
+                            <Sun className="w-4 h-4 text-yellow-500" />
+                        ) : (
+                            <Moon className="w-4 h-4 text-gray-600" />
+                        )}
+                    </button>
+                    <LanguageSwitcher />
+                </div>
+            </header>
+
+            {/* Desktop Header (Spacious) */}
+            <header className="hidden md:flex items-center justify-between mb-10 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-4">
+                    <Image
+                        src="/ftt.png"
+                        alt="FinTechTerms Logo"
+                        width={80}
+                        height={80}
+                        className="w-20 h-20 object-contain drop-shadow-sm hover:scale-105 transition-transform"
+                        priority
+                    />
+                    <div>
+                        <h1 className="text-3xl font-bold text-primary-600 dark:text-primary-400 tracking-tight">
+                            FinTechTerms
+                        </h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">
+                            {t('home.subtitle')}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 mr-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{t('profile.days')}</span>
+                            <span className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                                <Flame className="w-4 h-4 text-orange-500" />
+                                {userProgress.current_streak}
+                            </span>
+                        </div>
+                    </div>
+
+                    <InstallButton />
+
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
                         aria-label="Toggle theme"
                     >
                         {resolvedTheme === 'dark' ? (
@@ -83,7 +131,9 @@ export default function HomePage() {
                             <Moon className="w-5 h-5 text-gray-600" />
                         )}
                     </button>
-                    <LanguageSwitcher />
+                    <div className="ml-2">
+                        <LanguageSwitcher />
+                    </div>
                 </div>
             </header>
 
