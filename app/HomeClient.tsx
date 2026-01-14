@@ -90,7 +90,7 @@ export default function HomePage() {
             {/* Desktop Header (Hero Style) */}
             <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm">
                 <div className="flex items-center gap-8">
-                    <div className="relative group">
+                    <div className="relative group shrink-0">
                         <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                         <Image
                             src="/ftt.png"

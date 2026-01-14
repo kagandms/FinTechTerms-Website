@@ -178,7 +178,7 @@ export default function RootLayout({
                             <SRSProvider>
                                 <ToastProvider>
                                     <div className="page-wrapper">
-                                        <main className="max-w-lg mx-auto">
+                                        <main className="w-full max-w-lg md:max-w-5xl mx-auto transition-all duration-300">
                                             {children}
                                         </main>
                                         <BottomNav />
