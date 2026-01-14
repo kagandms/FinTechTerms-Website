@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage, languageNames, languageFlags } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ProfilePage() {
+function ProfileContent() {
     const { t, language, setLanguage } = useLanguage();
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
     const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification, resetPassword, updatePassword, isPasswordRecovery } = useAuth();
@@ -50,13 +51,28 @@ export default function ProfilePage() {
         birthYear: ''
     });
 
-    // Detect password recovery mode
+    const searchParams = useSearchParams();
+
+    // Detect password recovery mode via Event (primary) or URL (fallback)
     React.useEffect(() => {
+        // Check local state from AuthContext (Event based)
         if (isPasswordRecovery) {
             setAuthMode('update-password');
             setShowAuthModal(true);
+            return;
         }
-    }, [isPasswordRecovery]);
+
+        // Check URL params (Fallback if event missed)
+        // Standard Supabase recovery link puts `type=recovery` in query or hash (handled by client)
+        // We also added `reset=true` in our redirectTo
+        const isResetUrl = searchParams.get('reset') === 'true';
+        const isRecoveryType = searchParams.get('type') === 'recovery';
+
+        if ((isResetUrl || isRecoveryType) && isAuthenticated) {
+            setAuthMode('update-password');
+            setShowAuthModal(true);
+        }
+    }, [isPasswordRecovery, searchParams, isAuthenticated]);
     const [otpCode, setOtpCode] = useState('');
     const [authError, setAuthError] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
@@ -733,7 +749,11 @@ export default function ProfilePage() {
                                                     const result = await resetPassword(authForm.email);
                                                     setAuthLoading(false);
                                                     if (result.success) {
-                                                        setAuthError(language === 'tr' ? '✅ Sıfırlama bağlantısı gönderildi!' : language === 'ru' ? '✅ Ссылка отправлена!' : '✅ Reset link sent!');
+                                                        setAuthError(language === 'tr'
+                                                            ? '✅ Bağlantı gönderildi! (Spam klasörünü kontrol ediniz)'
+                                                            : language === 'ru'
+                                                                ? '✅ Ссылка отправлена! (Проверьте спам)'
+                                                                : '✅ Reset link sent! (Check your spam folder)');
                                                     } else {
                                                         setAuthError(result.error || 'Error');
                                                     }
@@ -956,5 +976,13 @@ export default function ProfilePage() {
                 <p className="mt-1">TR-EN-RU Ekonomi ve Bilişim Sözlüğü</p>
             </footer>
         </div>
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="page-content px-4 py-6 text-center">Loading...</div>}>
+            <ProfileContent />
+        </Suspense>
     );
 }
