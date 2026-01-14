@@ -215,7 +215,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                             <button
                                 key={lang}
                                 onClick={() => handleSpeak(getTermByLang(lang), lang)}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-100 dark:border-gray-600"
                             >
                                 <span className="text-xs opacity-60">{lang.toUpperCase()}</span>
                                 <span className="font-medium">{getTermByLang(lang)}</span>
@@ -225,8 +225,8 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             </div>
 
             {/* Definition - Always visible */}
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                <p className="text-sm text-gray-700 leading-relaxed">
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700/50">
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                     {getDefinition()}
                 </p>
             </div>
@@ -235,7 +235,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             <div>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full px-4 py-2 flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-primary-500 hover:bg-gray-50 transition-colors"
+                    className="w-full px-4 py-2 flex items-center justify-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                 >
                     {isExpanded ? (
                         <>
@@ -252,15 +252,15 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                 {isExpanded && (
                     <div className="px-4 pb-4 animate-fade-in">
-                        <div className="p-3 bg-primary-50 rounded-lg border border-primary-100">
-                            <p className="text-sm text-primary-700 italic">
+                        <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800/50">
+                            <p className="text-sm text-primary-700 dark:text-primary-300 italic">
                                 "{getExample()}"
                             </p>
                         </div>
 
                         {/* Analytics Preview (for academic purposes) */}
                         {term.times_reviewed > 0 && (
-                            <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                            <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                                 <span>{language === 'tr' ? 'Zorluk' : language === 'ru' ? 'Сложность' : 'Difficulty'}: {term.difficulty_score.toFixed(1)}/5</span>
                                 <span>{language === 'tr' ? 'Başarı' : language === 'ru' ? 'Успех' : 'Success'}: %{Math.round(term.retention_rate * 100)}</span>
                                 <span>{language === 'tr' ? 'Tekrar' : language === 'ru' ? 'Повторов' : 'Reviews'}: {term.times_reviewed}x</span>
