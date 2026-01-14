@@ -1,15 +1,27 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Share, PlusSquare, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function InstallButton() {
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isInstallable, setIsInstallable] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
+    const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
     useEffect(() => {
+        // Check if device is iOS
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        // Check if already in standalone mode (installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+
+        if (isIOSDevice && !isStandalone) {
+            setIsIOS(true);
+            setIsInstallable(true);
+        }
+
         const handleBeforeInstallPrompt = (e: any) => {
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
@@ -26,6 +38,11 @@ export default function InstallButton() {
     }, []);
 
     const handleInstallClick = async () => {
+        if (isIOS) {
+            setShowIOSInstructions(true);
+            return;
+        }
+
         if (!deferredPrompt) return;
 
         // Show the install prompt
@@ -42,14 +59,74 @@ export default function InstallButton() {
     if (!isInstallable) return null;
 
     return (
-        <button
-            onClick={handleInstallClick}
-            className="flex items-center gap-2 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
-        >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">
-                {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить приложение' : 'Install App'}
-            </span>
-        </button>
+        <>
+            <button
+                onClick={handleInstallClick}
+                className="flex items-center gap-2 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm active:scale-95"
+            >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                    {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить' : 'Install App'}
+                </span>
+            </button>
+
+            {/* iOS Instructions Modal */}
+            {showIOSInstructions && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity animate-fade-in"
+                        onClick={() => setShowIOSInstructions(false)}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-slide-up sm:animate-scale-in border border-gray-100 dark:border-gray-700">
+                        <button
+                            onClick={() => setShowIOSInstructions(false)}
+                            className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex flex-col items-center text-center gap-4">
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-inner">
+                                <img src="/icons/icon-192.png" alt="App Icon" className="w-12 h-12 rounded-xl" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {language === 'tr' ? 'iOS\'a Nasıl Yüklenir?' : language === 'ru' ? 'Как установить на iOS?' : 'How to Install on iOS?'}
+                            </h3>
+
+                            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                                {language === 'tr'
+                                    ? 'Bu uygulamayı ana ekranınıza eklemek için şu adımları izleyin:'
+                                    : language === 'ru'
+                                        ? 'Чтобы добавить приложение на главный экран, выполните следующие действия:'
+                                        : 'Follow these steps to add this app to your home screen:'}
+                            </p>
+
+                            <div className="flex flex-col gap-3 w-full bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left text-sm">
+                                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                                    <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">1</span>
+                                    <span>
+                                        {language === 'tr' ? 'Aşağıdaki' : language === 'ru' ? 'Нажмите кнопку' : 'Tap the'}
+                                        <Share className="w-4 h-4 inline mx-1 text-blue-500" />
+                                        {language === 'tr' ? 'paylaş butonuna basın' : language === 'ru' ? 'Поделиться' : 'Share button'}
+                                    </span>
+                                </div>
+                                <div className="w-full h-px bg-gray-200 dark:bg-gray-600/50" />
+                                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                                    <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">2</span>
+                                    <span>
+                                        {language === 'tr' ? '"Ana Ekrana Ekle"yi seçin' : language === 'ru' ? 'Выберите "На экран домой"' : 'Select "Add to Home Screen"'}
+                                        <PlusSquare className="w-4 h-4 inline mx-1 text-gray-500" />
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

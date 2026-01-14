@@ -41,3 +41,8 @@ next-env.d.ts
 # PWA
 **/sw.js
 **/workbox-*.js
+
+# PWA files
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
