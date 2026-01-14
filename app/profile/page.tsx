@@ -35,12 +35,12 @@ import Link from 'next/link';
 export default function ProfilePage() {
     const { t, language, setLanguage } = useLanguage();
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
-    const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification } = useAuth();
+    const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification, resetPassword } = useAuth();
     const { theme, setTheme } = useTheme();
 
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
     const [authForm, setAuthForm] = useState({
         email: '',
         password: '',
@@ -573,149 +573,237 @@ export default function ProfilePage() {
                                 <div className="flex items-center gap-3 mb-6">
                                     {authMode === 'login' ? (
                                         <LogIn className="w-6 h-6 text-primary-500" />
-                                    ) : (
+                                    ) : authMode === 'register' ? (
                                         <UserPlus className="w-6 h-6 text-primary-500" />
+                                    ) : (
+                                        <Lock className="w-6 h-6 text-primary-500" />
                                     )}
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                        {authMode === 'login' ? t('auth.login') : t('auth.register')}
+                                        {authMode === 'login'
+                                            ? t('auth.login')
+                                            : authMode === 'register'
+                                                ? t('auth.register')
+                                                : (language === 'tr' ? 'Şifre Sıfırlama' : language === 'ru' ? 'Сброс пароля' : 'Reset Password')}
                                     </h3>
                                 </div>
 
                                 <div className="space-y-4">
-                                    {authMode === 'register' && (
+                                    {authMode === 'forgot-password' ? (
                                         <>
-                                            {/* Name */}
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                {language === 'tr'
+                                                    ? 'E-posta adresinizi girin. Size şifre sıfırlama bağlantısı göndereceğiz.'
+                                                    : language === 'ru'
+                                                        ? 'Введите ваш email. Мы отправим ссылку для сброса пароля.'
+                                                        : 'Enter your email address. We will send you a password reset link.'}
+                                            </p>
+
+                                            {/* Email for Reset */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    {language === 'tr' ? 'Ad *' : language === 'ru' ? 'Имя *' : 'First Name *'}
+                                                    {t('auth.email')}
                                                 </label>
                                                 <div className="relative">
-                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                                     <input
-                                                        type="text"
-                                                        value={authForm.name}
-                                                        onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                                        type="email"
+                                                        value={authForm.email}
+                                                        onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                                                         className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                        placeholder={language === 'tr' ? 'Adınız' : language === 'ru' ? 'Ваше имя' : 'Your first name'}
+                                                        placeholder={t('auth.email')}
                                                     />
                                                 </div>
                                             </div>
 
-                                            {/* Surname */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    {language === 'tr' ? 'Soyad *' : language === 'ru' ? 'Фамилия *' : 'Last Name *'}
-                                                </label>
-                                                <div className="relative">
-                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                                    <input
-                                                        type="text"
-                                                        value={authForm.surname}
-                                                        onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
-                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                        placeholder={language === 'tr' ? 'Soyadınız' : language === 'ru' ? 'Ваша фамилия' : 'Your last name'}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Birth Year */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    {language === 'tr' ? 'Doğum Yılı *' : language === 'ru' ? 'Год рождения *' : 'Birth Year *'}
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        min="1900"
-                                                        max={new Date().getFullYear() - 13}
-                                                        value={authForm.birthYear}
-                                                        onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
-                                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                        placeholder={language === 'tr' ? 'Örn: 1995' : language === 'ru' ? 'Напр: 1995' : 'e.g. 1995'}
-                                                    />
-                                                </div>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    {language === 'tr' ? '13 yaş ve üzeri' : language === 'ru' ? '13 лет и старше' : '13 years or older'}
+                                            {authError && (
+                                                <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {authError}
                                                 </p>
+                                            )}
+
+                                            <button
+                                                onClick={async () => {
+                                                    if (!authForm.email) {
+                                                        setAuthError(language === 'tr' ? 'E-posta girin' : language === 'ru' ? 'Введите email' : 'Enter email');
+                                                        return;
+                                                    }
+                                                    setAuthLoading(true);
+                                                    setAuthError('');
+                                                    const result = await resetPassword(authForm.email);
+                                                    setAuthLoading(false);
+                                                    if (result.success) {
+                                                        setAuthError(language === 'tr' ? '✅ Sıfırlama bağlantısı gönderildi!' : language === 'ru' ? '✅ Ссылка отправлена!' : '✅ Reset link sent!');
+                                                    } else {
+                                                        setAuthError(result.error || 'Error');
+                                                    }
+                                                }}
+                                                disabled={authLoading}
+                                                className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {authLoading ? '...' : (language === 'tr' ? 'Bağlantı Gönder' : language === 'ru' ? 'Отправить ссылку' : 'Send Link')}
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    setAuthMode('login');
+                                                    setAuthError('');
+                                                }}
+                                                className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                            >
+                                                {language === 'tr' ? 'Girişe Dön' : language === 'ru' ? 'Назад ко входу' : 'Back to Login'}
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {authMode === 'register' && (
+                                                <>
+                                                    {/* Name */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            {language === 'tr' ? 'Ad *' : language === 'ru' ? 'Имя *' : 'First Name *'}
+                                                        </label>
+                                                        <div className="relative">
+                                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                            <input
+                                                                type="text"
+                                                                value={authForm.name}
+                                                                onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                                placeholder={language === 'tr' ? 'Adınız' : language === 'ru' ? 'Ваше имя' : 'Your first name'}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Surname */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            {language === 'tr' ? 'Soyad *' : language === 'ru' ? 'Фамилия *' : 'Last Name *'}
+                                                        </label>
+                                                        <div className="relative">
+                                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                            <input
+                                                                type="text"
+                                                                value={authForm.surname}
+                                                                onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
+                                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                                placeholder={language === 'tr' ? 'Soyadınız' : language === 'ru' ? 'Ваша фамилия' : 'Your last name'}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Birth Year */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                            {language === 'tr' ? 'Doğum Yılı *' : language === 'ru' ? 'Год рождения *' : 'Birth Year *'}
+                                                        </label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                min="1900"
+                                                                max={new Date().getFullYear() - 13}
+                                                                value={authForm.birthYear}
+                                                                onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
+                                                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                                placeholder={language === 'tr' ? 'Örn: 1995' : language === 'ru' ? 'Напр: 1995' : 'e.g. 1995'}
+                                                            />
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            {language === 'tr' ? '13 yaş ve üzeri' : language === 'ru' ? '13 лет и старше' : '13 years or older'}
+                                                        </p>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Email */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {t('auth.email')}
+                                                </label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="email"
+                                                        value={authForm.email}
+                                                        onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        placeholder={t('auth.email')}
+                                                    />
+                                                </div>
                                             </div>
+
+                                            {/* Password */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {t('auth.password')}
+                                                </label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                                    <input
+                                                        type="password"
+                                                        value={authForm.password}
+                                                        onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        placeholder={t('auth.password')}
+                                                    />
+                                                </div>
+                                                {authMode === 'register' && (
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                        {language === 'tr'
+                                                            ? 'En az 8 karakter'
+                                                            : language === 'ru'
+                                                                ? 'Минимум 8 символов'
+                                                                : 'Minimum 8 characters'}
+                                                    </p>
+                                                )}
+                                                {authMode === 'login' && (
+                                                    <div className="flex justify-end mt-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setAuthMode('forgot-password');
+                                                                setAuthError('');
+                                                            }}
+                                                            className="text-xs text-primary-500 hover:text-primary-600 font-medium"
+                                                        >
+                                                            {language === 'tr' ? 'Şifremi Unuttum?' : language === 'ru' ? 'Забыли пароль?' : 'Forgot Password?'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {authError && (
+                                                <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {authError}
+                                                </p>
+                                            )}
+
+                                            <button
+                                                onClick={handleAuth}
+                                                disabled={authLoading}
+                                                className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {authLoading
+                                                    ? '...'
+                                                    : authMode === 'login'
+                                                        ? t('auth.login')
+                                                        : t('auth.register')
+                                                }
+                                            </button>
+
+                                            <button
+                                                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                                                className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500"
+                                            >
+                                                {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowAuthModal(false)}
+                                                className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                            >
+                                                {t('auth.guest')}
+                                            </button>
                                         </>
                                     )}
-
-                                    {/* Email */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            {t('auth.email')}
-                                        </label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="email"
-                                                value={authForm.email}
-                                                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                placeholder={t('auth.email')}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Password */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            {t('auth.password')}
-                                        </label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="password"
-                                                value={authForm.password}
-                                                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                                placeholder={t('auth.password')}
-                                            />
-                                        </div>
-                                        {authMode === 'register' && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                {language === 'tr'
-                                                    ? 'En az 8 karakter'
-                                                    : language === 'ru'
-                                                        ? 'Минимум 8 символов'
-                                                        : 'Minimum 8 characters'}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {authError && (
-                                        <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
-                                            {authError}
-                                        </p>
-                                    )}
-
-                                    <button
-                                        onClick={handleAuth}
-                                        disabled={authLoading}
-                                        className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
-                                    >
-                                        {authLoading
-                                            ? '...'
-                                            : authMode === 'login'
-                                                ? t('auth.login')
-                                                : t('auth.register')
-                                        }
-                                    </button>
-
-                                    <button
-                                        onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                                        className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500"
-                                    >
-                                        {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
-                                    </button>
-
-                                    <button
-                                        onClick={() => setShowAuthModal(false)}
-                                        className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                                    >
-                                        {t('auth.guest')}
-                                    </button>
                                 </div>
                             </>
                         )}

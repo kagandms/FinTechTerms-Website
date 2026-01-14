@@ -26,6 +26,7 @@ interface AuthContextType {
     verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
     resendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
     cancelVerification: () => void;
+    resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     favoriteLimit: number;
 }
@@ -265,6 +266,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     /**
      * Logout the current user
      */
+    /**
+     * Send password reset email
+     */
+    const resetPassword = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/profile?reset=true`,
+            });
+
+            if (error) {
+                console.error('Reset password error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Reset password exception:', error);
+            return { success: false, error: 'Failed to send reset email' };
+        }
+    }, []);
+
     const logout = useCallback(async () => {
         try {
             // Clear local storage for SRS data
@@ -302,6 +324,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 verifyOTP,
                 resendOTP,
                 cancelVerification,
+                resetPassword,
                 logout,
                 favoriteLimit,
             }}
