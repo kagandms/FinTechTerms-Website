@@ -55,16 +55,16 @@ export default function HomePage() {
                     <Image
                         src="/ftt.png"
                         alt="FinTechTerms Logo"
-                        width={64}
-                        height={64}
-                        className="w-16 h-16 object-contain"
+                        width={128}
+                        height={128}
+                        className="w-16 h-16 md:w-28 md:h-28 object-contain drop-shadow-sm transition-all hover:scale-105"
                         priority
                     />
-                    <div className="min-w-0">
-                        <h1 className="text-xl sm:text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate">
+                    <div className="min-w-0 flex flex-col justify-center">
+                        <h1 className="text-xl sm:text-2xl md:text-5xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate tracking-tight">
                             FinTechTerms
                         </h1>
-                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
+                        <p className="text-[10px] sm:text-xs md:text-base text-gray-500 dark:text-gray-400 font-medium truncate opacity-90">
                             {t('home.subtitle')}
                         </p>
                     </div>
