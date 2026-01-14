@@ -55,9 +55,9 @@ export default function HomePage() {
                     <Image
                         src="/ftt.png"
                         alt="FinTechTerms Logo"
-                        width={48}
-                        height={48}
-                        className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 object-contain"
                         priority
                     />
                     <div className="min-w-0">

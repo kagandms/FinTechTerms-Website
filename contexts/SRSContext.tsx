@@ -86,21 +86,48 @@ export function SRSProvider({ children }: SRSProviderProps) {
             console.log('[LoadData] Supabase response count:', dbTerms?.length);
 
             if (dbTerms && dbTerms.length > 0) {
-                // Merge DB content with local SRS data
-                currentTerms = dbTerms.map(dbTerm => {
-                    const localTerm = currentTerms.find(t => t.id === dbTerm.id);
-                    // Use DB content + Local SRS (or default SRS if new)
-                    return {
-                        ...dbTerm,
-                        srs_level: localTerm?.srs_level ?? 1,
-                        next_review_date: localTerm?.next_review_date ?? new Date().toISOString(),
-                        last_reviewed: localTerm?.last_reviewed ?? null,
-                        difficulty_score: localTerm?.difficulty_score ?? 2.5,
-                        retention_rate: localTerm?.retention_rate ?? 0,
-                        times_reviewed: localTerm?.times_reviewed ?? 0,
-                        times_correct: localTerm?.times_correct ?? 0,
-                    } as Term;
+                // Merge DB content into local/mock list
+                // We want to KEEP all mock terms, but update them with DB data if it exists.
+                // We also want to ADD completely new terms from DB.
+
+                const dbTermsMap = new Map(dbTerms.map(t => [t.id, t]));
+
+                // 1. Update existing terms
+                const mergedTerms: Term[] = currentTerms.map(localTerm => {
+                    const dbTerm = dbTermsMap.get(localTerm.id);
+                    if (dbTerm) {
+                        // DB has this term, use DB content but keep local SRS stats
+                        return {
+                            ...dbTerm,
+                            srs_level: localTerm.srs_level,
+                            next_review_date: localTerm.next_review_date,
+                            last_reviewed: localTerm.last_reviewed,
+                            difficulty_score: localTerm.difficulty_score,
+                            retention_rate: localTerm.retention_rate,
+                            times_reviewed: localTerm.times_reviewed,
+                            times_correct: localTerm.times_correct,
+                        } as Term;
+                    }
+                    return localTerm;
                 });
+
+                // 2. Add new terms from DB that weren't in local list
+                dbTerms.forEach(dbTerm => {
+                    if (!currentTerms.find(t => t.id === dbTerm.id)) {
+                        mergedTerms.push({
+                            ...dbTerm,
+                            srs_level: 1, // Default for new
+                            next_review_date: new Date().toISOString(),
+                            last_reviewed: null,
+                            difficulty_score: 2.5,
+                            retention_rate: 0,
+                            times_reviewed: 0,
+                            times_correct: 0
+                        } as Term);
+                    }
+                });
+
+                currentTerms = mergedTerms;
                 console.log('[LoadData] Merged terms count:', currentTerms.length);
                 // Update local storage cache
                 saveTerms(currentTerms);

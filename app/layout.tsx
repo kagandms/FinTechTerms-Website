@@ -104,13 +104,13 @@ export const metadata: Metadata = {
     // PWA
     manifest: '/manifest.json',
     icons: {
-        icon: '/favicon.ico',
-        shortcut: '/favicon.ico',
-        apple: '/icons/icon-192.png',
+        icon: '/ftt.png',
+        shortcut: '/ftt.png',
+        apple: '/ftt.png',
         other: [
             {
                 rel: 'apple-touch-icon-precomposed',
-                url: '/icons/icon-192.png',
+                url: '/ftt.png',
             },
         ],
     },
@@ -143,8 +143,8 @@ export default function RootLayout({
     return (
         <html lang="tr" suppressHydrationWarning>
             <head>
-                <link rel="icon" href="/favicon.ico" sizes="any" />
-                <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+                <link rel="icon" href="/ftt.png" sizes="any" />
+                <link rel="apple-touch-icon" href="/ftt.png" />
                 {/* Schema.org JSON-LD for SEO */}
                 <script
                     type="application/ld+json"
