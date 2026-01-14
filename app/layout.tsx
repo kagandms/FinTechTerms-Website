@@ -16,28 +16,25 @@ const siteUrl = 'https://fintechterms.vercel.app';
 export const metadata: Metadata = {
     // Basic Meta
     title: {
-        default: 'FinTechTerms | Finans ve Teknoloji Sözlüğü (TR-EN-RU)',
-        template: '%s | FinTechTerms - Finansal Sözlük',
+        default: 'FinTechTerms | Global Finance & Technology Dictionary (EN-TR-RU)',
+        template: '%s | FinTechTerms - Financial Dictionary',
     },
-    description: 'FinTechTerms ile Finans, Bilişim, Yapay Zeka ve Blockchain terimlerini öğrenin. Türkçe, İngilizce ve Rusça açıklamalı, SRS tabanlı akıllı sözlük ve flashcard uygulaması.',
+    description: 'Master Fintech, Finance, AI, and Blockchain terms. Trilingual dictionary with SRS-based smart flashcards in English, Turkish, and Russian.',
     keywords: [
         // Brand
         'FinTechTerms', 'FinTerms', 'FTT',
         // General
+        'Finance Dictionary', 'Fintech Dictionary', 'Economic Terms', 'IT Dictionary',
         'Finans Sözlüğü', 'Fintech Sözlüğü', 'Ekonomi Terimleri', 'Bilişim Sözlüğü',
-        'Financial Dictionary', 'Fintech Dictionary', 'Economic Terms', 'IT Dictionary',
         'Финансовый словарь', 'Финтех словарь', 'Экономические термины', 'IT словарь',
         // Specific Topics
-        'Blockchain', 'Kripto Para', 'Yapay Zeka', 'Machine Learning', 'AI Terms',
-        'DeFi', 'NFT', 'SaaS', 'PaaS', 'IaaS', 'Cloud Computing',
+        'Blockchain', 'Crypto', 'AI', 'Machine Learning', 'DeFi', 'NFT', 'SaaS', 'Cloud Computing',
         // Education/Method
-        'SRS', 'Spaced Repetition', 'Aralıklı Tekrar', 'Flashcard', 'Kelime Ezberleme',
-        'İngilizce Öğren', 'Rusça Öğren', 'Finansal Okuryazarlık',
+        'SRS', 'Spaced Repetition', 'Flashcard', 'Vocabulary', 'Learn English', 'Learn Turkish', 'Learn Russian',
         // Variations
-        'nedir', 'ne demek', 'anlamı', 'what is', 'meaning', 'что это', 'значение',
-        'Terimler', 'Kavramlar', 'Terminology', 'Vocabulary',
-        'Bankacılık', 'Banking', 'Банковское дело',
-        'Yatırım', 'Investment', 'Инвестиции'
+        'definition', 'meaning', 'what is', 'nedir', 'ne demek', 'anlamı', 'что это', 'значение',
+        'Terms', 'Concepts', 'Terminology',
+        'Banking', 'Investment', 'Economics'
     ],
     authors: [{ name: 'FinTechTerms Team', url: siteUrl }],
     creator: 'FinTechTerms',
@@ -49,8 +46,8 @@ export const metadata: Metadata = {
     alternates: {
         canonical: '/',
         languages: {
-            'tr-TR': '/',
             'en-US': '/',
+            'tr-TR': '/',
             'ru-RU': '/',
         },
     },
@@ -71,16 +68,16 @@ export const metadata: Metadata = {
 
     // Open Graph
     openGraph: {
-        title: 'FinTechTerms | Küresel Finans ve Teknoloji Sözlüğü',
-        description: 'Fintech, Ekonomi ve Yazılım dünyasına hakim olun. Türkçe, İngilizce ve Rusça terimler, akıllı öğrenme sistemi ile cebinizde.',
+        title: 'FinTechTerms | Global Finance & Technology Dictionary',
+        description: 'Master Fintech, Economics, and Software terms. English, Turkish, and Russian dictionary with smart SRS learning system.',
         url: siteUrl,
         siteName: 'FinTechTerms',
-        locale: 'tr_TR',
-        alternateLocale: ['en_US', 'ru_RU'],
+        locale: 'en_US',
+        alternateLocale: ['tr_TR', 'ru_RU'],
         type: 'website',
         images: [
             {
-                url: '/og-image.png', // Ensure this exists or use ftt.png as fallback if dedicated generic card absent
+                url: '/og-image.png',
                 width: 1200,
                 height: 630,
                 alt: 'FinTechTerms - Trilingual Dictionary Interface',
@@ -91,8 +88,8 @@ export const metadata: Metadata = {
     // Twitter
     twitter: {
         card: 'summary_large_image',
-        title: 'FinTechTerms | Finans ve Teknoloji Dünyası',
-        description: 'Fintech, Ekonomi ve Yazılım terimlerini 3 dilde öğrenin. SRS algoritması ile unutmaya son.',
+        title: 'FinTechTerms | World of Finance & Technology',
+        description: 'Learn Fintech, Economics, and Tech terms in 3 languages. Never forget with SRS algorithm.',
         images: ['/og-image.png'],
         creator: '@fintechterms',
         site: '@fintechterms',
@@ -141,7 +138,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="tr" suppressHydrationWarning>
+        <html lang="en" suppressHydrationWarning>
             <head>
                 <link rel="icon" href="/ftt.png" sizes="any" />
                 <link rel="apple-touch-icon" href="/ftt.png" />

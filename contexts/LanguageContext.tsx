@@ -31,7 +31,7 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-    const [language, setLanguageState] = useState<Language>('tr');
+    const [language, setLanguageState] = useState<Language>('en');
     const [isHydrated, setIsHydrated] = useState(false);
 
     // Hydrate from localStorage on mount

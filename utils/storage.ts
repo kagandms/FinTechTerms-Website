@@ -26,7 +26,7 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-01-13-v1'; // Force data refresh
+const DATA_VERSION = '2026-01-14-v2'; // Force data refresh with new 1000+ terms
 
 /**
  * Get all terms from storage (or initialize with mock data)
@@ -192,16 +192,16 @@ export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
  * Get current language preference
  */
 export function getCurrentLanguage(): 'tr' | 'en' | 'ru' {
-    if (!isLocalStorageAvailable()) return 'tr';
+    if (!isLocalStorageAvailable()) return 'en';
 
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
         if (stored && ['tr', 'en', 'ru'].includes(stored)) {
             return stored as 'tr' | 'en' | 'ru';
         }
-        return 'tr';
+        return 'en';
     } catch {
-        return 'tr';
+        return 'en';
     }
 }
 
