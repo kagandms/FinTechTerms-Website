@@ -21,12 +21,14 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     pendingVerificationEmail: string | null;
+    isPasswordRecovery: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }>;
     verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
     resendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
     cancelVerification: () => void;
     resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+    updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     favoriteLimit: number;
 }
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+    const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
     // Initialize auth state and listen for changes
     useEffect(() => {
@@ -85,6 +88,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsPasswordRecovery(true);
+            }
+
             if (session?.user) {
                 // Only allow login if email is confirmed
                 if (!session.user.email_confirmed_at) {
@@ -287,6 +294,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
+    const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: password
+            });
+
+            if (error) {
+                console.error('Update password error:', error.message);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Update password exception:', error);
+            return { success: false, error: 'Failed to update password' };
+        }
+    }, []);
+
     const logout = useCallback(async () => {
         try {
             // Clear local storage for SRS data
@@ -319,12 +344,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isAuthenticated,
                 isLoading,
                 pendingVerificationEmail,
+                isPasswordRecovery,
                 login,
                 register,
                 verifyOTP,
                 resendOTP,
                 cancelVerification,
                 resetPassword,
+                updatePassword,
                 logout,
                 favoriteLimit,
             }}

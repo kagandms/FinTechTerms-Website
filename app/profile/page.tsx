@@ -35,19 +35,28 @@ import Link from 'next/link';
 export default function ProfilePage() {
     const { t, language, setLanguage } = useLanguage();
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
-    const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification, resetPassword } = useAuth();
+    const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification, resetPassword, updatePassword, isPasswordRecovery } = useAuth();
     const { theme, setTheme } = useTheme();
 
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
+    const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'update-password'>('login');
     const [authForm, setAuthForm] = useState({
         email: '',
         password: '',
+        confirmPassword: '',
         name: '',
         surname: '',
         birthYear: ''
     });
+
+    // Detect password recovery mode
+    React.useEffect(() => {
+        if (isPasswordRecovery) {
+            setAuthMode('update-password');
+            setShowAuthModal(true);
+        }
+    }, [isPasswordRecovery]);
     const [otpCode, setOtpCode] = useState('');
     const [authError, setAuthError] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
@@ -149,7 +158,7 @@ export default function ProfilePage() {
                     }, 1000);
                 } else {
                     setShowAuthModal(false);
-                    setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
+                    setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
                 }
             } else {
                 setAuthError(result.error || (language === 'tr'
@@ -512,7 +521,7 @@ export default function ProfilePage() {
                                             setAuthLoading(false);
                                             if (result.success) {
                                                 setShowAuthModal(false);
-                                                setAuthForm({ email: '', password: '', name: '', surname: '', birthYear: '' });
+                                                setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
                                                 setOtpCode('');
                                             } else {
                                                 setAuthError(result.error || (language === 'tr' ? 'Geçersiz kod' : language === 'ru' ? 'Неверный код' : 'Invalid code'));
@@ -564,6 +573,98 @@ export default function ProfilePage() {
                                         className="w-full py-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                                     >
                                         {language === 'tr' ? 'İptal' : language === 'ru' ? 'Отмена' : 'Cancel'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : authMode === 'update-password' ? (
+                            /* Update Password Form */
+                            <>
+                                <div className="flex items-center gap-3 mb-6">
+                                    <Lock className="w-6 h-6 text-primary-500" />
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {language === 'tr' ? 'Yeni Şifre Belirle' : language === 'ru' ? 'Установить новый пароль' : 'Set New Password'}
+                                    </h3>
+                                </div>
+
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                    {language === 'tr'
+                                        ? 'Lütfen yeni şifrenizi girin.'
+                                        : language === 'ru'
+                                            ? 'Пожалуйста, введите новый пароль.'
+                                            : 'Please enter your new password.'}
+                                </p>
+
+                                <div className="space-y-4">
+                                    {/* New Password */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password'}
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={authForm.password}
+                                                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder="********"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Confirm Password */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            {language === 'tr' ? 'Şifreyi Onayla' : language === 'ru' ? 'Подтвердите пароль' : 'Confirm Password'}
+                                        </label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                            <input
+                                                type="password"
+                                                value={authForm.confirmPassword}
+                                                onChange={(e) => setAuthForm({ ...authForm, confirmPassword: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                placeholder="********"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {authError && (
+                                        <p className={`text-sm ${authError.startsWith('✅') ? 'text-green-500' : 'text-red-500'}`}>
+                                            {authError}
+                                        </p>
+                                    )}
+
+                                    <button
+                                        onClick={async () => {
+                                            if (authForm.password.length < 8) {
+                                                setAuthError(language === 'tr' ? 'Şifre en az 8 karakter olmalı' : language === 'ru' ? 'Пароль минимум 8 символов' : 'Password must be at least 8 characters');
+                                                return;
+                                            }
+                                            if (authForm.password !== authForm.confirmPassword) {
+                                                setAuthError(language === 'tr' ? 'Şifreler uyuşmuyor' : language === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match');
+                                                return;
+                                            }
+
+                                            setAuthLoading(true);
+                                            setAuthError('');
+                                            const result = await updatePassword(authForm.password);
+                                            setAuthLoading(false);
+                                            if (result.success) {
+                                                setAuthError(language === 'tr' ? '✅ Şifre güncellendi!' : language === 'ru' ? '✅ Пароль обновлен!' : '✅ Password updated!');
+                                                setTimeout(() => {
+                                                    setShowAuthModal(false);
+                                                    setAuthMode('login');
+                                                    setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
+                                                }, 2000);
+                                            } else {
+                                                setAuthError(result.error || 'Error');
+                                            }
+                                        }}
+                                        disabled={authLoading}
+                                        className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                    >
+                                        {authLoading ? '...' : (language === 'tr' ? 'Şifreyi Güncelle' : language === 'ru' ? 'Обновить пароль' : 'Update Password')}
                                     </button>
                                 </div>
                             </>
