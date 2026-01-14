@@ -20,7 +20,8 @@
         "recentTerms": "Son Terimler",
         "addToFavorites": "Favorilere ekleyerek Pratik'te tekrar edin",
         "exploreWords": "Kelimeleri Keşfet",
-        "categories": "Kategoriler"
+        "categories": "Kategoriler",
+        "noTerms": "Henüz terim bulunamadı."
     },
     "search": {
         "placeholder": "Türkçe, İngilizce veya Rusça ara...",

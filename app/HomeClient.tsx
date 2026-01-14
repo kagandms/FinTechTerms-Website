@@ -55,9 +55,8 @@ export default function HomePage() {
                     <Image
                         src="/ftt.png"
                         alt="FinTechTerms Logo"
-                        width={48}
                         height={48}
-                        className="w-12 h-12 object-contain"
+                        className="w-12 h-12 object-contain rounded-xl"
                         priority
                     />
                     <div className="min-w-0">
@@ -97,7 +96,7 @@ export default function HomePage() {
                             alt="FinTechTerms Logo"
                             width={160}
                             height={160}
-                            className="relative w-40 h-40 object-contain drop-shadow-xl transform transition duration-500 group-hover:scale-110"
+                            className="relative w-40 h-40 object-contain rounded-3xl drop-shadow-xl transform transition duration-500 group-hover:scale-110"
                             priority
                         />
                     </div>

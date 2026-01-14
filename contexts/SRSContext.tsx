@@ -79,6 +79,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         console.log('[LoadData] Initial terms from local/mock:', currentTerms.length);
 
+        // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
+        if (currentTerms.length > 0) {
+            setTerms(currentTerms);
+        }
+
         // 1. Fetch latest terms content from Supabase (if online)
         try {
             console.log('[LoadData] Fetching from Supabase...');
@@ -87,16 +92,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
             if (dbTerms && dbTerms.length > 0) {
                 // Merge DB content into local/mock list
-                // We want to KEEP all mock terms, but update them with DB data if it exists.
-                // We also want to ADD completely new terms from DB.
-
                 const dbTermsMap = new Map(dbTerms.map(t => [t.id, t]));
 
                 // 1. Update existing terms
                 const mergedTerms: Term[] = currentTerms.map(localTerm => {
                     const dbTerm = dbTermsMap.get(localTerm.id);
                     if (dbTerm) {
-                        // DB has this term, use DB content but keep local SRS stats
                         return {
                             ...dbTerm,
                             srs_level: localTerm.srs_level,
@@ -131,18 +132,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 console.log('[LoadData] Merged terms count:', currentTerms.length);
                 // Update local storage cache
                 saveTerms(currentTerms);
-            } else {
-                console.warn('[LoadData] Supabase returned empty terms array. Keeping local data.');
-                // If local data is also somehow empty (rare), we must ensure we have something
-                if (currentTerms.length === 0) {
-                    // getTerms() handles this, but let's re-verify
-                    console.warn('[LoadData] CRITICAL: No terms found. Resetting to defaults.');
-                    // We can rely on the fact getTerms returns mockTerms if storage empty
-                }
+                // Update state with fresh data
+                setTerms(currentTerms);
             }
         } catch (error) {
             console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
-            // Fallback to currentTerms (which is getTerms() result)
         }
 
         // Final safety check: if we somehow definitely have 0 terms, force reload from utils

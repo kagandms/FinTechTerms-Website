@@ -6,6 +6,8 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     BarChart, Bar, AreaChart, Area, ComposedChart
 } from 'recharts';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 
 interface Props {
     learningData: any[];
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function DashboardClient({ learningData, latencyData, fatigueRaw, distributionRaw }: Props) {
+    const { logout } = useAuth();
 
     // 1. Process Learning Curve (Group by Date)
     const learningCurve = useMemo(() => {
@@ -133,6 +136,19 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
 
     return (
         <div className="flex flex-col gap-12">
+
+            {/* Header with Logout */}
+            <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
+                <button
+                    onClick={() => logout()}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                </button>
+            </div>
+
             {/* 1. Learning Curve */}
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">The Learning Curve (Average Accuracy)</h2>

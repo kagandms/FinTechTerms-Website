@@ -20,7 +20,8 @@
         "recentTerms": "Recent Terms",
         "addToFavorites": "Add terms to favorites to review them in Practice",
         "exploreWords": "Explore Words",
-        "categories": "Categories"
+        "categories": "Categories",
+        "noTerms": "No terms found yet."
     },
     "search": {
         "placeholder": "Search in Turkish, English or Russian...",
