@@ -315,50 +315,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('UpdatePassword: Starting...');
 
-            // Small delay to ensure Supabase has processed the recovery token
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Get current session for access token
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                console.error('UpdatePassword: No access token found');
+                return { success: false, error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' };
+            }
 
-            // Create timeout promise
-            const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 15000);
+            console.log('UpdatePassword: calling REST API fallback directly...');
+
+            // Direct REST API Call to bypass Supabase Client queue/locking issues
+            const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password: password })
             });
 
-            // Call updateUser with timeout
-            console.log('UpdatePassword: Calling updateUser...');
+            const data = await response.json();
 
-            try {
-                const result = await Promise.race([
-                    supabase.auth.updateUser({ password }),
-                    timeoutPromise
-                ]);
-
-                console.log('UpdatePassword: Result', {
-                    hasData: !!result.data,
-                    hasUser: !!result.data?.user,
-                    error: result.error?.message
-                });
-
-                if (result.data?.user && !result.error) {
-                    console.log('UpdatePassword: Success!');
-                    setIsPasswordRecovery(false);
-                    return { success: true };
-                }
-
-                if (result.error) {
-                    setIsPasswordRecovery(false);
-                    return { success: false, error: result.error.message };
-                }
-
+            if (!response.ok) {
+                console.error('UpdatePassword REST Error:', data);
                 setIsPasswordRecovery(false);
-                return { success: false, error: 'Beklenmeyen hata oluştu.' };
-            } catch (raceError: any) {
-                console.error('UpdatePassword: Race error', raceError.message);
-                if (raceError.message === 'TIMEOUT') {
-                    setIsPasswordRecovery(false);
-                    return { success: false, error: 'İşlem zaman aşımına uğradı. Lütfen sayfayı yenileyip tekrar deneyin.' };
-                }
-                throw raceError;
+                return { success: false, error: data.msg || data.error_description || 'Şifre güncellenemedi.' };
             }
+
+            console.log('UpdatePassword REST Success:', data);
+
+            // Force refresh session to ensure client is in sync
+            await supabase.auth.refreshSession();
+
+            setIsPasswordRecovery(false);
+            return { success: true };
+
         } catch (error: any) {
             console.error('UpdatePassword exception:', error);
             setIsPasswordRecovery(false);
