@@ -55,6 +55,24 @@ function ProfileContent() {
 
     // Detect password recovery mode via Event (primary) or URL (fallback)
     React.useEffect(() => {
+        // Debug logging to help diagnose issues
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash;
+            const isResetParam = searchParams.get('reset') === 'true';
+            const isTypeParam = searchParams.get('type') === 'recovery';
+            const isHashRecovery = hash.includes('type=recovery');
+
+            if (isResetParam || isTypeParam || isHashRecovery || isPasswordRecovery) {
+                console.log('Password Reset Detection:', {
+                    event: isPasswordRecovery,
+                    queryReset: isResetParam,
+                    queryType: isTypeParam,
+                    hashRecovery: isHashRecovery,
+                    authenticated: isAuthenticated
+                });
+            }
+        }
+
         // Check local state from AuthContext (Event based)
         if (isPasswordRecovery) {
             setAuthMode('update-password');
@@ -63,12 +81,14 @@ function ProfileContent() {
         }
 
         // Check URL params (Fallback if event missed)
-        // Standard Supabase recovery link puts `type=recovery` in query or hash (handled by client)
-        // We also added `reset=true` in our redirectTo
         const isResetUrl = searchParams.get('reset') === 'true';
         const isRecoveryType = searchParams.get('type') === 'recovery';
 
-        if ((isResetUrl || isRecoveryType) && isAuthenticated) {
+        // 3. Hash Checks (Supabase sometimes puts params in hash)
+        const hash = typeof window !== 'undefined' ? window.location.hash : '';
+        const isRecoveryInHash = hash.includes('type=recovery');
+
+        if ((isResetUrl || isRecoveryType || isRecoveryInHash) && isAuthenticated) {
             setAuthMode('update-password');
             setShowAuthModal(true);
         }
