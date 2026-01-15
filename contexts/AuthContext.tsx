@@ -312,47 +312,66 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
-        try {
-            console.log('UpdatePassword: Starting...');
+        const attemptUpdate = async (retryCount = 0): Promise<{ success: boolean; error?: string }> => {
+            try {
+                console.log(`UpdatePassword: Attempt ${retryCount + 1}...`);
 
-            // Wait a moment for Supabase to fully process the recovery token
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Try to get/refresh session first, but don't fail if it doesn't work
-            console.log('UpdatePassword: Attempting session refresh...');
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                console.log('UpdatePassword: No session, trying refreshSession...');
-                await supabase.auth.refreshSession();
-            }
-
-            // Now try to update regardless of session status
-            // Supabase should maintain the recovery session internally
-            console.log('UpdatePassword: Calling updateUser...');
-            const { data, error } = await supabase.auth.updateUser({ password });
-
-            console.log('UpdatePassword: Result', { success: !!data, error: error?.message });
-
-            if (error) {
-                console.error('UpdatePassword error:', error.message);
-                setIsPasswordRecovery(false);
-
-                // Provide user-friendly error messages
-                if (error.message.includes('session') || error.message.includes('Session')) {
-                    return { success: false, error: 'Oturum süresi doldu. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
+                // Wait a moment for Supabase to fully process the recovery token
+                if (retryCount === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
-                return { success: false, error: error.message };
-            }
 
-            console.log('UpdatePassword: Success!');
-            setIsPasswordRecovery(false);
-            return { success: true };
-        } catch (error: any) {
-            console.error('UpdatePassword exception:', error);
-            setIsPasswordRecovery(false);
-            return { success: false, error: error.message || 'Şifre güncellenemedi' };
-        }
+                // Try to refresh session first
+                console.log('UpdatePassword: Refreshing session...');
+                await supabase.auth.refreshSession();
+
+                // Now try to update
+                console.log('UpdatePassword: Calling updateUser...');
+                const { data, error } = await supabase.auth.updateUser({ password });
+
+                console.log('UpdatePassword: Result', { success: !!data, error: error?.message });
+
+                if (error) {
+                    const errorMsg = error.message.toLowerCase();
+
+                    // Handle abort/timeout errors with retry
+                    if (errorMsg.includes('abort') || errorMsg.includes('signal') || errorMsg.includes('timeout')) {
+                        if (retryCount < 2) {
+                            console.log('UpdatePassword: Retrying due to network error...');
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            return attemptUpdate(retryCount + 1);
+                        }
+                        return { success: false, error: 'Bağlantı zaman aşımı. Lütfen tekrar deneyin.' };
+                    }
+
+                    // Handle session errors
+                    if (errorMsg.includes('session')) {
+                        return { success: false, error: 'Oturum süresi doldu. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
+                    }
+
+                    return { success: false, error: error.message };
+                }
+
+                console.log('UpdatePassword: Success!');
+                return { success: true };
+            } catch (error: any) {
+                const errorMsg = (error.message || '').toLowerCase();
+                console.error('UpdatePassword exception:', errorMsg);
+
+                // Retry on network errors
+                if ((errorMsg.includes('abort') || errorMsg.includes('signal') || errorMsg.includes('network')) && retryCount < 2) {
+                    console.log('UpdatePassword: Retrying after exception...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return attemptUpdate(retryCount + 1);
+                }
+
+                return { success: false, error: 'Şifre güncellenemedi. Lütfen tekrar deneyin.' };
+            }
+        };
+
+        const result = await attemptUpdate();
+        setIsPasswordRecovery(false);
+        return result;
     }, []);
 
     const logout = useCallback(async () => {
