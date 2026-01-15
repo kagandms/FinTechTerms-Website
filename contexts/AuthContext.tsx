@@ -337,13 +337,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 // Also clear terms to force a fresh fetch next time ensuring data consistency
                 // localStorage.removeItem('globalfinterm_terms'); 
             }
+            // Optimistic Logout: Clear state immediately
+            setUser(null);
+            setPendingVerificationEmail(null);
+
+            // Then tell Supabase (non-blocking for UI)
             const { error } = await supabase.auth.signOut();
             if (error) {
                 console.error('Supabase signOut error:', error);
             }
-            // Explicitly clear user state to ensure UI updates immediately
-            setUser(null);
-            setPendingVerificationEmail(null);
         } catch (error) {
             console.error('Logout handler error:', error);
         } finally {

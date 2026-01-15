@@ -87,18 +87,19 @@ export default function HomePage() {
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm relative z-50">
+            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-primary-800 bg-white/50 dark:bg-primary-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm relative z-50">
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
-                        {/* Blur effect removed */}
-                        <Image
-                            src="/ftt.png"
-                            alt="FinTechTerms Logo"
-                            width={160}
-                            height={160}
-                            className="relative w-40 h-40 object-contain rounded-3xl drop-shadow-xl transform transition duration-500 group-hover:scale-110"
-                            priority
-                        />
+                        {/* Wrapper for definitive rounding */}
+                        <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-primary-800/30">
+                            <Image
+                                src="/ftt.png"
+                                alt="FinTechTerms Logo"
+                                fill
+                                className="object-cover"
+                                priority
+                            />
+                        </div>
                     </div>
                     <div className="flex flex-col justify-center h-40">
                         <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tighter mb-2">

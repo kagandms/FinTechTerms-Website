@@ -39,9 +39,9 @@ const config: Config = {
                 },
                 surface: {
                     light: '#ffffff',
-                    dark: '#1a1a2e',
+                    dark: '#061f2e', // Primary-900 (Deep Navy)
                     card: '#f8fafc',
-                    cardDark: '#16213e',
+                    cardDark: '#0a2d46', // Primary-700
                 },
             },
             fontFamily: {
