@@ -3,6 +3,7 @@
 // ============================================
 
 import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -16,6 +17,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * Uses cookies for session storage, allowing server-side access.
  */
 export const supabase = createBrowserClient(supabaseUrl || '', supabaseAnonKey || '');
+
+/**
+ * Standard Supabase client for auth operations
+ * Use this for updateUser and other auth operations that may have issues with SSR client
+ */
+export const supabaseAuth = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+});
 
 /**
  * Database Types (generated from schema)

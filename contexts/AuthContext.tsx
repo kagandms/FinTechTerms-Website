@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAuth } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
     getUserProgressFromSupabase,
@@ -321,16 +321,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
-                // Get current session info for debugging
-                const { data: { session } } = await supabase.auth.getSession();
+                // Get current session info for debugging - use standard client
+                const { data: { session } } = await supabaseAuth.auth.getSession();
                 console.log('UpdatePassword: Current session:', {
                     hasSession: !!session,
                     email: session?.user?.email
                 });
 
-                // Call updateUser directly - don't refresh session as it might reset recovery state
-                console.log('UpdatePassword: Calling updateUser...');
-                const { data, error } = await supabase.auth.updateUser({ password });
+                // Use standard Supabase client (not SSR) for updateUser to avoid AbortError
+                console.log('UpdatePassword: Calling updateUser with standard client...');
+                const { data, error } = await supabaseAuth.auth.updateUser({ password });
 
                 console.log('UpdatePassword: Result', {
                     hasData: !!data,
