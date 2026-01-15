@@ -59,7 +59,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
-    const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+    const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+        // Check URL immediately on initialization (before Supabase clears the hash)
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            const isReset = urlParams.get('reset') === 'true';
+            const isRecoveryType = urlParams.get('type') === 'recovery';
+            const isRecoveryInHash = hash.includes('type=recovery');
+
+            if (isReset || isRecoveryType || isRecoveryInHash) {
+                console.log('AuthContext: Password recovery detected from URL on init');
+                return true;
+            }
+        }
+        return false;
+    });
 
     // Initialize auth state and listen for changes
     useEffect(() => {
@@ -88,7 +103,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth event:', event);
             if (event === 'PASSWORD_RECOVERY') {
+                console.log('PASSWORD_RECOVERY event fired');
                 setIsPasswordRecovery(true);
             }
 
