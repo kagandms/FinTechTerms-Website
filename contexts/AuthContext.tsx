@@ -298,13 +298,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('Update password requested...');
 
-            // Attempt a safety refresh (non-blocking)
-            try {
-                await supabase.auth.refreshSession();
-            } catch (rErr) {
-                console.warn('Safety refresh failed, proceeding anyway:', rErr);
-            }
-
             // Create a timeout promise to prevent infinite hanging
             const timeoutPromise = new Promise<{ error: string }>((_, reject) => {
                 setTimeout(() => reject(new Error('Update timed out')), 20000); // 20s
