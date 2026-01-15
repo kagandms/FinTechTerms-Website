@@ -313,51 +313,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            console.log('Update password requested...');
+            console.log('Step 1: Update password requested...');
 
             // Ensure we have a valid session before attempting update
-            const { data: { session } } = await supabase.auth.getSession();
+            console.log('Step 2: Checking session...');
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            console.log('Step 3: Session check result:', { hasSession: !!session, error: sessionError?.message });
+
             if (!session) {
-                console.log('No active session found, attempting refresh...');
+                console.log('Step 4: No session, attempting refresh...');
                 const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+                console.log('Step 5: Refresh result:', { hasSession: !!refreshedSession, error: refreshError?.message });
+
                 if (refreshError || !refreshedSession) {
                     setIsPasswordRecovery(false);
-                    return { success: false, error: 'Session expired. Please click the reset link again.' };
+                    return { success: false, error: 'Oturum süresi doldu. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
                 }
             }
 
-            // Create a timeout promise to prevent infinite hanging
-            const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
-                setTimeout(() => resolve({ data: null, error: { message: 'Update timed out' } }), 15000); // 15s
-            });
+            console.log('Step 6: Calling updateUser...');
 
-            // Race between actual update and timeout
-            const result = await Promise.race([
-                supabase.auth.updateUser({ password: password }),
-                timeoutPromise
-            ]);
+            // Direct call without Promise.race first to see if it works
+            const { data, error } = await supabase.auth.updateUser({ password: password });
 
-            if (result.error) {
-                console.error('Update password error:', result.error.message);
+            console.log('Step 7: updateUser result:', { hasData: !!data, error: error?.message });
+
+            if (error) {
+                console.error('Update password error:', error.message);
                 setIsPasswordRecovery(false);
-                return { success: false, error: result.error.message };
+                return { success: false, error: error.message };
             }
 
-            console.log('Update password success');
+            console.log('Step 8: Password update success!');
             // Reset the password recovery state
             setIsPasswordRecovery(false);
             return { success: true };
         } catch (error: any) {
             console.error('Update password exception:', error);
             setIsPasswordRecovery(false);
-            const emsg = (error.message || '').toLowerCase();
 
-            // Localized timeout error
-            if (emsg.includes('timed out') || emsg.includes('zaman aşımı')) {
-                return { success: false, error: 'İşlem zaman aşımına uğradı. (Timeout). Lütfen sayfayı yenileyip tekrar deneyin.' };
-            }
-
-            return { success: false, error: error.message || 'Failed to update password' };
+            return { success: false, error: error.message || 'Şifre güncellenemedi' };
         }
     }, []);
 
