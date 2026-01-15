@@ -298,6 +298,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('Update password requested...');
 
+            // Ensure we have a valid session before attempting update
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                console.log('No active session found, attempting refresh...');
+                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError || !refreshedSession) {
+                    return { success: false, error: 'Session expired. Please click the reset link again.' };
+                }
+            }
+
             // Create a timeout promise to prevent infinite hanging
             const timeoutPromise = new Promise<{ error: string }>((_, reject) => {
                 setTimeout(() => reject(new Error('Update timed out')), 20000); // 20s

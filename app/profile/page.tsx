@@ -926,7 +926,7 @@ function ProfileContent() {
                                                                 setAuthMode('forgot-password');
                                                                 setAuthError('');
                                                             }}
-                                                            className="text-xs text-primary-500 hover:text-primary-600 font-medium"
+                                                            className="text-xs text-primary-500 dark:text-primary-300 hover:text-primary-600 dark:hover:text-primary-200 font-medium"
                                                         >
                                                             {language === 'tr' ? 'Şifremi Unuttum?' : language === 'ru' ? 'Забыли пароль?' : 'Forgot Password?'}
                                                         </button>
