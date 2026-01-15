@@ -322,34 +322,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return { success: false, error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' };
             }
 
-            console.log('UpdatePassword: calling REST API fallback directly...');
+            console.log('UpdatePassword: Using XMLHttpRequest to avoid fetch abort issues...');
 
-            // Direct REST API Call to bypass Supabase Client queue/locking issues
-            const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ password: password })
+            // Use XMLHttpRequest to completely bypass any fetch interceptors/abort signals
+            const result = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+                const xhr = new XMLHttpRequest();
+                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`;
+
+                xhr.open('PUT', url, true);
+                xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+
+                xhr.timeout = 30000; // 30 second timeout
+
+                xhr.onload = () => {
+                    console.log('UpdatePassword XHR onload:', xhr.status);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve({ success: true });
+                    } else {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            resolve({ success: false, error: data.msg || data.error_description || 'Şifre güncellenemedi.' });
+                        } catch {
+                            resolve({ success: false, error: `HTTP Hatası: ${xhr.status}` });
+                        }
+                    }
+                };
+
+                xhr.onerror = () => {
+                    console.error('UpdatePassword XHR error');
+                    resolve({ success: false, error: 'Ağ hatası oluştu. Lütfen tekrar deneyin.' });
+                };
+
+                xhr.ontimeout = () => {
+                    console.error('UpdatePassword XHR timeout');
+                    resolve({ success: false, error: 'İşlem zaman aşımına uğradı.' });
+                };
+
+                xhr.send(JSON.stringify({ password: password }));
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                console.error('UpdatePassword REST Error:', data);
-                setIsPasswordRecovery(false);
-                return { success: false, error: data.msg || data.error_description || 'Şifre güncellenemedi.' };
+            if (result.success) {
+                console.log('UpdatePassword: Success!');
+                // Force refresh session to ensure client is in sync
+                try {
+                    await supabase.auth.refreshSession();
+                } catch (e) {
+                    console.warn('Session refresh failed, but password was updated:', e);
+                }
             }
 
-            console.log('UpdatePassword REST Success:', data);
-
-            // Force refresh session to ensure client is in sync
-            await supabase.auth.refreshSession();
-
             setIsPasswordRecovery(false);
-            return { success: true };
+            return result;
 
         } catch (error: any) {
             console.error('UpdatePassword exception:', error);
