@@ -315,66 +315,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('UpdatePassword: Starting...');
 
-            // Get current session for access token
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                console.error('UpdatePassword: No access token found');
-                return { success: false, error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' };
+            // Validate session existence first
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session) {
+                console.error('UpdatePassword: Session Error', sessionError);
+                return { success: false, error: 'Oturum süresi dolmuş. Lütfen tekrar deneyin.' };
             }
 
-            console.log('UpdatePassword: Using XMLHttpRequest to avoid fetch abort issues...');
+            console.log('UpdatePassword: Calling standard updateUser...');
 
-            // Use XMLHttpRequest to completely bypass any fetch interceptors/abort signals
-            const result = await new Promise<{ success: boolean; error?: string }>((resolve) => {
-                const xhr = new XMLHttpRequest();
-                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`;
+            // Use a simple race against a timeout, BUT do not abort the actual call
+            // because aborting might cause the very error we are seeing.
+            // If it times out, we just tell the user, but let the request potentially finish in background.
 
-                xhr.open('PUT', url, true);
-                xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-                xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-                xhr.setRequestHeader('Content-Type', 'application/json');
+            const UPDATE_TIMEOUT_MS = 20000; // 20 seconds
 
-                xhr.timeout = 30000; // 30 second timeout
+            const updatePromise = supabase.auth.updateUser({ password });
 
-                xhr.onload = () => {
-                    console.log('UpdatePassword XHR onload:', xhr.status);
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve({ success: true });
-                    } else {
-                        try {
-                            const data = JSON.parse(xhr.responseText);
-                            resolve({ success: false, error: data.msg || data.error_description || 'Şifre güncellenemedi.' });
-                        } catch {
-                            resolve({ success: false, error: `HTTP Hatası: ${xhr.status}` });
-                        }
-                    }
-                };
-
-                xhr.onerror = () => {
-                    console.error('UpdatePassword XHR error');
-                    resolve({ success: false, error: 'Ağ hatası oluştu. Lütfen tekrar deneyin.' });
-                };
-
-                xhr.ontimeout = () => {
-                    console.error('UpdatePassword XHR timeout');
-                    resolve({ success: false, error: 'İşlem zaman aşımına uğradı.' });
-                };
-
-                xhr.send(JSON.stringify({ password: password }));
+            const timeoutPromise = new Promise<{ error: Error }>((resolve) => {
+                setTimeout(() => resolve({ error: new Error('TIMEOUT') }), UPDATE_TIMEOUT_MS);
             });
 
-            if (result.success) {
+            // @ts-ignore - Promise.race types can be tricky
+            const result = await Promise.race([updatePromise, timeoutPromise]);
+
+            if ('error' in result && result.error?.message === 'TIMEOUT') {
+                console.error('UpdatePassword: Timed out');
+                // We don't verify success here, just fail gracefully
+                setIsPasswordRecovery(false);
+                return { success: false, error: 'İşlem uzun sürdü. Lütfen sayfayı yenileyip tekrar deneyin.' };
+            }
+
+            // Type guard for standard Supabase response
+            const response = result as { data: { user: any }; error: any };
+
+            if (response.error) {
+                console.error('UpdatePassword Error:', response.error.message);
+                setIsPasswordRecovery(false);
+                return { success: false, error: response.error.message };
+            }
+
+            if (response.data?.user) {
                 console.log('UpdatePassword: Success!');
-                // Force refresh session to ensure client is in sync
-                try {
-                    await supabase.auth.refreshSession();
-                } catch (e) {
-                    console.warn('Session refresh failed, but password was updated:', e);
-                }
+                setIsPasswordRecovery(false);
+                return { success: true };
             }
 
             setIsPasswordRecovery(false);
-            return result;
+            return { success: false, error: 'Beklenmeyen bir durum oluştu.' };
 
         } catch (error: any) {
             console.error('UpdatePassword exception:', error);

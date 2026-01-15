@@ -21,13 +21,6 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    },
-    global: {
-        fetch: (url, options) => {
-            // Remove any AbortController signal that might cause issues
-            const { signal, ...restOptions } = options || {};
-            return fetch(url, restOptions);
-        }
     }
 });
 
