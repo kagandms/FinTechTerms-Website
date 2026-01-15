@@ -21,6 +21,20 @@ export default function ConsentModal() {
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
         try {
+            // Skip showing consent modal if user is in password recovery flow
+            if (typeof window !== 'undefined') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hash = window.location.hash;
+                const isPasswordReset = urlParams.get('reset') === 'true'
+                    || urlParams.get('type') === 'recovery'
+                    || hash.includes('type=recovery');
+
+                if (isPasswordReset) {
+                    // Don't show consent modal during password reset
+                    return;
+                }
+            }
+
             const stored = localStorage.getItem(CONSENT_KEY);
             if (!stored) {
                 // Delay showing modal for better UX
