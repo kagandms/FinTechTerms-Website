@@ -79,6 +79,25 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         console.log('[LoadData] Initial terms from local/mock:', currentTerms.length);
 
+        // CLEANUP: Deduplicate local terms immediately (handle poisoned localStorage)
+        const uniqueLocalTerms = new Map<string, Term>();
+        currentTerms.forEach(term => {
+            // Create a normalized key: lowercase, alpha-numeric only to catch "51% Attack" vs "51% Attack"
+            const key = term.term_en.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            // If we have a duplicate, we usually prefer the one with SRS data or just the first one.
+            // But if one is from our "static" file (sequential IDs) and one is random DB ID, it's hard to know.
+            // We'll just keep the first one we encounter, but prioritize "term_" IDs if possible? 
+            // Actually, simple first-win strategy is safest for now to reduce count.
+            if (!uniqueLocalTerms.has(key)) {
+                uniqueLocalTerms.set(key, term);
+            }
+        });
+
+        // Convert back to array
+        currentTerms = Array.from(uniqueLocalTerms.values());
+        console.log('[LoadData] Deduplicated local terms:', currentTerms.length);
+
         // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
         if (currentTerms.length > 0) {
             setTerms(currentTerms);
@@ -117,7 +136,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 dbTerms.forEach(dbTerm => {
                     const existingById = currentTerms.find(t => t.id === dbTerm.id);
                     // Also check for duplicate English content to avoid double entries with different IDs
-                    const existingByTitle = currentTerms.find(t => t.term_en.trim().toLowerCase() === (dbTerm.term_en || '').trim().toLowerCase());
+                    const normalizeTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const dbTitleKey = normalizeTitle(dbTerm.term_en || '');
+
+                    const existingByTitle = currentTerms.find(t => normalizeTitle(t.term_en) === dbTitleKey);
 
                     if (!existingById && !existingByTitle) {
                         mergedTerms.push({
