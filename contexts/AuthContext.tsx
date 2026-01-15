@@ -318,18 +318,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Small delay to ensure Supabase has processed the recovery token
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Get current session info for debugging
-            const { data: { session } } = await supabase.auth.getSession();
-            console.log('UpdatePassword: Current session:', {
-                hasSession: !!session,
-                email: session?.user?.email
-            });
-
-            if (!session) {
-                console.log('UpdatePassword: No session found');
-                return { success: false, error: 'Oturum bulunamadı. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
-            }
-
             // Create timeout promise
             const timeoutPromise = new Promise<never>((_, reject) => {
                 setTimeout(() => reject(new Error('TIMEOUT')), 10000);
