@@ -297,9 +297,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             console.log('Update password requested...');
+
+            // Attempt a safety refresh (non-blocking)
+            try {
+                await supabase.auth.refreshSession();
+            } catch (rErr) {
+                console.warn('Safety refresh failed, proceeding anyway:', rErr);
+            }
+
             // Create a timeout promise to prevent infinite hanging
             const timeoutPromise = new Promise<{ error: string }>((_, reject) => {
-                setTimeout(() => reject(new Error('Update timed out. Please try again.')), 15000);
+                setTimeout(() => reject(new Error('Update timed out')), 20000); // 20s
             });
 
             // Race between actual update and timeout
@@ -317,6 +325,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return { success: true };
         } catch (error: any) {
             console.error('Update password exception:', error);
+            const emsg = (error.message || '').toLowerCase();
+
+            // Localized timeout error
+            if (emsg.includes('timed out') || emsg.includes('zaman aşımı')) {
+                return { success: false, error: 'İşlem zaman aşımına uğradı. (Timeout). Lütfen sayfayı yenileyip tekrar deneyin.' };
+            }
+
             return { success: false, error: error.message || 'Failed to update password' };
         }
     }, []);
