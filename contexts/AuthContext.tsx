@@ -348,6 +348,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (error) {
                 console.error('Supabase signOut error:', error);
             }
+            // Explicitly clear user state to ensure UI updates immediately
+            setUser(null);
+            setPendingVerificationEmail(null);
         } catch (error) {
             console.error('Logout handler error:', error);
         } finally {
