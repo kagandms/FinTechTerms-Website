@@ -671,9 +671,15 @@ function ProfileContent() {
                                                 console.log('updatePassword result:', result);
 
                                                 if (result.success) {
-                                                    setAuthError(language === 'tr' ? '✅ Şifre güncellendi!' : language === 'ru' ? '✅ Пароль обновлен!' : '✅ Password updated!');
-                                                    setTimeout(() => {
-                                                        setShowAuthModal(false);
+                                                    setAuthError(language === 'tr'
+                                                        ? '✅ Şifreniz başarıyla değiştirildi. Giriş ekranına yönlendiriliyorsunuz...'
+                                                        : language === 'ru'
+                                                            ? '✅ Пароль успешно изменен. Перенаправление на вход...'
+                                                            : '✅ Password successfully changed. Redirecting to login...');
+                                                    setTimeout(async () => {
+                                                        // Ensure clean state for login
+                                                        await logout();
+                                                        setShowAuthModal(true);
                                                         setAuthMode('login');
                                                         setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
                                                     }, 2000);
