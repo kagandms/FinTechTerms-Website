@@ -313,45 +313,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            console.log('Step 1: Update password requested...');
+            console.log('UpdatePassword: Starting...');
 
-            // Ensure we have a valid session before attempting update
-            console.log('Step 2: Checking session...');
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            console.log('Step 3: Session check result:', { hasSession: !!session, error: sessionError?.message });
+            // Wait a moment for Supabase to fully process the recovery token
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Try to get/refresh session first, but don't fail if it doesn't work
+            console.log('UpdatePassword: Attempting session refresh...');
+            const { data: { session } } = await supabase.auth.getSession();
 
             if (!session) {
-                console.log('Step 4: No session, attempting refresh...');
-                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-                console.log('Step 5: Refresh result:', { hasSession: !!refreshedSession, error: refreshError?.message });
-
-                if (refreshError || !refreshedSession) {
-                    setIsPasswordRecovery(false);
-                    return { success: false, error: 'Oturum süresi doldu. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
-                }
+                console.log('UpdatePassword: No session, trying refreshSession...');
+                await supabase.auth.refreshSession();
             }
 
-            console.log('Step 6: Calling updateUser...');
+            // Now try to update regardless of session status
+            // Supabase should maintain the recovery session internally
+            console.log('UpdatePassword: Calling updateUser...');
+            const { data, error } = await supabase.auth.updateUser({ password });
 
-            // Direct call without Promise.race first to see if it works
-            const { data, error } = await supabase.auth.updateUser({ password: password });
-
-            console.log('Step 7: updateUser result:', { hasData: !!data, error: error?.message });
+            console.log('UpdatePassword: Result', { success: !!data, error: error?.message });
 
             if (error) {
-                console.error('Update password error:', error.message);
+                console.error('UpdatePassword error:', error.message);
                 setIsPasswordRecovery(false);
+
+                // Provide user-friendly error messages
+                if (error.message.includes('session') || error.message.includes('Session')) {
+                    return { success: false, error: 'Oturum süresi doldu. Lütfen şifre sıfırlama linkine tekrar tıklayın.' };
+                }
                 return { success: false, error: error.message };
             }
 
-            console.log('Step 8: Password update success!');
-            // Reset the password recovery state
+            console.log('UpdatePassword: Success!');
             setIsPasswordRecovery(false);
             return { success: true };
         } catch (error: any) {
-            console.error('Update password exception:', error);
+            console.error('UpdatePassword exception:', error);
             setIsPasswordRecovery(false);
-
             return { success: false, error: error.message || 'Şifre güncellenemedi' };
         }
     }, []);
