@@ -6,6 +6,7 @@ import { useLanguage, languageNames, languageFlags } from '@/contexts/LanguageCo
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/lib/supabase';
 import { Language } from '@/types';
 import { resetAllData } from '@/utils/storage';
 import {
@@ -89,6 +90,12 @@ function ProfileContent() {
         const isRecoveryInHash = hash.includes('type=recovery');
 
         if ((isResetUrl || isRecoveryType || isRecoveryInHash) && isAuthenticated) {
+            console.log('Recovery detected. Refreshing session actively...');
+            supabase.auth.refreshSession().then(({ error }) => {
+                if (error) console.warn('Eager refresh failed:', error);
+                else console.log('Eager refresh success');
+            });
+
             setAuthMode('update-password');
             setShowAuthModal(true);
         }
