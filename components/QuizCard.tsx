@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Term, Language } from '@/types';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useTermTranslation } from '@/hooks/useTermTranslation';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getIntervalDescription } from '@/utils/srsLogic';
 import { useResponseTimer } from '@/hooks/useResponseTimer';
@@ -14,7 +14,14 @@ interface QuizCardProps {
 }
 
 export default function QuizCard({ term, onAnswer }: QuizCardProps) {
-    const { t, language } = useLanguage();
+    const {
+        t,
+        language,
+        getTermByLang,
+        getDefinitionByLang,
+        getPhoneticByLang,
+        currentTerm
+    } = useTermTranslation(term);
 
     const [isFlipped, setIsFlipped] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -33,36 +40,6 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
         const time = stopTimer();
         setRecallTime(time);
         setIsFlipped(true);
-    };
-
-    // Get term in specified language
-    const getTermByLang = (lang: Language): string => {
-        const terms: Record<Language, string> = {
-            tr: term.term_tr,
-            en: term.term_en,
-            ru: term.term_ru,
-        };
-        return terms[lang];
-    };
-
-    // Get definition in specified language
-    const getDefinitionByLang = (lang: Language): string => {
-        const defs: Record<Language, string> = {
-            tr: term.definition_tr,
-            en: term.definition_en,
-            ru: term.definition_ru,
-        };
-        return defs[lang];
-    };
-
-    // Get phonetic (pronunciation) in specified language
-    const getPhoneticByLang = (lang: Language): string | undefined => {
-        const phonetics: Record<Language, string | undefined> = {
-            tr: term.phonetic_tr,
-            en: term.phonetic_en,
-            ru: term.phonetic_ru,
-        };
-        return phonetics[lang];
     };
 
     // Handle TTS
@@ -84,8 +61,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
         setSelectedLang(lang);
     };
 
-    // Get current language term
-    const currentTerm = getTermByLang(language);
+    // currentTerm is provided by useTermTranslation hook
 
     // All languages for display
     const allLanguages: Language[] = ['tr', 'en', 'ru'];

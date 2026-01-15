@@ -12,15 +12,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
 
+import { Term } from '@/types';
+
 const siteUrl = 'https://fintechterms.vercel.app';
 
-export default function HomePage() {
+interface HomeClientProps {
+    initialTerms?: Term[];
+}
+
+export default function HomePage({ initialTerms = [] }: HomeClientProps) {
     const { t } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
     const { theme, resolvedTheme, setTheme } = useTheme();
 
-    // Get 3 random terms to display
-    const recentTerms = terms.slice(0, 3);
+    // Get 3 random terms to display (prioritize context, fallback to server data)
+    const displayTerms = terms.length > 0 ? terms : initialTerms;
+    const recentTerms = displayTerms.slice(0, 3);
 
     // Toggle theme quickly
     const toggleTheme = () => {

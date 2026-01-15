@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Term, Language } from '@/types';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useTermTranslation } from '@/hooks/useTermTranslation';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -38,7 +38,15 @@ const categoryColors: Record<Term['category'], string> = {
 };
 
 export default function SmartCard({ term, showFullDetails = false }: SmartCardProps) {
-    const { language, t } = useLanguage();
+    const {
+        language,
+        t,
+        getTermByLang, // used in the language switcher buttons below
+        currentTerm,
+        currentPhonetic,
+        currentDefinition,
+        currentExample
+    } = useTermTranslation(term);
     const { toggleFavorite, isFavorite, favoritesRemaining } = useSRS();
     const { isAuthenticated } = useAuth();
     const { showToast } = useToast();
@@ -47,46 +55,6 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const [showLimitWarning, setShowLimitWarning] = useState(false);
 
     const favorite = isFavorite(term.id);
-
-    // Get term in each language
-    const getTermByLang = (lang: Language): string => {
-        const terms: Record<Language, string> = {
-            tr: term.term_tr,
-            en: term.term_en,
-            ru: term.term_ru,
-        };
-        return terms[lang];
-    };
-
-    // Get phonetic for current language
-    const getPhonetic = (): string | undefined => {
-        const phonetics: Record<Language, string | undefined> = {
-            tr: term.phonetic_tr,
-            en: term.phonetic_en,
-            ru: term.phonetic_ru,
-        };
-        return phonetics[language];
-    };
-
-    // Get definition in current language
-    const getDefinition = (): string => {
-        const defs: Record<Language, string> = {
-            tr: term.definition_tr,
-            en: term.definition_en,
-            ru: term.definition_ru,
-        };
-        return defs[language];
-    };
-
-    // Get example sentence
-    const getExample = (): string => {
-        const examples: Record<Language, string> = {
-            tr: term.example_sentence_tr,
-            en: term.example_sentence_en,
-            ru: term.example_sentence_ru,
-        };
-        return examples[language];
-    };
 
     // Handle TTS
     const handleSpeak = async (text: string, lang: Language) => {
@@ -173,9 +141,9 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         <h3 className="text-xl font-bold text-primary-500 dark:text-primary-300 mb-1">
                             {getTermByLang(language)}
                         </h3>
-                        {getPhonetic() && (
+                        {currentPhonetic && (
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                {getPhonetic()}
+                                {currentPhonetic}
                             </p>
                         )}
                     </div>
@@ -227,7 +195,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             {/* Definition - Always visible */}
             <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700/50">
                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {getDefinition()}
+                    {currentDefinition}
                 </p>
             </div>
 
@@ -254,7 +222,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     <div className="px-4 pb-4 animate-fade-in">
                         <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800/50">
                             <p className="text-sm text-primary-700 dark:text-primary-300 italic">
-                                "{getExample()}"
+                                "{currentExample}"
                             </p>
                         </div>
 
