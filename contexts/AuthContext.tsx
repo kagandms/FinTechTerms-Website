@@ -316,20 +316,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
             try {
                 console.log(`UpdatePassword: Attempt ${retryCount + 1}...`);
 
-                // Wait a moment for Supabase to fully process the recovery token
+                // Small delay on first attempt to ensure Supabase has processed the token
                 if (retryCount === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
-                // Try to refresh session first
-                console.log('UpdatePassword: Refreshing session...');
-                await supabase.auth.refreshSession();
+                // Get current session info for debugging
+                const { data: { session } } = await supabase.auth.getSession();
+                console.log('UpdatePassword: Current session:', {
+                    hasSession: !!session,
+                    email: session?.user?.email
+                });
 
-                // Now try to update
+                // Call updateUser directly - don't refresh session as it might reset recovery state
                 console.log('UpdatePassword: Calling updateUser...');
                 const { data, error } = await supabase.auth.updateUser({ password });
 
-                console.log('UpdatePassword: Result', { success: !!data, error: error?.message });
+                console.log('UpdatePassword: Result', {
+                    hasData: !!data,
+                    hasUser: !!data?.user,
+                    error: error?.message
+                });
+
+                // Check for success - if we have data.user, it worked
+                if (data?.user && !error) {
+                    console.log('UpdatePassword: Success!');
+                    return { success: true };
+                }
 
                 if (error) {
                     const errorMsg = error.message.toLowerCase();
@@ -338,7 +351,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     if (errorMsg.includes('abort') || errorMsg.includes('signal') || errorMsg.includes('timeout')) {
                         if (retryCount < 2) {
                             console.log('UpdatePassword: Retrying due to network error...');
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            await new Promise(resolve => setTimeout(resolve, 1500));
                             return attemptUpdate(retryCount + 1);
                         }
                         return { success: false, error: 'Bağlantı zaman aşımı. Lütfen tekrar deneyin.' };
@@ -352,16 +365,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     return { success: false, error: error.message };
                 }
 
-                console.log('UpdatePassword: Success!');
-                return { success: true };
+                // If no error but also no user data, something is wrong
+                return { success: false, error: 'Beklenmeyen hata oluştu. Lütfen tekrar deneyin.' };
             } catch (error: any) {
                 const errorMsg = (error.message || '').toLowerCase();
-                console.error('UpdatePassword exception:', errorMsg);
+                console.error('UpdatePassword exception:', error);
 
                 // Retry on network errors
                 if ((errorMsg.includes('abort') || errorMsg.includes('signal') || errorMsg.includes('network')) && retryCount < 2) {
                     console.log('UpdatePassword: Retrying after exception...');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     return attemptUpdate(retryCount + 1);
                 }
 
