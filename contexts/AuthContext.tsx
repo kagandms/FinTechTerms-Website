@@ -315,16 +315,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('UpdatePassword: Starting...');
 
-            // Validate session existence first
+            // Validate session existence first from main client
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             if (sessionError || !session) {
                 console.error('UpdatePassword: Session Error', sessionError);
                 return { success: false, error: 'Oturum süresi dolmuş. Lütfen tekrar deneyin.' };
             }
 
-            console.log('UpdatePassword: Calling standard updateUser...');
+            console.log('UpdatePassword: Creating isolated client to bypass AbortError...');
 
-            const { data, error } = await supabase.auth.updateUser({ password });
+            // Create a temporary, fresh client just for this operation
+            // This avoids any "signal is aborted" issues from the main client's global state/refresh logic
+            const { createClient } = await import('@supabase/supabase-js');
+            const tempClient = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    auth: {
+                        persistSession: false, // Don't mess with localStorage
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    }
+                }
+            );
+
+            // Hydrate the fresh client with our active session
+            const { error: setSessionError } = await tempClient.auth.setSession({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+            });
+
+            if (setSessionError) {
+                console.error('UpdatePassword: Failed to set session on temp client', setSessionError);
+                throw setSessionError;
+            }
+
+            console.log('UpdatePassword: Calling updateUser on isolated client...');
+
+            const { data, error } = await tempClient.auth.updateUser({ password });
 
             if (error) {
                 console.error('UpdatePassword Error:', error.message);
@@ -345,7 +373,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.error('UpdatePassword exception:', error);
             setIsPasswordRecovery(false);
             if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-                return { success: false, error: 'İşlem zaman aşımına uğradı veya iptal edildi.' };
+                return { success: false, error: 'İşlem iptal edildi. Lütfen sayfayı yenileyip tekrar deneyin.' };
             }
             return { success: false, error: error.message || 'Şifre güncellenemedi.' };
         }
