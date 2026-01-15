@@ -10,6 +10,7 @@ export default function InstallButton() {
     const [isInstallable, setIsInstallable] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+    const [showManualInstructions, setShowManualInstructions] = useState(false);
 
     useEffect(() => {
         // Check if device is iOS
@@ -19,7 +20,11 @@ export default function InstallButton() {
 
         if (isIOSDevice && !isStandalone) {
             setIsIOS(true);
-            setIsInstallable(true);
+        } else {
+            // For other devices, we assume installable unless running standalone
+            // but we only get deferredPrompt if browser supports it.
+            // If not standalone, we show button anyway.
+            setIsInstallable(!isStandalone);
         }
 
         const handleBeforeInstallPrompt = (e: any) => {
@@ -43,17 +48,23 @@ export default function InstallButton() {
             return;
         }
 
-        if (!deferredPrompt) return;
+        if (deferredPrompt) {
+            // Show the install prompt
+            deferredPrompt.prompt();
 
-        // Show the install prompt
-        deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
 
-        // Wait for the user to respond to the prompt
-        const { outcome } = await deferredPrompt.userChoice;
-
-        // We've used the prompt, and can't use it again, throw it away
-        setDeferredPrompt(null);
-        setIsInstallable(false);
+            // We've used the prompt, and can't use it again, throw it away
+            setDeferredPrompt(null);
+            // Don't hide button immediately, maybe they cancelled
+            if (outcome === 'accepted') {
+                setIsInstallable(false);
+            }
+        } else {
+            // Fallback: Show manual instructions
+            setShowManualInstructions(true);
+        }
     };
 
     if (!isInstallable) return null;
@@ -120,6 +131,58 @@ export default function InstallButton() {
                                     <span>
                                         {language === 'tr' ? '"Ana Ekrana Ekle"yi seçin' : language === 'ru' ? 'Выберите "На экран домой"' : 'Select "Add to Home Screen"'}
                                         <PlusSquare className="w-4 h-4 inline mx-1 text-gray-500" />
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Instructions Modal (Desktop/Chrome/Other) */}
+            {showManualInstructions && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none p-4">
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity animate-fade-in"
+                        onClick={() => setShowManualInstructions(false)}
+                    />
+                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-scale-in border border-gray-100 dark:border-gray-700">
+                        <button
+                            onClick={() => setShowManualInstructions(false)}
+                            className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex flex-col items-center text-center gap-4">
+                            <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center shadow-inner">
+                                <Download className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {language === 'tr' ? 'Uygulama Nasıl Yüklenir?' : language === 'ru' ? 'Как установить приложение?' : 'How to Install?'}
+                            </h3>
+
+                            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                                {language === 'tr'
+                                    ? 'Tarayıcı menüsünü kullanarak uygulamayı yükleyebilirsiniz:'
+                                    : language === 'ru'
+                                        ? 'Вы можете установить приложение через меню браузера:'
+                                        : 'You can install the app using the browser menu:'}
+                            </p>
+
+                            <div className="flex flex-col gap-3 w-full bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left text-sm">
+                                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                                    <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">1</span>
+                                    <span>
+                                        {language === 'tr' ? 'Tarayıcı menüsünü (⋮) açın' : language === 'ru' ? 'Откройте меню браузера (⋮)' : 'Open browser menu (⋮)'}
+                                    </span>
+                                </div>
+                                <div className="w-full h-px bg-gray-200 dark:bg-gray-600/50" />
+                                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                                    <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">2</span>
+                                    <span>
+                                        {language === 'tr' ? '"Uygulamayı Yükle" veya "Ana Ekrana Ekle"yi seçin' : language === 'ru' ? 'Выберите "Установить приложение" или "Добавить на гл. экран"' : 'Select "Install App" or "Add to Home Screen"'}
                                     </span>
                                 </div>
                             </div>
