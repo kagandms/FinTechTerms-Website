@@ -320,7 +320,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             // Create timeout promise
             const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 10000);
+                setTimeout(() => reject(new Error('TIMEOUT')), 15000);
             });
 
             // Call updateUser with timeout
