@@ -59,19 +59,21 @@ function ProfileContent() {
         // Debug logging to help diagnose issues
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
+            const fullUrl = window.location.href;
             const isResetParam = searchParams.get('reset') === 'true';
             const isTypeParam = searchParams.get('type') === 'recovery';
             const isHashRecovery = hash.includes('type=recovery');
+            const isAccessToken = hash.includes('access_token') || fullUrl.includes('access_token');
 
-            if (isResetParam || isTypeParam || isHashRecovery || isPasswordRecovery) {
-                console.log('Password Reset Detection:', {
-                    event: isPasswordRecovery,
-                    queryReset: isResetParam,
-                    queryType: isTypeParam,
-                    hashRecovery: isHashRecovery,
-                    authenticated: isAuthenticated
-                });
-            }
+            console.log('Password Reset Detection:', {
+                event: isPasswordRecovery,
+                queryReset: isResetParam,
+                queryType: isTypeParam,
+                hashRecovery: isHashRecovery,
+                hasAccessToken: isAccessToken,
+                authenticated: isAuthenticated,
+                hash: hash.substring(0, 100) // Show first 100 chars of hash for debugging
+            });
         }
 
         // Check local state from AuthContext (Event based)
@@ -85,19 +87,40 @@ function ProfileContent() {
         const isResetUrl = searchParams.get('reset') === 'true';
         const isRecoveryType = searchParams.get('type') === 'recovery';
 
-        // 3. Hash Checks (Supabase sometimes puts params in hash)
+        // Hash Checks (Supabase puts params in hash fragment)
         const hash = typeof window !== 'undefined' ? window.location.hash : '';
         const isRecoveryInHash = hash.includes('type=recovery');
 
-        if ((isResetUrl || isRecoveryType || isRecoveryInHash) && isAuthenticated) {
-            console.log('Recovery detected. Refreshing session actively...');
-            supabase.auth.refreshSession().then(({ error }) => {
-                if (error) console.warn('Eager refresh failed:', error);
-                else console.log('Eager refresh success');
-            });
+        // If any recovery indicator is present, open the modal
+        // Don't require isAuthenticated as Supabase will handle auth via the recovery token
+        if (isResetUrl || isRecoveryType || isRecoveryInHash) {
+            console.log('Recovery detected via URL. Opening password update modal...');
 
-            setAuthMode('update-password');
-            setShowAuthModal(true);
+            // Give Supabase a moment to process the hash token and establish session
+            setTimeout(() => {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        console.log('Session found after recovery link:', session.user?.email);
+                        setAuthMode('update-password');
+                        setShowAuthModal(true);
+                    } else {
+                        console.log('No session yet, trying to refresh...');
+                        // Try refreshing the session
+                        supabase.auth.refreshSession().then(({ data: { session: refreshedSession }, error }) => {
+                            if (refreshedSession) {
+                                console.log('Session refreshed:', refreshedSession.user?.email);
+                                setAuthMode('update-password');
+                                setShowAuthModal(true);
+                            } else if (error) {
+                                console.warn('Session refresh failed:', error.message);
+                                // Still try to open the modal - user may need to re-click the link
+                                setAuthMode('update-password');
+                                setShowAuthModal(true);
+                            }
+                        });
+                    }
+                });
+            }, 500);
         }
     }, [isPasswordRecovery, searchParams, isAuthenticated]);
     const [otpCode, setOtpCode] = useState('');
