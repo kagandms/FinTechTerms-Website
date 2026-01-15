@@ -698,18 +698,24 @@ function ProfileContent() {
                                                 console.log('updatePassword result:', result);
 
                                                 if (result.success) {
+                                                    // Show success message
                                                     setAuthError(language === 'tr'
-                                                        ? '✅ Şifreniz başarıyla değiştirildi. Giriş ekranına yönlendiriliyorsunuz...'
+                                                        ? '✅ Şifreniz başarıyla değiştirildi!'
                                                         : language === 'ru'
-                                                            ? '✅ Пароль успешно изменен. Перенаправление на вход...'
-                                                            : '✅ Password successfully changed. Redirecting to login...');
+                                                            ? '✅ Пароль успешно изменен!'
+                                                            : '✅ Password successfully changed!');
+
+                                                    // Wait for user to see the message, then close modal and logout
+                                                    setAuthLoading(false);
                                                     setTimeout(async () => {
-                                                        // Ensure clean state for login
-                                                        await logout();
-                                                        setShowAuthModal(true);
-                                                        setAuthMode('login');
+                                                        // First reset the form and close modal
                                                         setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
-                                                    }, 2000);
+                                                        setShowAuthModal(false);
+                                                        setAuthError('');
+                                                        // Then logout (this will refresh the page)
+                                                        await logout();
+                                                    }, 1500);
+                                                    return; // Don't set loading to false again in finally
                                                 } else {
                                                     setAuthError(result.error || 'Error');
                                                 }

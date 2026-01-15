@@ -304,30 +304,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 console.log('No active session found, attempting refresh...');
                 const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
                 if (refreshError || !refreshedSession) {
+                    setIsPasswordRecovery(false);
                     return { success: false, error: 'Session expired. Please click the reset link again.' };
                 }
             }
 
             // Create a timeout promise to prevent infinite hanging
-            const timeoutPromise = new Promise<{ error: string }>((_, reject) => {
-                setTimeout(() => reject(new Error('Update timed out')), 20000); // 20s
+            const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+                setTimeout(() => resolve({ data: null, error: { message: 'Update timed out' } }), 15000); // 15s
             });
 
             // Race between actual update and timeout
-            const { error }: any = await Promise.race([
+            const result = await Promise.race([
                 supabase.auth.updateUser({ password: password }),
                 timeoutPromise
             ]);
 
-            if (error) {
-                console.error('Update password error:', error.message);
-                return { success: false, error: error.message };
+            if (result.error) {
+                console.error('Update password error:', result.error.message);
+                setIsPasswordRecovery(false);
+                return { success: false, error: result.error.message };
             }
 
             console.log('Update password success');
+            // Reset the password recovery state
+            setIsPasswordRecovery(false);
             return { success: true };
         } catch (error: any) {
             console.error('Update password exception:', error);
+            setIsPasswordRecovery(false);
             const emsg = (error.message || '').toLowerCase();
 
             // Localized timeout error
