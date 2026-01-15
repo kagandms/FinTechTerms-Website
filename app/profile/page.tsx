@@ -31,6 +31,7 @@ import {
     Sun,
     Moon,
     Monitor,
+    X,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -533,7 +534,17 @@ function ProfileContent() {
             {/* Auth Modal */}
             {(showAuthModal || pendingVerificationEmail) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                        <button
+                            onClick={() => {
+                                setShowAuthModal(false);
+                                cancelVerification();
+                                setAuthMode('login');
+                            }}
+                            className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors z-10"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
 
                         {/* OTP Verification Screen */}
                         {pendingVerificationEmail ? (
