@@ -732,21 +732,24 @@ function ProfileContent() {
                                                 console.log('updatePassword result:', result);
 
                                                 if (result.success) {
-                                                    // Immediately close modal and reset
                                                     setAuthLoading(false);
-                                                    setShowAuthModal(false);
                                                     setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
                                                     setAuthError('');
 
-                                                    // Show toast or alert and logout
+                                                    // Show success message
                                                     alert(language === 'tr'
                                                         ? 'Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapabilirsiniz.'
                                                         : language === 'ru'
                                                             ? 'Пароль успешно изменен! Войдите с новым паролем.'
                                                             : 'Password successfully changed! Please login with your new password.');
 
-                                                    // Logout and redirect
+                                                    // Logout and switch to login view
                                                     await logout();
+
+                                                    // Set mode to login and ensure modal is open
+                                                    setAuthMode('login');
+                                                    setShowAuthModal(true);
+
                                                     return;
                                                 } else {
                                                     setAuthError(result.error || 'Error');
