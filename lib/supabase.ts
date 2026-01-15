@@ -2,7 +2,6 @@
 // Supabase Client Configuration
 // ============================================
 
-import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -13,22 +12,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * Supabase client for client-side operations (Browser)
- * Uses cookies for session storage, allowing server-side access.
+ * Supabase client for all operations
+ * Using standard createClient with proper configuration to avoid SSR client AbortError issues
  */
-export const supabase = createBrowserClient(supabaseUrl || '', supabaseAnonKey || '');
-
-/**
- * Standard Supabase client for auth operations
- * Use this for updateUser and other auth operations that may have issues with SSR client
- */
-export const supabaseAuth = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: true,
+        flowType: 'pkce', // Use PKCE flow for better security with recovery links
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+    global: {
+        fetch: (url, options) => {
+            // Remove any AbortController signal that might cause issues
+            const { signal, ...restOptions } = options || {};
+            return fetch(url, restOptions);
+        }
     }
 });
+
+// Alias for backward compatibility
+export const supabaseAuth = supabase;
 
 /**
  * Database Types (generated from schema)
