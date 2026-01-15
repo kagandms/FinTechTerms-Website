@@ -324,38 +324,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             console.log('UpdatePassword: Calling standard updateUser...');
 
-            // Use a simple race against a timeout, BUT do not abort the actual call
-            // because aborting might cause the very error we are seeing.
-            // If it times out, we just tell the user, but let the request potentially finish in background.
+            const { data, error } = await supabase.auth.updateUser({ password });
 
-            const UPDATE_TIMEOUT_MS = 20000; // 20 seconds
-
-            const updatePromise = supabase.auth.updateUser({ password });
-
-            const timeoutPromise = new Promise<{ error: Error }>((resolve) => {
-                setTimeout(() => resolve({ error: new Error('TIMEOUT') }), UPDATE_TIMEOUT_MS);
-            });
-
-            // @ts-ignore - Promise.race types can be tricky
-            const result = await Promise.race([updatePromise, timeoutPromise]);
-
-            if ('error' in result && result.error?.message === 'TIMEOUT') {
-                console.error('UpdatePassword: Timed out');
-                // We don't verify success here, just fail gracefully
+            if (error) {
+                console.error('UpdatePassword Error:', error.message);
                 setIsPasswordRecovery(false);
-                return { success: false, error: 'İşlem uzun sürdü. Lütfen sayfayı yenileyip tekrar deneyin.' };
+                return { success: false, error: error.message };
             }
 
-            // Type guard for standard Supabase response
-            const response = result as { data: { user: any }; error: any };
-
-            if (response.error) {
-                console.error('UpdatePassword Error:', response.error.message);
-                setIsPasswordRecovery(false);
-                return { success: false, error: response.error.message };
-            }
-
-            if (response.data?.user) {
+            if (data?.user) {
                 console.log('UpdatePassword: Success!');
                 setIsPasswordRecovery(false);
                 return { success: true };
@@ -367,6 +344,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (error: any) {
             console.error('UpdatePassword exception:', error);
             setIsPasswordRecovery(false);
+            if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                return { success: false, error: 'İşlem zaman aşımına uğradı veya iptal edildi.' };
+            }
             return { success: false, error: error.message || 'Şifre güncellenemedi.' };
         }
     }, []);

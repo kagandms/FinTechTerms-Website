@@ -113,8 +113,13 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 });
 
                 // 2. Add new terms from DB that weren't in local list
+                // 2. Add new terms from DB that weren't in local list
                 dbTerms.forEach(dbTerm => {
-                    if (!currentTerms.find(t => t.id === dbTerm.id)) {
+                    const existingById = currentTerms.find(t => t.id === dbTerm.id);
+                    // Also check for duplicate English content to avoid double entries with different IDs
+                    const existingByTitle = currentTerms.find(t => t.term_en.trim().toLowerCase() === (dbTerm.term_en || '').trim().toLowerCase());
+
+                    if (!existingById && !existingByTitle) {
                         mergedTerms.push({
                             ...dbTerm,
                             srs_level: 1, // Default for new
@@ -125,6 +130,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
                             times_reviewed: 0,
                             times_correct: 0
                         } as Term);
+                    } else if (!existingById && existingByTitle) {
+                        console.warn(`[LoadData] Duplicate term detected (same title, different ID). DB: ${dbTerm.id}, Local: ${existingByTitle.id}. Title: ${dbTerm.term_en || 'Unknown'}`);
                     }
                 });
 
