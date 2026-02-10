@@ -77,7 +77,7 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/og-image.png',
+                url: '/og-image.jpg',
                 width: 1200,
                 height: 630,
                 alt: 'FinTechTerms - Trilingual Dictionary Interface',
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: 'FinTechTerms | World of Finance & Technology',
         description: 'Learn Fintech, Economics, and Tech terms in 3 languages. Never forget with SRS algorithm.',
-        images: ['/og-image.png'],
+        images: ['/og-image.jpg'],
         creator: '@fintechterms',
         site: '@fintechterms',
     },

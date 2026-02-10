@@ -4,10 +4,29 @@ import { supabase } from '@/lib/supabase';
 // API Key for bot/simulation access (MUST be set in environment variables)
 const API_KEY = process.env.QUIZ_API_KEY;
 
-// Rate limiting map (simple in-memory, resets on restart)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 100; // requests per minute
-const RATE_WINDOW = 60000; // 1 minute
+// Sliding window rate limiter with automatic cleanup
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT = 100; // max requests per window
+const RATE_WINDOW = 60000; // 1 minute window
+
+// Cleanup stale entries every 5 minutes to prevent memory leaks
+let lastCleanup = Date.now();
+const CLEANUP_INTERVAL = 5 * 60 * 1000;
+
+function cleanupStaleEntries(): void {
+    const now = Date.now();
+    if (now - lastCleanup < CLEANUP_INTERVAL) return;
+    lastCleanup = now;
+    const cutoff = now - RATE_WINDOW;
+    for (const [ip, timestamps] of rateLimitMap.entries()) {
+        const valid = timestamps.filter(t => t > cutoff);
+        if (valid.length === 0) {
+            rateLimitMap.delete(ip);
+        } else {
+            rateLimitMap.set(ip, valid);
+        }
+    }
+}
 
 /**
  * Validate API key from request headers
@@ -19,23 +38,23 @@ function validateApiKey(request: NextRequest): boolean {
 }
 
 /**
- * Check rate limit for IP address
+ * Sliding window rate limiter — returns remaining count or -1 if exceeded
  */
-function checkRateLimit(ip: string): boolean {
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfter: number } {
+    cleanupStaleEntries();
     const now = Date.now();
-    const record = rateLimitMap.get(ip);
+    const cutoff = now - RATE_WINDOW;
+    const timestamps = (rateLimitMap.get(ip) || []).filter(t => t > cutoff);
 
-    if (!record || now > record.resetTime) {
-        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
-        return true;
+    if (timestamps.length >= RATE_LIMIT) {
+        const oldestInWindow = timestamps[0] ?? now;
+        const retryAfter = Math.ceil((oldestInWindow + RATE_WINDOW - now) / 1000);
+        return { allowed: false, remaining: 0, retryAfter };
     }
 
-    if (record.count >= RATE_LIMIT) {
-        return false;
-    }
-
-    record.count += 1;
-    return true;
+    timestamps.push(now);
+    rateLimitMap.set(ip, timestamps);
+    return { allowed: true, remaining: RATE_LIMIT - timestamps.length, retryAfter: 0 };
 }
 
 /**
@@ -65,10 +84,22 @@ export async function POST(request: NextRequest) {
         'unknown';
 
     // Check rate limit
-    if (!checkRateLimit(ip)) {
+    const rateCheck = checkRateLimit(ip);
+    const rateLimitHeaders = {
+        'X-RateLimit-Limit': RATE_LIMIT.toString(),
+        'X-RateLimit-Remaining': rateCheck.remaining.toString(),
+    };
+
+    if (!rateCheck.allowed) {
         return NextResponse.json(
             { error: 'Rate limit exceeded. Please try again later.' },
-            { status: 429 }
+            {
+                status: 429,
+                headers: {
+                    ...rateLimitHeaders,
+                    'Retry-After': rateCheck.retryAfter.toString(),
+                },
+            }
         );
     }
 

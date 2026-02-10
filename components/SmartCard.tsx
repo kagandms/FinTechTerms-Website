@@ -97,7 +97,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
+        <article aria-label={currentTerm} className="bg-white dark:bg-gray-800 rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
             {/* Limit Warning */}
             {showLimitWarning && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800 px-4 py-3 flex items-start gap-3 animate-fade-in">
@@ -158,8 +158,9 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                                 : 'bg-gray-100 text-gray-600 hover:bg-accent-100 hover:text-accent-600'
                                 }`}
                             title={t('card.listen')}
+                            aria-label={`${t('card.listen')}: ${currentTerm}`}
                         >
-                            <Volume2 className="w-5 h-5" />
+                            <Volume2 className="w-5 h-5" aria-hidden="true" />
                         </button>
 
                         <button
@@ -169,8 +170,10 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                                 : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-400'
                                 }`}
                             title={favorite ? t('card.removeFavorite') : t('card.addFavorite')}
+                            aria-label={`${favorite ? t('card.removeFavorite') : t('card.addFavorite')}: ${currentTerm}`}
+                            aria-pressed={favorite}
                         >
-                            <Heart className={`w-5 h-5 ${favorite ? 'fill-current' : ''}`} />
+                            <Heart className={`w-5 h-5 ${favorite ? 'fill-current' : ''}`} aria-hidden="true" />
                         </button>
                     </div>
                 </div>
@@ -204,6 +207,8 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="w-full px-4 py-2 flex items-center justify-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? (language === 'tr' ? 'Daha az göster' : 'Show less') : (language === 'tr' ? 'Örnek cümleyi göster' : 'Show example')}
                 >
                     {isExpanded ? (
                         <>
@@ -237,6 +242,6 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     </div>
                 )}
             </div>
-        </div>
+        </article>
     );
 }

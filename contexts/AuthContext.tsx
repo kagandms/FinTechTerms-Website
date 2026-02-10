@@ -69,7 +69,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const isRecoveryInHash = hash.includes('type=recovery');
 
             if (isReset || isRecoveryType || isRecoveryInHash) {
-                console.log('AuthContext: Password recovery detected from URL on init');
                 return true;
             }
         }
@@ -103,9 +102,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth event:', event);
             if (event === 'PASSWORD_RECOVERY') {
-                console.log('PASSWORD_RECOVERY event fired');
                 setIsPasswordRecovery(true);
             }
 
@@ -313,7 +310,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            console.log('UpdatePassword: Starting...');
 
             // Validate session existence first from main client
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -322,7 +318,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return { success: false, error: 'Oturum süresi dolmuş. Lütfen tekrar deneyin.' };
             }
 
-            console.log('UpdatePassword: Creating isolated client to bypass AbortError...');
 
             // Create a temporary, fresh client just for this operation
             // This avoids any "signal is aborted" issues from the main client's global state/refresh logic
@@ -350,7 +345,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 throw setSessionError;
             }
 
-            console.log('UpdatePassword: Calling updateUser on isolated client...');
 
             const { data, error } = await tempClient.auth.updateUser({ password });
 
@@ -361,7 +355,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data?.user) {
-                console.log('UpdatePassword: Success!');
                 setIsPasswordRecovery(false);
                 return { success: true };
             }

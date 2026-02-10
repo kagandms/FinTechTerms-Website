@@ -17,7 +17,6 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         .single();
 
     if (error || !data) {
-        console.log('No existing progress found, will create new');
         return null;
     }
 

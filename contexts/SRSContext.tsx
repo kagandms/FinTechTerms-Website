@@ -71,13 +71,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         // If local storage returned empty (shouldn't happen due to getTerms logic, but safety first), use mockTerms
         if (!currentTerms || currentTerms.length === 0) {
-            console.log('[LoadData] Local terms empty, using mockTerms directly');
             // We need to import mockTerms dynamically or assume getTerms() handles it.
             // Actually getTerms() in utils/storage.ts ALREADY handles the mock fallback.
             // But let's be double sure and check if we need to force reload.
         }
 
-        console.log('[LoadData] Initial terms from local/mock:', currentTerms.length);
 
         // CLEANUP: Deduplicate local terms immediately (handle poisoned localStorage)
         const uniqueLocalTerms = new Map<string, Term>();
@@ -96,7 +94,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         // Convert back to array
         currentTerms = Array.from(uniqueLocalTerms.values());
-        console.log('[LoadData] Deduplicated local terms:', currentTerms.length);
 
         // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
         if (currentTerms.length > 0) {
@@ -105,9 +102,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         // 1. Fetch latest terms content from Supabase (if online)
         try {
-            console.log('[LoadData] Fetching from Supabase...');
             const dbTerms = await fetchTermsFromSupabase();
-            console.log('[LoadData] Supabase response count:', dbTerms?.length);
 
             if (dbTerms && dbTerms.length > 0) {
                 // Merge DB content into local/mock list
@@ -158,7 +153,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 });
 
                 currentTerms = mergedTerms;
-                console.log('[LoadData] Merged terms count:', currentTerms.length);
                 // Update local storage cache
                 saveTerms(currentTerms);
                 // Update state with fresh data

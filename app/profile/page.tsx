@@ -10,6 +10,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { Language } from '@/types';
 import { resetAllData } from '@/utils/storage';
+import NotificationSettings from '@/components/NotificationSettings';
 import {
     User,
     Flame,
@@ -68,15 +69,7 @@ function ProfileContent() {
             const isHashRecovery = hash.includes('type=recovery');
             const isAccessToken = hash.includes('access_token') || fullUrl.includes('access_token');
 
-            console.log('Password Reset Detection:', {
-                event: isPasswordRecovery,
-                queryReset: isResetParam,
-                queryType: isTypeParam,
-                hashRecovery: isHashRecovery,
-                hasAccessToken: isAccessToken,
-                authenticated: isAuthenticated,
-                hash: hash.substring(0, 100) // Show first 100 chars of hash for debugging
-            });
+
         }
 
         // Check local state from AuthContext (Event based)
@@ -97,21 +90,21 @@ function ProfileContent() {
         // If any recovery indicator is present, open the modal
         // Don't require isAuthenticated as Supabase will handle auth via the recovery token
         if (isResetUrl || isRecoveryType || isRecoveryInHash) {
-            console.log('Recovery detected via URL. Opening password update modal...');
+
 
             // Give Supabase a moment to process the hash token and establish session
             setTimeout(() => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session) {
-                        console.log('Session found after recovery link:', session.user?.email);
+
                         setAuthMode('update-password');
                         setShowAuthModal(true);
                     } else {
-                        console.log('No session yet, trying to refresh...');
+
                         // Try refreshing the session
                         supabase.auth.refreshSession().then(({ data: { session: refreshedSession }, error }) => {
                             if (refreshedSession) {
-                                console.log('Session refreshed:', refreshedSession.user?.email);
+
                                 setAuthMode('update-password');
                                 setShowAuthModal(true);
                             } else if (error) {
@@ -479,6 +472,9 @@ function ProfileContent() {
                         </div>
                     </div>
 
+                    {/* Notification Settings */}
+                    <NotificationSettings language={language} />
+
                     {/* Analytics */}
                     <Link
                         href="/analytics"
@@ -729,9 +725,9 @@ function ProfileContent() {
                                             setAuthError('');
 
                                             try {
-                                                console.log('Calling updatePassword...');
+
                                                 const result = await updatePassword(authForm.password);
-                                                console.log('updatePassword result:', result);
+
 
                                                 if (result.success) {
                                                     setAuthLoading(false);

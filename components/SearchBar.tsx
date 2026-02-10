@@ -53,7 +53,7 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
     };
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-3" role="search" aria-label="Term search">
             {/* Search Input */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -65,6 +65,7 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={t('search.placeholder')}
+                    aria-label={t('search.placeholder')}
                     className="w-full pl-12 pr-20 py-3.5 bg-white border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200 shadow-sm"
                 />
 
@@ -73,6 +74,7 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                         <button
                             onClick={handleClear}
                             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                            aria-label="Clear search"
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -84,6 +86,8 @@ export default function SearchBar({ onResults, onClear }: SearchBarProps) {
                             ? 'bg-primary-100 text-primary-600'
                             : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                             }`}
+                        aria-label="Toggle category filters"
+                        aria-expanded={showFilters}
                     >
                         <Filter className="w-5 h-5" />
                     </button>
