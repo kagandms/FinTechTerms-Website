@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { SRSProvider } from '@/contexts/SRSContext';
@@ -9,6 +8,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import BottomNav from '@/components/BottomNav';
 import ConsentModal from '@/components/ConsentModal';
 import SessionTracker from '@/components/SessionTracker';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
 
 const siteUrl = 'https://fintechterms.vercel.app';
 
@@ -117,18 +117,16 @@ export const metadata: Metadata = {
         title: 'FinTechTerms',
     },
 
-    // Search Engine Checks
     verification: {
-        google: 'google-site-verification-code', // User needs to provide this actually
-        // yandex: 'yandex-verification',
+        google: 'ge-t3YnUICS7JWpdQTqwZA8eRw_O4kon-U-IH6EORLA',
     },
 };
 
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
+    maximumScale: 5,
+    userScalable: true,
     themeColor: '#0e3b5e',
 };
 
@@ -187,19 +185,7 @@ export default function RootLayout({
                         </LanguageProvider>
                     </AuthProvider>
                 </ThemeProvider>
-                <Script
-                    src="https://www.googletagmanager.com/gtag/js?id=G-XMLQTYLY25"
-                    strategy="afterInteractive"
-                />
-                <Script id="google-analytics" strategy="afterInteractive">
-                    {`
-                        window.dataLayer = window.dataLayer || [];
-                        function gtag(){dataLayer.push(arguments);}
-                        gtag('js', new Date());
-
-                        gtag('config', 'G-XMLQTYLY25');
-                    `}
-                </Script>
+                <GoogleAnalytics />
             </body>
         </html>
     );

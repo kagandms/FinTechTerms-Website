@@ -9,7 +9,7 @@ export default async function AdminDashboard() {
     const { data: { user } } = await supabaseAuth.auth.getUser();
 
     // Security Gate
-    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+    if (!user || user.email !== process.env.ADMIN_EMAIL) {
         redirect('/'); // Send unauthorized users to home
     }
 

@@ -46,3 +46,7 @@ next-env.d.ts
 public/sw.js
 public/workbox-*.js
 public/worker-*.js
+
+# testing
+playwright-report/
+test-results/

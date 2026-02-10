@@ -6,6 +6,7 @@ import { useLanguage, languageNames, languageFlags } from '@/contexts/LanguageCo
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { Language } from '@/types';
 import { resetAllData } from '@/utils/storage';
@@ -40,6 +41,7 @@ function ProfileContent() {
     const { userProgress, stats, refreshData, favoritesRemaining } = useSRS();
     const { user, isAuthenticated, login, register, logout, verifyOTP, resendOTP, pendingVerificationEmail, cancelVerification, resetPassword, updatePassword, isPasswordRecovery } = useAuth();
     const { theme, setTheme } = useTheme();
+    const { showToast } = useToast();
 
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -736,12 +738,19 @@ function ProfileContent() {
                                                     setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
                                                     setAuthError('');
 
-                                                    // Show success message
-                                                    alert(language === 'tr'
-                                                        ? 'Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapabilirsiniz.'
-                                                        : language === 'ru'
-                                                            ? 'Пароль успешно изменен! Войдите с новым паролем.'
-                                                            : 'Password successfully changed! Please login with your new password.');
+                                                    // Show success message via Toast
+                                                    showToast(
+                                                        language === 'tr'
+                                                            ? 'Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapabilirsiniz.'
+                                                            : language === 'ru'
+                                                                ? 'Пароль успешно изменен! Войдите с новым паролем.'
+                                                                : 'Password successfully changed! Please login with your new password.',
+                                                        'success'
+                                                    );
+
+                                                    // Wait a bit for the user to read the toast
+                                                    await new Promise(resolve => setTimeout(resolve, 2000));
+
 
                                                     // Logout and switch to login view
                                                     await logout();

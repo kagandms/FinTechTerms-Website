@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// API Key for bot/simulation access (store in environment variable)
-const API_KEY = process.env.QUIZ_API_KEY || 'ftt_research_api_key_2026';
+// API Key for bot/simulation access (MUST be set in environment variables)
+const API_KEY = process.env.QUIZ_API_KEY;
 
 // Rate limiting map (simple in-memory, resets on restart)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -13,6 +13,7 @@ const RATE_WINDOW = 60000; // 1 minute
  * Validate API key from request headers
  */
 function validateApiKey(request: NextRequest): boolean {
+    if (!API_KEY) return false; // Reject all if env var is not configured
     const apiKey = request.headers.get('X-API-Key');
     return apiKey === API_KEY;
 }

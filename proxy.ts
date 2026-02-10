@@ -1,48 +1,48 @@
+// ============================================
+// Next.js Middleware - Supabase Auth Session Refresh
+// Runs on every request to keep auth cookies fresh
+// ============================================
 
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function proxy(request: NextRequest) {
-    let response = await fetch(request.url, {
-        method: 'HEAD',
-    })
-    response = new Response(null, {
-        headers: response.headers,
-        status: response.status,
-        statusText: response.statusText,
-    })
-
-    // We need to create a response object first to pass to createServerClient
-    // However, Next.js middleware requires us to return a NextResponse if we want to proceed.
-    // The official pattern is slightly different. Let's use the standard "updateSession" pattern.
-
-    // Standard Supabase Middleware Pattern
-    return await updateSession(request)
-}
-
-async function updateSession(request: NextRequest) {
-    let response = import('next/server').then(mod => mod.NextResponse.next({
+    let supabaseResponse = NextResponse.next({
         request: {
             headers: request.headers,
         },
-    }))
+    })
 
-    // Await the response promise
-    let supabaseResponse = await response
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    // Skip middleware if Supabase is not configured
+    if (!supabaseUrl || !supabaseAnonKey) {
+        return supabaseResponse
+    }
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
+                    // Set cookies on the request (for downstream server components)
+                    cookiesToSet.forEach(({ name, value }) => {
                         request.cookies.set(name, value)
                     })
 
+                    // Create a new response with updated cookies
+                    supabaseResponse = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+
+                    // Set cookies on the response (for the browser)
                     cookiesToSet.forEach(({ name, value, options }) => {
                         supabaseResponse.cookies.set(name, value, options)
                     })
@@ -51,7 +51,8 @@ async function updateSession(request: NextRequest) {
         }
     )
 
-    // Refreshing the auth token
+    // Refresh the auth token on every request
+    // IMPORTANT: Do NOT use getSession() here, it does not refresh the token
     await supabase.auth.getUser()
 
     return supabaseResponse
@@ -64,8 +65,8 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * Feel free to modify this pattern to include more paths.
+         * - Static assets (svg, png, jpg, etc.)
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
     ],
 }
