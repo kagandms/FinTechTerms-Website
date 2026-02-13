@@ -43,7 +43,7 @@
         "flipCard": "Flip Card",
         "exploreWords": "Explore Words",
         "quickQuiz": "Quick Quiz",
-        "quickQuizDesc": "Quick practice with 5 random words",
+        "quickQuizDesc": "Quick practice with 5-50 random words",
         "startQuickQuiz": "Start Quick Quiz",
         "dailyStreak": "Daily Streak",
         "days": "days",
@@ -92,7 +92,8 @@
         "guest": "Continue as guest",
         "or": "or",
         "alreadyHaveAccount": "Already have an account?",
-        "noAccount": "Don't have an account?"
+        "noAccount": "Don't have an account?",
+        "passwordRequirements": "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol."
     },
     "categories": {
         "Fintech": "Fintech",

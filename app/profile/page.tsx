@@ -34,6 +34,8 @@ import {
     Moon,
     Monitor,
     X,
+    Eye,
+    EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -56,7 +58,12 @@ function ProfileContent() {
         birthYear: ''
     });
 
+    // Password visibility states
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // Detect password recovery mode via Event (primary) or URL (fallback)
     React.useEffect(() => {
@@ -126,14 +133,16 @@ function ProfileContent() {
 
     // Password validation
     const validatePassword = (password: string): { valid: boolean; message: string } => {
-        if (password.length < 8) {
+        // Regex for: At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol
+        // Symbol set is broad: ! @ # $ % ^ & * ( ) _ + - = [ ] { } ; ' : " \ | , . < > / ? ~ `
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+        if (!strongPasswordRegex.test(password)) {
             return {
                 valid: false,
-                message: language === 'tr'
-                    ? 'Şifre en az 8 karakter olmalı'
-                    : language === 'ru'
-                        ? 'Пароль минимум 8 символов'
-                        : 'Password must be at least 8 characters'
+                message: t('auth.passwordRequirements') || (language === 'tr'
+                    ? 'Şifre en az 8 karakter olmalı ve 1 büyük harf, 1 küçük harf, 1 rakam, 1 sembol içermelidir.'
+                    : 'Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol.')
             };
         }
         return { valid: true, message: '' };
@@ -678,12 +687,19 @@ function ProfileContent() {
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                             <input
-                                                type="password"
+                                                type={showPassword ? "text" : "password"}
                                                 value={authForm.password}
                                                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                className="w-full pl-10 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                                 placeholder="********"
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                            >
+                                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
                                         </div>
                                     </div>
 
@@ -695,12 +711,19 @@ function ProfileContent() {
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                             <input
-                                                type="password"
+                                                type={showConfirmPassword ? "text" : "password"}
                                                 value={authForm.confirmPassword}
                                                 onChange={(e) => setAuthForm({ ...authForm, confirmPassword: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                className="w-full pl-10 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                                 placeholder="********"
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
                                         </div>
                                     </div>
 
@@ -712,8 +735,9 @@ function ProfileContent() {
 
                                     <button
                                         onClick={async () => {
-                                            if (authForm.password.length < 8) {
-                                                setAuthError(language === 'tr' ? 'Şifre en az 8 karakter olmalı' : language === 'ru' ? 'Пароль минимум 8 символов' : 'Password must be at least 8 characters');
+                                            const passwordCheck = validatePassword(authForm.password);
+                                            if (!passwordCheck.valid) {
+                                                setAuthError(passwordCheck.message);
                                                 return;
                                             }
                                             if (authForm.password !== authForm.confirmPassword) {
@@ -750,6 +774,9 @@ function ProfileContent() {
 
                                                     // Logout and switch to login view
                                                     await logout();
+
+                                                    // Clear URL params (reset/recovery tokens) to prevent loop on refresh
+                                                    router.replace('/profile');
 
                                                     // Set mode to login and ensure modal is open
                                                     setAuthMode('login');
@@ -949,12 +976,19 @@ function ProfileContent() {
                                                 <div className="relative">
                                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                                     <input
-                                                        type="password"
+                                                        type={showPassword ? "text" : "password"}
                                                         value={authForm.password}
                                                         onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                        className="w-full pl-10 pr-12 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                                         placeholder={t('auth.password')}
                                                     />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                                    >
+                                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                    </button>
                                                 </div>
                                                 {authMode === 'register' && (
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

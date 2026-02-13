@@ -43,7 +43,7 @@
         "flipCard": "Kartı Çevir",
         "exploreWords": "Kelime Keşfet",
         "quickQuiz": "Hızlı Quiz",
-        "quickQuizDesc": "Rastgele 5 kelimeyle hızlı pratik",
+        "quickQuizDesc": "Rastgele 5-50 kelimeyle hızlı pratik",
         "startQuickQuiz": "Hızlı Quiz Başlat",
         "dailyStreak": "Günlük Seri",
         "days": "gün",
@@ -92,7 +92,8 @@
         "guest": "Misafir olarak devam et",
         "or": "veya",
         "alreadyHaveAccount": "Zaten hesabınız var mı?",
-        "noAccount": "Hesabınız yok mu?"
+        "noAccount": "Hesabınız yok mu?",
+        "passwordRequirements": "Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir sembol içermelidir."
     },
     "categories": {
         "Fintech": "Fintek",

@@ -51,10 +51,10 @@ export default function BottomNav() {
         },
     ];
 
-    if (user?.email === ADMIN_EMAIL) {
+    if (user?.email && ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
         navItems.push({
             href: '/admin/dashboard',
-            labelKey: 'common.dashboard', // Might need to add this key or just hardcode text if translation missing
+            labelKey: 'common.dashboard',
             icon: <BarChart2 className="w-6 h-6" />,
         });
     }
