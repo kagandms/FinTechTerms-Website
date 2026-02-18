@@ -13,7 +13,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
-    // turbopack: {}, // Removed empty config to avoid warnings
+    // Explicitly empty for now as we force webpack in package.json
+    turbopack: {},
     // Security headers for production
     async headers() {
         return [
