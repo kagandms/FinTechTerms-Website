@@ -51,7 +51,7 @@ function ProfileContent() {
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {isAuthenticated
-                            ? (language === 'tr' ? `Hoş geldin, ${user?.user_metadata?.full_name || user?.email}` : `Welcome back, ${user?.user_metadata?.full_name || user?.email}`)
+                            ? (language === 'tr' ? `Hoş geldin, ${user?.name}` : `Welcome back, ${user?.name}`)
                             : t('profile.guestMessage')
                         }
                     </p>

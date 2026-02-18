@@ -49,7 +49,7 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
     return {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
-        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
         createdAt: supabaseUser.created_at,
     };
 }
