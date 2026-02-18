@@ -77,7 +77,8 @@
         "learningWords": "Learning",
         "resetData": "Reset Data",
         "language": "Language",
-        "days": "days"
+        "days": "days",
+        "guestMessage": "Log in to save your progress."
     },
     "auth": {
         "login": "Sign In",

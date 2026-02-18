@@ -77,7 +77,8 @@
         "learningWords": "Изучается",
         "resetData": "Сбросить данные",
         "language": "Язык",
-        "days": "дней"
+        "days": "дней",
+        "guestMessage": "Войдите, чтобы сохранить прогресс."
     },
     "auth": {
         "login": "Войти",
