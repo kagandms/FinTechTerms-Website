@@ -24,28 +24,16 @@ function ProfileContent() {
 
     // 2. Additional Contexts (not in authLogic)
     const { theme, setTheme } = useTheme();
-    const { getStats, refreshData } = useSRS();
+    const { stats, refreshData } = useSRS();
 
-    // 3. Page Local State (Stats)
-    const [stats, setStats] = useState({ totalFavorites: 0, mastered: 0, learning: 0 });
+    // 3. User Progress (Mock/Local for now until unified)
     const [userProgress, setUserProgress] = useState<any>({ current_streak: 0 });
 
     useEffect(() => {
-        const data = getStats();
-        if (data) {
-            setStats({
-                totalFavorites: data.totalFavorites,
-                mastered: data.mastered,
-                learning: data.learning
-            });
-            // We assume userProgress comes from somewhere else or SRS Stats includes it
-            // In the original file, it fetched userProgress separately if auth, or used local storage
-            // For now, mapping SRS stats to view
-        }
         // Mock userProgress update for implementation parity
         const storedProgress = typeof window !== 'undefined' ? localStorage.getItem('userProgress') : null;
         if (storedProgress) setUserProgress(JSON.parse(storedProgress));
-    }, [getStats, isAuthenticated]); // Re-run when auth changes
+    }, [isAuthenticated]);
 
     // Calculated fields
     const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0); // Approx
