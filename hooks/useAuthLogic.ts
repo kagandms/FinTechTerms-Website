@@ -107,7 +107,7 @@ export function useAuthLogic() {
 
         setAuthLoading(true);
         try {
-            let result;
+            let result: { success: boolean; error?: string; needsOTPVerification?: boolean };
             if (authMode === 'login') {
                 result = await login(authForm.email, authForm.password);
             } else {
