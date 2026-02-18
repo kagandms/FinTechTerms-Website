@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase';
+import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
@@ -26,7 +27,7 @@ export function useAuthLogic() {
     const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     // Form State
-    const [authForm, setAuthForm] = useState({
+    const [authForm, setAuthForm] = useState<AuthFormState>({
         email: '',
         password: '',
         confirmPassword: '',
