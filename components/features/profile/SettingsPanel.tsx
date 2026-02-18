@@ -7,12 +7,14 @@ import { Language } from '@/types';
 import { languageNames, languageFlags } from '@/contexts/LanguageContext';
 import NotificationSettings from '@/components/NotificationSettings';
 
+import { Theme } from '@/contexts/ThemeContext';
+
 interface SettingsPanelProps {
     t: (key: string) => string;
     language: Language;
     setLanguage: (lang: Language) => void;
-    theme: string;
-    setTheme: (theme: string) => void;
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
     onResetClick: () => void;
 }
 
