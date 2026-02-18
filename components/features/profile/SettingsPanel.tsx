@@ -1,0 +1,170 @@
+import React from 'react';
+import Link from 'next/link';
+import {
+    Globe, Moon, Sun, Monitor, BarChart3, Info, Brain, RotateCcw, ChevronRight
+} from 'lucide-react';
+import { Language } from '@/types';
+import { languageNames, languageFlags } from '@/contexts/LanguageContext';
+import NotificationSettings from '@/components/NotificationSettings';
+
+interface SettingsPanelProps {
+    t: (key: string) => string;
+    language: Language;
+    setLanguage: (lang: Language) => void;
+    theme: string;
+    setTheme: (theme: string) => void;
+    onResetClick: () => void;
+}
+
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({
+    t,
+    language,
+    setLanguage,
+    theme,
+    setTheme,
+    onResetClick
+}) => {
+    return (
+        <section className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                {t('common.settings')}
+            </h2>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Language Selection */}
+                <div className="p-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3 mb-3">
+                        <Globe className="w-5 h-5 text-gray-400" />
+                        <span className="font-medium text-gray-900">{t('profile.language')}</span>
+                    </div>
+
+                    <div className="flex gap-2">
+                        {(['tr', 'en', 'ru'] as Language[]).map((lang) => (
+                            <button
+                                key={lang}
+                                onClick={() => setLanguage(lang)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${language === lang
+                                    ? 'bg-primary-500 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                    }`}
+                            >
+                                <span>{languageFlags[lang]}</span>
+                                <span className="text-sm">{languageNames[lang].native}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Theme Selection */}
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-3">
+                        {theme === 'dark' ? (
+                            <Moon className="w-5 h-5 text-gray-400" />
+                        ) : theme === 'light' ? (
+                            <Sun className="w-5 h-5 text-gray-400" />
+                        ) : (
+                            <Monitor className="w-5 h-5 text-gray-400" />
+                        )}
+                        <span className="font-medium text-gray-900 dark:text-white">
+                            {language === 'tr' ? 'Tema' : language === 'ru' ? 'Тема' : 'Theme'}
+                        </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setTheme('light')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'light'
+                                ? 'bg-primary-500 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                        >
+                            <Sun className="w-4 h-4" />
+                            <span className="text-sm">
+                                {language === 'tr' ? 'Açık' : language === 'ru' ? 'Светлая' : 'Light'}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setTheme('dark')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'dark'
+                                ? 'bg-primary-500 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                        >
+                            <Moon className="w-4 h-4" />
+                            <span className="text-sm">
+                                {language === 'tr' ? 'Koyu' : language === 'ru' ? 'Тёмная' : 'Dark'}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setTheme('system')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${theme === 'system'
+                                ? 'bg-primary-500 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                }`}
+                        >
+                            <Monitor className="w-4 h-4" />
+                            <span className="text-sm">
+                                {language === 'tr' ? 'Sistem' : language === 'ru' ? 'Система' : 'System'}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Notification Settings */}
+                <NotificationSettings language={language} />
+
+                {/* Analytics */}
+                <Link
+                    href="/analytics"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                    <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5 text-gray-400" />
+                        <span className="font-medium">
+                            {language === 'tr' ? 'Analitik' : language === 'ru' ? 'Аналитика' : 'Analytics'}
+                        </span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                </Link>
+
+                {/* About */}
+                <Link
+                    href="/about"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                    <div className="flex items-center gap-3">
+                        <Info className="w-5 h-5 text-gray-400" />
+                        <span className="font-medium">{t('about.viewAbout')}</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                </Link>
+
+                {/* Methodology */}
+                <Link
+                    href="/methodology"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                    <div className="flex items-center gap-3">
+                        <Brain className="w-5 h-5 text-gray-400" />
+                        <span className="font-medium">
+                            {language === 'tr' ? 'Metodoloji' : language === 'ru' ? 'Методология' : 'Methodology'}
+                        </span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                </Link>
+
+                {/* Reset Data */}
+                <button
+                    onClick={onResetClick}
+                    className="w-full p-4 flex items-center justify-between text-red-500 hover:bg-red-50 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <RotateCcw className="w-5 h-5" />
+                        <span className="font-medium">{t('profile.resetData')}</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+            </div>
+        </section>
+    );
+};

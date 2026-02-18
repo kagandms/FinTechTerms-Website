@@ -1,36 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fonts loaded via next/font in layout.tsx */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-primary: #0e3b5e;
-  --color-accent: #f59e0b;
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  /* Semantic Colors */
+  --color-primary-50: #e6f0f5;
+  --color-primary-100: #cce1eb;
+  --color-primary-200: #99c3d7;
+  --color-primary-300: #66a5c3;
+  --color-primary-400: #3387af;
+  --color-primary-500: #0e3b5e;
+  /* Main Brand Color */
+  --color-primary-600: #0c3452;
+  --color-primary-700: #0a2d46;
+  --color-primary-800: #08263a;
+  --color-primary-900: #061f2e;
+  --color-primary-950: #041822;
 
-  /* Light mode colors */
-  --bg-primary: #f8fafc;
-  --bg-card: #ffffff;
+  --color-accent-50: #fffbeb;
+  --color-accent-100: #fef3c7;
+  --color-accent-200: #fde68a;
+  --color-accent-300: #fcd34d;
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+  --color-accent-700: #b45309;
+  --color-accent-800: #92400e;
+  --color-accent-900: #78350f;
+  --color-accent-950: #451a03;
+
+  /* Surface Colors - Light Mode Default */
+  --surface-light: #ffffff;
+  --surface-dark: #061f2e;
+  --surface-card: #f8fafc;
+  --surface-card-dark: #0a2d46;
+
+  /* Layout & Text */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --bg-primary: var(--surface-card);
+  /* f8fafc */
+  --bg-card: var(--surface-light);
+  /* ffffff */
   --bg-input: #ffffff;
+
   --text-primary: #1a1a2e;
   --text-secondary: #64748b;
   --text-tertiary: #94a3b8;
+
   --border-color: #e2e8f0;
+
+  /* Usage shorthands */
+  --color-primary: var(--color-primary-500);
+  --color-accent: var(--color-accent-500);
   --shadow-color: rgba(14, 59, 94, 0.08);
 }
 
-/* Dark mode colors - class based */
+/* Dark mode colors - class based re-definitions */
 .dark {
-  --color-primary: #3b82f6;
-  --color-accent: #fbbf24;
-  --bg-primary: #061f2e; /* Primary-900 - Deep Navy */
-  --bg-card: #0a2d46;    /* Primary-700 - Lighter Navy */
-  --bg-input: #0c3452;
+  /* Re-map semantic meanings for Dark Mode */
+  --bg-primary: var(--color-primary-900);
+  /* #061f2e */
+  --bg-card: var(--color-primary-700);
+  /* #0a2d46 */
+  --bg-input: var(--color-primary-600);
+  /* #0c3452 */
+
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-tertiary: #64748b;
+
   --border-color: #334155;
+
+  /* Adjust primary/accent for dark mode visibility if needed, 
+     but usually we keep the palette and just change usage. 
+     However, the original file re-defined these: */
+  --color-primary: #3b82f6;
+  /* Lighter blue for dark mode visibility */
+  --color-accent: #fbbf24;
+  /* Lighter yellow */
+
   --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
@@ -43,7 +93,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;

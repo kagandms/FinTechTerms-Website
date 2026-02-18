@@ -10,6 +10,20 @@ import ConsentModal from '@/components/ConsentModal';
 import SessionTracker from '@/components/SessionTracker';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 
+import { Inter, JetBrains_Mono } from 'next/font/google';
+
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-inter',
+    display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    variable: '--font-jetbrains-mono',
+    display: 'swap',
+});
+
 const siteUrl = 'https://fintechterms.vercel.app';
 
 
@@ -166,7 +180,7 @@ export default function RootLayout({
                     }}
                 />
             </head>
-            <body className="antialiased" suppressHydrationWarning>
+            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
                 <ThemeProvider>
                     <AuthProvider>
                         <LanguageProvider>

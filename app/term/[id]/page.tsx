@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { getTermById, fetchTermsFromSupabase } from '@/lib/supabaseStorage';
+import { createSafeTerm } from '@/utils/termUtils';
 import SmartCard from '@/components/SmartCard';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -77,20 +78,9 @@ export default async function TermPage({ params }: Props) {
         notFound();
     }
 
-    // Cast partial term to full term since we know db returns full content fields
-    // and we'll use default SRS values if missing (handled by SmartCard/Context or we mock it here)
-    // Actually SmartCard expects a full Term. We need to fill in defaults for the visual component.
-    const fullTerm = {
-        ...termData,
-        // Provide defaults for SRS fields if they are missing from the Partial<Term>
-        srs_level: termData.srs_level ?? 0,
-        next_review_date: termData.next_review_date ?? new Date().toISOString(),
-        last_reviewed: termData.last_reviewed ?? null,
-        difficulty_score: termData.difficulty_score ?? 0,
-        retention_rate: termData.retention_rate ?? 0,
-        times_reviewed: termData.times_reviewed ?? 0,
-        times_correct: termData.times_correct ?? 0,
-    } as any; // Cast to any or Term to satisfy TS if fields match
+    // Use the safe factory function to ensure all fields are present
+    // This replaces the dangerous "as any" cast
+    const fullTerm = createSafeTerm(termData);
 
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
