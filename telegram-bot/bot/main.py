@@ -30,6 +30,7 @@ from bot.handlers import (
     lang_handler,
     stats_handler,
     help_handler,
+    report_handler,
     callback_handler,
     text_handler,
 )
@@ -84,6 +85,7 @@ def main() -> None:
     app.add_handler(CommandHandler("lang", lang_handler))
     app.add_handler(CommandHandler("stats", stats_handler))
     app.add_handler(CommandHandler("help", help_handler))
+    app.add_handler(CommandHandler("report", report_handler))
 
     # ── Register callback query handler ──
     app.add_handler(CallbackQueryHandler(callback_handler))

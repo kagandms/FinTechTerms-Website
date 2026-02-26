@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import random
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from supabase import create_client, Client
@@ -128,6 +129,65 @@ def set_user_language(user_id: int, language: str) -> None:
     if user_id not in _user_prefs:
         _user_prefs[user_id] = {}
     _user_prefs[user_id]["language"] = language
+
+
+# ── User Activity Tracking ────────────────────────────────
+_user_activity: dict[int, dict[str, Any]] = {}
+
+
+def _ensure_activity(user_id: int) -> dict[str, Any]:
+    """Ensure user activity dict exists and return it."""
+    if user_id not in _user_activity:
+        _user_activity[user_id] = {
+            "searches": 0,
+            "quizzes_taken": 0,
+            "quizzes_correct": 0,
+            "terms_viewed": 0,
+            "daily_used": 0,
+            "tts_used": 0,
+            "categories_explored": set(),
+            "session_start": datetime.now(timezone.utc).isoformat(),
+        }
+    return _user_activity[user_id]
+
+
+def track_activity(user_id: int, action: str, **kwargs: Any) -> None:
+    """Track a user action for reporting."""
+    data = _ensure_activity(user_id)
+    if action == "search":
+        data["searches"] += 1
+    elif action == "quiz_taken":
+        data["quizzes_taken"] += 1
+        if kwargs.get("correct"):
+            data["quizzes_correct"] += 1
+    elif action == "term_viewed":
+        data["terms_viewed"] += 1
+        cat = kwargs.get("category")
+        if cat:
+            data["categories_explored"].add(cat)
+    elif action == "daily":
+        data["daily_used"] += 1
+    elif action == "tts":
+        data["tts_used"] += 1
+
+
+def get_user_report(user_id: int) -> dict[str, Any]:
+    """Get user activity summary for the report."""
+    data = _ensure_activity(user_id)
+    accuracy = 0
+    if data["quizzes_taken"] > 0:
+        accuracy = round((data["quizzes_correct"] / data["quizzes_taken"]) * 100)
+    return {
+        "searches": data["searches"],
+        "quizzes_taken": data["quizzes_taken"],
+        "quizzes_correct": data["quizzes_correct"],
+        "accuracy": accuracy,
+        "terms_viewed": data["terms_viewed"],
+        "daily_used": data["daily_used"],
+        "tts_used": data["tts_used"],
+        "categories_explored": len(data["categories_explored"]),
+        "session_start": data["session_start"],
+    }
 
 
 # ── Stats ──────────────────────────────────────────────────

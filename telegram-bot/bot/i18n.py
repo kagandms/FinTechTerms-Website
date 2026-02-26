@@ -211,6 +211,79 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "➡️ Next",
         "tr": "➡️ Sonraki",
     },
+    # ── Report ─────────────────────────────────────
+    "report_header": {
+        "ru": (
+            "📋 <b>Ваш отчёт об активности</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+        ),
+        "en": (
+            "📋 <b>Your Activity Report</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+        ),
+        "tr": (
+            "📋 <b>Aktivite Raporunuz</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+        ),
+    },
+    "report_body": {
+        "ru": (
+            "🔍 Поисков выполнено: <b>{searches}</b>\n"
+            "📖 Терминов просмотрено: <b>{terms_viewed}</b>\n"
+            "📅 Термин дня: <b>{daily_used}</b> раз\n"
+            "🔊 Прослушано произношений: <b>{tts_used}</b>\n"
+            "📂 Категорий изучено: <b>{categories}</b>/3\n\n"
+            "🎯 <b>Результаты тестов</b>\n"
+            "   Пройдено: <b>{quizzes_taken}</b>\n"
+            "   Верных: <b>{quizzes_correct}</b>\n"
+            "   Точность: <b>{accuracy}%</b> {accuracy_bar}\n\n"
+            "{tip}"
+        ),
+        "en": (
+            "🔍 Searches made: <b>{searches}</b>\n"
+            "📖 Terms viewed: <b>{terms_viewed}</b>\n"
+            "📅 Daily term: <b>{daily_used}</b> times\n"
+            "🔊 Pronunciations listened: <b>{tts_used}</b>\n"
+            "📂 Categories explored: <b>{categories}</b>/3\n\n"
+            "🎯 <b>Quiz Performance</b>\n"
+            "   Taken: <b>{quizzes_taken}</b>\n"
+            "   Correct: <b>{quizzes_correct}</b>\n"
+            "   Accuracy: <b>{accuracy}%</b> {accuracy_bar}\n\n"
+            "{tip}"
+        ),
+        "tr": (
+            "🔍 Yapılan arama: <b>{searches}</b>\n"
+            "📖 Görüntülenen terim: <b>{terms_viewed}</b>\n"
+            "📅 Günün terimi: <b>{daily_used}</b> kez\n"
+            "🔊 Dinlenen telaffuz: <b>{tts_used}</b>\n"
+            "📂 Keşfedilen kategori: <b>{categories}</b>/3\n\n"
+            "🎯 <b>Test Performansı</b>\n"
+            "   Çözülen: <b>{quizzes_taken}</b>\n"
+            "   Doğru: <b>{quizzes_correct}</b>\n"
+            "   Doğruluk: <b>{accuracy}%</b> {accuracy_bar}\n\n"
+            "{tip}"
+        ),
+    },
+    "report_tip_search": {
+        "ru": "💡 <i>Совет: Попробуйте /search для поиска новых терминов!</i>",
+        "en": "💡 <i>Tip: Try /search to discover new terms!</i>",
+        "tr": "💡 <i>İpucu: Yeni terimler keşfetmek için /search deneyin!</i>",
+    },
+    "report_tip_quiz": {
+        "ru": "💡 <i>Совет: Пройдите больше тестов, чтобы улучшить результат!</i>",
+        "en": "💡 <i>Tip: Take more quizzes to improve your score!</i>",
+        "tr": "💡 <i>İpucu: Sonucunuzu iyileştirmek için daha fazla test çözün!</i>",
+    },
+    "report_tip_daily": {
+        "ru": "💡 <i>Совет: Изучайте термин дня каждый день для прогресса!</i>",
+        "en": "💡 <i>Tip: Check the daily term regularly for steady progress!</i>",
+        "tr": "💡 <i>İpucu: Düzenli ilerleme için her gün günün terimini inceleyin!</i>",
+    },
+    "report_tip_great": {
+        "ru": "🌟 <i>Отличная работа! Вы активно изучаете финтех-термины!</i>",
+        "en": "🌟 <i>Great job! You're actively learning fintech terms!</i>",
+        "tr": "🌟 <i>Harika iş! Fintek terimlerini aktif olarak öğreniyorsunuz!</i>",
+    },
 }
 
 

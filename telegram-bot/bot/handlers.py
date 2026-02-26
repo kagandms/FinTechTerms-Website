@@ -28,6 +28,8 @@ from bot.database import (
     get_category_counts,
     fetch_all_terms,
     fetch_term_by_id,
+    track_activity,
+    get_user_report,
 )
 from bot.i18n import t
 from bot.tts import generate_tts_audio
@@ -84,6 +86,12 @@ def _main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
                     "🎯 " + ("Тест" if lang == "ru" else "Test" if lang == "tr" else "Quiz"),
                     callback_data="menu:quiz",
                 ),
+                InlineKeyboardButton(
+                    "📋 " + ("Отчёт" if lang == "ru" else "Rapor" if lang == "tr" else "Report"),
+                    callback_data="menu:report",
+                ),
+            ],
+            [
                 InlineKeyboardButton(
                     "📊 " + ("Статистика" if lang == "ru" else "İstatistik" if lang == "tr" else "Stats"),
                     callback_data="menu:stats",
@@ -164,6 +172,7 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     query = " ".join(context.args)
     results = await search_terms(query, limit=3)
+    track_activity(user_id, "search")
 
     if not results:
         await update.message.reply_text(
@@ -197,6 +206,9 @@ async def daily_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not term:
         await update.message.reply_text(t("error", lang), parse_mode=ParseMode.HTML)
         return
+
+    track_activity(user_id, "daily")
+    track_activity(user_id, "term_viewed", category=term.get("category", ""))
 
     header = t("daily_header", lang)
     card = _format_term_card(term, lang)
@@ -330,6 +342,60 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
+# ── /report ────────────────────────────────────────────────
+async def report_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show user's activity report."""
+    if not update.effective_user or not update.message:
+        return
+    user_id = update.effective_user.id
+    lang = get_user_language(user_id)
+    text = _build_report_text(user_id, lang)
+    await update.message.reply_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+    )
+
+
+def _build_report_text(user_id: int, lang: str) -> str:
+    """Build a rich activity report for the user."""
+    report = get_user_report(user_id)
+
+    # Build accuracy progress bar (10 blocks)
+    filled = report["accuracy"] // 10
+    bar = "█" * filled + "░" * (10 - filled)
+
+    # Choose smart tip based on weakest area
+    total_actions = (
+        report["searches"] + report["quizzes_taken"] + report["daily_used"]
+    )
+    if total_actions >= 10:
+        tip = t("report_tip_great", lang)
+    elif report["searches"] == 0:
+        tip = t("report_tip_search", lang)
+    elif report["quizzes_taken"] < 3:
+        tip = t("report_tip_quiz", lang)
+    else:
+        tip = t("report_tip_daily", lang)
+
+    header = t("report_header", lang)
+    body = t(
+        "report_body",
+        lang,
+        searches=report["searches"],
+        terms_viewed=report["terms_viewed"],
+        daily_used=report["daily_used"],
+        tts_used=report["tts_used"],
+        categories=report["categories_explored"],
+        quizzes_taken=report["quizzes_taken"],
+        quizzes_correct=report["quizzes_correct"],
+        accuracy=report["accuracy"],
+        accuracy_bar=bar,
+        tip=tip,
+    )
+    return header + body
+
+
 # ══════════════════════════════════════════════════════════
 #  CALLBACK QUERY HANDLER  — edits the EXISTING message
 # ══════════════════════════════════════════════════════════
@@ -365,6 +431,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         elif data in ("menu:daily", "daily:next"):
             term = await get_random_term()
             if term:
+                track_activity(user_id, "daily")
+                track_activity(user_id, "term_viewed", category=term.get("category", ""))
                 header = t("daily_header", lang)
                 card = _format_term_card(term, lang)
                 await query.edit_message_text(
@@ -398,6 +466,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 reply_markup=_lang_keyboard(lang),
             )
 
+        # ── Report ──
+        elif data == "menu:report":
+            text = _build_report_text(user_id, lang)
+            await query.edit_message_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            )
+
         # ── Help ──
         elif data == "menu:help":
             await query.edit_message_text(
@@ -426,7 +503,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
             if is_correct:
                 result_text = t("quiz_correct", lang)
+                track_activity(user_id, "quiz_taken", correct=True)
             else:
+                track_activity(user_id, "quiz_taken", correct=False)
                 term = await fetch_term_by_id(term_id) if term_id else None
                 def_key = f"definition_{lang}"
                 answer = (
@@ -465,6 +544,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     try:
                         audio_path = await generate_tts_audio(text_to_speak, tts_lang)
                         if audio_path:
+                            track_activity(user_id, "tts")
                             with open(audio_path, "rb") as audio_file:
                                 sent = await query.message.reply_voice(  # type: ignore[union-attr]
                                     voice=audio_file,
