@@ -187,12 +187,12 @@ export default function AboutPage() {
             />
             {/* Header */}
             <header className="text-center mb-8">
-                <div className="inline-flex items-center justify-center p-3 bg-primary-100 rounded-2xl mb-4">
+                <div className="inline-flex items-center justify-center p-3 bg-primary-100 dark:bg-primary-900/30 rounded-2xl mb-4">
                     <GraduationCap className="w-10 h-10 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{t.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{t.title}</h1>
                 <p className="text-lg font-semibold text-primary-500">{t.subtitle}</p>
-                <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">{t.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">{t.description}</p>
             </header>
 
             {/* Mission */}
@@ -206,32 +206,32 @@ export default function AboutPage() {
 
             {/* Features */}
             <section className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">{t.features.title}</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t.features.title}</h2>
                 <div className="grid grid-cols-2 gap-3">
                     {t.features.items.map((item, i) => (
-                        <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                            <div className="p-2 bg-primary-50 rounded-lg w-fit mb-3">
+                        <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg w-fit mb-3">
                                 <item.icon className="w-5 h-5 text-primary-500" />
                             </div>
-                            <h3 className="font-semibold text-gray-900 text-sm mb-1">{item.title}</h3>
-                            <p className="text-xs text-gray-500">{item.desc}</p>
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{item.title}</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
                         </div>
                     ))}
                 </div>
             </section>
 
             {/* Academic Purpose */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-accent-100 rounded-lg">
+                    <div className="p-2 bg-accent-100 dark:bg-accent-900/30 rounded-lg">
                         <BookOpen className="w-5 h-5 text-accent-600" />
                     </div>
-                    <h2 className="text-lg font-bold text-gray-900">{t.academic.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.academic.title}</h2>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-4">{t.academic.text}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{t.academic.text}</p>
                 <ul className="space-y-2">
                     {t.academic.points.map((point, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
                             <span className="text-primary-500 mt-1">•</span>
                             {point}
                         </li>
@@ -240,9 +240,9 @@ export default function AboutPage() {
             </section>
 
             {/* Methodology Link */}
-            <section className="bg-gray-50 rounded-2xl p-5 mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2">{t.methodology}</h3>
-                <p className="text-sm text-gray-500 mb-4">{t.methodologyDesc}</p>
+            <section className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 mb-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{t.methodology}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.methodologyDesc}</p>
                 <Link
                     href="/methodology"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white font-medium rounded-xl hover:bg-primary-600 transition-colors"
@@ -255,12 +255,12 @@ export default function AboutPage() {
 
             {/* Technologies */}
             <section className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">{t.tech.title}</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t.tech.title}</h2>
                 <div className="flex flex-wrap gap-2">
                     {t.tech.items.map((tech, i) => (
                         <span
                             key={i}
-                            className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-full"
+                            className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full"
                         >
                             {tech}
                         </span>
@@ -274,13 +274,13 @@ export default function AboutPage() {
             </section>
 
             {/* Contact */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">{t.contact.title}</h2>
-                <p className="text-sm text-gray-500 mb-4">{t.contact.text}</p>
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{t.contact.title}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.contact.text}</p>
                 <div className="flex gap-3">
                     <a
                         href="mailto:contact@fintechterms.com"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                         <Mail className="w-4 h-4" />
                         Email
@@ -289,7 +289,7 @@ export default function AboutPage() {
                         href="https://github.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                         <Github className="w-4 h-4" />
                         GitHub
@@ -298,7 +298,7 @@ export default function AboutPage() {
                         href="https://linkedin.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                         <Linkedin className="w-4 h-4" />
                         LinkedIn
