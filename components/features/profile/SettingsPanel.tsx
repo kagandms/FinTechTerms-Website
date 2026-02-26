@@ -32,12 +32,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {t('common.settings')}
             </h2>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 {/* Language Selection */}
-                <div className="p-4 border-b border-gray-100">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3 mb-3">
                         <Globe className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-900">{t('profile.language')}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{t('profile.language')}</span>
                     </div>
 
                     <div className="flex gap-2">
@@ -118,7 +118,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {/* Analytics */}
                 <Link
                     href="/analytics"
-                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">
                         <BarChart3 className="w-5 h-5 text-gray-400" />
@@ -132,7 +132,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {/* About */}
                 <Link
                     href="/about"
-                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">
                         <Info className="w-5 h-5 text-gray-400" />
@@ -144,7 +144,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {/* Methodology */}
                 <Link
                     href="/methodology"
-                    className="w-full p-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                    className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">
                         <Brain className="w-5 h-5 text-gray-400" />
@@ -158,7 +158,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {/* Reset Data */}
                 <button
                     onClick={onResetClick}
-                    className="w-full p-4 flex items-center justify-between text-red-500 hover:bg-red-50 transition-colors"
+                    className="w-full p-4 flex items-center justify-between text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                     <div className="flex items-center gap-3">
                         <RotateCcw className="w-5 h-5" />

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { Suspense, useState, useEffect } from 'react';
-import { User } from 'lucide-react'; // Only need User icon here for the header
+import { User } from 'lucide-react';
 import { useAuthLogic } from '@/hooks/useAuthLogic';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 
 // Feature Components
@@ -24,19 +25,19 @@ function ProfileContent() {
 
     // 2. Additional Contexts (not in authLogic)
     const { theme, setTheme } = useTheme();
+    const { setLanguage } = useLanguage();
     const { stats, refreshData } = useSRS();
 
     // 3. User Progress (Mock/Local for now until unified)
     const [userProgress, setUserProgress] = useState<any>({ current_streak: 0 });
 
     useEffect(() => {
-        // Mock userProgress update for implementation parity
         const storedProgress = typeof window !== 'undefined' ? localStorage.getItem('userProgress') : null;
         if (storedProgress) setUserProgress(JSON.parse(storedProgress));
     }, [isAuthenticated]);
 
     // Calculated fields
-    const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0); // Approx
+    const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0);
     const accuracy = userProgress.quiz_history?.length
         ? Math.round((userProgress.quiz_history.filter((q: any) => q.is_correct).length / userProgress.quiz_history.length) * 100)
         : 0;
@@ -51,7 +52,7 @@ function ProfileContent() {
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
                         {isAuthenticated
-                            ? (language === 'tr' ? `Hoş geldin, ${user?.name}` : `Welcome back, ${user?.name}`)
+                            ? (language === 'tr' ? `Hoş geldin, ${user?.name}` : language === 'ru' ? `С возвращением, ${user?.name}` : `Welcome back, ${user?.name}`)
                             : t('profile.guestMessage')
                         }
                     </p>
@@ -75,10 +76,10 @@ function ProfileContent() {
                 <div className="mb-8 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-2xl border border-primary-100 dark:border-primary-800 flex items-center justify-between">
                     <div>
                         <h3 className="font-bold text-primary-900 dark:text-primary-100 mb-1">
-                            {language === 'tr' ? 'Hesap Oluştur' : 'Create Account'}
+                            {language === 'tr' ? 'Hesap Oluştur' : language === 'ru' ? 'Создать аккаунт' : 'Create Account'}
                         </h3>
                         <p className="text-sm text-primary-700 dark:text-primary-300">
-                            {language === 'tr' ? 'İlerlemeni kaydet ve her yerden eriş.' : 'Save progress and sync devices.'}
+                            {language === 'tr' ? 'İlerlemeni kaydet ve her yerden eriş.' : language === 'ru' ? 'Сохраните прогресс и синхронизируйте устройства.' : 'Save progress and sync devices.'}
                         </p>
                     </div>
                     <button
@@ -104,27 +105,18 @@ function ProfileContent() {
             <SettingsPanel
                 t={t}
                 language={language}
-                setLanguage={authLogic.language === 'tr' ? () => { } : () => { }} // Language context handles this, logic might differ. 
-                // Wait, useLanguage returns setLanguage but we need access to it.
-                // usedLanguage hook provides `setLanguage`. logic hook exposes `language`.
-                // Let's re-import useLanguage here to get the setter, or expose it in useAuthLogic
+                setLanguage={setLanguage}
                 theme={theme}
                 setTheme={setTheme}
                 onResetClick={() => setShowResetConfirm(true)}
             />
-            {/* Note: I need to fix setLanguage passing. useAuthLogic exposes language but maybe not setLanguage.
-                Optimally useAuthLogic should expose it OR I assume SettingsPanel uses the context internally?
-                My SettingsPanel props require setLanguage.
-                Let's get it from context directly in the component or extract it from logic.
-                I'll leave it as prop for now and get it here.
-            */}
 
             {isAuthenticated && (
                 <button
                     onClick={authLogic.logout}
                     className="w-full py-4 text-red-500 font-medium bg-red-50 dark:bg-red-900/10 rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors mb-8"
                 >
-                    {language === 'tr' ? 'Çıkış Yap' : 'Log Out'}
+                    {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выйти' : 'Log Out'}
                 </button>
             )}
 

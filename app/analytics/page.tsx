@@ -241,72 +241,72 @@ export default function AnalyticsPage() {
 
             {/* Header */}
             <header className="text-center mb-6">
-                <div className="inline-flex items-center justify-center p-3 bg-primary-100 rounded-2xl mb-3">
+                <div className="inline-flex items-center justify-center p-3 bg-primary-100 dark:bg-primary-900/30 rounded-2xl mb-3">
                     <BarChart3 className="w-8 h-8 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-                <p className="text-sm text-gray-500">{t.subtitle}</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
             </header>
 
             {/* Overview Cards */}
             <section className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                     {t.overview}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <BookOpen className="w-5 h-5 text-blue-500 mb-2" />
-                        <p className="text-2xl font-bold text-gray-900">{terms.length}</p>
-                        <p className="text-xs text-gray-500">{t.totalTerms}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{terms.length}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.totalTerms}</p>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <Award className="w-5 h-5 text-red-500 mb-2" />
-                        <p className="text-2xl font-bold text-gray-900">{stats.totalFavorites}</p>
-                        <p className="text-xs text-gray-500">{t.favorites}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.favorites}</p>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <Target className="w-5 h-5 text-green-500 mb-2" />
-                        <p className="text-2xl font-bold text-gray-900">{stats.mastered}</p>
-                        <p className="text-xs text-gray-500">{t.mastered}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.mastered}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.mastered}</p>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <TrendingUp className="w-5 h-5 text-purple-500 mb-2" />
-                        <p className="text-2xl font-bold text-gray-900">%{quizStats.accuracy}</p>
-                        <p className="text-xs text-gray-500">{t.accuracy}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">%{quizStats.accuracy}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.accuracy}</p>
                     </div>
                 </div>
             </section>
 
             {/* Category Analysis */}
             <section className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                     {t.categoryAnalysis}
                 </h2>
                 <div className="space-y-3">
                     {categoryStats.map((cat) => (
-                        <div key={cat.name} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                        <div key={cat.name} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                     <div
                                         className="w-3 h-3 rounded-full"
                                         style={{ backgroundColor: cat.color }}
                                     />
-                                    <span className="font-semibold text-gray-900">{cat.name}</span>
+                                    <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
                                 </div>
-                                <span className="text-sm text-gray-500">{cat.count} {t.terms}</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{cat.count} {t.terms}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <span className="text-gray-500">{t.difficulty}:</span>
-                                    <span className="ml-2 font-medium">{cat.avgDifficulty}/5</span>
+                                    <span className="text-gray-500 dark:text-gray-400">{t.difficulty}:</span>
+                                    <span className="ml-2 font-medium dark:text-gray-200">{cat.avgDifficulty}/5</span>
                                 </div>
                                 <div>
-                                    <span className="text-gray-500">{t.retention}:</span>
-                                    <span className="ml-2 font-medium">{cat.avgRetention}%</span>
+                                    <span className="text-gray-500 dark:text-gray-400">{t.retention}:</span>
+                                    <span className="ml-2 font-medium dark:text-gray-200">{cat.avgRetention}%</span>
                                 </div>
                             </div>
                             {/* Progress bar */}
-                            <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="mt-3 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
                                     className="h-full rounded-full transition-all"
                                     style={{
@@ -322,17 +322,17 @@ export default function AnalyticsPage() {
 
             {/* SRS Distribution */}
             <section className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                     {t.srsDistribution}
                 </h2>
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                     <div className="flex items-end justify-between h-32 gap-2">
                         {srsDistribution.map((level, i) => {
                             const maxCount = Math.max(...srsDistribution.map(l => l.count), 1);
                             const height = (level.count / maxCount) * 100;
                             return (
                                 <div key={level.level} className="flex-1 flex flex-col items-center gap-1">
-                                    <span className="text-xs font-medium text-gray-600">{level.count}</span>
+                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{level.count}</span>
                                     <div
                                         className="w-full rounded-t-lg transition-all"
                                         style={{
@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
                                             backgroundColor: srsColors[i],
                                         }}
                                     />
-                                    <span className="text-xs text-gray-500 text-center leading-tight">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 text-center leading-tight">
                                         {level.label}
                                     </span>
                                 </div>
@@ -352,7 +352,7 @@ export default function AnalyticsPage() {
 
             {/* Learning Progress */}
             <section className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                     {t.learningProgress}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
@@ -371,17 +371,17 @@ export default function AnalyticsPage() {
 
             {/* Recent Activity */}
             <section className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                     {t.recentActivity}
                 </h2>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                     {recentActivity.length > 0 ? (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
                             {recentActivity.map((activity, i) => (
                                 <div key={i} className="p-3 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-2 h-2 rounded-full ${activity.is_correct ? 'bg-green-500' : 'bg-red-500'}`} />
-                                        <span className="text-sm text-gray-700 truncate max-w-[180px]">
+                                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[180px]">
                                             {activity.termName}
                                         </span>
                                     </div>
@@ -392,7 +392,7 @@ export default function AnalyticsPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="p-6 text-center text-gray-500 text-sm">
+                        <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
                             {t.noActivity}
                         </div>
                     )}
