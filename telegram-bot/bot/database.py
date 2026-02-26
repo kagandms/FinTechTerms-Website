@@ -1,6 +1,7 @@
 """
 FinTechTerms Bot — Database Layer
 Connects to the same Supabase instance as the web app for full data sync.
+Activity tracking persisted to Supabase `bot_user_stats` table.
 """
 
 from __future__ import annotations
@@ -115,79 +116,160 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
         return []
 
 
-# ── User Preferences ──────────────────────────────────────
-_user_prefs: dict[int, dict[str, Any]] = {}
+# ══════════════════════════════════════════════════════════
+#  USER PREFERENCES & ACTIVITY — Supabase-persisted
+# ══════════════════════════════════════════════════════════
+
+# In-memory cache to avoid hitting DB on every call
+_user_cache: dict[int, dict[str, Any]] = {}
+
+_STATS_TABLE = "bot_user_stats"
 
 
+def _get_cached(user_id: int) -> dict[str, Any]:
+    """Return cached user data, loading from Supabase if needed."""
+    if user_id not in _user_cache:
+        try:
+            resp = (
+                get_client()
+                .table(_STATS_TABLE)
+                .select("*")
+                .eq("telegram_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if resp.data:
+                _user_cache[user_id] = resp.data[0]
+            else:
+                # New user — create row
+                new_row = {
+                    "telegram_id": user_id,
+                    "language": config.default_language,
+                    "searches": 0,
+                    "quizzes_taken": 0,
+                    "quizzes_correct": 0,
+                    "terms_viewed": 0,
+                    "daily_used": 0,
+                    "tts_used": 0,
+                    "categories_explored": [],
+                }
+                get_client().table(_STATS_TABLE).insert(new_row).execute()
+                _user_cache[user_id] = new_row
+        except Exception as e:
+            logger.warning("DB read failed for user %s, using defaults: %s", user_id, e)
+            _user_cache[user_id] = {
+                "language": config.default_language,
+                "searches": 0,
+                "quizzes_taken": 0,
+                "quizzes_correct": 0,
+                "terms_viewed": 0,
+                "daily_used": 0,
+                "tts_used": 0,
+                "categories_explored": [],
+            }
+    return _user_cache[user_id]
+
+
+def _persist(user_id: int) -> None:
+    """Write cached user data back to Supabase (fire-and-forget)."""
+    data = _user_cache.get(user_id)
+    if not data:
+        return
+    try:
+        update = {
+            "language": data.get("language", config.default_language),
+            "searches": data.get("searches", 0),
+            "quizzes_taken": data.get("quizzes_taken", 0),
+            "quizzes_correct": data.get("quizzes_correct", 0),
+            "terms_viewed": data.get("terms_viewed", 0),
+            "daily_used": data.get("daily_used", 0),
+            "tts_used": data.get("tts_used", 0),
+            "categories_explored": list(data.get("categories_explored", [])),
+            "last_active": datetime.now(timezone.utc).isoformat(),
+        }
+        get_client().table(_STATS_TABLE).update(update).eq("telegram_id", user_id).execute()
+    except Exception as e:
+        logger.warning("DB write failed for user %s: %s", user_id, e)
+
+
+# ── Language ──────────────────────────────────────────────
 def get_user_language(user_id: int) -> str:
-    """Get the user's preferred language (in-memory cache)."""
-    return _user_prefs.get(user_id, {}).get("language", config.default_language)
+    """Get the user's preferred language (cached + Supabase-backed)."""
+    return _get_cached(user_id).get("language", config.default_language)
 
 
 def set_user_language(user_id: int, language: str) -> None:
-    """Set the user's preferred language."""
-    if user_id not in _user_prefs:
-        _user_prefs[user_id] = {}
-    _user_prefs[user_id]["language"] = language
+    """Set the user's preferred language and persist."""
+    data = _get_cached(user_id)
+    data["language"] = language
+    _persist(user_id)
 
 
-# ── User Activity Tracking ────────────────────────────────
-_user_activity: dict[int, dict[str, Any]] = {}
-
-
-def _ensure_activity(user_id: int) -> dict[str, Any]:
-    """Ensure user activity dict exists and return it."""
-    if user_id not in _user_activity:
-        _user_activity[user_id] = {
-            "searches": 0,
-            "quizzes_taken": 0,
-            "quizzes_correct": 0,
-            "terms_viewed": 0,
-            "daily_used": 0,
-            "tts_used": 0,
-            "categories_explored": set(),
-            "session_start": datetime.now(timezone.utc).isoformat(),
-        }
-    return _user_activity[user_id]
-
-
+# ── Activity Tracking ────────────────────────────────────
 def track_activity(user_id: int, action: str, **kwargs: Any) -> None:
-    """Track a user action for reporting."""
-    data = _ensure_activity(user_id)
+    """Track a user action and persist to Supabase."""
+    data = _get_cached(user_id)
+
     if action == "search":
-        data["searches"] += 1
+        data["searches"] = data.get("searches", 0) + 1
     elif action == "quiz_taken":
-        data["quizzes_taken"] += 1
+        data["quizzes_taken"] = data.get("quizzes_taken", 0) + 1
         if kwargs.get("correct"):
-            data["quizzes_correct"] += 1
+            data["quizzes_correct"] = data.get("quizzes_correct", 0) + 1
     elif action == "term_viewed":
-        data["terms_viewed"] += 1
+        data["terms_viewed"] = data.get("terms_viewed", 0) + 1
         cat = kwargs.get("category")
         if cat:
-            data["categories_explored"].add(cat)
+            cats = data.get("categories_explored", [])
+            if isinstance(cats, set):
+                cats = list(cats)
+            if cat not in cats:
+                cats.append(cat)
+                data["categories_explored"] = cats
     elif action == "daily":
-        data["daily_used"] += 1
+        data["daily_used"] = data.get("daily_used", 0) + 1
     elif action == "tts":
-        data["tts_used"] += 1
+        data["tts_used"] = data.get("tts_used", 0) + 1
+
+    _persist(user_id)
 
 
 def get_user_report(user_id: int) -> dict[str, Any]:
     """Get user activity summary for the report."""
-    data = _ensure_activity(user_id)
-    accuracy = 0
-    if data["quizzes_taken"] > 0:
-        accuracy = round((data["quizzes_correct"] / data["quizzes_taken"]) * 100)
+    data = _get_cached(user_id)
+    quizzes = data.get("quizzes_taken", 0)
+    correct = data.get("quizzes_correct", 0)
+    accuracy = round((correct / quizzes) * 100) if quizzes > 0 else 0
+
+    cats = data.get("categories_explored", [])
+    if isinstance(cats, set):
+        cats = list(cats)
+
     return {
-        "searches": data["searches"],
-        "quizzes_taken": data["quizzes_taken"],
-        "quizzes_correct": data["quizzes_correct"],
+        "searches": data.get("searches", 0),
+        "quizzes_taken": quizzes,
+        "quizzes_correct": correct,
         "accuracy": accuracy,
-        "terms_viewed": data["terms_viewed"],
-        "daily_used": data["daily_used"],
-        "tts_used": data["tts_used"],
-        "categories_explored": len(data["categories_explored"]),
-        "session_start": data["session_start"],
+        "terms_viewed": data.get("terms_viewed", 0),
+        "daily_used": data.get("daily_used", 0),
+        "tts_used": data.get("tts_used", 0),
+        "categories_explored": len(cats),
+        "session_start": data.get("first_seen", ""),
     }
+
+
+def save_username(user_id: int, username: str | None) -> None:
+    """Save Telegram username for admin visibility."""
+    if not username:
+        return
+    data = _get_cached(user_id)
+    data["username"] = username
+    try:
+        get_client().table(_STATS_TABLE).update(
+            {"username": username}
+        ).eq("telegram_id", user_id).execute()
+    except Exception:
+        pass
 
 
 # ── Stats ──────────────────────────────────────────────────
@@ -218,3 +300,18 @@ async def get_category_counts() -> dict[str, int]:
     except Exception as e:
         logger.error("Failed to get category counts: %s", e)
         return {}
+
+
+async def get_bot_user_count() -> int:
+    """Return total number of bot users."""
+    try:
+        response = (
+            get_client()
+            .table(_STATS_TABLE)
+            .select("telegram_id", count="exact")
+            .execute()
+        )
+        return response.count or 0
+    except Exception as e:
+        logger.error("Failed to get bot user count: %s", e)
+        return 0

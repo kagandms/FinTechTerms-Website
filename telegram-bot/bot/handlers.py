@@ -30,6 +30,7 @@ from bot.database import (
     fetch_term_by_id,
     track_activity,
     get_user_report,
+    save_username,
 )
 from bot.i18n import t
 from bot.tts import generate_tts_audio
@@ -145,6 +146,9 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     user_id = update.effective_user.id
     lang = get_user_language(user_id)
+
+    # Persist Telegram username for admin dashboard
+    save_username(user_id, update.effective_user.username)
 
     await update.message.reply_text(
         t("welcome", lang),
