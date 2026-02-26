@@ -9,6 +9,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import sys
@@ -95,6 +96,13 @@ def main() -> None:
 
     # ── Start polling ──
     logger.info("✅ Bot is now running. Press Ctrl+C to stop.")
+
+    # Ensure an event loop exists (Python 3.12+ safety)
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     app.run_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],
