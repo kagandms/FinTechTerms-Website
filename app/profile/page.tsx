@@ -12,6 +12,7 @@ import { StatsGrid } from '@/components/features/profile/StatsGrid';
 import { SettingsPanel } from '@/components/features/profile/SettingsPanel';
 import { AuthModal } from '@/components/features/auth/AuthModal';
 import { ResetConfirmModal } from '@/components/features/profile/ResetConfirmModal';
+import TelegramBanner from '@/components/TelegramBanner';
 
 function ProfileContent() {
     // 1. Hook Logic
@@ -110,6 +111,11 @@ function ProfileContent() {
                 setTheme={setTheme}
                 onResetClick={() => setShowResetConfirm(true)}
             />
+
+            {/* Telegram Bot CTA */}
+            <div className="mb-4">
+                <TelegramBanner variant="compact" />
+            </div>
 
             {isAuthenticated && (
                 <button

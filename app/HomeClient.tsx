@@ -11,6 +11,7 @@ import InstallButton from '@/components/InstallButton';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
+import TelegramBanner from '@/components/TelegramBanner';
 
 import { Term } from '@/types';
 
@@ -242,6 +243,11 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         );
                     })}
                 </div>
+            </section>
+
+            {/* Telegram Bot CTA */}
+            <section className="mt-8">
+                <TelegramBanner variant="full" />
             </section>
         </div>
     );

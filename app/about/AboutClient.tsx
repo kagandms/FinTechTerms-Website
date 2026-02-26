@@ -16,6 +16,7 @@ import {
     Linkedin,
     Mail,
 } from 'lucide-react';
+import TelegramBanner from '@/components/TelegramBanner';
 
 
 export default function AboutPage() {
@@ -261,6 +262,11 @@ export default function AboutPage() {
                         </span>
                     ))}
                 </div>
+            </section>
+
+            {/* Telegram Bot CTA */}
+            <section className="mb-6">
+                <TelegramBanner variant="compact" />
             </section>
 
             {/* Contact */}
