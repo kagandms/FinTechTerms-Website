@@ -1,0 +1,9 @@
+# Bot data
+audio_cache/
+__pycache__/
+*.pyc
+.env
+venv/
+*.egg-info/
+dist/
+build/
