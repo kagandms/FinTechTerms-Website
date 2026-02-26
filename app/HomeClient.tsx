@@ -10,7 +10,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Flame, BookMarked, TrendingUp, Sun, Moon } from 'lucide-react';
+import { Flame, BookMarked, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
 
 import { Term } from '@/types';
@@ -78,6 +78,15 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                    <a
+                        href="https://t.me/FinTechTermsBot"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 transition-colors shadow-sm"
+                        aria-label="Telegram Bot"
+                    >
+                        <Send className="w-4 h-4 text-white" />
+                    </a>
                     <InstallButton />
                     <button
                         onClick={toggleTheme}
@@ -134,6 +143,15 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-3">
+                        <a
+                            href="https://t.me/FinTechTermsBot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white transition-all border border-sky-400 shadow-sm hover:shadow-md"
+                            aria-label="Telegram Bot"
+                        >
+                            <Send className="w-5 h-5" />
+                        </a>
                         <InstallButton />
 
                         <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>

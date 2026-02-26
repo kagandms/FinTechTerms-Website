@@ -15,6 +15,7 @@ import {
     Github,
     Linkedin,
     Mail,
+    Send,
 } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
 
@@ -38,6 +39,7 @@ export default function AboutPage() {
                     { icon: Globe, title: 'Trilingual', desc: 'Türkçe, İngilizce ve Rusça tam destek' },
                     { icon: Target, title: 'Hedefli Öğrenme', desc: 'Fintech, finans ve teknoloji odaklı 95+ terim' },
                     { icon: Sparkles, title: 'Modern Arayüz', desc: 'PWA destekli, mobil uyumlu tasarım' },
+                    { icon: Send, title: 'Telegram Bot', desc: 'Quiz, sesli telaffuz ve günlük terim — Telegram\'dan' },
                 ],
             },
             academic: {
@@ -83,6 +85,7 @@ export default function AboutPage() {
                     { icon: Globe, title: 'Trilingual', desc: 'Full support for Turkish, English, and Russian' },
                     { icon: Target, title: 'Focused Learning', desc: '95+ terms focused on Fintech, Finance, and Technology' },
                     { icon: Sparkles, title: 'Modern Interface', desc: 'PWA-enabled, mobile-responsive design' },
+                    { icon: Send, title: 'Telegram Bot', desc: 'Quizzes, voice pronunciation and daily terms — via Telegram' },
                 ],
             },
             academic: {
@@ -128,6 +131,7 @@ export default function AboutPage() {
                     { icon: Globe, title: 'Три языка', desc: 'Полная поддержка турецкого, английского и русского' },
                     { icon: Target, title: 'Целевое обучение', desc: '95+ терминов: финтех, финансы, технологии' },
                     { icon: Sparkles, title: 'Современный интерфейс', desc: 'PWA, адаптивный дизайн' },
+                    { icon: Send, title: 'Telegram Бот', desc: 'Тесты, произношение и термин дня — прямо в Telegram' },
                 ],
             },
             academic: {
