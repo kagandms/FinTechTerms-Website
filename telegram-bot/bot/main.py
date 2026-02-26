@@ -1,14 +1,16 @@
 """
 FinTechTerms Telegram Bot — Main Entry Point
-Connects all modules and starts the bot with polling.
+Supports both local development (polling) and Render production (polling + health check).
 
 Usage:
-    python -m bot.main
+    Local:  python -m bot
+    Render: Start command → python -m bot  (PORT env set automatically)
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 from telegram.ext import (
@@ -55,9 +57,21 @@ def main() -> None:
         logger.critical("Configuration error: %s", e)
         sys.exit(1)
 
-    logger.info("Starting FinTechTerms Bot…")
-    logger.info("  Supabase URL: %s", config.supabase_url)
-    logger.info("  Default language: %s", config.default_language)
+    # Detect Render production environment
+    is_production = bool(os.environ.get("RENDER"))
+
+    if is_production:
+        logger.info("🚀 PRODUCTION MODE — Render detected")
+        logger.info("   Supabase URL: %s", config.supabase_url)
+        logger.info("   Starting health check server…")
+
+        # Start Flask health check in background thread
+        from bot.keep_alive import keep_alive
+        keep_alive()
+    else:
+        logger.info("📡 LOCAL MODE — Development")
+        logger.info("   Supabase URL: %s", config.supabase_url)
+        logger.info("   Default language: %s", config.default_language)
 
     # Build application
     app = ApplicationBuilder().token(config.bot_token).build()
@@ -78,7 +92,7 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     # ── Start polling ──
-    logger.info("Bot is now running. Press Ctrl+C to stop.")
+    logger.info("✅ Bot is now running. Press Ctrl+C to stop.")
     app.run_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],
