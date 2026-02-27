@@ -9,7 +9,7 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "overrides": {
     "glob": "^10.3.10",
