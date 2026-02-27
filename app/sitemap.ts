@@ -7,10 +7,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fetch all terms
     const terms = await fetchTermsFromSupabase();
 
-    // Generate term URLs
+    // Generate term URLs — use updated_at from DB when available
     const termEntries: MetadataRoute.Sitemap = terms.map((term) => ({
         url: `${BASE_URL}/term/${term.id}`,
-        lastModified: new Date(),
+        lastModified: (term as Record<string, unknown>).updated_at
+            ? new Date((term as Record<string, unknown>).updated_at as string)
+            : new Date('2026-02-01'),
         changeFrequency: 'monthly',
         priority: 0.7,
     }));

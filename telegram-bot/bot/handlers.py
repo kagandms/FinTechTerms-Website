@@ -6,10 +6,12 @@ instead of creating new ones, keeping the chat clean.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 from typing import Any
 
+import telegram.error
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -555,24 +557,25 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                                     caption=f"🔊 {text_to_speak}",
                                 )
                                 # Auto-delete voice after 10 seconds to keep chat clean
-                                import asyncio
                                 asyncio.create_task(_delete_later(sent, 10))
                     except Exception as e:
                         logger.error("TTS error: %s", e)
 
+    except telegram.error.BadRequest as e:
+        logger.warning("Callback edit failed (BadRequest): %s", e)
+    except telegram.error.TimedOut as e:
+        logger.warning("Callback timed out: %s", e)
     except Exception as e:
-        # If edit fails (e.g., message too old), log and try to send fresh
-        logger.warning("Callback edit failed: %s", e)
+        logger.warning("Callback unexpected error: %s", e)
 
 
 async def _delete_later(message: Any, delay: float) -> None:
     """Delete a message after a delay (fire-and-forget)."""
-    import asyncio
     await asyncio.sleep(delay)
     try:
         await message.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Auto-delete failed (message may have been deleted already): %s", e)
 
 
 # ── Plain text handler (search by typing) ──────────────────

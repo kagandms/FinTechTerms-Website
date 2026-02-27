@@ -268,7 +268,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     /**
      * Submit a quiz answer and update SRS data
      */
-    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean, responseTimeMs: number = 0) => {
+    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean, responseTimeMs: number = 0): Promise<void> => {
         const term = terms.find(t => t.id === termId);
         if (!term) return;
 

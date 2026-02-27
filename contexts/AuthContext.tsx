@@ -308,9 +308,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
+    /**
+     * Update the user's password during a recovery flow.
+     *
+     * SECURITY NOTE: A temporary, ephemeral Supabase client is intentionally
+     * created here to avoid "signal is aborted" errors caused by the main
+     * client's global auth state refresh logic. This temp client:
+     * - Does NOT persist its session to localStorage (persistSession: false)
+     * - Does NOT auto-refresh tokens (autoRefreshToken: false)
+     * - Is hydrated with the current session's tokens, then discarded
+     *
+     * This pattern is a workaround for a known Supabase JS client issue where
+     * concurrent auth operations on a shared client can abort in-flight requests.
+     */
     const updatePassword = useCallback(async (password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-
             // Validate session existence first from main client
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             if (sessionError || !session) {
@@ -362,13 +374,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setIsPasswordRecovery(false);
             return { success: false, error: 'Beklenmeyen bir durum oluştu.' };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('UpdatePassword exception:', error);
             setIsPasswordRecovery(false);
-            if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-                return { success: false, error: 'İşlem iptal edildi. Lütfen sayfayı yenileyip tekrar deneyin.' };
+            if (error instanceof Error) {
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                    return { success: false, error: 'İşlem iptal edildi. Lütfen sayfayı yenileyip tekrar deneyin.' };
+                }
+                return { success: false, error: error.message || 'Şifre güncellenemedi.' };
             }
-            return { success: false, error: error.message || 'Şifre güncellenemedi.' };
+            return { success: false, error: 'Şifre güncellenemedi.' };
         }
     }, []);
 

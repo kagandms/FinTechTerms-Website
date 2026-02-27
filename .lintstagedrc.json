@@ -1,0 +1,5 @@
+{
+    "*.py": [
+        "python3 -m py_compile"
+    ]
+}

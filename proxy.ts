@@ -1,6 +1,15 @@
 // ============================================
-// Next.js Middleware - Supabase Auth Session Refresh
-// Runs on every request to keep auth cookies fresh
+// Supabase Auth Session Refresh Proxy (Middleware Helper)
+//
+// PURPOSE: This is a middleware helper that refreshes Supabase auth
+// cookies on every request. It ensures Server Components and API routes
+// always have a valid session by calling `getUser()` (not `getSession()`)
+// which triggers token refresh on Supabase's side.
+//
+// USAGE: Import `proxy` in middleware.ts and call it in the middleware chain.
+// This file is NOT a Next.js middleware itself — it's a reusable function.
+//
+// SEE ALSO: ADR-002 in docs/ADR.md for Supabase architecture decision.
 // ============================================
 
 import { type NextRequest, NextResponse } from 'next/server'

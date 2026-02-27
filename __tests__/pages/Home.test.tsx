@@ -42,6 +42,7 @@ jest.mock('@/components/DailyReview', () => () => <div data-testid="daily-review
 jest.mock('@/components/SmartCard', () => ({ term }: { term: any }) => <div data-testid="smart-card">{term.term_en}</div>);
 jest.mock('@/components/LanguageSwitcher', () => () => <div>Language Switcher</div>);
 jest.mock('@/components/InstallButton', () => () => <div>Install App</div>);
+jest.mock('@/components/TelegramBanner', () => () => <div data-testid="telegram-banner">Telegram Banner</div>);
 
 // Mock Next.js Components
 jest.mock('next/image', () => {

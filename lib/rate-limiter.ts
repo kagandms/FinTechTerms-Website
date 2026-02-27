@@ -1,9 +1,27 @@
 /**
  * In-Memory Rate Limiter with Sliding Window
- * 
- * Note: specific to serverless environments, this has limitations as memory 
- * is not shared between lambdas. For scale, use Redis (@upstash/ratelimit).
- * This implementation is a robust fallback for single-instance or low-scale deployments.
+ *
+ * ⚠️  SERVERLESS LIMITATION:
+ * In serverless environments (Vercel, AWS Lambda), each function invocation
+ * runs in an isolated container. This in-memory Map is NOT shared across
+ * instances, meaning rate limiting is per-instance and can be bypassed
+ * under high concurrency or after cold starts.
+ *
+ * 🔄 UPGRADE PATH (recommended for production scale):
+ * Replace this with @upstash/ratelimit which uses serverless Redis:
+ *
+ *   import { Ratelimit } from "@upstash/ratelimit";
+ *   import { Redis } from "@upstash/redis";
+ *
+ *   const ratelimit = new Ratelimit({
+ *     redis: Redis.fromEnv(),
+ *     limiter: Ratelimit.slidingWindow(100, "60 s"),
+ *     analytics: true,
+ *   });
+ *
+ * This requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars.
+ *
+ * Current implementation is acceptable for low-traffic / single-instance deployments.
  */
 export class RateLimiter {
     private timestamps: Map<string, number[]>;
