@@ -15,7 +15,7 @@ export default function LanguageSwitcher() {
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors shadow-sm backdrop-blur-sm"
+                className="flex items-center gap-1.5 px-2.5 py-2 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-xl hover:bg-gray-50 dark:hover:bg-white/20 transition-colors shadow-sm backdrop-blur-sm"
             >
                 <span className="text-lg">{languageFlags[language]}</span>
                 <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300">

@@ -73,7 +73,7 @@ export default function InstallButton() {
         <>
             <button
                 onClick={handleInstallClick}
-                className="flex items-center gap-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-gray-800/50 dark:hover:bg-gray-700/50 text-white dark:text-gray-300 rounded-lg transition-colors text-sm font-medium shadow-sm backdrop-blur-sm active:scale-95 border border-transparent dark:border-gray-800"
+                className="flex items-center gap-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-white/10 dark:hover:bg-white/20 text-white dark:text-white rounded-lg transition-colors text-sm font-medium shadow-sm backdrop-blur-sm active:scale-95 border border-transparent dark:border-white/20"
             >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">

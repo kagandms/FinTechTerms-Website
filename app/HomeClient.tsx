@@ -131,7 +131,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                 <div className="flex flex-col items-end gap-6 h-40 justify-center">
                     {/* Streak Badge */}
-                    <div className="px-6 py-3 bg-white dark:bg-gray-800/50 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-3 backdrop-blur-sm">
+                    <div className="px-6 py-3 bg-white dark:bg-white/10 rounded-2xl shadow-sm border border-gray-100 dark:border-white/20 flex items-center gap-3 backdrop-blur-sm">
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{t('profile.days')}</span>
                             <span className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                         <button
                             onClick={toggleTheme}
-                            className="p-3 rounded-xl bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-all border border-gray-100 dark:border-gray-800 shadow-sm backdrop-blur-sm"
+                            className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
                             aria-label="Toggle theme"
                         >
                             {resolvedTheme === 'dark' ? (
