@@ -179,8 +179,8 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
             {/* Quick Stats */}
             {userProgress.quiz_history.length > 0 && (
-                <section className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                <section className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                                 <Flame className="w-5 h-5 text-orange-500" />
@@ -190,7 +190,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.days')}</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                                 <BookMarked className="w-5 h-5 text-primary-500" />
@@ -200,7 +200,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
