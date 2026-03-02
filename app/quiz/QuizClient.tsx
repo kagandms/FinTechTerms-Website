@@ -201,7 +201,7 @@ export default function QuizPage() {
                         <Trophy className="w-12 h-12 text-accent-500" />
                     </div>
 
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                         {t('quiz.complete')}
                     </h2>
 
