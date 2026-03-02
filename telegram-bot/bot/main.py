@@ -22,16 +22,6 @@ from telegram.ext import (
     filters,
 )
 
-import tornado.web
-
-class HealthCheckHandler(tornado.web.RequestHandler):
-    """Answers UptimeRobot GET/HEAD safely"""
-    def get(self):
-        self.write({"status": "alive", "service": "Telegram Webhook"})
-        self.set_status(200)
-    def head(self):
-        self.set_status(200)
-
 from bot.config import config
 from bot.handlers import (
     start_handler,
@@ -78,11 +68,10 @@ def main() -> None:
         logger.info("🚀 PRODUCTION MODE — Render detected")
         logger.info("   Supabase URL: %s", config.supabase_url)
         
-        if not webhook_url:
-            logger.info("   Starting keep_alive health check server on polling mode…")
-            # Start Flask health check in background thread for polling to bind PORT
-            from bot.keep_alive import keep_alive
-            keep_alive()
+        logger.info("   Starting keep_alive health check server on polling mode…")
+        # Start Flask health check in background thread for polling to bind PORT
+        from bot.keep_alive import keep_alive
+        keep_alive()
     else:
         logger.info("📡 LOCAL MODE — Development")
         logger.info("   Supabase URL: %s", config.supabase_url)
@@ -110,45 +99,21 @@ def main() -> None:
 
     # ── Start Server ──
     if is_production:
-        port = int(os.environ.get("PORT", 10000))
+        # We enforce polling in production to allow Flask to bind to PORT and keep the bot awake on free tier
+        logger.info("✅ Bot is now running (Polling Mode on Render).")
         
-        if webhook_url:
-            logger.info(f"✅ Starting webhook on port {port} for URL: {webhook_url}")
-            
-            # Ensure an event loop exists (Python 3.12+ safety)
-            try:
-                asyncio.get_event_loop()
-            except RuntimeError:
-                asyncio.set_event_loop(asyncio.new_event_loop())
-                
-            app.run_webhook(
-                listen="0.0.0.0",
-                port=port,
-                webhook_url=f"{webhook_url}/{config.bot_token}",
-                drop_pending_updates=True,
-                extra_handlers=[
-                    (r"/", tornado.web.RedirectHandler, {"url": "/health"}),
-                    (r"/health", HealthCheckHandler)
-                ]
-            )
-        else:
-            logger.warning("RENDER_EXTERNAL_URL is not set. Falling back to Polling in Production.")
-            logger.info("✅ Bot is now running (Polling). Press Ctrl+C to stop.")
-            # Ensure an event loop exists (Python 3.12+ safety)
-            try:
-                asyncio.get_event_loop()
-            except RuntimeError:
-                asyncio.set_event_loop(asyncio.new_event_loop())
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
 
-            app.run_polling(
-                drop_pending_updates=True,
-                allowed_updates=["message", "callback_query"],
-            )
-
+        app.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query"],
+        )
     else:
         logger.info("✅ Bot is now running (Polling). Press Ctrl+C to stop.")
 
-        # Ensure an event loop exists (Python 3.12+ safety)
         try:
             asyncio.get_event_loop()
         except RuntimeError:
