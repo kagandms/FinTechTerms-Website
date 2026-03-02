@@ -257,14 +257,19 @@ export async function updateStreakInSupabase(userId: string): Promise<number> {
 
     let newStreak = data.current_streak;
 
-    if (lastStudy !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        if (lastStudy === yesterday.toDateString()) {
-            newStreak += 1;
-        } else if (lastStudy !== today) {
+    // Only hit DB if they haven't studied today OR their current streak is artificially stuck at 0
+    if (data.current_streak === 0 || lastStudy !== today) {
+        if (data.current_streak === 0) {
             newStreak = 1;
+        } else {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (lastStudy === yesterday.toDateString()) {
+                newStreak += 1;
+            } else if (lastStudy !== today) {
+                newStreak = 1;
+            }
         }
 
         await supabase

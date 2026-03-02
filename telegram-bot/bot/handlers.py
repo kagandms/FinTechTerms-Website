@@ -426,9 +426,16 @@ async def report_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def _build_report_text(user_id: int, lang: str) -> str:
     """Build a rich activity report for the user."""
     report = await get_user_report(user_id)
+    
+    # Fallback to defaults to prevent silent crash if DB/cache is empty
+    if not report:
+        report = {
+            "searches": 0, "quizzes_taken": 0, "quizzes_correct": 0, "accuracy": 0,
+            "terms_viewed": 0, "daily_used": 0, "tts_used": 0, "categories_explored": 0, "session_start": ""
+        }
 
     # Build accuracy progress bar (10 blocks)
-    filled = report["accuracy"] // 10
+    filled = report.get("accuracy", 0) // 10
     bar = "█" * filled + "░" * (10 - filled)
 
     # Choose smart tip based on weakest area
