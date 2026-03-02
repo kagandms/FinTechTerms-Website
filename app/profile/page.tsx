@@ -28,15 +28,7 @@ function ProfileContent() {
     // 2. Additional Contexts (not in authLogic)
     const { theme, setTheme } = useTheme();
     const { setLanguage } = useLanguage();
-    const { stats, refreshData } = useSRS();
-
-    // 3. User Progress (Mock/Local for now until unified)
-    const [userProgress, setUserProgress] = useState<any>({ current_streak: 0 });
-
-    useEffect(() => {
-        const storedProgress = typeof window !== 'undefined' ? localStorage.getItem('userProgress') : null;
-        if (storedProgress) setUserProgress(JSON.parse(storedProgress));
-    }, [isAuthenticated]);
+    const { stats, refreshData, userProgress } = useSRS();
 
     // Calculated fields
     const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0);
@@ -75,7 +67,7 @@ function ProfileContent() {
 
             {/* Login Prompt Banner */}
             {!isAuthenticated && (
-                <div className="mb-8 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-2xl border border-primary-100 dark:border-primary-800 flex items-center justify-between">
+                <div className="mb-8 p-4 bg-primary-50 dark:bg-primary-900/40 rounded-2xl border border-primary-100 dark:border-primary-800 flex items-center justify-between">
                     <div>
                         <h3 className="font-bold text-primary-900 dark:text-primary-100 mb-1">
                             {language === 'tr' ? 'Hesap Oluştur' : language === 'ru' ? 'Создать аккаунт' : 'Create Account'}
@@ -151,7 +143,13 @@ function ProfileContent() {
 
             <footer className="text-center text-xs text-gray-400">
                 <p>FinTechTerms v0.1.0</p>
-                <p className="mt-1">TR-EN-RU Ekonomi ve Bilişim Sözlüğü</p>
+                <p className="mt-1">
+                    {language === 'tr'
+                        ? 'TR-EN-RU Ekonomi ve Bilişim Sözlüğü'
+                        : language === 'ru'
+                            ? 'Словарь экономики и IT (RU-EN-TR)'
+                            : 'TR-EN-RU Economics & IT Dictionary'}
+                </p>
             </footer>
         </div>
     );

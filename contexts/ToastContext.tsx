@@ -27,10 +27,10 @@ const toastIcons: Record<ToastType, React.ReactNode> = {
 };
 
 const toastStyles: Record<ToastType, string> = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    warning: 'bg-amber-50 border-amber-200',
-    info: 'bg-blue-50 border-blue-200',
+    success: 'bg-green-50 dark:bg-green-900/50 border-green-200 dark:border-green-800',
+    error: 'bg-red-50 dark:bg-red-900/50 border-red-200 dark:border-red-800',
+    warning: 'bg-amber-50 dark:bg-amber-900/50 border-amber-200 dark:border-amber-800',
+    info: 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-800',
 };
 
 interface ToastProviderProps {
@@ -60,14 +60,14 @@ export function ToastProvider({ children }: ToastProviderProps) {
             {children}
 
             {/* Toast Container */}
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 max-w-sm w-full px-4">
+            <div className="fixed top-16 md:top-20 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 max-w-sm w-full px-4">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
                         className={`flex items-center gap-3 p-4 rounded-xl shadow-lg border animate-toast-in ${toastStyles[toast.type]}`}
                     >
                         {toastIcons[toast.type]}
-                        <p className="flex-1 text-sm font-medium text-gray-800">
+                        <p className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">
                             {toast.message}
                         </p>
                         <button

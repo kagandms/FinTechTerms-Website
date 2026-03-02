@@ -2,23 +2,23 @@ import { z } from 'zod';
 
 // Zod Schema mirroring the Term interface
 export const TermSchema = z.object({
-    id: z.string().default('unknown'),
-    term_en: z.string().default('Unknown'),
-    term_ru: z.string().default(''),
-    term_tr: z.string().default(''),
-    phonetic_en: z.string().optional(),
-    phonetic_ru: z.string().optional(),
-    phonetic_tr: z.string().optional(),
+    id: z.string().catch('unknown'),
+    term_en: z.string().catch('Unknown'),
+    term_ru: z.string().nullable().catch('').transform(s => s || ''),
+    term_tr: z.string().nullable().catch('').transform(s => s || ''),
+    phonetic_en: z.string().nullish().catch(''),
+    phonetic_ru: z.string().nullish().catch(''),
+    phonetic_tr: z.string().nullish().catch(''),
 
     category: z.enum(['Fintech', 'Finance', 'Technology']).default('Finance'),
 
-    definition_en: z.string().default('No definition available'),
-    definition_ru: z.string().default(''),
-    definition_tr: z.string().default(''),
+    definition_en: z.string().nullable().catch('No definition available').transform(s => s || 'No definition available'),
+    definition_ru: z.string().nullable().catch('').transform(s => s || ''),
+    definition_tr: z.string().nullable().catch('').transform(s => s || ''),
 
-    example_sentence_en: z.string().default(''),
-    example_sentence_ru: z.string().default(''),
-    example_sentence_tr: z.string().default(''),
+    example_sentence_en: z.string().nullable().catch('').transform(s => s || ''),
+    example_sentence_ru: z.string().nullable().catch('').transform(s => s || ''),
+    example_sentence_tr: z.string().nullable().catch('').transform(s => s || ''),
 
     // SRS Data (with safe defaults)
     srs_level: z.number().default(0),

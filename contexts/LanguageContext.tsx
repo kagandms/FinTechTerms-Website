@@ -46,6 +46,16 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         saveLanguage(lang);
     }, []);
 
+    useEffect(() => {
+        if (!isHydrated) return;
+        const defaultTitles = {
+            en: 'FinTechTerms | Financial & IT Dictionary',
+            tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
+            ru: 'FinTechTerms | Словарь экономики и IT'
+        };
+        document.title = defaultTitles[language] || defaultTitles.en;
+    }, [language, isHydrated]);
+
     /**
      * Get translation by dot-notation key
      * e.g., t('home.welcomeTitle')

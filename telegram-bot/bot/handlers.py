@@ -116,6 +116,10 @@ def _main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
                     "📊 " + ("Статистика" if lang == "ru" else "İstatistik" if lang == "tr" else "Stats"),
                     callback_data="menu:stats",
                 ),
+                InlineKeyboardButton(
+                    "🔗 " + ("Связать аккаунт" if lang == "ru" else "Bağla" if lang == "tr" else "Link Account"),
+                    callback_data="menu:link",
+                ),
             ],
             [
                 InlineKeyboardButton(
@@ -469,26 +473,12 @@ async def _build_report_text(user_id: int, lang: str) -> str:
     return header + body
 
 
-# ── /link ──────────────────────────────────────────────────
-async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Generate an OTP token for linking to the Web App."""
-    if not update.effective_user or not update.message:
-        return
-    user_id = update.effective_user.id
-    lang = await get_user_language(user_id)
-    
-    # 1. Ask DB for token via RPC
+async def _build_link_text(user_id: int, lang: str) -> str | None:
+    """Generate an OTP token and string template for linking to the Web App."""
     token = await generate_link_token(user_id)
-    
     if not token:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
-            parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
-        )
-        return
+        return None
         
-    # 2. Prepare message for the user based on language
     text_parts = {
         "tr": (
             f"🔗 <b>Hesap Birleştirme (Kodu Kopyala)</b>\n\n"
@@ -510,8 +500,28 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
     }
     
+    return text_parts.get(lang, text_parts["en"])
+
+
+# ── /link ──────────────────────────────────────────────────
+async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate an OTP token for linking to the Web App via command."""
+    if not update.effective_user or not update.message:
+        return
+    user_id = update.effective_user.id
+    lang = await get_user_language(user_id)
+    
+    text = await _build_link_text(user_id, lang)
+    if not text:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
+        
     await update.message.reply_text(
-        text_parts.get(lang, text_parts["en"]),
+        text,
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
     )
@@ -590,6 +600,18 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # ── Report ──
         elif data == "menu:report":
             text = await _build_report_text(user_id, lang)
+            await query.edit_message_text(
+                text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            )
+
+        # ── Link ──
+        elif data == "menu:link":
+            text = await _build_link_text(user_id, lang)
+            if not text:
+                text = "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
+                
             await query.edit_message_text(
                 text,
                 parse_mode=ParseMode.HTML,

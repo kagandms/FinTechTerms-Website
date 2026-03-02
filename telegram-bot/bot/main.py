@@ -20,7 +20,9 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
     filters,
+    Application,
 )
+from telegram import BotCommand, BotCommandScopeDefault
 
 from bot.config import config
 from bot.handlers import (
@@ -48,6 +50,47 @@ logger = logging.getLogger("ftt_bot")
 # Reduce noise from httpx / telegram library
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
+
+
+async def post_init(application: Application) -> None:
+    """Sync bot commands to Telegram Servers dynamically per language."""
+    commands_en = [
+        BotCommand("start", "Main menu"),
+        BotCommand("search", "Search a term"),
+        BotCommand("daily", "Term of the day"),
+        BotCommand("quiz", "Quick quiz"),
+        BotCommand("link", "Sync with web app"),
+        BotCommand("report", "My Report"),
+        BotCommand("lang", "Change language"),
+        BotCommand("stats", "Statistics"),
+        BotCommand("help", "Help")
+    ]
+    commands_ru = [
+        BotCommand("start", "Главное меню"),
+        BotCommand("search", "Поиск термина"),
+        BotCommand("daily", "Термин дня"),
+        BotCommand("quiz", "Быстрый тест"),
+        BotCommand("link", "Синхронизация с сайтом"),
+        BotCommand("report", "Мой Отчёт"),
+        BotCommand("lang", "Сменить язык"),
+        BotCommand("stats", "Статистика"),
+        BotCommand("help", "Помощь")
+    ]
+    commands_tr = [
+        BotCommand("start", "Ana menü"),
+        BotCommand("search", "Terim ara"),
+        BotCommand("daily", "Günün terimi"),
+        BotCommand("quiz", "Hızlı test"),
+        BotCommand("bagla", "Web sitesiyle eşle"),
+        BotCommand("report", "Raporum"),
+        BotCommand("lang", "Dil değiştir"),
+        BotCommand("stats", "İstatistikler"),
+        BotCommand("help", "Yardım")
+    ]
+    
+    await application.bot.set_my_commands(commands_en, scope=BotCommandScopeDefault())
+    await application.bot.set_my_commands(commands_ru, scope=BotCommandScopeDefault(), language_code="ru")
+    await application.bot.set_my_commands(commands_tr, scope=BotCommandScopeDefault(), language_code="tr")
 
 
 def main() -> None:
@@ -78,7 +121,7 @@ def main() -> None:
         logger.info("   Default language: %s", config.default_language)
 
     # Build application
-    app = ApplicationBuilder().token(config.bot_token).build()
+    app = ApplicationBuilder().token(config.bot_token).post_init(post_init).build()
 
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CommandHandler("search", search_handler))
