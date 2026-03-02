@@ -7,8 +7,11 @@ instead of creating new ones, keeping the chat clean.
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import random
+import time
+
 from typing import Any
 
 import telegram.error
@@ -39,8 +42,35 @@ from bot.tts import generate_tts_audio
 
 logger = logging.getLogger(__name__)
 
+# ── Simple In-Memory Rate Limiter ──────────────────────────
+# Dictionary mapping user_id -> float (timestamp of last request)
+_RATE_LIMIT_CACHE: dict[int, float] = {}
+RATE_LIMIT_SECONDS = 1.0  # Max 1 request per second
+
+def _is_rate_limited(user_id: int) -> bool:
+    """Check if the user is sending requests too fast."""
+    now = time.time()
+    last_req = _RATE_LIMIT_CACHE.get(user_id, 0)
+    if now - last_req < RATE_LIMIT_SECONDS:
+        return True
+    _RATE_LIMIT_CACHE[user_id] = now
+    return False
+
 
 # ── Helpers ────────────────────────────────────────────────
+def sanitize_input(user_input: str) -> str:
+    """
+    Sanitize user input against SQL wildcards and HTML injections.
+    Prevents DB full-table scans and Telegram ParseMode.HTML crashes.
+    """
+    if not user_input:
+        return ""
+    # Strip wildcards for the .ilike or fuzzy matching
+    safe_query = user_input.replace("%", "").replace("_", "")
+    # Escape so malicious brackets don't break Telegram HTML
+    return html.escape(safe_query.strip())
+
+
 def _format_term_card(term: dict[str, Any], lang: str) -> str:
     """Format a term into a rich Telegram message."""
     cat = term.get("category", "Fintech")
@@ -147,10 +177,10 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
 
     # Persist Telegram username for admin dashboard
-    save_username(user_id, update.effective_user.username)
+    await save_username(user_id, update.effective_user.username)
 
     await update.message.reply_text(
         t("welcome", lang),
@@ -166,7 +196,11 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
+
+    if _is_rate_limited(user_id):
+        # Ignore silently to prevent spam feedback loops
+        return
 
     if not context.args:
         await update.message.reply_text(
@@ -176,9 +210,28 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
-    query = " ".join(context.args)
-    results = await search_terms(query, limit=3)
-    track_activity(user_id, "search")
+    raw_query = " ".join(context.args)
+    query = sanitize_input(raw_query)
+    
+    if not query:
+        await update.message.reply_text(
+            t("search_prompt", lang),
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
+
+    try:
+        results = await search_terms(query, limit=3)
+    except ConnectionError:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
+
+    await track_activity(user_id, "search")
 
     if not results:
         await update.message.reply_text(
@@ -206,15 +259,25 @@ async def daily_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
 
-    term = await get_random_term()
+    if _is_rate_limited(user_id):
+        return
+
+    try:
+        term = await get_random_term()
+    except ConnectionError:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
+        )
+        return
+
     if not term:
         await update.message.reply_text(t("error", lang), parse_mode=ParseMode.HTML)
         return
 
-    track_activity(user_id, "daily")
-    track_activity(user_id, "term_viewed", category=term.get("category", ""))
+    await track_activity(user_id, "daily")
+    await track_activity(user_id, "term_viewed", category=term.get("category", ""))
 
     header = t("daily_header", lang)
     card = _format_term_card(term, lang)
@@ -233,9 +296,19 @@ async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
 
-    text, keyboard = await _build_quiz(lang)
+    if _is_rate_limited(user_id):
+        return
+
+    try:
+        text, keyboard = await _build_quiz(lang)
+    except ConnectionError:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
+        )
+        return
+
     if text:
         await update.message.reply_text(
             text, parse_mode=ParseMode.HTML, reply_markup=keyboard
@@ -290,7 +363,7 @@ async def _build_quiz(lang: str) -> tuple[str | None, InlineKeyboardMarkup | Non
 async def lang_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message:
         return
-    lang = get_user_language(update.effective_user.id)
+    lang = await get_user_language(update.effective_user.id)
     await update.message.reply_text(
         t("lang_prompt", lang),
         parse_mode=ParseMode.HTML,
@@ -316,7 +389,7 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not update.effective_user or not update.message:
         return
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
     text = await _build_stats_text(lang)
     await update.message.reply_text(
         text,
@@ -340,7 +413,7 @@ async def _build_stats_text(lang: str) -> str:
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message:
         return
-    lang = get_user_language(update.effective_user.id)
+    lang = await get_user_language(update.effective_user.id)
     await update.message.reply_text(
         t("help", lang),
         parse_mode=ParseMode.HTML,
@@ -354,8 +427,8 @@ async def report_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not update.effective_user or not update.message:
         return
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
-    text = _build_report_text(user_id, lang)
+    lang = await get_user_language(user_id)
+    text = await _build_report_text(user_id, lang)
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
@@ -363,9 +436,9 @@ async def report_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
-def _build_report_text(user_id: int, lang: str) -> str:
+async def _build_report_text(user_id: int, lang: str) -> str:
     """Build a rich activity report for the user."""
-    report = get_user_report(user_id)
+    report = await get_user_report(user_id)
 
     # Build accuracy progress bar (10 blocks)
     filled = report["accuracy"] // 10
@@ -413,7 +486,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     await query.answer()
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
+    lang = await get_user_language(user_id)
     data = query.data
 
     try:
@@ -437,8 +510,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         elif data in ("menu:daily", "daily:next"):
             term = await get_random_term()
             if term:
-                track_activity(user_id, "daily")
-                track_activity(user_id, "term_viewed", category=term.get("category", ""))
+                await track_activity(user_id, "daily")
+                await track_activity(user_id, "term_viewed", category=term.get("category", ""))
                 header = t("daily_header", lang)
                 card = _format_term_card(term, lang)
                 await query.edit_message_text(
@@ -474,7 +547,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         # ── Report ──
         elif data == "menu:report":
-            text = _build_report_text(user_id, lang)
+            text = await _build_report_text(user_id, lang)
             await query.edit_message_text(
                 text,
                 parse_mode=ParseMode.HTML,
@@ -493,7 +566,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         elif data.startswith("lang:"):
             new_lang = data.split(":")[1]
             if new_lang in SUPPORTED_LANGUAGES:
-                set_user_language(user_id, new_lang)
+                await set_user_language(user_id, new_lang)
                 # After changing language, show welcome in the new language
                 await query.edit_message_text(
                     t("lang_changed", new_lang) + "\n\n" + t("welcome", new_lang),
@@ -509,9 +582,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
             if is_correct:
                 result_text = t("quiz_correct", lang)
-                track_activity(user_id, "quiz_taken", correct=True)
+                await track_activity(user_id, "quiz_taken", correct=True, term_id=term_id)
             else:
-                track_activity(user_id, "quiz_taken", correct=False)
+                await track_activity(user_id, "quiz_taken", correct=False, term_id=term_id)
                 term = await fetch_term_by_id(term_id) if term_id else None
                 def_key = f"definition_{lang}"
                 answer = (
@@ -548,14 +621,18 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 text_to_speak = term.get(term_key) or term.get("term_en", "")
                 if text_to_speak:
                     try:
+                        loading_msg = await query.message.reply_text("⏳ İşleminiz hazırlanıyor...") # type: ignore
                         audio_path = await generate_tts_audio(text_to_speak, tts_lang)
+                        await loading_msg.delete()
+
                         if audio_path:
-                            track_activity(user_id, "tts")
+                            await track_activity(user_id, "tts")
                             with open(audio_path, "rb") as audio_file:
                                 sent = await query.message.reply_voice(  # type: ignore[union-attr]
                                     voice=audio_file,
                                     caption=f"🔊 {text_to_speak}",
                                 )
+
                                 # Auto-delete voice after 10 seconds to keep chat clean
                                 asyncio.create_task(_delete_later(sent, 10))
                     except Exception as e:
@@ -585,13 +662,28 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     user_id = update.effective_user.id
-    lang = get_user_language(user_id)
-    query = update.message.text.strip()
-
-    if not query or query.startswith("/"):
+    if _is_rate_limited(user_id):
         return
 
-    results = await search_terms(query, limit=3)
+    lang = await get_user_language(user_id)
+    raw_query = update.message.text.strip()
+
+    if not raw_query or raw_query.startswith("/"):
+        return
+
+    query = sanitize_input(raw_query)
+    if not query:
+        return
+
+    try:
+        results = await search_terms(query, limit=3)
+    except ConnectionError:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
 
     if not results:
         await update.message.reply_text(
