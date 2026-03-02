@@ -13,6 +13,7 @@ import { SettingsPanel } from '@/components/features/profile/SettingsPanel';
 import { AuthModal } from '@/components/features/auth/AuthModal';
 import { ResetConfirmModal } from '@/components/features/profile/ResetConfirmModal';
 import TelegramBanner from '@/components/TelegramBanner';
+import SmartCard from '@/components/SmartCard';
 
 function ProfileContent() {
     // 1. Hook Logic
@@ -28,7 +29,7 @@ function ProfileContent() {
     // 2. Additional Contexts (not in authLogic)
     const { theme, setTheme } = useTheme();
     const { setLanguage } = useLanguage();
-    const { stats, refreshData, userProgress } = useSRS();
+    const { terms, stats, refreshData, userProgress } = useSRS();
 
     // Calculated fields
     const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0);
@@ -102,6 +103,20 @@ function ProfileContent() {
                 isAuthenticated={isAuthenticated}
                 t={t}
             />
+
+            {/* Favorites List */}
+            {userProgress.favorites.length > 0 && (
+                <div className="mb-8 mt-2">
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
+                        {language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}
+                    </h2>
+                    <div className="space-y-4">
+                        {terms.filter(t => userProgress.favorites.includes(t.id)).map(term => (
+                            <SmartCard key={term.id} term={term} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Settings Panel */}
             <SettingsPanel

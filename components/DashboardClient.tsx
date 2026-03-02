@@ -166,7 +166,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
                             <p>No data available yet.</p>
-                            <p className="text-sm mt-2">Check 'SUPABASE_SERVICE_ROLE_KEY' in Vercel.</p>
+                            <p className="text-sm mt-2">Check &apos;SUPABASE_SERVICE_ROLE_KEY&apos; in Vercel.</p>
                         </div>
                     )}
                 </div>
@@ -196,8 +196,8 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                                 </>
                             ) : (
                                 <>
-                                    <p className="font-bold">Missing 'session_id' in Database</p>
-                                    <p className="text-sm mt-1">Run SQL migration 'lib/add_session_id.sql'</p>
+                                    <p className="font-bold">Missing &apos;session_id&apos; in Database</p>
+                                    <p className="text-sm mt-1">Run SQL migration &apos;lib/add_session_id.sql&apos;</p>
                                     <p className="text-sm">Then restart simulation script.</p>
                                 </>
                             )}

@@ -64,7 +64,7 @@ export default function TelegramLinkCard() {
                     </svg>
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">Telegram'ı Bağla</h3>
+                    <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">Telegram&apos;ı Bağla</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">İlerlemelerinizi tek bir hesapta birleştirin.</p>
                 </div>
             </div>
@@ -72,7 +72,7 @@ export default function TelegramLinkCard() {
             <form onSubmit={handleLink} className="space-y-4">
                 <div>
                     <label htmlFor="telegram-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Bot'tan Alınan 6 Haneli Kod
+                        Bot&apos;tan Alınan 6 Haneli Kod
                     </label>
                     <div className="relative">
                         <input

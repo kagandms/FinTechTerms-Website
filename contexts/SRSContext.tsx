@@ -95,6 +95,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
         // Convert back to array
         currentTerms = Array.from(uniqueLocalTerms.values());
 
+        // Optimistically set local user progress first
+        setUserProgress(getLocalUserProgress());
+
         // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
         if (currentTerms.length > 0) {
             setTerms(currentTerms);
@@ -200,7 +203,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             }
         } else {
             // Guest mode
-            setTerms(currentTerms);
+            // setTerms(currentTerms); (already set above)
             setUserProgress(getLocalUserProgress());
         }
 

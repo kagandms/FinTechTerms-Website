@@ -104,10 +104,11 @@ export function getUserProgress(): UserProgress {
         if (stored) {
             return JSON.parse(stored) as UserProgress;
         }
-        localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(defaultUserProgress));
-        return defaultUserProgress;
+        const newProgress = { ...defaultUserProgress, favorites: [...defaultUserProgress.favorites], quiz_history: [...defaultUserProgress.quiz_history] };
+        localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(newProgress));
+        return newProgress;
     } catch {
-        return defaultUserProgress;
+        return { ...defaultUserProgress, favorites: [...defaultUserProgress.favorites], quiz_history: [...defaultUserProgress.quiz_history] };
     }
 }
 
@@ -133,16 +134,18 @@ export function saveUserProgress(progress: UserProgress): void {
  */
 export function toggleFavorite(termId: string): UserProgress {
     const progress = getUserProgress();
-    const index = progress.favorites.indexOf(termId);
+    const newFavorites = [...progress.favorites];
+    const index = newFavorites.indexOf(termId);
 
     if (index === -1) {
-        progress.favorites.push(termId);
+        newFavorites.push(termId);
     } else {
-        progress.favorites.splice(index, 1);
+        newFavorites.splice(index, 1);
     }
 
-    saveUserProgress(progress);
-    return progress;
+    const updated = { ...progress, favorites: newFavorites };
+    saveUserProgress(updated);
+    return updated;
 }
 
 /**

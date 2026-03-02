@@ -227,7 +227,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     <div className="px-4 pb-4 animate-fade-in">
                         <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800/50">
                             <p className="text-sm text-primary-700 dark:text-primary-300 italic">
-                                "{currentExample}"
+                                &quot;{currentExample}&quot;
                             </p>
                         </div>
 
