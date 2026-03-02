@@ -30,6 +30,11 @@ class Config:
         default_factory=lambda: os.getenv("SUPABASE_KEY", "")
     )
 
+    # Redis (Rate Limiting)
+    redis_url: str = field(
+        default_factory=lambda: os.getenv("REDIS_URL", "")
+    )
+
     # Admin
     admin_user_id: int = field(
         default_factory=lambda: int(os.getenv("ADMIN_USER_ID", "0"))

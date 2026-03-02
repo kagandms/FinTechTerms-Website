@@ -36,26 +36,13 @@ from bot.database import (
     track_activity,
     get_user_report,
     save_username,
+    generate_link_token,
 )
 from bot.i18n import t
 from bot.tts import generate_tts_audio
+from bot.rate_limiter import is_rate_limited
 
 logger = logging.getLogger(__name__)
-
-# ── Simple In-Memory Rate Limiter ──────────────────────────
-# Dictionary mapping user_id -> float (timestamp of last request)
-_RATE_LIMIT_CACHE: dict[int, float] = {}
-RATE_LIMIT_SECONDS = 1.0  # Max 1 request per second
-
-def _is_rate_limited(user_id: int) -> bool:
-    """Check if the user is sending requests too fast."""
-    now = time.time()
-    last_req = _RATE_LIMIT_CACHE.get(user_id, 0)
-    if now - last_req < RATE_LIMIT_SECONDS:
-        return True
-    _RATE_LIMIT_CACHE[user_id] = now
-    return False
-
 
 # ── Helpers ────────────────────────────────────────────────
 def sanitize_input(user_input: str) -> str:
@@ -198,7 +185,7 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
 
-    if _is_rate_limited(user_id):
+    if await is_rate_limited(user_id):
         # Ignore silently to prevent spam feedback loops
         return
 
@@ -261,7 +248,7 @@ async def daily_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
 
-    if _is_rate_limited(user_id):
+    if await is_rate_limited(user_id):
         return
 
     try:
@@ -298,7 +285,7 @@ async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
 
-    if _is_rate_limited(user_id):
+    if await is_rate_limited(user_id):
         return
 
     try:
@@ -473,6 +460,54 @@ async def _build_report_text(user_id: int, lang: str) -> str:
         tip=tip,
     )
     return header + body
+
+
+# ── /link ──────────────────────────────────────────────────
+async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate an OTP token for linking to the Web App."""
+    if not update.effective_user or not update.message:
+        return
+    user_id = update.effective_user.id
+    lang = await get_user_language(user_id)
+    
+    # 1. Ask DB for token via RPC
+    token = await generate_link_token(user_id)
+    
+    if not token:
+        await update.message.reply_text(
+            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
+        
+    # 2. Prepare message for the user based on language
+    text_parts = {
+        "tr": (
+            f"🔗 <b>Hesap Birleştirme (Kodu Kopyala)</b>\n\n"
+            f"Web sitesinde ilerlemenizi senkronize etmek için aşağıdaki kodu kullanın:\n\n"
+            f"<code>{token}</code>\n\n"
+            f"<i>⚠️ Bu kod 15 dakika geçerlidir.</i>"
+        ),
+        "ru": (
+            f"🔗 <b>Связывание аккаунтов (Скопируйте код)</b>\n\n"
+            f"Используйте следующий код на сайте, чтобы синхронизировать прогресс:\n\n"
+            f"<code>{token}</code>\n\n"
+            f"<i>⚠️ Код действителен 15 минут.</i>"
+        ),
+        "en": (
+            f"🔗 <b>Account Linking (Copy Code)</b>\n\n"
+            f"Use the following code on the website to sync your progress:\n\n"
+            f"<code>{token}</code>\n\n"
+            f"<i>⚠️ This code is valid for 15 minutes.</i>"
+        )
+    }
+    
+    await update.message.reply_text(
+        text_parts.get(lang, text_parts["en"]),
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+    )
 
 
 # ══════════════════════════════════════════════════════════
@@ -662,7 +697,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     user_id = update.effective_user.id
-    if _is_rate_limited(user_id):
+    if await is_rate_limited(user_id):
         return
 
     lang = await get_user_language(user_id)
