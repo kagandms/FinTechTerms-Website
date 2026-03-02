@@ -103,6 +103,13 @@ def main() -> None:
         
         if webhook_url:
             logger.info(f"✅ Starting webhook on port {port} for URL: {webhook_url}")
+            
+            # Ensure an event loop exists (Python 3.12+ safety)
+            try:
+                asyncio.get_event_loop()
+            except RuntimeError:
+                asyncio.set_event_loop(asyncio.new_event_loop())
+                
             app.run_webhook(
                 listen="0.0.0.0",
                 port=port,
