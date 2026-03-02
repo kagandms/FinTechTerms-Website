@@ -21,14 +21,20 @@ export default function QuizPage() {
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
     const [showQuizOptions, setShowQuizOptions] = useState(false);
 
+    // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
+    const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
+
     const quizOptions = [5, 10, 20, 50];
 
-    // Initialize session terms
+    // Initialize session terms (lock them in so math doesn't break mid-quiz)
     useEffect(() => {
-        if (!isQuickQuiz) {
+        if (!isQuickQuiz && !hasStartedNormalQuiz && dueTerms.length > 0) {
             setSessionTerms(dueTerms);
+            setHasStartedNormalQuiz(true);
+        } else if (!isQuickQuiz && !hasStartedNormalQuiz && dueTerms.length === 0) {
+            setSessionTerms([]);
         }
-    }, [dueTerms, isQuickQuiz]);
+    }, [dueTerms, isQuickQuiz, hasStartedNormalQuiz]);
 
     const currentTerm = sessionTerms[currentIndex];
 
@@ -70,6 +76,7 @@ export default function QuizPage() {
     // Reset to normal mode
     const resetToNormal = () => {
         setIsQuickQuiz(false);
+        setHasStartedNormalQuiz(false);
         setSessionTerms(dueTerms);
         setCurrentIndex(0);
         setCorrectCount(0);
@@ -86,7 +93,7 @@ export default function QuizPage() {
             <div className="page-content px-4 py-6">
                 {/* Header */}
                 <header className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">{t('quiz.title')}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
                 </header>
 
                 {/* Daily Streak Card - Compact */}
@@ -146,31 +153,31 @@ export default function QuizPage() {
                 </div>
 
                 {/* Statistics */}
-                <div className="bg-white rounded-2xl p-5 shadow-card mb-6">
-                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-card mb-6">
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <Target className="w-5 h-5 text-primary-500" />
                         {t('quiz.yourStats')}
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 rounded-xl p-4 text-center">
+                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
                             <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900">{terms.length}</p>
-                            <p className="text-xs text-gray-500">{t('quiz.totalWords')}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{terms.length}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.totalWords')}</p>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-4 text-center">
+                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
                             <Star className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900">{masteredCount}</p>
-                            <p className="text-xs text-gray-500">{t('quiz.mastered')}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{masteredCount}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.mastered')}</p>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-4 text-center">
+                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
                             <Sparkles className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900">{learningCount}</p>
-                            <p className="text-xs text-gray-500">{t('quiz.learning')}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
                         </div>
-                        <div className="bg-gray-50 rounded-xl p-4 text-center">
+                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
                             <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900">{stats.totalFavorites}</p>
-                            <p className="text-xs text-gray-500">{t('quiz.favorites')}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
                         </div>
                     </div>
                 </div>
@@ -209,23 +216,23 @@ export default function QuizPage() {
                         <p className="text-primary-500 font-medium mb-2">{t('quiz.quickQuiz')}</p>
                     )}
 
-                    <div className="bg-white rounded-2xl p-6 shadow-card w-full max-w-sm mt-4 mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-card w-full max-w-sm mt-4 mb-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-green-500">{correctCount}</p>
-                                <p className="text-sm text-gray-500">{t('quiz.knew')}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('quiz.knew')}</p>
                             </div>
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-red-500">{sessionTerms.length - correctCount}</p>
-                                <p className="text-sm text-gray-500">{t('quiz.didntKnow')}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('quiz.didntKnow')}</p>
                             </div>
                         </div>
 
-                        <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <div className="flex items-center justify-center gap-2">
                                 <Sparkles className="w-5 h-5 text-accent-500" />
-                                <span className="text-2xl font-bold text-gray-900">%{accuracy}</span>
-                                <span className="text-gray-500">{t('profile.accuracy')}</span>
+                                <span className="text-2xl font-bold text-gray-900 dark:text-white">%{accuracy}</span>
+                                <span className="text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</span>
                             </div>
                         </div>
                     </div>
@@ -282,7 +289,7 @@ export default function QuizPage() {
             <header className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-bold text-gray-900">
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                             {t('quiz.title')}
                         </h1>
                         {isQuickQuiz && (
