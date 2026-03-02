@@ -6,9 +6,9 @@ export const TermSchema = z.object({
     term_en: z.string().catch('Unknown'),
     term_ru: z.string().nullable().catch('').transform(s => s || ''),
     term_tr: z.string().nullable().catch('').transform(s => s || ''),
-    phonetic_en: z.string().nullish().catch(''),
-    phonetic_ru: z.string().nullish().catch(''),
-    phonetic_tr: z.string().nullish().catch(''),
+    phonetic_en: z.string().nullable().catch(null).transform(s => s ?? undefined),
+    phonetic_ru: z.string().nullable().catch(null).transform(s => s ?? undefined),
+    phonetic_tr: z.string().nullable().catch(null).transform(s => s ?? undefined),
 
     category: z.enum(['Fintech', 'Finance', 'Technology']).default('Finance'),
 
