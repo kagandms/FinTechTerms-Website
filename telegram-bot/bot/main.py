@@ -62,15 +62,17 @@ def main() -> None:
 
     # Detect Render production environment
     is_production = bool(os.environ.get("RENDER"))
+    webhook_url = os.environ.get("RENDER_EXTERNAL_URL", "")
 
     if is_production:
         logger.info("🚀 PRODUCTION MODE — Render detected")
         logger.info("   Supabase URL: %s", config.supabase_url)
-        logger.info("   Starting health check server…")
-
-        # Start Flask health check in background thread
-        from bot.keep_alive import keep_alive
-        keep_alive()
+        
+        if not webhook_url:
+            logger.info("   Starting keep_alive health check server on polling mode…")
+            # Start Flask health check in background thread for polling to bind PORT
+            from bot.keep_alive import keep_alive
+            keep_alive()
     else:
         logger.info("📡 LOCAL MODE — Development")
         logger.info("   Supabase URL: %s", config.supabase_url)
@@ -99,7 +101,6 @@ def main() -> None:
     # ── Start Server ──
     if is_production:
         port = int(os.environ.get("PORT", 10000))
-        webhook_url = os.environ.get("RENDER_EXTERNAL_URL", "")
         
         if webhook_url:
             logger.info(f"✅ Starting webhook on port {port} for URL: {webhook_url}")
