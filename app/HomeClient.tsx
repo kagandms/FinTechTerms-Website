@@ -105,11 +105,11 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-primary-800 bg-white/50 dark:bg-primary-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm relative z-50">
+            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-transparent -mx-4 px-8 rounded-b-3xl relative z-50">
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
                         {/* Wrapper for definitive rounding */}
-                        <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-primary-800/30">
+                        <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-transparent">
                             <Image
                                 src="/ftt.png"
                                 alt="FinTechTerms Logo"
@@ -131,7 +131,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                 <div className="flex flex-col items-end gap-6 h-40 justify-center">
                     {/* Streak Badge */}
-                    <div className="px-6 py-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3">
+                    <div className="px-6 py-3 bg-white dark:bg-gray-800/50 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-3 backdrop-blur-sm">
                         <div className="flex flex-col items-end">
                             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{t('profile.days')}</span>
                             <span className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                         <button
                             onClick={toggleTheme}
-                            className="p-3 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-all border border-gray-100 dark:border-gray-700 shadow-sm"
+                            className="p-3 rounded-xl bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-all border border-gray-100 dark:border-gray-800 shadow-sm backdrop-blur-sm"
                             aria-label="Toggle theme"
                         >
                             {resolvedTheme === 'dark' ? (
@@ -179,8 +179,8 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
             {/* Quick Stats */}
             {userProgress.quiz_history.length > 0 && (
-                <section className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
+                <section className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                                 <Flame className="w-5 h-5 text-orange-500" />
@@ -190,7 +190,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.days')}</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                                 <BookMarked className="w-5 h-5 text-primary-500" />
@@ -200,7 +200,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center flex flex-col items-center justify-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
