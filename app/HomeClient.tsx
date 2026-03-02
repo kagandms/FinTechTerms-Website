@@ -105,7 +105,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-transparent -mx-4 px-8 rounded-b-3xl relative z-50">
+            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-primary-800/60 bg-white/50 dark:bg-primary-800/30 backdrop-blur-md -mx-4 px-8 rounded-b-3xl relative z-50">
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
                         {/* Wrapper for definitive rounding */}
