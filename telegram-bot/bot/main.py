@@ -32,6 +32,7 @@ from bot.handlers import (
     stats_handler,
     help_handler,
     report_handler,
+    link_handler,
     callback_handler,
     text_handler,
 )
@@ -78,7 +79,6 @@ def main() -> None:
     # Build application
     app = ApplicationBuilder().token(config.bot_token).build()
 
-    # ── Register command handlers ──
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CommandHandler("search", search_handler))
     app.add_handler(CommandHandler("daily", daily_handler))
@@ -87,6 +87,8 @@ def main() -> None:
     app.add_handler(CommandHandler("stats", stats_handler))
     app.add_handler(CommandHandler("help", help_handler))
     app.add_handler(CommandHandler("report", report_handler))
+    app.add_handler(CommandHandler("link", link_handler))
+    app.add_handler(CommandHandler("bagla", link_handler))
 
     # ── Register callback query handler ──
     app.add_handler(CallbackQueryHandler(callback_handler))
@@ -94,19 +96,47 @@ def main() -> None:
     # ── Register text message handler (search by text) ──
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    # ── Start polling ──
-    logger.info("✅ Bot is now running. Press Ctrl+C to stop.")
+    # ── Start Server ──
+    if is_production:
+        port = int(os.environ.get("PORT", 10000))
+        webhook_url = os.environ.get("RENDER_EXTERNAL_URL", "")
+        
+        if webhook_url:
+            logger.info(f"✅ Starting webhook on port {port} for URL: {webhook_url}")
+            app.run_webhook(
+                listen="0.0.0.0",
+                port=port,
+                webhook_url=f"{webhook_url}/{config.bot_token}",
+                drop_pending_updates=True,
+            )
+        else:
+            logger.warning("RENDER_EXTERNAL_URL is not set. Falling back to Polling in Production.")
+            logger.info("✅ Bot is now running (Polling). Press Ctrl+C to stop.")
+            # Ensure an event loop exists (Python 3.12+ safety)
+            try:
+                asyncio.get_event_loop()
+            except RuntimeError:
+                asyncio.set_event_loop(asyncio.new_event_loop())
 
-    # Ensure an event loop exists (Python 3.12+ safety)
-    try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
+            app.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
 
-    app.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=["message", "callback_query"],
-    )
+    else:
+        logger.info("✅ Bot is now running (Polling). Press Ctrl+C to stop.")
+
+        # Ensure an event loop exists (Python 3.12+ safety)
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
+        app.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query"],
+        )
+
 
 
 if __name__ == "__main__":

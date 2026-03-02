@@ -181,6 +181,20 @@ async def save_username(telegram_id: int, username: str | None) -> None:
     if username:
         await sync_user(telegram_id, username)
 
+async def generate_link_token(telegram_id: int) -> str | None:
+    """Generate a 6-digit OTP for linking the Telegram bot account to a Web account."""
+    def _generate():
+        return get_client().rpc("generate_telegram_link_token", {
+            "p_telegram_id": telegram_id
+        }).execute()
+        
+    try:
+        response = await asyncio.to_thread(_generate)
+        return response.data if response.data else None
+    except Exception as e:
+        logger.error("Failed to generate link token for %s: %s", telegram_id, e)
+        return None
+
 async def get_user_report(telegram_id: int) -> dict[str, Any]:
     """Get user activity summary for the report."""
     data = await sync_user(telegram_id)
