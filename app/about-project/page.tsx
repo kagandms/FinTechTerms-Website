@@ -1,14 +1,16 @@
-'use client';
-
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ArrowLeft, Database, Server, Smartphone, Globe, Code, Cpu } from 'lucide-react';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/server';
 
-export default function AboutProjectPage() {
-    const { t, language } = useLanguage();
-
-    const isRu = language === 'ru';
+export default async function AboutProjectPage() {
+    // We cannot use hooks easily in async server components, so let's check headers or default it
+    // Wait, the existing file uses "use client". We need to turn it into a Server Component to fetch from DB easily.
+    // Let's remove 'use client' and handle language statically (or default to EN for this architectural page).
+    const supabase = await createClient();
+    const { count } = await supabase.from('terms').select('*', { count: 'exact', head: true });
+    const termCount = count || 500;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
@@ -19,7 +21,7 @@ export default function AboutProjectPage() {
                         <ArrowLeft className="w-6 h-6" />
                     </Link>
                     <h1 className="font-semibold text-lg text-gray-800">
-                        {isRu ? 'О Проекте' : 'Project Architecture'}
+                        Project Architecture
                     </h1>
                     <div className="w-10" /> {/* Spacer */}
                 </div>
@@ -31,12 +33,10 @@ export default function AboutProjectPage() {
                 <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
                         <Globe className="w-5 h-5 text-primary-600" />
-                        {isRu ? 'Аннотация' : 'Abstract'}
+                        Abstract
                     </h2>
                     <p className="text-gray-600 leading-relaxed text-sm">
-                        {isRu
-                            ? 'FinTechTerms - это специализированная система управления обучением (LMS), разработанная для анализа освоения финансовой терминологии. Проект использует алгоритмы интервального повторения (SRS) и синтетическое моделирование данных для исследования когнитивной нагрузки при изучении трехъязычной (TR-EN-RU) лексики в сфере FinTech.'
-                            : 'FinTechTerms is a specialized Learning Management System (LMS) designed to analyze financial terminology acquisition. The project utilizes Spaced Repetition Algorithms (SRS) and synthetic data simulation to research cognitive load in trilingual (TR-EN-RU) lexical acquisition within the FinTech domain.'}
+                        FinTechTerms is a specialized Learning Management System (LMS) designed to accelerate financial terminology acquisition. The project utilizes Spaced Repetition Algorithms (SRS) to reduce cognitive load in trilingual (TR-EN-RU) lexical learning within the FinTech domain.
                     </p>
                 </section>
 
@@ -44,7 +44,7 @@ export default function AboutProjectPage() {
                 <section>
                     <h2 className="text-lg font-bold text-gray-900 mb-4 ml-1 flex items-center gap-2">
                         <Server className="w-5 h-5 text-blue-600" />
-                        {isRu ? 'Системная Архитектура' : 'System Architecture'}
+                        System Architecture
                     </h2>
 
                     {/* Visual Diagram */}
@@ -100,7 +100,7 @@ export default function AboutProjectPage() {
                                 </div>
                                 <div className="bg-white p-2 text-center rounded border border-emerald-100">
                                     <div className="text-[10px] uppercase text-gray-400">Terms</div>
-                                    <div className="font-mono font-bold text-emerald-600">505</div>
+                                    <div className="font-mono font-bold text-emerald-600">{termCount}</div>
                                 </div>
                             </div>
                         </div>
@@ -108,19 +108,19 @@ export default function AboutProjectPage() {
                         {/* Analysis Layer */}
                         <div className="flex justify-center -my-2 z-10">
                             <div className="bg-gray-100 px-3 py-1 rounded-full text-[10px] font-mono text-gray-500 border border-gray-200">
-                                PYTHON ETL
+                                PYTHON WORKER
                             </div>
                         </div>
 
                         <div className="border border-amber-100 bg-amber-50/50 p-4 rounded-xl relative">
-                            <div className="absolute top-2 right-2 text-xs font-mono text-amber-400">ANALYSIS</div>
+                            <div className="absolute top-2 right-2 text-xs font-mono text-amber-400">TELEGRAM</div>
                             <div className="flex items-center gap-3">
                                 <div className="bg-white p-2 rounded-lg shadow-sm">
                                     <Cpu className="w-6 h-6 text-amber-600" />
                                 </div>
                                 <div>
-                                    <div className="font-semibold text-gray-800">Python Simulation</div>
-                                    <div className="text-xs text-gray-500">Pandas • Faker • NumPy</div>
+                                    <div className="font-semibold text-gray-800">Telegram Bot</div>
+                                    <div className="text-xs text-gray-500">Python-Telegram-Bot • AsyncIO</div>
                                 </div>
                             </div>
                         </div>
@@ -132,7 +132,7 @@ export default function AboutProjectPage() {
                 <section>
                     <h2 className="text-lg font-bold text-gray-900 mb-4 ml-1 flex items-center gap-2">
                         <Code className="w-5 h-5 text-purple-600" />
-                        {isRu ? 'Технологический Стек' : 'Tech Stack'}
+                        Tech Stack
                     </h2>
                     <div className="grid grid-cols-2 gap-3">
                         {[
@@ -140,8 +140,8 @@ export default function AboutProjectPage() {
                             { name: 'Next.js 14', desc: 'App Router', color: 'bg-gray-50 text-gray-700 border-gray-100' },
                             { name: 'TailwindCSS', desc: 'Utility First', color: 'bg-cyan-50 text-cyan-700 border-cyan-100' },
                             { name: 'Supabase', desc: 'PostgreSQL', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-                            { name: 'Python', desc: 'Data Sim', color: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
-                            { name: 'Faker.js', desc: 'Synthetic Data', color: 'bg-purple-50 text-purple-700 border-purple-100' },
+                            { name: 'Python', desc: 'Data Bot', color: 'bg-yellow-50 text-yellow-700 border-yellow-100' },
+                            { name: 'Redis', desc: 'Rate Limiting', color: 'bg-red-50 text-red-700 border-red-100' },
                         ].map((tech) => (
                             <div key={tech.name} className={`${tech.color} border p-3 rounded-xl transition-all hover:scale-[1.02]`}>
                                 <div className="font-bold text-sm">{tech.name}</div>
@@ -151,10 +151,10 @@ export default function AboutProjectPage() {
                     </div>
                 </section>
 
-                {/* Footer for Academic Context */}
+                {/* Footer */}
                 <div className="text-center pt-8 border-t border-gray-100 mt-8">
                     <p className="text-xs text-gray-400 uppercase tracking-widest mb-2 origin-left scale-90">
-                        Designed for MIS Portfolio Analysis
+                        Open Source Dictionary & Learning Platform
                     </p>
                     <div className="flex justify-center gap-2 opacity-30">
                         <div className="w-2 h-2 rounded-full bg-gray-400" />

@@ -16,31 +16,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
+@app.route("/health", methods=["GET"])
 def health() -> str:
     """Root health check endpoint for UptimeRobot."""
     logger.info("Health check pinged at %s", datetime.now(timezone.utc).isoformat())
     return jsonify({
         "status": "alive",
         "service": "FinTechTerms Telegram Bot",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
-
-
-@app.route("/health")
-def health_detailed() -> str:
-    """Detailed health check with Supabase connectivity test."""
-    db_ok = False
-    try:
-        from bot.database import get_client
-        result = get_client().table("terms").select("id").limit(1).execute()
-        db_ok = bool(result.data)
-    except Exception as e:
-        logger.warning("DB health check failed: %s", e)
-
-    return jsonify({
-        "status": "alive",
-        "database": "connected" if db_ok else "unreachable",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 

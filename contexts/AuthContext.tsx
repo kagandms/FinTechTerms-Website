@@ -392,15 +392,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Clear local storage for SRS data
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('globalfinterm_user_progress');
-                // Also clear terms to force a fresh fetch next time ensuring data consistency
-                // localStorage.removeItem('globalfinterm_terms'); 
             }
-            // Optimistic Logout: Clear state immediately
+
+            // 1. First, tell the Next.js Server to clear all HttpOnly secure cookies
+            await fetch('/api/auth/signout', { method: 'POST' });
+
+            // 2. Optimistic Logout: Clear state immediately
             setUser(null);
             setPendingVerificationEmail(null);
 
-            // Then tell Supabase (non-blocking for UI)
-            const { error } = await supabase.auth.signOut();
+            // 3. Then tell Supabase Client to nuke local session (non-blocking for UI)
+            const { error } = await supabase.auth.signOut({ scope: 'local' });
             if (error) {
                 console.error('Supabase signOut error:', error);
             }
@@ -409,7 +411,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } finally {
             // Always set user to null, even if signOut fails
             setUser(null);
-            // Refresh the page to ensure all auth state is cleared from UI
+            // Refresh the page to ensure all auth state is cleared from UI and Server Components remount
             router.refresh();
         }
     }, [router]);

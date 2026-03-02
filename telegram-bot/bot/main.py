@@ -22,6 +22,16 @@ from telegram.ext import (
     filters,
 )
 
+import tornado.web
+
+class HealthCheckHandler(tornado.web.RequestHandler):
+    """Answers UptimeRobot GET/HEAD safely"""
+    def get(self):
+        self.write({"status": "alive", "service": "Telegram Webhook"})
+        self.set_status(200)
+    def head(self):
+        self.set_status(200)
+
 from bot.config import config
 from bot.handlers import (
     start_handler,
@@ -116,6 +126,10 @@ def main() -> None:
                 port=port,
                 webhook_url=f"{webhook_url}/{config.bot_token}",
                 drop_pending_updates=True,
+                extra_handlers=[
+                    (r"/", tornado.web.RedirectHandler, {"url": "/health"}),
+                    (r"/health", HealthCheckHandler)
+                ]
             )
         else:
             logger.warning("RENDER_EXTERNAL_URL is not set. Falling back to Polling in Production.")
