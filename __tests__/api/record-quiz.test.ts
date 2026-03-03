@@ -6,19 +6,19 @@
 
 describe('Quiz API - Input Validation Logic', () => {
     it('should reject missing term_id', () => {
-        const body = { is_correct: true, response_time_ms: 500 };
-        const hasTermId = body.term_id && typeof body.term_id === 'string';
+        const body: any = { is_correct: true, response_time_ms: 500 };
+        const hasTermId = !!body.term_id && typeof body.term_id === 'string';
         expect(hasTermId).toBeFalsy();
     });
 
     it('should reject non-boolean is_correct', () => {
-        const body = { term_id: 'test_1', is_correct: 'yes', response_time_ms: 500 };
+        const body: any = { term_id: 'test_1', is_correct: 'yes', response_time_ms: 500 };
         const isValidBoolean = typeof body.is_correct === 'boolean';
         expect(isValidBoolean).toBe(false);
     });
 
     it('should reject negative response_time_ms', () => {
-        const body = { term_id: 'test_1', is_correct: true, response_time_ms: -100 };
+        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: -100 };
         const isValidTime = typeof body.response_time_ms === 'number' && body.response_time_ms >= 0;
         expect(isValidTime).toBe(false);
     });
@@ -26,14 +26,14 @@ describe('Quiz API - Input Validation Logic', () => {
     it('should accept valid quiz attempt body', () => {
         const body = { term_id: 'test_1', is_correct: true, response_time_ms: 1500 };
         const isValid =
-            body.term_id && typeof body.term_id === 'string' &&
+            !!body.term_id && typeof body.term_id === 'string' &&
             typeof body.is_correct === 'boolean' &&
             typeof body.response_time_ms === 'number' && body.response_time_ms >= 0;
         expect(isValid).toBeTruthy();
     });
 
     it('should default quiz_type to simulation when not provided', () => {
-        const body = { term_id: 'test_1', is_correct: true, response_time_ms: 500 };
+        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500 };
         const quizType = body.quiz_type || 'simulation';
         expect(quizType).toBe('simulation');
     });
