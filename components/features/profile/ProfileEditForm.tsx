@@ -43,7 +43,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             name: defaultFirstName,
             surname: defaultLastName,
             email: user?.email || '',
-            birthYear: '', // If stored in metadata, could be retrieved here
+            birthDate: '', // If stored in metadata, could be retrieved here
             currentPassword: '',
             newPassword: '',
             confirmPassword: '',
@@ -60,7 +60,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 data: {
                     name: fullName,
                     full_name: fullName,
-                    birth_year: data.birthYear,
+                    birth_date: data.birthDate,
                 }
             });
 
@@ -127,7 +127,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         name: language === 'tr' ? 'Ad' : language === 'ru' ? 'Имя' : 'First Name',
         surname: language === 'tr' ? 'Soyad' : language === 'ru' ? 'Фамилия' : 'Last Name',
         email: language === 'tr' ? 'E-posta' : language === 'ru' ? 'Эл. почта' : 'Email',
-        birthYear: language === 'tr' ? 'Doğum Yılı' : language === 'ru' ? 'Год рождения' : 'Birth Year',
+        birthDate: language === 'tr' ? 'Doğum Tarihi' : language === 'ru' ? 'Дата рождения' : 'Date of Birth',
         saveBtn: language === 'tr' ? 'Değişiklikleri Kaydet' : language === 'ru' ? 'Сохранить изменения' : 'Save Changes',
         saving: language === 'tr' ? 'Kaydediliyor...' : language === 'ru' ? 'Сохранение...' : 'Saving...',
         pwdTitle: language === 'tr' ? 'Şifre Değiştir' : language === 'ru' ? 'Изменить пароль' : 'Change Password',
@@ -166,16 +166,15 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                     {errors.surname && <p className="text-sm text-red-500 mt-1">{errors.surname.message}</p>}
                 </div>
 
-                {/* Birth Year */}
+                {/* Birth Date */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.birthYear}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.birthDate}</label>
                     <input
-                        {...register('birthYear')}
-                        type="number"
-                        placeholder="YYYY"
-                        className={`w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.birthYear ? 'border-red-500' : 'border-gray-200'}`}
+                        {...register('birthDate')}
+                        type="date"
+                        className={`w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.birthDate ? 'border-red-500' : 'border-gray-200'}`}
                     />
-                    {errors.birthYear && <p className="text-sm text-red-500 mt-1">{errors.birthYear.message}</p>}
+                    {errors.birthDate && <p className="text-sm text-red-500 mt-1">{errors.birthDate.message}</p>}
                 </div>
 
                 {/* Email (Readonly mostly, but Zod validated) */}

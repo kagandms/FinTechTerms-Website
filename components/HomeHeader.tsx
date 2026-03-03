@@ -31,9 +31,9 @@ export function MobileHeader({ t, resolvedTheme, toggleTheme }: HeaderProps) {
                 <Image
                     src="/ftt.png"
                     alt="FinTechTerms Logo"
-                    height={48}
-                    width={48}
-                    className="w-12 h-12 object-contain rounded-2xl"
+                    height={40}
+                    width={40}
+                    className="w-10 h-10 object-contain"
                     priority
                 />
                 <div className="min-w-0">

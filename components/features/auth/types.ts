@@ -6,7 +6,7 @@ export interface AuthFormState {
     confirmPassword?: string;
     name: string;
     surname: string;
-    birthYear: string;
+    birthDate: string;
 }
 
 export interface CommonAuthProps {

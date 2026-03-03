@@ -39,22 +39,29 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             value={authForm.name}
                             onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
                             className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                            placeholder="Name"
+                            placeholder={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Ad' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Имя' : 'Name'}
                         />
                         <input
                             type="text"
                             value={authForm.surname}
                             onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
                             className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                            placeholder="Surname"
+                            placeholder={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Soyad' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Фамилия' : 'Surname'}
                         />
-                        <input
-                            type="number"
-                            value={authForm.birthYear}
-                            onChange={(e) => setAuthForm({ ...authForm, birthYear: e.target.value })}
-                            className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                            placeholder="Birth Year"
-                        />
+                        <div className="relative">
+                            <input
+                                type="date"
+                                value={authForm.birthDate || ''}
+                                onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
+                                className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 appearance-none bg-transparent"
+                            />
+                            {/* Overlay text if empty to show custom placeholder since date input placeholder is spotty */}
+                            {!authForm.birthDate && (
+                                <span className="absolute left-4 top-3.5 text-gray-400 pointer-events-none">
+                                    {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
+                                </span>
+                            )}
+                        </div>
                     </>
                 )}
 

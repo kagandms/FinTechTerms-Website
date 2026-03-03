@@ -6,6 +6,7 @@ import { useAuthLogic } from '@/hooks/useAuthLogic';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { Settings } from 'lucide-react';
 
 // Feature Components
 import { StatsGrid } from '@/components/features/profile/StatsGrid';
@@ -31,6 +32,9 @@ function ProfileContent() {
     const { theme, setTheme } = useTheme();
     const { setLanguage } = useLanguage();
     const { terms, stats, refreshData, userProgress } = useSRS();
+
+    // Toggle for Profile Editing
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
 
     // Calculated fields
     const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0);
@@ -114,11 +118,33 @@ function ProfileContent() {
 
                     {/* Authenticated Dashboard Forms */}
                     {isAuthenticated && (
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            {/* Profile Edit Form */}
-                            <section className="xl:col-span-2">
-                                <ProfileEditForm language={language} />
+                        <div className="grid grid-cols-1 gap-6">
+                            {/* Profile Edit Action */}
+                            <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {language === 'tr' ? 'Profilini Düzenle' : language === 'ru' ? 'Редактировать профиль' : 'Edit Profile'}
+                                    </h3>
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                        {language === 'tr' ? 'Kişisel bilgilerinizi ve hesap ayarlarınızı güncelleyin.' : language === 'ru' ? 'Обновите вашу личную информацию и настройки аккаунта.' : 'Update your personal information and account settings.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsEditingProfile(!isEditingProfile)}
+                                    className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    {isEditingProfile
+                                        ? (language === 'tr' ? 'Kapat' : language === 'ru' ? 'Закрыть' : 'Close')
+                                        : (language === 'tr' ? 'Düzenle' : language === 'ru' ? 'Редактировать' : 'Edit')}
+                                </button>
                             </section>
+
+                            {isEditingProfile && (
+                                <section className="animate-fade-in">
+                                    <ProfileEditForm language={language} />
+                                </section>
+                            )}
                         </div>
                     )}
 
@@ -128,7 +154,7 @@ function ProfileContent() {
                             <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
                                 {language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}
                             </h2>
-                            <div className="space-y-4">
+                            <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                                 {terms.filter(term => userProgress.favorites.includes(term.id)).map(term => (
                                     <SmartCard key={term.id} term={term} />
                                 ))}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
@@ -42,17 +43,16 @@ export default function TelegramLinkCard() {
         setLoading(true);
 
         try {
-            // First try to grab the token from localStorage if standard auth cookies fail
+            // Get session securely via Supabase client
             let sessionToken = '';
             try {
-                const sbToken = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token');
-                if (sbToken) {
-                    const parsed = JSON.parse(sbToken);
-                    if (parsed && parsed.access_token) {
-                        sessionToken = parsed.access_token;
-                    }
+                const { data } = await supabase.auth.getSession();
+                if (data?.session?.access_token) {
+                    sessionToken = data.session.access_token;
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                console.error("Failed to fetch session:", e);
+            }
 
             const res = await fetch('/api/telegram/link', {
                 method: 'POST',

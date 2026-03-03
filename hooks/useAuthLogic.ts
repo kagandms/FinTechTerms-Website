@@ -33,7 +33,7 @@ export function useAuthLogic() {
         confirmPassword: '',
         name: '',
         surname: '',
-        birthYear: ''
+        birthDate: ''
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -81,10 +81,18 @@ export function useAuthLogic() {
         return { valid: true, message: '' };
     };
 
-    const validateAge = (birthYear: string): boolean => {
-        const year = parseInt(birthYear);
-        const currentYear = new Date().getFullYear();
-        const age = currentYear - year;
+    const validateAge = (birthDate: string): boolean => {
+        if (!birthDate) return false;
+        const dob = new Date(birthDate);
+        if (isNaN(dob.getTime())) return false; // invalid date
+
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--; // hasn't had birthday yet this year
+        }
+
         return age >= 13 && age <= 120;
     };
 
@@ -96,10 +104,10 @@ export function useAuthLogic() {
         if (authMode === 'register') {
             if (!authForm.name.trim()) return setAuthError(t('auth.nameRequired') || 'Name required');
             if (!authForm.surname.trim()) return setAuthError(t('auth.surnameRequired') || 'Surname required');
-            if (!authForm.birthYear || !validateAge(authForm.birthYear)) {
+            if (!authForm.birthDate || !validateAge(authForm.birthDate)) {
                 return setAuthError(language === 'tr'
-                    ? 'Geçerli bir doğum yılı girin (13+)'
-                    : 'Enter valid birth year (13+)');
+                    ? 'Geçerli bir doğum tarihi girin (13+)'
+                    : language === 'ru' ? 'Введите действительную дату рождения (13+)' : 'Enter valid birth date (13+)');
             }
             const pwdCheck = validatePassword(authForm.password);
             if (!pwdCheck.valid) return setAuthError(pwdCheck.message);
@@ -112,7 +120,7 @@ export function useAuthLogic() {
                 result = await login(authForm.email, authForm.password);
             } else {
                 const fullName = `${authForm.name.trim()} ${authForm.surname.trim()}`;
-                result = await register(authForm.email, authForm.password, fullName);
+                result = await register(authForm.email, authForm.password, fullName, authForm.birthDate);
             }
 
             if (result.success) {
@@ -154,7 +162,7 @@ export function useAuthLogic() {
     };
 
     const resetForm = () => {
-        setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthYear: '' });
+        setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthDate: '' });
     };
 
     return {

@@ -3,11 +3,18 @@ import { z } from 'zod';
 export const profileSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     surname: z.string().min(2, "Surname must be at least 2 characters"),
-    birthYear: z.string().refine((val) => {
-        const year = parseInt(val);
-        const currentYear = new Date().getFullYear();
-        return year >= 1900 && year <= currentYear - 13;
-    }, "Must be a valid year (13+ years old)"),
+    birthDate: z.string().refine((val) => {
+        const dob = new Date(val);
+        if (isNaN(dob.getTime())) return false;
+
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        return age >= 13 && age <= 120;
+    }, "Must be a valid date (13+ years old)"),
     email: z.string().email("Invalid email address"),
     // Password fields are optional unless the user wants to change them
     currentPassword: z.string().optional(),

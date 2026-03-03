@@ -22,7 +22,7 @@ interface AuthContextType {
     pendingVerificationEmail: string | null;
     isPasswordRecovery: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }>;
+    register: (email: string, password: string, name: string, birthDate?: string) => Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }>;
     verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
     resendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
     cancelVerification: () => void;
@@ -165,7 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     /**
      * Register a new user with OTP verification
      */
-    const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }> => {
+    const register = useCallback(async (email: string, password: string, name: string, birthDate?: string): Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }> => {
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -173,6 +173,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 options: {
                     data: {
                         name,
+                        birth_date: birthDate,
                     },
                     // Use OTP instead of magic link
                     emailRedirectTo: undefined,
