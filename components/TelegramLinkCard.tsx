@@ -66,7 +66,7 @@ export default function TelegramLinkCard() {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || dict.errUnknown);
+                throw new Error(data.error || 'unknown');
             }
 
             setSuccess(dict.successMsg);
@@ -76,7 +76,13 @@ export default function TelegramLinkCard() {
             router.refresh();
 
         } catch (err: any) {
-            setError(err.message);
+            if (err.message === 'unauthorized') {
+                setError(lang === 'tr' ? 'Oturum açmadınız. İşlem reddedildi.' : lang === 'ru' ? 'Вы не авторизованы. Операция отклонена.' : 'You must be logged in. Operation denied.');
+            } else if (err.message === 'unknown') {
+                setError(dict.errUnknown);
+            } else {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }

@@ -71,10 +71,10 @@ function ProfileContent() {
             {!isAuthenticated && (
                 <div className="mb-8 p-6 bg-primary-50 dark:bg-primary-900/40 rounded-2xl border border-primary-100 dark:border-primary-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
-                        <h3 className="text-xl font-bold text-primary-900 dark:text-primary-100 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                             {language === 'tr' ? 'Hesap Oluştur' : language === 'ru' ? 'Создать аккаунт' : 'Create Account'}
                         </h3>
-                        <p className="text-primary-700 dark:text-primary-300">
+                        <p className="text-gray-600 dark:text-gray-300">
                             {language === 'tr' ? 'İlerlemeni kaydet ve her yerden eriş.' : language === 'ru' ? 'Сохраните прогресс и синхронизируйте устройства.' : 'Save progress and sync devices.'}
                         </p>
                     </div>
@@ -102,9 +102,6 @@ function ProfileContent() {
                 <div className="lg:col-span-8 space-y-8">
                     {/* Stats Grid */}
                     <section>
-                        <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-                            {language === 'tr' ? 'İstatistikler' : language === 'ru' ? 'Статистика' : 'Statistics'}
-                        </h2>
                         <StatsGrid
                             userProgress={userProgress}
                             stats={stats}

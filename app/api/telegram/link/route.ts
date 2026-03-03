@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
         if (authError || !user) {
             return NextResponse.json(
-                { error: 'Unauthorized: You must be logged in to do this / Вы должны войти в систему / Bu işlemi yapmak için giriş yapmalısınız.' },
+                { error: 'unauthorized' },
                 { status: 401 }
             );
         }
