@@ -81,12 +81,12 @@ export function DesktopHeader({ t, resolvedTheme, toggleTheme, streak = 0 }: Hea
         <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-primary-800 bg-white/50 dark:bg-primary-900/50 backdrop-blur-sm -mx-4 px-8 rounded-b-3xl shadow-sm relative z-50">
             <div className="flex items-center gap-8">
                 <div className="relative group shrink-0">
-                    <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-primary-800/30">
+                    <div className="relative w-40 h-40 transition-transform duration-500 group-hover:scale-105">
                         <Image
                             src="/ftt.png"
                             alt="FinTechTerms Logo"
                             fill
-                            className="object-cover"
+                            className="object-contain"
                             priority
                         />
                     </div>

@@ -69,7 +69,7 @@ function ProfileContent() {
 
             {/* Login Prompt Banner (Guest Only) */}
             {!isAuthenticated && (
-                <div className="mb-8 p-6 bg-primary-50 dark:bg-primary-900/40 rounded-2xl border border-primary-100 dark:border-primary-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="mb-8 p-6 bg-primary-50 dark:bg-gray-800 rounded-2xl border border-primary-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                             {language === 'tr' ? 'Hesap Oluştur' : language === 'ru' ? 'Создать аккаунт' : 'Create Account'}
@@ -81,7 +81,7 @@ function ProfileContent() {
                     <div className="flex gap-3 w-full sm:w-auto">
                         <button
                             onClick={() => { setAuthMode('register'); setShowAuthModal(true); }}
-                            className="flex-1 sm:flex-none px-6 py-3 bg-white/80 dark:bg-white/10 text-primary-600 dark:text-primary-200 font-semibold rounded-xl border border-primary-200 dark:border-primary-600 hover:bg-white dark:hover:bg-white/20 transition-all active:scale-95 whitespace-nowrap"
+                            className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-gray-700 text-primary-600 dark:text-white font-semibold rounded-xl border border-primary-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all active:scale-95 whitespace-nowrap"
                         >
                             {language === 'tr' ? 'Kayıt Ol' : language === 'ru' ? 'Регистрация' : 'Sign Up'}
                         </button>
