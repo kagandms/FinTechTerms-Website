@@ -6,7 +6,8 @@ import { useAuthLogic } from '@/hooks/useAuthLogic';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
-import { Settings } from 'lucide-react';
+import { Settings, BookMarked } from 'lucide-react';
+import Link from 'next/link';
 
 // Feature Components
 import { StatsGrid } from '@/components/features/profile/StatsGrid';
@@ -15,6 +16,7 @@ import { AuthModal } from '@/components/features/auth/AuthModal';
 import { ResetConfirmModal } from '@/components/features/profile/ResetConfirmModal';
 import SmartCard from '@/components/SmartCard';
 import TelegramLinkCard from '@/components/TelegramLinkCard';
+import TelegramBanner from '@/components/TelegramBanner';
 import { ProfileEditForm } from '@/components/features/profile/ProfileEditForm';
 
 function ProfileContent() {
@@ -148,30 +150,34 @@ function ProfileContent() {
                         </div>
                     )}
 
-                    {/* Favorites List */}
-                    {userProgress.favorites.length > 0 && (
-                        <section>
-                            <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-                                {language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}
-                            </h2>
-                            <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                                {terms.filter(term => userProgress.favorites.includes(term.id)).map(term => (
-                                    <SmartCard key={term.id} term={term} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
                 </div>
 
-                {/* Right Column (Settings & Integrations) */}
                 <div className="lg:col-span-4 space-y-8">
 
+                    {/* View Favorites CTA */}
+                    <section className="bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-emerald-400 opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+
+                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm z-10">
+                            <BookMarked className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="z-10">
+                            <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
+                            <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
+                        </div>
+                        <Link href="/favorites" className="mt-2 relative z-10 w-full px-4 py-3 bg-white text-primary-600 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-md">
+                            {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
+                        </Link>
+                    </section>
+
                     {/* Telegram Integration */}
-                    {isAuthenticated && (
-                        <section>
+                    <section className="space-y-6">
+                        <TelegramBanner variant="compact" />
+                        {isAuthenticated && (
                             <TelegramLinkCard />
-                        </section>
-                    )}
+                        )}
+                    </section>
 
                     {/* App Settings Panel */}
                     <SettingsPanel
@@ -219,7 +225,7 @@ function ProfileContent() {
                             : 'TR-EN-RU Economics & FinTech Dictionary'}
                 </p>
             </footer>
-        </div>
+        </div >
     );
 }
 

@@ -190,15 +190,15 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.days')}</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
-                        <div className="flex justify-center mb-2">
+                    <Link href="/favorites" className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block">
+                        <div className="flex justify-center mb-2 group-hover:scale-110 transition-transform">
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                                 <BookMarked className="w-5 h-5 text-primary-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{stats.totalFavorites}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
-                    </div>
+                    </Link>
 
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">

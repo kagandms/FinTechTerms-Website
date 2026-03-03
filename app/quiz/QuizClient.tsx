@@ -209,11 +209,11 @@ export default function QuizPage() {
                             <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                            <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
+                        <Link href="/favorites" className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group">
+                            <Heart className="w-6 h-6 text-red-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{stats.totalFavorites}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
-                        </div>
+                        </Link>
                     </div>
                 </div>
 
