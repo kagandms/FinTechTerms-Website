@@ -3,7 +3,7 @@
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
 
-const GA_ID = 'G-XMLQTYLY25';
+const GA_ID = 'G-9CK0M7NSGD';
 const CONSENT_KEY = 'fintechterms_research_consent';
 
 /**
