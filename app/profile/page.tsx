@@ -80,7 +80,7 @@ function ProfileContent() {
                     <div className="flex gap-2 text-sm justify-end sm:justify-start">
                         <button
                             onClick={() => { setAuthMode('register'); setShowAuthModal(true); }}
-                            className="px-4 py-2 bg-primary-50 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 font-semibold rounded-xl border border-primary-200 dark:border-primary-700 hover:bg-primary-100 transition-transform active:scale-95"
+                            className="px-4 py-2 bg-white/80 dark:bg-white/10 text-primary-600 dark:text-primary-200 font-semibold rounded-xl border border-primary-200 dark:border-primary-600 hover:bg-white dark:hover:bg-white/20 transition-all active:scale-95"
                         >
                             {language === 'tr' ? 'Kayıt Ol' : language === 'ru' ? 'Регистрация' : 'Sign Up'}
                         </button>
