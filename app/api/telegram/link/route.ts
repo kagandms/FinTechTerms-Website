@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     if (!limitCheck.allowed) {
         return NextResponse.json(
-            { error: 'Çok fazla istek atıldı. Lütfen daha sonra tekrar deneyin.' },
+            { error: 'Too many requests / Слишком много запросов / Çok fazla istek atıldı. Lütfen daha sonra tekrar deneyin.' },
             { status: 429, headers: { 'Retry-After': limitCheck.retryAfter.toString() } }
         );
     }
@@ -24,11 +24,24 @@ export async function POST(request: Request) {
         const supabase = await createClient();
 
         // 2. Auth Check - Must be signed in to link an account
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Explicitly check Authorization header if cookie-based getUser() fails
+        let { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader) {
+                const token = authHeader.replace('Bearer ', '');
+                const { data: headerUser } = await supabase.auth.getUser(token);
+                if (headerUser.user) {
+                    user = headerUser.user;
+                    authError = null;
+                }
+            }
+        }
 
         if (authError || !user) {
             return NextResponse.json(
-                { error: 'Bu işlemi yapmak için giriş yapmalısınız.' },
+                { error: 'Unauthorized: You must be logged in to do this / Вы должны войти в систему / Bu işlemi yapmak için giriş yapmalısınız.' },
                 { status: 401 }
             );
         }
@@ -48,30 +61,30 @@ export async function POST(request: Request) {
         if (error) {
             console.error('RPC Error (link_telegram_account):', error);
             // Translate common RPC errors for the frontend
-            if (error.message.includes('Geçersiz veya süresi dolmuş token')) {
-                return NextResponse.json({ error: 'Geçersiz veya süresi dolmuş kod. Lütfen bot üzerinden yeni bir kod alın.' }, { status: 400 });
+            if (error.message.includes('Geçersiz veya süresi dolmuş token') || error.message.includes('Expired')) {
+                return NextResponse.json({ error: 'Invalid or expired code. Please get a new one from the bot. / Неверный код. / Geçersiz veya süresi dolmuş kod.' }, { status: 400 });
             }
-            return NextResponse.json({ error: error.message || 'Veritabanı hatası oluştu.' }, { status: 500 });
+            return NextResponse.json({ error: error.message || 'Database error occurred. / Ошибка базы данных. / Veritabanı hatası oluştu.' }, { status: 500 });
         }
 
         // Successfully linked
         return NextResponse.json({
             success: true,
-            message: data?.message || 'Hesap başarıyla birleştirildi!',
+            message: data?.message || 'Telegram account successfully linked! / Аккаунт привязан! / Hesap başarıyla bağlandı!',
             telegram_id: data?.telegram_id
         });
 
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({
-                error: 'Geçersiz format',
+                error: 'Invalid format / Неверный формат / Geçersiz format',
                 details: error.errors
             }, { status: 400 });
         }
 
         console.error('Internal Server Error in /api/telegram/link:', error);
         return NextResponse.json({
-            error: 'Sunucu hatası oluştu.'
+            error: 'Server error / Ошибка сервера / Sunucu hatası oluştu.'
         }, { status: 500 });
     }
 }

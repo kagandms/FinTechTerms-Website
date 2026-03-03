@@ -10,6 +10,24 @@ export default function TelegramLinkCard() {
     const [success, setSuccess] = useState<string | null>(null);
     const router = useRouter();
 
+    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'ru' : 'ru';
+
+    const dict = {
+        title: lang === 'tr' ? "Telegram'ı Bağla" : lang === 'ru' ? 'Привязать Telegram' : 'Link Telegram',
+        subtitle: lang === 'tr' ? 'İlerlemelerinizi tek bir hesapta birleştirin.' : lang === 'ru' ? 'Объедините прогресс в одном аккаунте.' : 'Merge your progress into a single account.',
+        inputLabel: lang === 'tr' ? "Bot'tan Alınan 6 Haneli Kod" : lang === 'ru' ? '6-значный код из бота' : '6-digit code from Bot',
+        placeholder: lang === 'tr' ? 'Örn: 049583' : lang === 'ru' ? 'Пример: 049583' : 'Ex: 049583',
+        btnText: lang === 'tr' ? 'Profili Birleştir' : lang === 'ru' ? 'Объединить профили' : 'Merge Profiles',
+        processing: lang === 'tr' ? 'İşleniyor...' : lang === 'ru' ? 'Обработка...' : 'Processing...',
+        connected: lang === 'tr' ? 'Hesap Bağlandı ✓' : lang === 'ru' ? 'Аккаунт привязан ✓' : 'Account Linked ✓',
+        instruction: lang === 'tr' ? 'Kod almak için Telegram botumuza gidin ve ' : lang === 'ru' ? 'Чтобы получить код, перейдите в нашего Telegram-бота и напишите ' : 'To get a code, go to our Telegram bot and type ',
+        write: lang === 'tr' ? ' yazın.' : lang === 'ru' ? '.' : '.',
+
+        errFormat: lang === 'tr' ? 'Lütfen 6 haneli geçerli bir kod girin.' : lang === 'ru' ? 'Пожалуйста, введите действительный 6-значный код.' : 'Please enter a valid 6-digit code.',
+        errUnknown: lang === 'tr' ? 'Bilinmeyen bir hata oluştu.' : lang === 'ru' ? 'Произошла неизвестная ошибка.' : 'An unknown error occurred.',
+        successMsg: lang === 'tr' ? 'Telegram hesabınız başarıyla bağlandı!' : lang === 'ru' ? 'Ваш аккаунт Telegram успешно привязан!' : 'Your Telegram account has been successfully linked!'
+    };
+
     const handleLink = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -17,17 +35,30 @@ export default function TelegramLinkCard() {
 
         // Basic frontend validation
         if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
-            setError('Lütfen 6 haneli geçerli bir kod girin.');
+            setError(dict.errFormat);
             return;
         }
 
         setLoading(true);
 
         try {
+            // First try to grab the token from localStorage if standard auth cookies fail
+            let sessionToken = '';
+            try {
+                const sbToken = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token');
+                if (sbToken) {
+                    const parsed = JSON.parse(sbToken);
+                    if (parsed && parsed.access_token) {
+                        sessionToken = parsed.access_token;
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
             const res = await fetch('/api/telegram/link', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
                 },
                 body: JSON.stringify({ token }),
             });
@@ -35,10 +66,10 @@ export default function TelegramLinkCard() {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Bilinmeyen bir hata oluştu.');
+                throw new Error(data.error || dict.errUnknown);
             }
 
-            setSuccess(data.message || 'Telegram hesabınız başarıyla bağlandı!');
+            setSuccess(dict.successMsg);
             setToken('');
 
             // Optionally refresh the page or user session data
@@ -64,15 +95,15 @@ export default function TelegramLinkCard() {
                     </svg>
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">Telegram&apos;ı Bağla</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">İlerlemelerinizi tek bir hesapta birleştirin.</p>
+                    <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">{dict.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{dict.subtitle}</p>
                 </div>
             </div>
 
             <form onSubmit={handleLink} className="space-y-4">
                 <div>
                     <label htmlFor="telegram-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Bot&apos;tan Alınan 6 Haneli Kod
+                        {dict.inputLabel}
                     </label>
                     <div className="relative">
                         <input
@@ -82,7 +113,7 @@ export default function TelegramLinkCard() {
                             disabled={loading || !!success}
                             value={token}
                             onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))} // Numeric only
-                            placeholder="Örn: 049583"
+                            placeholder={dict.placeholder}
                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none font-mono tracking-widest text-center text-lg disabled:opacity-50"
                         />
                     </div>
@@ -117,16 +148,16 @@ export default function TelegramLinkCard() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            İşleniyor...
+                            {dict.processing}
                         </>
                     ) : (
-                        success ? 'Hesap Bağlandı ✓' : 'Profili Birleştir'
+                        success ? dict.connected : dict.btnText
                     )}
                 </button>
 
                 {!success && (
                     <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-                        Kod almak için Telegram botumuza gidin ve <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400">/link</code> yazın.
+                        {dict.instruction}<code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400">/link</code>{dict.write}
                     </p>
                 )}
             </form>
