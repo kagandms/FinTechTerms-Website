@@ -19,7 +19,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     const { showToast } = useToast();
     const router = useRouter();
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPasswordSection, setShowPasswordSection] = useState(false);
 
     // Password visibility toggles
@@ -36,14 +35,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         register,
         handleSubmit,
         reset,
-        formState: { errors },
+        formState: { errors, isSubmitting },
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
         defaultValues: {
             name: defaultFirstName,
             surname: defaultLastName,
             email: user?.email || '',
-            birthDate: '', // If stored in metadata, could be retrieved here
+            birthDate: (user as any)?.user_metadata?.birth_date || '', // Pre-filled from metadata
             currentPassword: '',
             newPassword: '',
             confirmPassword: '',
@@ -51,18 +50,24 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     });
 
     const onSubmit = async (data: ProfileFormValues) => {
-        setIsSubmitting(true);
         try {
             // 1. Update Profile Information (User Metadata)
             const fullName = `${data.name.trim()} ${data.surname.trim()}`;
 
-            const { error: profileError } = await supabase.auth.updateUser({
+            const updatePromise = supabase.auth.updateUser({
                 data: {
                     name: fullName,
                     full_name: fullName,
                     birth_date: data.birthDate,
                 }
             });
+
+            // Fallback timeout protection against frozen network requests
+            const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
+                setTimeout(() => reject(new Error('Network timeout: Sunucu yanıt vermedi.')), 15000)
+            );
+
+            const { error: profileError } = await Promise.race([updatePromise, timeoutPromise]);
 
             if (profileError) throw profileError;
 
@@ -117,8 +122,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         } catch (error: any) {
             console.error('Profile update error:', error);
             showToast(error.message || 'Something went wrong', 'error');
-        } finally {
-            setIsSubmitting(false);
         }
     };
 

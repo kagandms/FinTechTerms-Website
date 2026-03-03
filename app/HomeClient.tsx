@@ -114,7 +114,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                                 src="/ftt.png"
                                 alt="FinTechTerms Logo"
                                 fill
-                                className="object-cover"
+                                className="object-cover scale-150 transform origin-center"
                                 priority
                             />
                         </div>

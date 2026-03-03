@@ -150,6 +150,28 @@ function ProfileContent() {
                         </div>
                     )}
 
+                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8">
+                        {/* App Settings Panel */}
+                        <SettingsPanel
+                            t={t}
+                            language={language}
+                            setLanguage={setLanguage}
+                            theme={theme}
+                            setTheme={setTheme}
+                            onResetClick={() => setShowResetConfirm(true)}
+                        />
+
+                        {/* Logout Button */}
+                        {isAuthenticated && (
+                            <button
+                                onClick={authLogic.logout}
+                                className="w-full py-4 text-red-500 font-bold bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm mt-4"
+                            >
+                                {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
+                            </button>
+                        )}
+                    </div>
+
                 </div>
 
                 <div className="lg:col-span-4 space-y-8">
@@ -179,25 +201,6 @@ function ProfileContent() {
                         )}
                     </section>
 
-                    {/* App Settings Panel */}
-                    <SettingsPanel
-                        t={t}
-                        language={language}
-                        setLanguage={setLanguage}
-                        theme={theme}
-                        setTheme={setTheme}
-                        onResetClick={() => setShowResetConfirm(true)}
-                    />
-
-                    {/* Logout Button */}
-                    {isAuthenticated && (
-                        <button
-                            onClick={authLogic.logout}
-                            className="w-full py-4 text-red-500 font-bold bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm"
-                        >
-                            {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -225,7 +228,7 @@ function ProfileContent() {
                             : 'TR-EN-RU Economics & FinTech Dictionary'}
                 </p>
             </footer>
-        </div >
+        </div>
     );
 }
 
