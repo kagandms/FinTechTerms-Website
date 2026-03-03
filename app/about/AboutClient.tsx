@@ -178,7 +178,7 @@ export default function AboutPage() {
                         <h2 className="text-xl md:text-2xl font-bold tracking-wide">{t.sections.mission.title}</h2>
                     </div>
                     <p className="text-white/95 text-base md:text-lg leading-relaxed font-medium">
-                        "{t.sections.mission.text.replace(/^"|"$/g, '')}"
+                        &quot;{t.sections.mission.text.replace(/^"|"$/g, '')}&quot;
                     </p>
                 </div>
             </section>

@@ -52,11 +52,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         };
         mediaQuery.addEventListener('change', handleChange);
         return () => mediaQuery.removeEventListener('change', handleChange);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Update when theme changes
     useEffect(() => {
         updateResolvedTheme(theme);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [theme]);
 
     const setTheme = (newTheme: Theme) => {

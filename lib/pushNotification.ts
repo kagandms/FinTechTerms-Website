@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Web Push Notification Helper (M35)
  * Skill: pwa-expert, frontend-developer

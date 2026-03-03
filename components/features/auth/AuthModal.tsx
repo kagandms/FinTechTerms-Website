@@ -48,10 +48,9 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = (props) => {
-    if (!props.isOpen && !props.pendingVerificationEmail) return null;
-
     const {
-        t, language, authMode, authForm, setAuthForm, authError, setAuthError, authLoading
+        t, language, authMode, authForm, setAuthForm, authError, setAuthError, authLoading,
+        pendingVerificationEmail, cancelVerification, onClose, showToast, router
     } = props;
 
     /**
@@ -60,25 +59,27 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
      */
     const handleModalClose = useCallback(() => {
         // Always clear OTP verification state first
-        if (props.pendingVerificationEmail) {
-            props.cancelVerification();
+        if (pendingVerificationEmail) {
+            cancelVerification();
         }
-        props.setAuthError('');
-        props.onClose();
-    }, [props.pendingVerificationEmail, props.cancelVerification, props.setAuthError, props.onClose]);
+        setAuthError('');
+        onClose();
+    }, [pendingVerificationEmail, cancelVerification, setAuthError, onClose]);
 
     /**
      * Called when OTP verification succeeds — close modal and redirect to dashboard.
      */
     const handleOTPSuccess = useCallback(() => {
-        props.onClose();
+        onClose();
         // pendingVerificationEmail is already cleared inside verifyOTP on success
-        props.showToast(
+        showToast(
             language === 'tr' ? 'Kayıt başarılı! 🎉' : language === 'ru' ? 'Регистрация успешна! 🎉' : 'Registration successful! 🎉',
             'success'
         );
-        props.router.push('/');
-    }, [props.onClose, props.showToast, props.router, language]);
+        router.push('/');
+    }, [onClose, showToast, router, language]);
+
+    if (!props.isOpen && !props.pendingVerificationEmail) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm">

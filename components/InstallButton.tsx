@@ -101,6 +101,7 @@ export default function InstallButton() {
 
                         <div className="flex flex-col items-center text-center gap-4">
                             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-inner overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src="/ftt.png" alt="App Icon" className="w-12 h-12 rounded-2xl object-cover" />
                             </div>
 
