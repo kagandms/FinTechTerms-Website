@@ -52,7 +52,7 @@ export default function SearchPage() {
                         '@type': 'WebSite',
                         potentialAction: {
                             '@type': 'SearchAction',
-                            target: 'https://fintechterms.vercel.app/search?q={search_term_string}',
+                            target: 'https://fintechterms.com/search?q={search_term_string}',
                             'query-input': 'required name=search_term_string'
                         }
                     }),

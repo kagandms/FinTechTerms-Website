@@ -79,4 +79,4 @@ SRS_LEVEL_LABELS = {
     "tr": ["Yeni", "Öğrenme", "Geliştirme", "Pekiştirme", "Ustalaşmış"],
 }
 
-WEB_APP_URL = "https://fintechterms.vercel.app"
+WEB_APP_URL = "https://fintechterms.com"

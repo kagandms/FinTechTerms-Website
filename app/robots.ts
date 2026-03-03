@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
             allow: '/',
             disallow: ['/admin', '/api/'], // Disallow admin and internal api routes
         },
-        sitemap: 'https://fintechterms.vercel.app/sitemap.xml',
+        sitemap: 'https://fintechterms.com/sitemap.xml',
     };
 }

@@ -141,7 +141,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "/lang — Сменить язык (RU/EN/TR)\n"
             "/stats — Статистика базы данных\n"
             "/help — Эта справка\n\n"
-            "🌐 Веб-приложение: fintechterms.vercel.app"
+            "🌐 Веб-приложение: fintechterms.com"
         ),
         "en": (
             "ℹ️ <b>Help — FinTechTerms Bot</b>\n\n"
@@ -157,7 +157,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "/lang — Change language (RU/EN/TR)\n"
             "/stats — Database statistics\n"
             "/help — This help page\n\n"
-            "🌐 Web app: fintechterms.vercel.app"
+            "🌐 Web app: fintechterms.com"
         ),
         "tr": (
             "ℹ️ <b>Yardım — FinTechTerms Bot</b>\n\n"
@@ -173,7 +173,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "/lang — Dil değiştir (RU/EN/TR)\n"
             "/stats — Veritabanı istatistikleri\n"
             "/help — Bu yardım sayfası\n\n"
-            "🌐 Web uygulama: fintechterms.vercel.app"
+            "🌐 Web uygulama: fintechterms.com"
         ),
     },
     # ── Misc ────────────────────────────────────────

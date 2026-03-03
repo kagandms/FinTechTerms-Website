@@ -15,7 +15,7 @@ import TelegramBanner from '@/components/TelegramBanner';
 
 import { Term } from '@/types';
 
-const siteUrl = 'https://fintechterms.vercel.app';
+const siteUrl = 'https://fintechterms.com';
 
 interface HomeClientProps {
     initialTerms?: Term[];

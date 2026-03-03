@@ -24,7 +24,7 @@ const jetbrainsMono = JetBrains_Mono({
     display: 'swap',
 });
 
-const siteUrl = 'https://fintechterms.vercel.app';
+const siteUrl = 'https://fintechterms.com';
 
 
 export const metadata: Metadata = {
@@ -163,7 +163,7 @@ export default function RootLayout({
                             '@type': 'WebApplication',
                             name: 'FinTechTerms',
                             description: 'Türkçe, İngilizce ve Rusça ekonomi, fintek ve bilişim terimlerini öğrenmek için SRS tabanlı akıllı sözlük uygulaması.',
-                            url: 'https://fintechterms.vercel.app',
+                            url: 'https://fintechterms.com',
                             applicationCategory: 'EducationalApplication',
                             operatingSystem: 'Web',
                             offers: {

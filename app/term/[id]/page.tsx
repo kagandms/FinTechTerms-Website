@@ -111,7 +111,7 @@ export default async function TermPage({ params }: Props) {
                             inDefinedTermSet: {
                                 '@type': 'DefinedTermSet',
                                 name: 'FinTechTerms Dictionary',
-                                url: 'https://fintechterms.vercel.app'
+                                url: 'https://fintechterms.com'
                             },
                             termCode: fullTerm.id
                         }),

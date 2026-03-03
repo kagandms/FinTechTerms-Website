@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 import { fetchTermsFromSupabase } from '@/lib/supabaseStorage';
 
-const BASE_URL = 'https://fintechterms.vercel.app'; // Replace with actual domain if different
+const BASE_URL = 'https://fintechterms.com'; // Replace with actual domain if different
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fetch all terms
