@@ -195,16 +195,16 @@ export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
  * Get current language preference
  */
 export function getCurrentLanguage(): 'tr' | 'en' | 'ru' {
-    if (!isLocalStorageAvailable()) return 'en';
+    if (!isLocalStorageAvailable()) return 'ru';
 
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
         if (stored && ['tr', 'en', 'ru'].includes(stored)) {
             return stored as 'tr' | 'en' | 'ru';
         }
-        return 'en';
+        return 'ru';
     } catch {
-        return 'en';
+        return 'ru';
     }
 }
 

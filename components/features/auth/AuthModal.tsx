@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { AuthMode } from '@/hooks/useAuthLogic';
 import { AuthFormState } from './types';
@@ -44,7 +44,7 @@ interface AuthModalProps {
     language: string;
     showToast: (msg: string, type: 'success' | 'error') => void;
     logout: () => void;
-    router: any; // Kept as any because AppRouterInstance is tricky to import without next/navigation dependency here or generic, but simpler to keep for now as it's passed from hook
+    router: any;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = (props) => {
@@ -54,12 +54,40 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
         t, language, authMode, authForm, setAuthForm, authError, setAuthError, authLoading
     } = props;
 
+    /**
+     * Unified close handler — clears both modal visibility AND
+     * any pending OTP verification state so the modal truly closes.
+     */
+    const handleModalClose = useCallback(() => {
+        // Always clear OTP verification state first
+        if (props.pendingVerificationEmail) {
+            props.cancelVerification();
+        }
+        props.setAuthError('');
+        props.onClose();
+    }, [props.pendingVerificationEmail, props.cancelVerification, props.setAuthError, props.onClose]);
+
+    /**
+     * Called when OTP verification succeeds — close modal and redirect to dashboard.
+     */
+    const handleOTPSuccess = useCallback(() => {
+        props.onClose();
+        // pendingVerificationEmail is already cleared inside verifyOTP on success
+        props.showToast(
+            language === 'tr' ? 'Kayıt başarılı! 🎉' : language === 'ru' ? 'Регистрация успешна! 🎉' : 'Registration successful! 🎉',
+            'success'
+        );
+        props.router.push('/');
+    }, [props.onClose, props.showToast, props.router, language]);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm">
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-100">
+                {/* Close (X) Button — always visible, always works */}
                 <button
-                    onClick={props.onClose}
-                    className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors z-10"
+                    onClick={handleModalClose}
+                    className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors z-10"
+                    aria-label="Close"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -67,6 +95,7 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                 {props.pendingVerificationEmail ? (
                     <OTPVerification
                         {...props}
+                        onClose={handleOTPSuccess}
                     />
                 ) : authMode === 'update-password' ? (
                     <UpdatePasswordForm

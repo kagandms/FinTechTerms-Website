@@ -7,13 +7,14 @@ import SmartCard from '@/components/SmartCard';
 // Mock dependencies
 jest.mock('@/hooks/useTermTranslation', () => ({
     useTermTranslation: (term: any) => ({
-        language: 'en',
+        language: 'ru',
         t: (key: string) => key,
-        getTermByLang: (lang: string) => term[`term_${lang}`] || term.term_en,
-        currentTerm: term.term_en,
+        getTermByLang: (lang: string) => term[`term_${lang}`] || term.term_ru,
+        getPhoneticByLang: (lang: string) => '/term/',
+        currentTerm: term.term_ru,
         currentPhonetic: '/term/',
-        currentDefinition: term.definition_en,
-        currentExample: term.example_en
+        currentDefinition: term.definition_ru,
+        currentExample: term.example_ru
     })
 }));
 
@@ -75,10 +76,10 @@ describe('SmartCard Component', () => {
     it('renders the term and definition correctly', () => {
         render(<SmartCard term={mockTerm as any} />);
 
-        // check term
-        expect(screen.getByText('Test Term')).toBeInTheDocument();
-        // check definition
-        expect(screen.getByText('This is a test definition.')).toBeInTheDocument();
+        // check Russian term is displayed as primary
+        expect(screen.getByText('Тестовый Термин')).toBeInTheDocument();
+        // check definition (current language = ru)
+        expect(screen.getByText('Это тестовое определение.')).toBeInTheDocument();
         // check category
         expect(screen.getByText('categories.Fintech')).toBeInTheDocument(); // Mocked t returns key
     });
@@ -89,21 +90,18 @@ describe('SmartCard Component', () => {
         const toggleButton = screen.getByText('card.example');
 
         // Example should not be visible initially (unless showFullDetails prop is true)
-        expect(screen.queryByText('This is a test example.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Это тестовый пример.')).not.toBeInTheDocument();
 
         // Click to expand
         fireEvent.click(toggleButton);
-        expect(screen.getByText('"This is a test example."')).toBeInTheDocument();
+        expect(screen.getByText('"Это тестовый пример."')).toBeInTheDocument();
 
-        // Click to collapse
-        // Note: text changes to 'Less' (mocked t returns 'card.example' initially, logic changes it)
-        // Wait, logic is: language === 'tr' ? 'Daha az' : ...
-        // Our mock hook returns language='en'
-        const collapseButton = screen.getByText('Less');
+        // Click to collapse — language is 'ru' so text is 'Меньше'
+        const collapseButton = screen.getByText('Меньше');
         fireEvent.click(collapseButton);
 
         // Wait for animation or state update if needed, but here it's sync
-        expect(screen.queryByText('"This is a test example."')).not.toBeInTheDocument();
+        expect(screen.queryByText('"Это тестовый пример."')).not.toBeInTheDocument();
     });
 
     it('calls toggleFavorite when heart icon is clicked', () => {

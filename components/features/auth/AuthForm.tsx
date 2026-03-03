@@ -102,13 +102,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 {/* Mode Switchers */}
                 <div className="text-center space-y-2 mt-4">
                     {authMode === 'login' && (
-                        <button onClick={() => setAuthMode('forgot-password')} className="text-xs text-primary-500 hover:underline">
+                        <button onClick={() => setAuthMode('forgot-password')} className="text-xs text-primary-400 dark:text-primary-300 hover:text-primary-600 dark:hover:text-primary-200 hover:underline transition-colors">
                             Forgot Password?
                         </button>
                     )}
                     <button
                         onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                        className="block w-full text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors"
+                        className="block w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
                     >
                         {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
                     </button>

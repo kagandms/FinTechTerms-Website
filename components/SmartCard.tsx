@@ -42,6 +42,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         language,
         t,
         getTermByLang, // used in the language switcher buttons below
+        getPhoneticByLang,
         currentTerm,
         currentPhonetic,
         currentDefinition,
@@ -135,15 +136,15 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     )}
                 </div>
 
-                {/* Main Term */}
+                {/* Primary Term — Always Russian (Cyrillic) */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                        <h3 className="text-xl font-bold text-primary-500 dark:text-primary-300 mb-1">
-                            {getTermByLang(language)}
+                        <h3 className="text-2xl font-bold text-primary-500 dark:text-primary-300 mb-1 leading-tight">
+                            {getTermByLang('ru')}
                         </h3>
-                        {currentPhonetic && (
+                        {getPhoneticByLang('ru') && (
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                {currentPhonetic}
+                                {getPhoneticByLang('ru')}
                             </p>
                         )}
                     </div>
@@ -151,14 +152,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     {/* Actions */}
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => handleSpeak(getTermByLang(language), language)}
+                            onClick={() => handleSpeak(getTermByLang('ru'), 'ru')}
                             disabled={isSpeaking || !isSpeechAvailable()}
                             className={`p-2 rounded-full transition-all duration-200 ${isSpeaking
                                 ? 'bg-accent-100 text-accent-600 animate-pulse-soft'
                                 : 'bg-gray-100 text-gray-600 hover:bg-accent-100 hover:text-accent-600'
                                 }`}
                             title={t('card.listen')}
-                            aria-label={`${t('card.listen')}: ${currentTerm}`}
+                            aria-label={`${t('card.listen')}: ${getTermByLang('ru')}`}
                         >
                             <Volume2 className="w-5 h-5" aria-hidden="true" />
                         </button>
@@ -178,20 +179,18 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     </div>
                 </div>
 
-                {/* Translations */}
+                {/* Secondary Translations — EN & TR always below in gray */}
                 <div className="mt-3 flex flex-wrap gap-2">
-                    {(['en', 'ru', 'tr'] as Language[])
-                        .filter(l => l !== language)
-                        .map(lang => (
-                            <button
-                                key={lang}
-                                onClick={() => handleSpeak(getTermByLang(lang), lang)}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-100 dark:border-gray-600"
-                            >
-                                <span className="text-xs opacity-60">{lang.toUpperCase()}</span>
-                                <span className="font-medium">{getTermByLang(lang)}</span>
-                            </button>
-                        ))}
+                    {(['en', 'tr'] as Language[]).map(lang => (
+                        <button
+                            key={lang}
+                            onClick={() => handleSpeak(getTermByLang(lang), lang)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-100 dark:border-gray-600"
+                        >
+                            <span className="text-xs opacity-60">{lang.toUpperCase()}</span>
+                            <span className="font-medium">{getTermByLang(lang)}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 

@@ -86,8 +86,8 @@ export const metadata: Metadata = {
         description: 'Master Fintech, Economics, and Software terms. English, Turkish, and Russian dictionary with smart SRS learning system.',
         url: siteUrl,
         siteName: 'FinTechTerms',
-        locale: 'en_US',
-        alternateLocale: ['tr_TR', 'ru_RU'],
+        locale: 'ru_RU',
+        alternateLocale: ['en_US', 'tr_TR'],
         type: 'website',
         images: [
             {
@@ -150,7 +150,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="ru" suppressHydrationWarning>
             <head>
                 <link rel="icon" href="/ftt.png" sizes="any" />
                 <link rel="apple-touch-icon" href="/ftt.png" />
@@ -171,7 +171,7 @@ export default function RootLayout({
                                 price: '0',
                                 priceCurrency: 'USD',
                             },
-                            inLanguage: ['tr', 'en', 'ru'],
+                            inLanguage: ['ru', 'en', 'tr'],
                             author: {
                                 '@type': 'Organization',
                                 name: 'FinTechTerms',

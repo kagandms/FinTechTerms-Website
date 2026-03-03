@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
     const { language, setLanguage } = useLanguage();
     const [isOpen, setIsOpen] = React.useState(false);
 
-    const languages: Language[] = ['tr', 'en', 'ru'];
+    const languages: Language[] = ['ru', 'en', 'tr'];
 
     return (
         <div className="relative">

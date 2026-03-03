@@ -166,8 +166,8 @@ describe('addQuizAttempt', () => {
 // Language preference
 // ══════════════════════════════════════════════════════════
 describe('Language preference', () => {
-    it('should default to en', () => {
-        expect(getCurrentLanguage()).toBe('en');
+    it('should default to ru', () => {
+        expect(getCurrentLanguage()).toBe('ru');
     });
 
     it('should save and retrieve language', () => {

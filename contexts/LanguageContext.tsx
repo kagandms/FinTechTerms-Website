@@ -66,7 +66,7 @@ const pageTitles: Record<string, Record<Language, string>> = {
 };
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-    const [language, setLanguageState] = useState<Language>('en');
+    const [language, setLanguageState] = useState<Language>('ru');
     const [isHydrated, setIsHydrated] = useState(false);
     const pathname = usePathname();
 
@@ -92,7 +92,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         // Find the best matching page title
         const pageTitle = pageTitles[pathname];
         if (pageTitle) {
-            document.title = pageTitle[language] || pageTitle.en;
+            document.title = pageTitle[language] || pageTitle.ru;
         } else {
             // Fallback for unknown pages
             const defaultTitles: Record<Language, string> = {
@@ -100,7 +100,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
                 tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
                 ru: 'FinTechTerms | Словарь экономики и IT',
             };
-            document.title = defaultTitles[language] || defaultTitles.en;
+            document.title = defaultTitles[language] || defaultTitles.ru;
         }
     }, [language, isHydrated, pathname]);
 
