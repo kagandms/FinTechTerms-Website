@@ -17,24 +17,25 @@ export default function QuizPage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
-    const [sessionTerms, setSessionTerms] = useState(dueTerms);
+    const [sessionTerms, setSessionTerms] = useState<typeof dueTerms>([]);
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
     const [showQuizOptions, setShowQuizOptions] = useState(false);
+    const [hasChosenMode, setHasChosenMode] = useState(false);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
 
     const quizOptions = [5, 10, 20, 50];
 
-    // Initialize session terms (lock them in so math doesn't break mid-quiz)
+    // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
-        if (!isQuickQuiz && !hasStartedNormalQuiz && dueTerms.length > 0) {
+        if (!isQuickQuiz && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length > 0) {
             setSessionTerms(dueTerms);
             setHasStartedNormalQuiz(true);
-        } else if (!isQuickQuiz && !hasStartedNormalQuiz && dueTerms.length === 0) {
+        } else if (!isQuickQuiz && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length === 0) {
             setSessionTerms([]);
         }
-    }, [dueTerms, isQuickQuiz, hasStartedNormalQuiz]);
+    }, [dueTerms, isQuickQuiz, hasStartedNormalQuiz, hasChosenMode]);
 
     const currentTerm = sessionTerms[currentIndex];
 
@@ -73,27 +74,37 @@ export default function QuizPage() {
         }
     };
 
-    // Reset to normal mode
+    // Reset to mode selection
     const resetToNormal = () => {
         setIsQuickQuiz(false);
         setHasStartedNormalQuiz(false);
-        setSessionTerms(dueTerms);
+        setHasChosenMode(false);
+        setSessionTerms([]);
         setCurrentIndex(0);
         setCorrectCount(0);
         setIsComplete(false);
+    };
+
+    // Start SRS review mode
+    const startSrsReview = () => {
+        setHasChosenMode(true);
+        setIsQuickQuiz(false);
     };
 
     // Calculate stats
     const masteredCount = terms.filter(t => t.srs_level >= 4).length;
     const learningCount = terms.filter(t => t.srs_level > 0 && t.srs_level < 4).length;
 
-    // No cards due - Enhanced empty state
-    if (sessionTerms.length === 0 && !isComplete && !isQuickQuiz) {
+    // Mode Selection Screen — show when user hasn't chosen a mode yet
+    if (!hasChosenMode && !isQuickQuiz) {
         return (
             <div className="page-content px-4 py-6">
                 {/* Header */}
                 <header className="mb-6">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
+                    {dueTerms.length > 0 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('quiz.chooseMode')}</p>
+                    )}
                 </header>
 
                 {/* Daily Streak Card - Compact */}
@@ -113,6 +124,30 @@ export default function QuizPage() {
                         )}
                     </div>
                 </div>
+
+                {/* SRS Review Card — only when dueTerms exist */}
+                {dueTerms.length > 0 && (
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-white/20 rounded-full">
+                                <BookOpen className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="font-bold">{t('quiz.srsReview')}</p>
+                                <p className="text-white/80 text-xs">{t('quiz.srsReviewDesc')}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/90 text-sm font-medium">{dueTerms.length} {t('quiz.cardsDue')}</span>
+                        </div>
+                        <button
+                            onClick={startSrsReview}
+                            className="w-full mt-3 py-2.5 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                        >
+                            {t('quiz.startSrsReview')}
+                        </button>
+                    </div>
+                )}
 
                 {/* Quick Quiz Card */}
                 <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
@@ -182,16 +217,47 @@ export default function QuizPage() {
                     </div>
                 </div>
 
-                {/* Add Favorites CTA */}
-                <div className="text-center">
-                    <p className="text-gray-500 text-sm mb-3">{t('quiz.orAddFavorites')}</p>
-                    <Link
-                        href="/search"
-                        className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline"
-                    >
-                        <span>{t('quiz.exploreWords')}</span>
-                        <ArrowRight className="w-4 h-4" />
-                    </Link>
+                {/* Add Favorites CTA (when no favorites at all) */}
+                {stats.totalFavorites === 0 && (
+                    <div className="text-center">
+                        <p className="text-gray-500 text-sm mb-3">{t('quiz.orAddFavorites')}</p>
+                        <Link
+                            href="/search"
+                            className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline"
+                        >
+                            <span>{t('quiz.exploreWords')}</span>
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // No cards due after choosing SRS mode
+    if (sessionTerms.length === 0 && !isComplete && !isQuickQuiz && hasChosenMode) {
+        return (
+            <div className="page-content px-4 py-6">
+                <header className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
+                </header>
+                <div className="text-center py-12">
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">{t('quiz.noCards')}</p>
+                    <div className="flex gap-3 justify-center">
+                        <button
+                            onClick={resetToNormal}
+                            className="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            {t('quiz.chooseMode')}
+                        </button>
+                        <Link
+                            href="/search"
+                            className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline px-6 py-3"
+                        >
+                            <span>{t('quiz.exploreWords')}</span>
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
                 </div>
             </div>
         );

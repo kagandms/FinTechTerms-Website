@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     // Basic Meta
     title: {
         default: 'FinTechTerms | Global Finance & Technology Dictionary (EN-TR-RU)',
-        template: '%s | FinTechTerms - Financial Dictionary',
+        template: '%s | FinTechTerms',
     },
     description: 'Master Fintech, Finance, AI, and Blockchain terms. Trilingual dictionary with SRS-based smart flashcards in English, Turkish, and Russian.',
     keywords: [

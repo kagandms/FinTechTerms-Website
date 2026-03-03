@@ -206,7 +206,9 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                                 <TrendingUp className="w-5 h-5 text-green-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">%{stats.averageRetention}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">%{userProgress.quiz_history?.length
+                            ? Math.round((userProgress.quiz_history.filter((q: any) => q.is_correct).length / userProgress.quiz_history.length) * 100)
+                            : 0}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</p>
                     </div>
                 </section>

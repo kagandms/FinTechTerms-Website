@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
@@ -55,7 +54,6 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
@@ -389,9 +387,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const logout = useCallback(async () => {
         try {
-            // Clear local storage for SRS data
+            // Clear local storage for SRS data and ALL Supabase tokens
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('globalfinterm_user_progress');
+                // Remove all Supabase session tokens from localStorage
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('sb-')) {
+                        localStorage.removeItem(key);
+                    }
+                });
             }
 
             // 1. First, tell the Next.js Server to clear all HttpOnly secure cookies
@@ -401,8 +405,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setUser(null);
             setPendingVerificationEmail(null);
 
-            // 3. Then tell Supabase Client to nuke local session (non-blocking for UI)
-            const { error } = await supabase.auth.signOut({ scope: 'local' });
+            // 3. Tell Supabase Client to nuke session globally
+            const { error } = await supabase.auth.signOut({ scope: 'global' });
             if (error) {
                 console.error('Supabase signOut error:', error);
             }
@@ -411,10 +415,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } finally {
             // Always set user to null, even if signOut fails
             setUser(null);
-            // Refresh the page to ensure all auth state is cleared from UI and Server Components remount
-            router.refresh();
+            // Hard reload to ensure ALL auth state is fully cleared (server-side cookies, client state, SSR cache)
+            if (typeof window !== 'undefined') {
+                window.location.href = '/';
+            }
         }
-    }, [router]);
+    }, []);
 
     const isAuthenticated = user !== null;
     const favoriteLimit = isAuthenticated ? AUTHENTICATED_FAVORITE_LIMIT : GUEST_FAVORITE_LIMIT;

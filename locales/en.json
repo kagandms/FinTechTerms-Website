@@ -53,7 +53,12 @@
         "mastered": "Mastered",
         "learning": "Learning",
         "favorites": "Favorites",
-        "orAddFavorites": "or add words to favorites"
+        "orAddFavorites": "or add words to favorites",
+        "chooseMode": "Choose Practice Mode",
+        "srsReview": "SRS Review",
+        "srsReviewDesc": "Review your due flashcards with spaced repetition",
+        "startSrsReview": "Start SRS Review",
+        "cardsDue": "cards due"
     },
     "card": {
         "listen": "Listen",
@@ -104,5 +109,28 @@
     "about": {
         "title": "About",
         "viewAbout": "About the Project"
+    },
+    "aboutProject": {
+        "pageTitle": "Project Architecture",
+        "abstractTitle": "Abstract",
+        "abstractText": "FinTechTerms is a specialized Learning Management System (LMS) designed to accelerate financial terminology acquisition. The project utilizes Spaced Repetition Algorithms (SRS) to reduce cognitive load in trilingual (TR-EN-RU) lexical learning within the FinTech domain.",
+        "architectureTitle": "System Architecture",
+        "clientSide": "CLIENT SIDE",
+        "serverless": "SERVERLESS",
+        "telegram": "TELEGRAM",
+        "nextjsApp": "Next.js App Router",
+        "nextjsDesc": "React 18 • TypeScript • Tailwind",
+        "srsEngine": "SRS Algorithm Engine",
+        "dataGenerator": "Synthetic Data Generator",
+        "connection": "REST API / WEBSOCKETS",
+        "supabase": "Supabase (PostgreSQL)",
+        "supabaseDesc": "Auth • Database • Realtime",
+        "records": "Records",
+        "terms": "Terms",
+        "pythonWorker": "PYTHON WORKER",
+        "telegramBot": "Telegram Bot",
+        "telegramBotDesc": "Python-Telegram-Bot • AsyncIO",
+        "techStackTitle": "Tech Stack",
+        "footer": "Open Source Dictionary & Learning Platform"
     }
 }

@@ -53,7 +53,12 @@
         "mastered": "Освоено",
         "learning": "Изучается",
         "favorites": "Избранное",
-        "orAddFavorites": "или добавьте слова в избранное"
+        "orAddFavorites": "или добавьте слова в избранное",
+        "chooseMode": "Выберите режим практики",
+        "srsReview": "SRS Повтор",
+        "srsReviewDesc": "Повторите карточки с интервальным повторением",
+        "startSrsReview": "Начать SRS повтор",
+        "cardsDue": "карточек к повтору"
     },
     "card": {
         "listen": "Слушать",
@@ -104,5 +109,28 @@
     "about": {
         "title": "О проекте",
         "viewAbout": "О проекте"
+    },
+    "aboutProject": {
+        "pageTitle": "Архитектура проекта",
+        "abstractTitle": "Аннотация",
+        "abstractText": "FinTechTerms — это специализированная система управления обучением (LMS), разработанная для ускорения освоения финансовой терминологии. Проект использует алгоритмы интервального повторения (SRS) для снижения когнитивной нагрузки при трёхъязычном (TR-EN-RU) лексическом обучении в сфере FinTech.",
+        "architectureTitle": "Архитектура системы",
+        "clientSide": "КЛИЕНТСКАЯ ЧАСТЬ",
+        "serverless": "БЕССЕРВЕРНАЯ",
+        "telegram": "TELEGRAM",
+        "nextjsApp": "Next.js App Router",
+        "nextjsDesc": "React 18 • TypeScript • Tailwind",
+        "srsEngine": "Движок алгоритма SRS",
+        "dataGenerator": "Генератор синтетических данных",
+        "connection": "REST API / WEBSOCKETS",
+        "supabase": "Supabase (PostgreSQL)",
+        "supabaseDesc": "Авторизация • База данных • Реальное время",
+        "records": "Записей",
+        "terms": "Терминов",
+        "pythonWorker": "PYTHON ОБРАБОТЧИК",
+        "telegramBot": "Telegram Бот",
+        "telegramBotDesc": "Python-Telegram-Bot • AsyncIO",
+        "techStackTitle": "Технологии",
+        "footer": "Открытый Словарь и Образовательная Платформа"
     }
 }

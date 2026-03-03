@@ -53,7 +53,12 @@
         "mastered": "Ustalaşılan",
         "learning": "Öğreniliyor",
         "favorites": "Favoriler",
-        "orAddFavorites": "veya favorilere kelime ekleyin"
+        "orAddFavorites": "veya favorilere kelime ekleyin",
+        "chooseMode": "Pratik Modunu Seç",
+        "srsReview": "SRS Tekrar",
+        "srsReviewDesc": "Aralıklı tekrar ile kartlarını gözden geçir",
+        "startSrsReview": "SRS Tekrarı Başlat",
+        "cardsDue": "kart bekliyor"
     },
     "card": {
         "listen": "Seslendir",
@@ -104,5 +109,28 @@
     "about": {
         "title": "Hakkında",
         "viewAbout": "Proje Hakkında"
+    },
+    "aboutProject": {
+        "pageTitle": "Proje Mimarisi",
+        "abstractTitle": "Özet",
+        "abstractText": "FinTechTerms, finansal terminoloji edinimini hızlandırmak için tasarlanmış özel bir Öğrenme Yönetim Sistemidir (LMS). Proje, FinTech alanında üç dilli (TR-EN-RU) sözcüksel öğrenmede bilişsel yükü azaltmak için Aralıklı Tekrar Algoritmaları (SRS) kullanmaktadır.",
+        "architectureTitle": "Sistem Mimarisi",
+        "clientSide": "İSTEMCİ TARAFI",
+        "serverless": "SUNUCUSUZ",
+        "telegram": "TELEGRAM",
+        "nextjsApp": "Next.js App Router",
+        "nextjsDesc": "React 18 • TypeScript • Tailwind",
+        "srsEngine": "SRS Algoritma Motoru",
+        "dataGenerator": "Sentetik Veri Üreteci",
+        "connection": "REST API / WEBSOCKETS",
+        "supabase": "Supabase (PostgreSQL)",
+        "supabaseDesc": "Kimlik Doğrulama • Veritabanı • Gerçek Zamanlı",
+        "records": "Kayıtlar",
+        "terms": "Terimler",
+        "pythonWorker": "PYTHON İŞÇİ",
+        "telegramBot": "Telegram Botu",
+        "telegramBotDesc": "Python-Telegram-Bot • AsyncIO",
+        "techStackTitle": "Teknoloji Yığını",
+        "footer": "Açık Kaynak Sözlük ve Öğrenme Platformu"
     }
 }

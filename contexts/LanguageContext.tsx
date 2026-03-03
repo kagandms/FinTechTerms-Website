@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { Language } from '@/types';
 import { getCurrentLanguage, setCurrentLanguage as saveLanguage } from '@/utils/storage';
 
@@ -30,9 +31,44 @@ interface LanguageProviderProps {
     children: ReactNode;
 }
 
+// Page-specific titles for each language
+const pageTitles: Record<string, Record<Language, string>> = {
+    '/': {
+        en: 'FinTechTerms | Financial & IT Dictionary',
+        tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
+        ru: 'FinTechTerms | Словарь экономики и IT',
+    },
+    '/search': {
+        en: 'Search | FinTechTerms',
+        tr: 'Arama | FinTechTerms',
+        ru: 'Поиск | FinTechTerms',
+    },
+    '/quiz': {
+        en: 'Practice | FinTechTerms',
+        tr: 'Pratik | FinTechTerms',
+        ru: 'Практика | FinTechTerms',
+    },
+    '/profile': {
+        en: 'Profile | FinTechTerms',
+        tr: 'Profil | FinTechTerms',
+        ru: 'Профиль | FinTechTerms',
+    },
+    '/about-project': {
+        en: 'About Project | FinTechTerms',
+        tr: 'Proje Hakkında | FinTechTerms',
+        ru: 'О проекте | FinTechTerms',
+    },
+    '/analytics': {
+        en: 'Analytics | FinTechTerms',
+        tr: 'Analitik | FinTechTerms',
+        ru: 'Аналитика | FinTechTerms',
+    },
+};
+
 export function LanguageProvider({ children }: LanguageProviderProps) {
     const [language, setLanguageState] = useState<Language>('en');
     const [isHydrated, setIsHydrated] = useState(false);
+    const pathname = usePathname();
 
     // Hydrate from localStorage on mount
     useEffect(() => {
@@ -46,15 +82,27 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         saveLanguage(lang);
     }, []);
 
+    // Update document.title and <html lang=...> based on language and current page
     useEffect(() => {
         if (!isHydrated) return;
-        const defaultTitles = {
-            en: 'FinTechTerms | Financial & IT Dictionary',
-            tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
-            ru: 'FinTechTerms | Словарь экономики и IT'
-        };
-        document.title = defaultTitles[language] || defaultTitles.en;
-    }, [language, isHydrated]);
+
+        // Update <html lang> attribute
+        document.documentElement.lang = language;
+
+        // Find the best matching page title
+        const pageTitle = pageTitles[pathname];
+        if (pageTitle) {
+            document.title = pageTitle[language] || pageTitle.en;
+        } else {
+            // Fallback for unknown pages
+            const defaultTitles: Record<Language, string> = {
+                en: 'FinTechTerms | Financial & IT Dictionary',
+                tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
+                ru: 'FinTechTerms | Словарь экономики и IT',
+            };
+            document.title = defaultTitles[language] || defaultTitles.en;
+        }
+    }, [language, isHydrated, pathname]);
 
     /**
      * Get translation by dot-notation key
