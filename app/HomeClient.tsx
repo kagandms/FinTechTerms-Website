@@ -63,7 +63,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
             {/* Mobile Header (Prominent Logo) */}
             <header className="flex md:hidden flex-col items-center justify-center mb-8 gap-4 pt-4 relative">
                 <Image
-                    src="/home-logo.png"
+                    src="/logo_ftt.png"
                     alt="FinTechTerms Logo"
                     height={100}
                     width={100}
@@ -116,7 +116,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         {/* Wrapper for definitive rounding */}
                         <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-transparent">
                             <Image
-                                src="/home-logo.png"
+                                src="/logo_ftt.png"
                                 alt="FinTechTerms Logo"
                                 fill
                                 className="object-cover transform origin-center"
