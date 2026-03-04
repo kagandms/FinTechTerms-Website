@@ -67,7 +67,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     alt="FinTechTerms Logo"
                     height={100}
                     width={100}
-                    className="w-24 h-24 object-contain drop-shadow-lg"
+                    className="w-24 h-24 object-contain drop-shadow-lg rounded-2xl"
                     priority
                 />
                 <div className="text-center">
@@ -113,8 +113,8 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
             <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-[#0c3452]/50 bg-white/50 dark:bg-[#0a2d46]/80 backdrop-blur-md -mx-4 px-8 rounded-b-3xl relative z-50 shadow-sm">
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
-                        {/* Wrapper for definitive rounding avoided to protect natural logo */}
-                        <div className="relative w-40 h-40 overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-transparent">
+                        {/* Wrapper with soft rounded corners */}
+                        <div className="relative w-40 h-40 overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-transparent rounded-3xl">
                             <Image
                                 src="/home-logo.png"
                                 alt="FinTechTerms Logo"
