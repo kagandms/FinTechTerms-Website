@@ -70,14 +70,18 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
      * Called when OTP verification succeeds — close modal and redirect to dashboard.
      */
     const handleOTPSuccess = useCallback(() => {
+        // Explicitly clear modal visibility and any pending state
+        if (pendingVerificationEmail) {
+            cancelVerification();
+        }
         onClose();
-        // pendingVerificationEmail is already cleared inside verifyOTP on success
+
         showToast(
             language === 'tr' ? 'Kayıt başarılı! 🎉' : language === 'ru' ? 'Регистрация успешна! 🎉' : 'Registration successful! 🎉',
             'success'
         );
         router.push('/');
-    }, [onClose, showToast, router, language]);
+    }, [onClose, showToast, router, language, pendingVerificationEmail, cancelVerification]);
 
     if (!props.isOpen && !props.pendingVerificationEmail) return null;
 

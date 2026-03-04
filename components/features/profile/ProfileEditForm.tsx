@@ -118,7 +118,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             }
 
             // Force session refresh so AuthContext picks up the new user metadata (name, birthDate) immediately
-            await supabase.auth.refreshSession();
+            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+
+            // Verify if metadata is updated in the refreshed session
+            if (refreshedSession?.user?.user_metadata?.full_name !== fullName) {
+                console.warn('Metadata not immediately synced in session, waiting for next refresh cycle.');
+            }
 
             showToast(
                 language === 'tr' ? 'Bilgileriniz güncellendi ✅' :
@@ -127,12 +132,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 'success'
             );
 
-            // Gecikmeli refresh (Toast mesajının ekranda görülebilmesi için)
+            // Gecikmeli refresh (Toast mesajının ekranda görülebilmesi için ve session senkronizasyonu için)
             setTimeout(() => {
                 if (typeof window !== 'undefined') {
                     window.location.reload(); // Hard reload for full meta sync
                 }
-            }, 1500);
+            }, 800); // Reduced delay for snappier feel
 
         } catch (error: any) {
             console.error('Profile update error:', error);

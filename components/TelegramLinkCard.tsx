@@ -143,6 +143,7 @@ export default function TelegramLinkCard() {
             router.refresh();
 
         } catch (err: any) {
+            setLoading(false); // Explicitly clear loading on error
             if (err.name === 'AbortError') {
                 setError(lang === 'tr' ? 'İşlem zaman aşımına uğradı. Sunucu yanıt vermiyor.' : lang === 'ru' ? 'Превышено время ожидания. Сервер не отвечает.' : 'Request timed out. Server is not responding.');
             } else if (err.message === 'unauthorized') {
@@ -153,6 +154,7 @@ export default function TelegramLinkCard() {
                 setError(lang === 'tr' ? 'Bağlantı başarısız oldu: ' + err.message : lang === 'ru' ? 'Ошибка привязки: ' + err.message : 'Linking failed: ' + err.message);
             }
         } finally {
+            // Keep finally for safety, though we clear it in catch/success too
             setLoading(false);
         }
     };
