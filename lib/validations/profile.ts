@@ -19,7 +19,9 @@ export function createProfileSchema(language: 'tr' | 'en' | 'ru') {
     return z.object({
         name: z.string().min(2, msg.nameMin),
         surname: z.string().min(2, msg.surnameMin),
-        birthDate: z.string().refine((val) => {
+        birthDate: z.string().optional().refine((val) => {
+            if (!val || val.trim() === '') return true; // Boş/geçersiz gönderimlerde DB'ye boş gitmesine izin ver ya da bloklanmasını iptal et
+
             const dob = new Date(val);
             if (isNaN(dob.getTime())) return false;
 

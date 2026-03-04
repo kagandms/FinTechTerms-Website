@@ -7,6 +7,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     authLoading, handleAuth, authError, setAuthError,
     showPassword, setShowPassword, resetPassword, t
 }) => {
+    const [isDateFocused, setIsDateFocused] = React.useState(false);
+
     return (
         <>
             <div className="flex items-center gap-3 mb-6">
@@ -50,12 +52,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             <input
                                 type="date"
                                 value={authForm.birthDate || ''}
+                                onFocus={() => setIsDateFocused(true)}
+                                onBlur={() => setIsDateFocused(false)}
                                 onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
                                 className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 appearance-none bg-transparent"
                                 aria-label={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
                             />
-                            {/* Overlay placeholder — only visible when empty, hidden when date is picked */}
-                            {!authForm.birthDate && (
+                            {/* Overlay placeholder — only visible when empty AND not focused */}
+                            {!authForm.birthDate && !isDateFocused && (
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm bg-transparent dark:bg-gray-700 pr-2">
                                     {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
                                 </span>

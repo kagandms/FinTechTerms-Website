@@ -131,7 +131,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {/* About */}
                 <Link
-                    href="/about-project"
+                    href="/about"
                     className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">

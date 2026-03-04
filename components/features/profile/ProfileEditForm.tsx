@@ -121,7 +121,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
             // Gecikmeli refresh (Toast mesajının ekranda görülebilmesi için)
             setTimeout(() => {
-                router.refresh();
+                if (typeof window !== 'undefined') {
+                    window.location.reload(); // Hard reload for full meta sync
+                }
             }, 1000);
 
         } catch (error: any) {

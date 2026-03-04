@@ -40,10 +40,19 @@ function ProfileContent() {
     const [isEditingProfile, setIsEditingProfile] = useState(false);
 
     // Calculated fields
-    const totalReviews = stats.mastered + stats.learning + (userProgress.total_words_learned || 0);
-    const accuracy = userProgress.quiz_history?.length
-        ? Math.round((userProgress.quiz_history.filter((q: any) => q.is_correct).length / userProgress.quiz_history.length) * 100)
+    const totalReviews = (stats?.mastered || 0) + (stats?.learning || 0) + (userProgress?.total_words_learned || 0);
+    const accuracy = userProgress?.quiz_history?.length
+        ? Math.round((userProgress?.quiz_history?.filter((q: any) => q.is_correct)?.length || 0) / (userProgress?.quiz_history?.length || 1) * 100)
         : 0;
+
+    const getInitials = (name: string, email: string) => {
+        if (!name) return email?.charAt(0).toUpperCase() || 'U';
+        const parts = name.trim().split(' ');
+        if (parts.length > 1 && parts[0] && parts[parts.length - 1]) {
+            return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
+        }
+        return name.charAt(0).toUpperCase();
+    };
 
     return (
         <div className="pb-24 pt-6 px-4 max-w-7xl mx-auto">
@@ -63,8 +72,8 @@ function ProfileContent() {
 
                 <div onClick={() => !isAuthenticated && setShowAuthModal(true)} className="cursor-pointer">
                     {isAuthenticated ? (
-                        <div className="w-14 h-14 bg-primary-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary-500/30">
-                            {user?.email?.charAt(0).toUpperCase()}
+                        <div className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
+                            {getInitials(user?.name || '', user?.email || '')}
                         </div>
                     ) : (
                         <div className="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">

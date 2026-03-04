@@ -9,6 +9,14 @@ const LinkTokenSchema = z.object({
     token: z.string().length(6).regex(/^\d+$/, "Token must be a 6-digit number")
 });
 
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, timeoutMsg: string): Promise<T> => {
+    let timeoutHandle: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
+};
+
 export async function GET(request: Request) {
     try {
         const supabase = await createServerClient();
@@ -135,11 +143,12 @@ export async function POST(request: Request) {
         const validatedData = LinkTokenSchema.parse(body);
         const { token } = validatedData;
 
-        // 4. Call the RPC function 'link_telegram_account' 
-        // We use the authenticated Supabase client so `auth.uid()` resolves correctly in RPC
-        const { data, error } = await supabase.rpc('link_telegram_account', {
-            p_token: token
-        });
+        // 4. Call the RPC function 'link_telegram_account' with Backend Timeout Enforcement
+        const { data, error } = await withTimeout<any>(
+            Promise.resolve(supabase.rpc('link_telegram_account', { p_token: token })),
+            8000,
+            'DB_RPC_TIMEOUT'
+        );
 
         if (error) {
             console.error('RPC Error (link_telegram_account):', error);
@@ -157,12 +166,19 @@ export async function POST(request: Request) {
             telegram_id: data?.telegram_id
         });
 
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({
                 error: 'Invalid format / Неверный формат / Geçersiz format',
                 details: error.errors
             }, { status: 400 });
+        }
+
+        if (error?.message === 'DB_RPC_TIMEOUT') {
+            console.error('Backend Timeout in /api/telegram/link');
+            return NextResponse.json({
+                error: 'Request timed out waiting for database. / Сервер не отвечает. / Sunucu veritabanı yanıt vermedi (Zaman Aşımı).'
+            }, { status: 504 });
         }
 
         console.error('Internal Server Error in /api/telegram/link:', error);

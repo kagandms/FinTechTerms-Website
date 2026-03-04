@@ -12,10 +12,10 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             : 'Email Verification';
 
     const description = language === 'tr'
-        ? 'Lütfen e-postanıza gelen 6 haneli kodu girin:'
+        ? 'Lütfen e-postanıza gelen 8 haneli kodu girin:'
         : language === 'ru'
-            ? 'Введите 6-значный код, отправленный на вашу почту:'
-            : 'Enter the 6-digit code sent to your email:';
+            ? 'Введите 8-значный код, отправленный на вашу почту:'
+            : 'Enter the 8-digit code sent to your email:';
 
     const verifyLabel = language === 'tr' ? 'Doğrula'
         : language === 'ru' ? 'Подтвердить'

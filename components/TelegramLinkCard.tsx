@@ -122,10 +122,18 @@ export default function TelegramLinkCard() {
 
             clearTimeout(timeoutId);
 
-            const data = await res.json();
+            const contentType = res.headers.get("content-type");
+            let data: any = {};
+
+            if (contentType && contentType.includes("application/json")) {
+                data = await res.json();
+            } else {
+                // If it's a 500 error page from Next.js (not JSON)
+                throw new Error(lang === 'tr' ? 'Sunucudan geçersiz yanıt geldi (JSON değil).' : lang === 'ru' ? 'Получен недействительный ответ от сервера (не JSON).' : 'Received invalid response from server (not JSON).');
+            }
 
             if (!res.ok) {
-                throw new Error(data.error || 'unknown');
+                throw new Error(data.error || 'Server returned an error');
             }
 
             setSuccess(dict.successMsg);
