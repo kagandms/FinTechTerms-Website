@@ -11,7 +11,11 @@ import {
     Sparkles,
     Users,
     GraduationCap,
-    ArrowRight,
+    Database,
+    Server,
+    Smartphone,
+    Code,
+    Cpu,
     Github,
     Linkedin,
     Mail,
@@ -21,7 +25,7 @@ import TelegramBanner from '@/components/TelegramBanner';
 
 
 export default function AboutPage() {
-    const { language } = useLanguage();
+    const { language, t: globalT } = useLanguage();
 
     const content = {
         tr: {
@@ -224,18 +228,73 @@ export default function AboutPage() {
                     {t.sections.tech.text}
                 </p>
 
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1">{t.methodology}</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.methodologyDesc}</p>
+                {/* Technical Architecture */}
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 ml-1 flex items-center gap-2 mt-8">
+                    <Server className="w-5 h-5 text-blue-600" />
+                    {globalT('aboutProject.architectureTitle') || "Platform Mimarisini İncele"}
+                </h3>
+
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col gap-4 text-sm relative overflow-hidden mb-8">
+
+                    {/* Client Layer */}
+                    <div className="border border-blue-100 dark:border-blue-900/50 bg-white dark:bg-blue-900/20 p-4 rounded-xl relative">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="bg-blue-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
+                                <Smartphone className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-800 dark:text-white">Next.js 14 App Router</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">PWA Destekli Kullanıcı Arayüzü</div>
+                            </div>
+                        </div>
                     </div>
-                    <Link
-                        href="/about-project"
-                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shrink-0"
-                    >
-                        {t.viewMethodology}
-                        <ArrowRight className="w-4 h-4" />
-                    </Link>
+
+                    {/* Server Layer */}
+                    <div className="border border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-emerald-900/20 p-4 rounded-xl relative">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="bg-emerald-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
+                                <Database className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-800 dark:text-white">Supabase PostgreSQL</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Merkezi Veritabanı ve Auth Servisi</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Telegram Layer */}
+                    <div className="border border-amber-100 dark:border-amber-900/50 bg-white dark:bg-amber-900/20 p-4 rounded-xl relative">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-amber-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
+                                <Cpu className="w-6 h-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-800 dark:text-white">Python Telegram Bot</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Çeviri ve Entegrasyon Motoru</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tech Stack Grid */}
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 ml-1 flex items-center gap-2">
+                    <Code className="w-5 h-5 text-purple-600" />
+                    {globalT('aboutProject.techStackTitle') || "Teknoloji Yığını"}
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                        { name: 'TypeScript', desc: 'Type Safety', color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800' },
+                        { name: 'Next.js 14', desc: 'App Router', color: 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600' },
+                        { name: 'TailwindCSS', desc: 'Utility First', color: 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-100 dark:border-cyan-800' },
+                        { name: 'Supabase', desc: 'PostgreSQL', color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800' },
+                        { name: 'Python', desc: 'Data Bot', color: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-100 dark:border-yellow-800' },
+                        { name: 'Redis', desc: 'Rate Limiting', color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800' },
+                    ].map((tech) => (
+                        <div key={tech.name} className={`${tech.color} border p-3 rounded-xl transition-all hover:scale-[1.02]`}>
+                            <div className="font-bold text-sm">{tech.name}</div>
+                            <div className="text-xs opacity-75">{tech.desc}</div>
+                        </div>
+                    ))}
                 </div>
             </section>
 

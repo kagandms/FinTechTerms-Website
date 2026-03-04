@@ -20,6 +20,7 @@ export default function InstallButton() {
 
         if (isIOSDevice && !isStandalone) {
             setIsIOS(true);
+            setIsInstallable(true); // BUG 2 FIXED: Was missing, causing invisible button on iOS
         } else {
             // For other devices, we assume installable unless running standalone
             // but we only get deferredPrompt if browser supports it.

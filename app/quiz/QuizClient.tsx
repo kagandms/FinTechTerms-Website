@@ -5,7 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import QuizCard from '@/components/QuizCard';
 import Link from 'next/link';
-import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target } from 'lucide-react';
+import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X } from 'lucide-react';
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 
@@ -393,6 +393,18 @@ export default function QuizPage() {
             <header className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                const confirmMsg = typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Testi bitirip çıkmak istediğinize emin misiniz?' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Вы уверены, что хотите завершить тест и выйти?' : 'Are you sure you want to exit the quiz?';
+                                if (window.confirm(confirmMsg)) {
+                                    resetToNormal();
+                                }
+                            }}
+                            className="p-1 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition-colors mr-1"
+                            aria-label="Exit quiz"
+                        >
+                            <X className="w-5 h-5 border border-transparent rounded" />
+                        </button>
                         <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                             {t('quiz.title')}
                         </h1>

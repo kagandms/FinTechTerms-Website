@@ -199,7 +199,7 @@ function ProfileContent() {
                                 {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить приложение' : 'Install App'}
                             </h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {language === 'tr' ? 'Ana ekranınıza ekleyin' : language === 'ru' ? 'Добавить на главный экран' : 'Add to your home screen'}
+                                {language === 'tr' ? 'Ana ekranınıza ekleyin. Offline mod ve hızlı erişim heykecanını yaşayın.' : language === 'ru' ? 'Добавьте на главный экр. Наслаждайтесь оффлайн-режимом и быстрым доступом.' : 'Add to your home screen. Enjoy offline mode and quick access.'}
                             </p>
                         </div>
                         <InstallButton />

@@ -9,6 +9,33 @@ import { resetAllData } from '@/utils/storage';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
 
+// Supabase error translations map
+const translateAuthError = (errorMsg: string, lang: string): string => {
+    const msg = errorMsg.toLowerCase();
+
+    if (msg.includes('invalid login credentials')) {
+        return lang === 'tr' ? 'E-posta veya şifre hatalı.' : lang === 'ru' ? 'Неверный e-mail или пароль.' : 'Invalid email or password.';
+    }
+    if (msg.includes('email not confirmed')) {
+        return lang === 'tr' ? 'E-posta adresi henüz doğrulanmadı.' : lang === 'ru' ? 'E-mail адрес не подтвержден.' : 'Email address not confirmed.';
+    }
+    if (msg.includes('already registered')) {
+        return lang === 'tr' ? 'Bu e-posta adresi zaten kayıtlı.' : lang === 'ru' ? 'Этот e-mail уже зарегистрирован.' : 'This email is already registered.';
+    }
+    if (msg.includes('token has expired') || msg.includes('invalid token')) {
+        return lang === 'tr' ? 'Girdiğiniz kod hatalı veya süresi dolmuş.' : lang === 'ru' ? 'Введенный код неверен или истек его срок действия.' : 'The code is invalid or has expired.';
+    }
+    if (msg.includes('password should be at least')) {
+        return lang === 'tr' ? 'Şifre daha güçlü olmalıdır.' : lang === 'ru' ? 'Пароль должен быть надежнее.' : 'Password should be stronger.';
+    }
+    if (msg.includes('rate limit')) {
+        return lang === 'tr' ? 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.' : lang === 'ru' ? 'Слишком много попыток. Пожалуйста, подождите.' : 'Too many attempts. Please wait.';
+    }
+
+    // Default fallback translations
+    return lang === 'tr' ? 'Bir hata oluştu: ' + errorMsg : lang === 'ru' ? 'Произошла ошибка: ' + errorMsg : errorMsg;
+};
+
 export function useAuthLogic() {
     const {
         user, isAuthenticated, login, register, logout,
@@ -133,10 +160,10 @@ export function useAuthLogic() {
                     resetForm();
                 }
             } else {
-                setAuthError(result.error || t('common.error'));
+                setAuthError(translateAuthError(result.error || '', language));
             }
-        } catch {
-            setAuthError(t('common.error'));
+        } catch (error: any) {
+            setAuthError(translateAuthError(error.message || '', language));
         } finally {
             setAuthLoading(false);
         }

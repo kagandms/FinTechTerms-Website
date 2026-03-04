@@ -12,18 +12,18 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             : 'Email Verification';
 
     const description = language === 'tr'
-        ? 'Lütfen e-postanıza gelen 8 haneli kodu girin:'
+        ? 'Lütfen e-postanıza gelen 6 haneli kodu girin:'
         : language === 'ru'
-            ? 'Введите 8-значный код, отправленный на вашу почту:'
-            : 'Enter the 8-digit code sent to your email:';
+            ? 'Введите 6-значный код, отправленный на вашу почту:'
+            : 'Enter the 6-digit code sent to your email:';
 
     const verifyLabel = language === 'tr' ? 'Doğrula'
         : language === 'ru' ? 'Подтвердить'
             : 'Verify';
 
-    const codeError = language === 'tr' ? '8 haneli kodu girin'
-        : language === 'ru' ? 'Введите 8-значный код'
-            : 'Enter 8-digit code';
+    const codeError = language === 'tr' ? '6 haneli kodu girin'
+        : language === 'ru' ? 'Введите 6-значный код'
+            : 'Enter 6-digit code';
 
     const resendLabel = resendCooldown > 0
         ? (language === 'tr' ? `Tekrar gönder (${resendCooldown}s)` : language === 'ru' ? `Отправить снова (${resendCooldown}с)` : `Resend (${resendCooldown}s)`)
@@ -45,25 +45,25 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                 {description}
             </p>
-            <p className="text-sm font-medium text-primary-500 mb-4 truncate">
+            <p className="text-sm font-medium text-primary-500 dark:text-white mb-4 truncate">
                 {pendingVerificationEmail}
             </p>
 
             <div className="space-y-4">
                 <input
                     type="text"
-                    maxLength={8}
+                    maxLength={6}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
-                    placeholder="00000000"
+                    placeholder="000000"
                     autoFocus
                 />
                 {authError && <p className="text-sm text-red-500 text-center">{authError}</p>}
 
                 <button
                     onClick={async () => {
-                        if (otpCode.length !== 8) return setAuthError(codeError);
+                        if (otpCode.length !== 6) return setAuthError(codeError);
                         const res = await verifyOTP(pendingVerificationEmail!, otpCode);
                         if (res.success) {
                             onClose();

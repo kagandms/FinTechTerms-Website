@@ -109,6 +109,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 setShowPasswordSection(false);
             }
 
+            // Force session refresh so AuthContext picks up the new user metadata (name, birthDate) immediately
+            await supabase.auth.refreshSession();
+
             showToast(
                 language === 'tr' ? 'Profil başarıyla güncellendi ✅' :
                     language === 'ru' ? 'Профиль успешно обновлен ✅' :

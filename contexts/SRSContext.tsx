@@ -190,6 +190,20 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         return term;
                     });
 
+                    // FIRE & FORGET: Fetch current streak dynamically and sync device state
+                    updateStreakInSupabase(user.id).then(newStreak => {
+                        if (newStreak !== cloudProgress.current_streak) {
+                            setUserProgress(prev => {
+                                if (prev) {
+                                    const reconciled = { ...prev, current_streak: newStreak };
+                                    saveLocalUserProgress(reconciled); // Cross-device safety sync
+                                    return reconciled;
+                                }
+                                return prev;
+                            });
+                        }
+                    }).catch(e => console.error("Streak sync failed:", e));
+
                     setTerms(mergedTerms);
                     setUserProgress(cloudProgress);
                 } else {

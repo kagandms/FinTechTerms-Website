@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
@@ -10,8 +11,7 @@ export default function TelegramLinkCard() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const router = useRouter();
-
-    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
+    const { language: lang } = useLanguage();
 
     const dict = {
         title: lang === 'tr' ? "Telegram'ı Bağla" : lang === 'ru' ? 'Привязать Telegram' : 'Link Telegram',
@@ -54,6 +54,9 @@ export default function TelegramLinkCard() {
                 console.error("Failed to fetch session:", e);
             }
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout against hanging requests
+
             const res = await fetch('/api/telegram/link', {
                 method: 'POST',
                 headers: {
@@ -61,7 +64,10 @@ export default function TelegramLinkCard() {
                     ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
                 },
                 body: JSON.stringify({ token }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             const data = await res.json();
 
@@ -76,7 +82,9 @@ export default function TelegramLinkCard() {
             router.refresh();
 
         } catch (err: any) {
-            if (err.message === 'unauthorized') {
+            if (err.name === 'AbortError') {
+                setError(lang === 'tr' ? 'İşlem zaman aşımına uğradı. Sunucu yanıt vermiyor.' : lang === 'ru' ? 'Превышено время ожидания. Сервер не отвечает.' : 'Request timed out. Server is not responding.');
+            } else if (err.message === 'unauthorized') {
                 setError(lang === 'tr' ? 'Oturum açmadınız. İşlem reddedildi.' : lang === 'ru' ? 'Вы не авторизованы. Операция отклонена.' : 'You must be logged in. Operation denied.');
             } else if (err.message === 'unknown') {
                 setError(dict.errUnknown);
