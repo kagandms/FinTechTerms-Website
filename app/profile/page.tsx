@@ -115,9 +115,9 @@ function ProfileContent() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                 {/* Left Column (Stats & Favorites) */}
-                <div className="lg:col-span-8 space-y-8">
-                    {/* Stats Grid */}
-                    <section>
+                <div className="lg:col-span-8 space-y-8 flex flex-col">
+                    {/* Stats Grid - Always at top */}
+                    <section className="order-1">
                         <StatsGrid
                             userProgress={userProgress}
                             stats={stats}
@@ -128,9 +128,26 @@ function ProfileContent() {
                         />
                     </section>
 
-                    {/* Authenticated Dashboard Forms */}
+                    {/* View Favorites CTA - Moved UP in Mobile (order-2), remains on right on Large screens */}
+                    <section className="lg:hidden order-2 bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-emerald-400 opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+
+                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm z-10">
+                            <BookMarked className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="z-10">
+                            <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
+                            <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
+                        </div>
+                        <Link href="/favorites" className="mt-2 relative z-10 w-full px-4 py-3 bg-white text-primary-600 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-md">
+                            {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
+                        </Link>
+                    </section>
+
+                    {/* Authenticated Dashboard Forms - order-3 */}
                     {isAuthenticated && (
-                        <div className="grid grid-cols-1 gap-6">
+                        <div className="grid grid-cols-1 gap-6 order-3 mt-8 lg:mt-0">
                             {/* Profile Edit Action */}
                             <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div>
@@ -160,7 +177,7 @@ function ProfileContent() {
                         </div>
                     )}
 
-                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8">
+                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8 order-4">
                         {/* App Settings Panel */}
                         <SettingsPanel
                             t={t}
@@ -174,10 +191,11 @@ function ProfileContent() {
 
                 </div>
 
+                {/* Right Column (Desktop Favorites & Others) */}
                 <div className="lg:col-span-4 space-y-8">
 
-                    {/* View Favorites CTA */}
-                    <section className="bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                    {/* View Favorites CTA - Desktop only - shown when not in mobile view */}
+                    <section className="hidden lg:flex bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                         <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-emerald-400 opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
 

@@ -22,6 +22,7 @@ export default function QuizPage() {
     const [showQuizOptions, setShowQuizOptions] = useState(false);
     const [hasChosenMode, setHasChosenMode] = useState(false);
     const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
+    const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -43,6 +44,12 @@ export default function QuizPage() {
     // Start quick quiz with selected word count and category
     const startQuickQuiz = (count: number) => {
         let pool = [...terms];
+
+        // Apply Favorites filter if requested and available
+        if (useOnlyFavorites) {
+            pool = pool.filter(t => userProgress.favorites.includes(t.id));
+        }
+
         if (quickQuizCategory && quickQuizCategory !== 'all') {
             pool = pool.filter(t => t.category === quickQuizCategory);
         }
@@ -177,15 +184,29 @@ export default function QuizPage() {
                     ) : !quickQuizCategory ? (
                         /* Category Selection Step */
                         <div className="space-y-2">
-                            <p className="text-white/80 text-xs mb-1">
-                                {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
-                            </p>
+                            <div className="flex items-center justify-between mb-1">
+                                <p className="text-white/80 text-xs">
+                                    {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
+                                </p>
+                                {stats.totalFavorites > 0 && (
+                                    <button
+                                        onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
+                                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
+                                            ? 'bg-white text-red-500 border-white'
+                                            : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                                            }`}
+                                    >
+                                        <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
+                                        {language === 'tr' ? 'Sadece Favoriler' : language === 'ru' ? 'Только избранные' : 'Favorites Only'}
+                                    </button>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { key: 'all', label: language === 'tr' ? 'Hepsi' : language === 'ru' ? 'Все' : 'All' },
                                     { key: 'Finance', label: language === 'tr' ? 'Finans' : language === 'ru' ? 'Финансы' : 'Finance' },
                                     { key: 'Technology', label: language === 'tr' ? 'Yazılım' : language === 'ru' ? 'Программное обеспечение' : 'Software' },
-                                    { key: 'Fintech', label: 'FinTech' },
+                                    { key: 'Fintech', label: language === 'tr' ? 'Fintek' : language === 'ru' ? 'Финтех' : 'FinTech' },
                                 ].map(cat => (
                                     <button
                                         key={cat.key}

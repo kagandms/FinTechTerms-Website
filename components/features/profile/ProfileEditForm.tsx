@@ -107,6 +107,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                     confirmPassword: ''
                 }));
                 setShowPasswordSection(false);
+
+                // Password-specific success toast
+                showToast(
+                    language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' :
+                        language === 'ru' ? '🔐 Пароль успешно обновлён!' :
+                            '🔐 Password updated successfully!',
+                    'success'
+                );
             }
 
             // Force session refresh so AuthContext picks up the new user metadata (name, birthDate) immediately
@@ -124,7 +132,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 if (typeof window !== 'undefined') {
                     window.location.reload(); // Hard reload for full meta sync
                 }
-            }, 1000);
+            }, 1500);
 
         } catch (error: any) {
             console.error('Profile update error:', error);
