@@ -296,6 +296,42 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "🌟 <i>Great job! You're actively learning fintech terms!</i>",
         "tr": "🌟 <i>Harika iş! Fintek terimlerini aktif olarak öğreniyorsunuz!</i>",
     },
+    # ── Favorites ──────────────────────────────────
+    "favorites_header": {
+        "ru": "⭐ <b>Ваши избранные термины ({count})</b>\n━━━━━━━━━━━━━━━━━━━━━",
+        "en": "⭐ <b>Your Favorite Terms ({count})</b>\n━━━━━━━━━━━━━━━━━━━━━",
+        "tr": "⭐ <b>Favori Terimleriniz ({count})</b>\n━━━━━━━━━━━━━━━━━━━━━",
+    },
+    "favorites_empty": {
+        "ru": (
+            "⭐ <b>Избранные термины</b>\n\n"
+            "У вас пока нет избранных терминов.\n\n"
+            "💡 <i>Добавляйте термины в избранное на сайте fintechterms.com,\n"
+            "нажимая на ⭐ при изучении слов!</i>"
+        ),
+        "en": (
+            "⭐ <b>Favorite Terms</b>\n\n"
+            "You don't have any favorite terms yet.\n\n"
+            "💡 <i>Add terms to your favorites on fintechterms.com\n"
+            "by tapping ⭐ while studying!</i>"
+        ),
+        "tr": (
+            "⭐ <b>Favori Terimler</b>\n\n"
+            "Henüz favori teriminiz bulunmuyor.\n\n"
+            "💡 <i>fintechterms.com üzerinde kelimeleri çalışırken\n"
+            "⭐ ikonuna tıklayarak favorilerinize ekleyebilirsiniz!</i>"
+        ),
+    },
+    "favorites_item": {
+        "ru": "\n{num}. {cat_emoji} <b>{term_en}</b>\n   🇹🇷 {term_tr} · 🇷🇺 {term_ru}",
+        "en": "\n{num}. {cat_emoji} <b>{term_en}</b>\n   🇹🇷 {term_tr} · 🇷🇺 {term_ru}",
+        "tr": "\n{num}. {cat_emoji} <b>{term_en}</b>\n   🇹🇷 {term_tr} · 🇷🇺 {term_ru}",
+    },
+    "favorites_footer": {
+        "ru": "\n\n🌐 Управляйте избранным на fintechterms.com",
+        "en": "\n\n🌐 Manage your favorites at fintechterms.com",
+        "tr": "\n\n🌐 Favorilerinizi fintechterms.com üzerinden yönetin",
+    },
 }
 
 

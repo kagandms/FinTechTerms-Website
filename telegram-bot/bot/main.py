@@ -35,6 +35,7 @@ from bot.handlers import (
     help_handler,
     report_handler,
     link_handler,
+    favorites_handler,
     callback_handler,
     text_handler,
 )
@@ -63,6 +64,7 @@ async def post_init(application: Application) -> None:
         BotCommand("report", "My Report"),
         BotCommand("lang", "Change language"),
         BotCommand("stats", "Statistics"),
+        BotCommand("favorites", "My Favorites"),
         BotCommand("help", "Help")
     ]
     commands_ru = [
@@ -74,6 +76,7 @@ async def post_init(application: Application) -> None:
         BotCommand("report", "Мой Отчёт"),
         BotCommand("lang", "Сменить язык"),
         BotCommand("stats", "Статистика"),
+        BotCommand("favorites", "Избранные"),
         BotCommand("help", "Помощь")
     ]
     commands_tr = [
@@ -85,6 +88,7 @@ async def post_init(application: Application) -> None:
         BotCommand("report", "Raporum"),
         BotCommand("lang", "Dil değiştir"),
         BotCommand("stats", "İstatistikler"),
+        BotCommand("favorites", "Favorilerim"),
         BotCommand("help", "Yardım")
     ]
     
@@ -133,6 +137,8 @@ def main() -> None:
     app.add_handler(CommandHandler("report", report_handler))
     app.add_handler(CommandHandler("link", link_handler))
     app.add_handler(CommandHandler("bagla", link_handler))
+    app.add_handler(CommandHandler("favorites", favorites_handler))
+    app.add_handler(CommandHandler("favoriler", favorites_handler))
 
     # ── Register callback query handler ──
     app.add_handler(CallbackQueryHandler(callback_handler))

@@ -267,3 +267,38 @@ async def get_bot_user_count() -> int:
     except Exception as e:
         logger.error("Failed to get bot user count: %s", e)
         return 0
+
+
+async def get_user_favorites(telegram_id: int) -> list[dict[str, Any]]:
+    """
+    Fetch the user's favorite terms from Supabase.
+    Pipeline: telegram_id → sync_user (get UUID) → user_progress.favorites → terms table.
+    Returns a list of term dicts, or empty list on failure/no favorites.
+    Time Complexity: O(1) DB round-trips (2 queries).
+    """
+    data = await sync_user(telegram_id)
+    user_id = data.get("user_id")
+    if not user_id:
+        return []
+
+    def _fetch_favorites():
+        # Step 1: Get the favorites UUID array from user_progress
+        progress_res = get_client().table("user_progress").select("favorites").eq("user_id", user_id).limit(1).execute()
+        progress_data = progress_res.data
+        if not progress_data or not progress_data[0].get("favorites"):
+            return []
+
+        fav_ids: list[str] = progress_data[0]["favorites"]
+        if not fav_ids:
+            return []
+
+        # Step 2: Fetch full term details for favorite IDs
+        # Supabase .in_() accepts a list of values
+        terms_res = get_client().table("terms").select("*").in_("id", fav_ids).execute()
+        return terms_res.data or []
+
+    try:
+        return await asyncio.to_thread(_fetch_favorites)
+    except Exception as e:
+        logger.error("Failed to fetch favorites for telegram_id %s: %s", telegram_id, e)
+        return []

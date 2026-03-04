@@ -37,6 +37,7 @@ from bot.database import (
     get_user_report,
     save_username,
     generate_link_token,
+    get_user_favorites,
 )
 from bot.i18n import t
 from bot.tts import generate_tts_audio
@@ -132,6 +133,10 @@ def _main_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
                 ),
             ],
             [
+                InlineKeyboardButton(
+                    "⭐ " + ("Избранные" if lang == "ru" else "Favoriler" if lang == "tr" else "Favorites"),
+                    callback_data="menu:favorites",
+                ),
                 InlineKeyboardButton("🌐 " + t("open_web", lang), url=WEB_APP_URL),
             ],
         ]
@@ -527,6 +532,69 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
+# ── /favorites ────────────────────────────────────────────
+async def favorites_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show the user's favorite terms from the web app."""
+    if not update.effective_user or not update.message:
+        return
+    user_id = update.effective_user.id
+    lang = await get_user_language(user_id)
+
+    if await is_rate_limited(user_id):
+        return
+
+    text = await _build_favorites_text(user_id, lang)
+    await update.message.reply_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+    )
+
+
+async def _build_favorites_text(telegram_id: int, lang: str) -> str:
+    """Build a formatted list of the user's favorite terms."""
+    try:
+        favorites = await get_user_favorites(telegram_id)
+    except Exception:
+        return t("error", lang)
+
+    if not favorites:
+        return t("favorites_empty", lang)
+
+    # Limit display to first 10 to avoid Telegram message length limits
+    display_limit = 10
+    display_terms = favorites[:display_limit]
+
+    header = t("favorites_header", lang, count=len(favorites))
+    items = ""
+    for i, term in enumerate(display_terms, 1):
+        cat = term.get("category", "Fintech")
+        cat_emoji = CATEGORY_EMOJI.get(cat, "📖")
+        items += t(
+            "favorites_item",
+            lang,
+            num=i,
+            cat_emoji=cat_emoji,
+            term_en=term.get("term_en", "—"),
+            term_tr=term.get("term_tr", "—"),
+            term_ru=term.get("term_ru", "—"),
+        )
+
+    footer = t("favorites_footer", lang)
+
+    overflow = ""
+    if len(favorites) > display_limit:
+        remaining = len(favorites) - display_limit
+        overflow_texts = {
+            "ru": f"\n\n<i>... и ещё {remaining} терминов на сайте</i>",
+            "en": f"\n\n<i>... and {remaining} more on the website</i>",
+            "tr": f"\n\n<i>... ve {remaining} terim daha sitede</i>",
+        }
+        overflow = overflow_texts.get(lang, overflow_texts["en"])
+
+    return header + items + overflow + footer
+
+
 # ══════════════════════════════════════════════════════════
 #  CALLBACK QUERY HANDLER  — edits the EXISTING message
 # ══════════════════════════════════════════════════════════
@@ -622,6 +690,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         elif data == "menu:help":
             await query.edit_message_text(
                 t("help", lang),
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            )
+
+        # ── Favorites ──
+        elif data == "menu:favorites":
+            text = await _build_favorites_text(user_id, lang)
+            await query.edit_message_text(
+                text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
             )
