@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -8,6 +8,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
     const [loading, setLoading] = useState(false);
+    const [verifying, setVerifying] = useState(true);
+    const [isLinked, setIsLinked] = useState(false);
+    const [linkedUsername, setLinkedUsername] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const router = useRouter();
@@ -26,7 +29,57 @@ export default function TelegramLinkCard() {
 
         errFormat: lang === 'tr' ? 'Lütfen 6 haneli geçerli bir kod girin.' : lang === 'ru' ? 'Пожалуйста, введите действительный 6-значный код.' : 'Please enter a valid 6-digit code.',
         errUnknown: lang === 'tr' ? 'Bilinmeyen bir hata oluştu.' : lang === 'ru' ? 'Произошла неизвестная ошибка.' : 'An unknown error occurred.',
-        successMsg: lang === 'tr' ? 'Telegram hesabınız başarıyla bağlandı!' : lang === 'ru' ? 'Ваш аккаунт Telegram успешно привязан!' : 'Your Telegram account has been successfully linked!'
+        successMsg: lang === 'tr' ? 'Telegram hesabınız başarıyla bağlandı!' : lang === 'ru' ? 'Ваш аккаунт Telegram успешно привязан!' : 'Your Telegram account has been successfully linked!',
+        disconnectBtn: lang === 'tr' ? 'Bağlantıyı Kes' : lang === 'ru' ? 'Отключить' : 'Disconnect',
+        disconnecting: lang === 'tr' ? 'Bağlantı kesiliyor...' : lang === 'ru' ? 'Отключение...' : 'Disconnecting...',
+        unlinkedMsg: lang === 'tr' ? 'Bağlantı başarıyla kesildi.' : lang === 'ru' ? 'Подключение успешно удалено.' : 'Successfully disconnected.',
+    };
+
+    // On mount, check if account is already linked
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const res = await fetch('/api/telegram/link');
+                const data = await res.json();
+                if (data.isLinked) {
+                    setIsLinked(true);
+                    setSuccess(dict.connected);
+                    setLinkedUsername(data.telegram_username);
+                }
+            } catch (err) {
+                console.error("Failed to fetch telegram link status", err);
+            } finally {
+                setVerifying(false); // Done loading initial state
+            }
+        };
+        checkStatus();
+    }, [dict.connected]);
+
+    const handleDisconnect = async () => {
+        if (!confirm(lang === 'tr' ? 'Bağlantıyı kesmek istediğinize emin misiniz?' : lang === 'ru' ? 'Вы уверены, что хотите отключиться?' : 'Are you sure you want to disconnect?')) {
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/telegram/link', {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'unknown');
+
+            setIsLinked(false);
+            setLinkedUsername(null);
+            setSuccess(dict.unlinkedMsg);
+            setToken('');
+            setTimeout(() => setSuccess(null), 3000); // clear success msg after 3s
+            router.refresh();
+        } catch (err: any) {
+            setError(lang === 'tr' ? 'İşlem başarısız: ' + err.message : lang === 'ru' ? 'Ошибка: ' + err.message : 'Action failed: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleLink = async (e: React.FormEvent) => {
@@ -110,71 +163,106 @@ export default function TelegramLinkCard() {
                 </div>
                 <div>
                     <h3 className="text-xl font-bold font-display text-gray-900 dark:text-white">{dict.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{dict.subtitle}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{isLinked ? (linkedUsername ? `@${linkedUsername}` : dict.connected) : dict.subtitle}</p>
                 </div>
             </div>
 
-            <form onSubmit={handleLink} className="space-y-4">
-                <div>
-                    <label htmlFor="telegram-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {dict.inputLabel}
-                    </label>
-                    <div className="relative">
-                        <input
-                            id="telegram-code"
-                            type="text"
-                            maxLength={6}
-                            disabled={loading || !!success}
-                            value={token}
-                            onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))} // Numeric only
-                            placeholder={dict.placeholder}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none font-mono tracking-widest text-center text-lg disabled:opacity-50"
-                        />
-                    </div>
+            {verifying ? (
+                <div className="flex justify-center p-4">
+                    <svg className="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                 </div>
-
-                {error && (
-                    <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
-                        <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>{error}</span>
-                    </div>
-                )}
-
-                {success && (
-                    <div className="p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
-                        <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>{success}</span>
-                    </div>
-                )}
-
-                <button
-                    type="submit"
-                    disabled={loading || !!success || token.length !== 6}
-                    className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 transition-colors disabled:cursor-not-allowed"
-                >
-                    {loading ? (
-                        <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            ) : isLinked ? (
+                <div className="space-y-4">
+                    {success && (
+                        <div className="p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            {dict.processing}
-                        </>
-                    ) : (
-                        success ? dict.connected : dict.btnText
+                            <span>{success}</span>
+                        </div>
                     )}
-                </button>
+                    {error && (
+                        <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{error}</span>
+                        </div>
+                    )}
+                    <button
+                        onClick={handleDisconnect}
+                        disabled={loading}
+                        className="w-full flex items-center justify-center py-3 px-4 border border-red-200 dark:border-red-800 rounded-lg shadow-sm text-sm font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
+                    >
+                        {loading ? dict.disconnecting : dict.disconnectBtn}
+                    </button>
+                </div>
+            ) : (
+                <form onSubmit={handleLink} className="space-y-4">
+                    <div>
+                        <label htmlFor="telegram-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {dict.inputLabel}
+                        </label>
+                        <div className="relative">
+                            <input
+                                id="telegram-code"
+                                type="text"
+                                maxLength={6}
+                                disabled={loading || !!success}
+                                value={token}
+                                onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))} // Numeric only
+                                placeholder={dict.placeholder}
+                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none font-mono tracking-widest text-center text-lg disabled:opacity-50"
+                            />
+                        </div>
+                    </div>
 
-                {!success && (
-                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-                        {dict.instruction}<code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400">/link</code>{dict.write}
-                    </p>
-                )}
-            </form>
+                    {error && (
+                        <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{success}</span>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading || !!success || token.length !== 6}
+                        className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 transition-colors disabled:cursor-not-allowed"
+                    >
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {dict.processing}
+                            </>
+                        ) : (
+                            success ? dict.connected : dict.btnText
+                        )}
+                    </button>
+
+                    {!success && !isLinked && (
+                        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
+                            {dict.instruction}<code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400">/link</code>{dict.write}
+                        </p>
+                    )}
+                </form>
+            )}
         </div>
     );
 }

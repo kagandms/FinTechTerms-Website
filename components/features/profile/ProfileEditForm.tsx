@@ -113,14 +113,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             await supabase.auth.refreshSession();
 
             showToast(
-                language === 'tr' ? 'Profil başarıyla güncellendi ✅' :
-                    language === 'ru' ? 'Профиль успешно обновлен ✅' :
-                        'Profile updated successfully ✅',
+                language === 'tr' ? 'Bilgileriniz güncellendi ✅' :
+                    language === 'ru' ? 'Профиль обновлен ✅' :
+                        'Profile updated ✅',
                 'success'
             );
 
-            // Refresh Server Components
-            router.refresh();
+            // Gecikmeli refresh (Toast mesajının ekranda görülebilmesi için)
+            setTimeout(() => {
+                router.refresh();
+            }, 1000);
 
         } catch (error: any) {
             console.error('Profile update error:', error);

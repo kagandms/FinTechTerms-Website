@@ -60,46 +60,48 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     }),
                 }}
             />
-            {/* Mobile Header (Compact) */}
-            <header className="flex md:hidden items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <Image
-                        src="/ftt.png"
-                        alt="FinTechTerms Logo"
-                        height={48}
-                        width={48}
-                        className="w-12 h-12 object-contain rounded-2xl"
-                        priority
-                    />
-                    <div className="min-w-0 flex-1">
-                        <h1 className="text-xl font-bold text-primary-500 dark:text-primary-400 leading-tight">
-                            FinTechTerms
-                        </h1>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium leading-tight">
-                            {t('home.subtitle')}
-                        </p>
-                    </div>
+            {/* Mobile Header (Prominent Logo) */}
+            <header className="flex md:hidden flex-col items-center justify-center mb-8 gap-4 pt-4 relative">
+                <Image
+                    src="/home-logo.png"
+                    alt="FinTechTerms Logo"
+                    height={100}
+                    width={100}
+                    className="w-24 h-24 object-contain drop-shadow-lg"
+                    priority
+                />
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-primary-500 dark:text-primary-400 leading-tight">
+                        FinTechTerms
+                    </h1>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium leading-tight mt-1">
+                        {t('home.subtitle')}
+                    </p>
                 </div>
-                <div className="flex items-center gap-1.5">
+
+                {/* Actions Row */}
+                <div className="flex items-center justify-center gap-2 mt-2">
                     <a
                         href="https://t.me/FinTechTermsBot"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 transition-colors shadow-sm"
+                        className="p-2 rounded-xl bg-sky-500 hover:bg-sky-600 transition-colors shadow-sm text-white flex items-center justify-center"
                         aria-label="Telegram Bot"
                     >
-                        <Send className="w-4 h-4 text-white" />
+                        <Send className="w-5 h-5" />
                     </a>
-                    <InstallButton />
+                    <div className="flex items-center justify-center">
+                        <InstallButton />
+                    </div>
                     <button
                         onClick={toggleTheme}
-                        className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                         aria-label="Toggle theme"
                     >
                         {resolvedTheme === 'dark' ? (
-                            <Sun className="w-4 h-4 text-yellow-500" />
+                            <Sun className="w-5 h-5 text-yellow-500" />
                         ) : (
-                            <Moon className="w-4 h-4 text-gray-600" />
+                            <Moon className="w-5 h-5 text-gray-600" />
                         )}
                     </button>
                     <LanguageSwitcher />
@@ -114,10 +116,10 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         {/* Wrapper for definitive rounding */}
                         <div className="relative w-40 h-40 rounded-[2rem] overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-white dark:bg-transparent">
                             <Image
-                                src="/ftt.png"
+                                src="/home-logo.png"
                                 alt="FinTechTerms Logo"
                                 fill
-                                className="object-cover scale-[1.15] transform origin-center"
+                                className="object-cover transform origin-center"
                                 priority
                             />
                         </div>

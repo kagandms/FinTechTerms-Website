@@ -9,6 +9,79 @@ const LinkTokenSchema = z.object({
     token: z.string().length(6).regex(/^\d+$/, "Token must be a 6-digit number")
 });
 
+export async function GET(request: Request) {
+    try {
+        const supabase = await createServerClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'unauthorized', isLinked: false }, { status: 401 });
+        }
+
+        // Service Role client to bypass RLS for fetching
+        const supabaseAdmin = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { data, error } = await supabaseAdmin
+            .from('telegram_users')
+            .select('telegram_id, telegram_username')
+            .eq('user_id', user.id)
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
+            console.error('Error fetching telegram connection status:', error);
+            return NextResponse.json({ error: 'Database error', isLinked: false }, { status: 500 });
+        }
+
+        if (data) {
+            return NextResponse.json({
+                isLinked: true,
+                telegram_id: data.telegram_id,
+                telegram_username: data.telegram_username
+            });
+        }
+
+        return NextResponse.json({ isLinked: false });
+    } catch (e) {
+        console.error('GET /api/telegram/link error:', e);
+        return NextResponse.json({ error: 'Server error', isLinked: false }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const supabase = await createServerClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+        }
+
+        // Service Role client to bypass RLS for deletion
+        const supabaseAdmin = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error } = await supabaseAdmin
+            .from('telegram_users')
+            .delete()
+            .eq('user_id', user.id);
+
+        if (error) {
+            console.error('Error deleting telegram connection:', error);
+            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: 'Telegram unlinked' });
+    } catch (e) {
+        console.error('DELETE /api/telegram/link error:', e);
+        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     // 1. Rate Limiting based on IP
     const ip = request.headers.get('x-forwarded-for') || 'unknown';

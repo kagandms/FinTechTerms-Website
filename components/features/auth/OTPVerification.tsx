@@ -21,9 +21,9 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         : language === 'ru' ? 'Подтвердить'
             : 'Verify';
 
-    const codeError = language === 'tr' ? '6 haneli kodu girin'
-        : language === 'ru' ? 'Введите 6-значный код'
-            : 'Enter 6-digit code';
+    const codeError = language === 'tr' ? 'En az 6 haneli kodu girin'
+        : language === 'ru' ? 'Введите минимум 6-значный код'
+            : 'Enter at least 6-digit code';
 
     const resendLabel = resendCooldown > 0
         ? (language === 'tr' ? `Tekrar gönder (${resendCooldown}s)` : language === 'ru' ? `Отправить снова (${resendCooldown}с)` : `Resend (${resendCooldown}s)`)
@@ -52,9 +52,9 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             <div className="space-y-4">
                 <input
                     type="text"
-                    maxLength={6}
+                    maxLength={8}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     className="w-full px-4 py-4 text-center text-2xl font-mono tracking-[0.3em] border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                     placeholder="000000"
                     autoFocus
@@ -63,7 +63,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
 
                 <button
                     onClick={async () => {
-                        if (otpCode.length !== 6) return setAuthError(codeError);
+                        if (otpCode.length < 6) return setAuthError(codeError);
                         const res = await verifyOTP(pendingVerificationEmail!, otpCode);
                         if (res.success) {
                             onClose();
@@ -87,7 +87,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
                         }
                     }}
                     disabled={resendCooldown > 0}
-                    className="w-full text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
+                    className="w-full text-sm text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition-colors disabled:opacity-50"
                 >
                     {resendLabel}
                 </button>

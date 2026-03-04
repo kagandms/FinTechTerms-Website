@@ -11,7 +11,7 @@ import { incrementQuizAttempt } from '@/components/SessionTracker';
 
 
 export default function QuizPage() {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { dueTerms, submitQuizAnswer, stats, terms, userProgress } = useSRS();
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -178,14 +178,14 @@ export default function QuizPage() {
                         /* Category Selection Step */
                         <div className="space-y-2">
                             <p className="text-white/80 text-xs mb-1">
-                                {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Kategori Seçin:' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
+                                {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
-                                    { key: 'all', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Hepsi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Все' : 'All' },
-                                    { key: 'Finance', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Finans' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Финансы' : 'Finance' },
-                                    { key: 'Technology', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Yazılım' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Технологии' : 'Technology' },
-                                    { key: 'Fintech', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'FinTech' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Финтех' : 'FinTech' },
+                                    { key: 'all', label: language === 'tr' ? 'Hepsi' : language === 'ru' ? 'Все' : 'All' },
+                                    { key: 'Finance', label: language === 'tr' ? 'Finans' : language === 'ru' ? 'Финансы' : 'Finance' },
+                                    { key: 'Technology', label: language === 'tr' ? 'Yazılım' : language === 'ru' ? 'Программное обеспечение' : 'Software' },
+                                    { key: 'Fintech', label: 'FinTech' },
                                 ].map(cat => (
                                     <button
                                         key={cat.key}
@@ -201,7 +201,7 @@ export default function QuizPage() {
                         /* Question Count Selection Step */
                         <div className="space-y-2">
                             <p className="text-white/80 text-xs mb-1">
-                                {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Soru Sayısı:' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
+                                {language === 'tr' ? 'Soru Sayısı:' : language === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
                             </p>
                             <div className="grid grid-cols-4 gap-2">
                                 {quizOptions.map(count => {
@@ -395,7 +395,7 @@ export default function QuizPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => {
-                                const confirmMsg = typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Testi bitirip çıkmak istediğinize emin misiniz?' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Вы уверены, что хотите завершить тест и выйти?' : 'Are you sure you want to exit the quiz?';
+                                const confirmMsg = language === 'tr' ? 'Testi bitirip çıkmak istediğinize emin misiniz?' : language === 'ru' ? 'Вы уверены, что хотите завершить тест и выйти?' : 'Are you sure you want to exit the quiz?';
                                 if (window.confirm(confirmMsg)) {
                                     resetToNormal();
                                 }

@@ -68,8 +68,8 @@ export default function InstallButton() {
         }
     };
 
-    if (!isInstallable) return null;
-
+    // DOM hiyerarşisinde kesin olarak yer alması için isInstallable check'i kaldırıldı.
+    // if (!isInstallable) return null;
     return (
         <>
             <button
