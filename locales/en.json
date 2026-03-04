@@ -99,6 +99,9 @@
         "or": "or",
         "alreadyHaveAccount": "Already have an account?",
         "noAccount": "Don't have an account?",
+        "forgotPassword": "Forgot Password?",
+        "resetPassword": "Reset Password",
+        "sendResetLink": "Send Reset Link",
         "passwordRequirements": "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol."
     },
     "categories": {

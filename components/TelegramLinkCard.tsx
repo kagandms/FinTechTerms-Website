@@ -11,7 +11,7 @@ export default function TelegramLinkCard() {
     const [success, setSuccess] = useState<string | null>(null);
     const router = useRouter();
 
-    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'ru' : 'ru';
+    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
 
     const dict = {
         title: lang === 'tr' ? "Telegram'ı Bağla" : lang === 'ru' ? 'Привязать Telegram' : 'Link Telegram',
@@ -81,7 +81,7 @@ export default function TelegramLinkCard() {
             } else if (err.message === 'unknown') {
                 setError(dict.errUnknown);
             } else {
-                setError(err.message);
+                setError(lang === 'tr' ? 'Bağlantı başarısız oldu: ' + err.message : lang === 'ru' ? 'Ошибка привязки: ' + err.message : 'Linking failed: ' + err.message);
             }
         } finally {
             setLoading(false);

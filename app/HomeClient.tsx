@@ -26,9 +26,12 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
     const { terms, userProgress, stats } = useSRS();
     const { theme, resolvedTheme, setTheme } = useTheme();
 
-    // Get 3 random terms to display (prioritize context, fallback to server data)
+    // Get 3 random terms to display — shuffled on each mount for variety
     const displayTerms = terms.length > 0 ? terms : initialTerms;
-    const recentTerms = displayTerms.slice(0, 3);
+    const recentTerms = React.useMemo(() => {
+        const shuffled = [...displayTerms].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, 3);
+    }, [displayTerms.length]);
 
     // Toggle theme quickly
     const toggleTheme = () => {
@@ -68,11 +71,11 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         className="w-12 h-12 object-contain rounded-2xl"
                         priority
                     />
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-bold text-primary-500 dark:text-primary-400 leading-tight truncate">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-xl font-bold text-primary-500 dark:text-primary-400 leading-tight">
                             FinTechTerms
                         </h1>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate">
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium leading-tight">
                             {t('home.subtitle')}
                         </p>
                     </div>

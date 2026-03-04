@@ -245,17 +245,30 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }
 
         if (isAuthenticated && user) {
-            // Sync to Supabase
+            // Optimistically update local state first
+            const updated = toggleFavoriteInStorage(termId);
+            setUserProgress(updated);
+
+            // Sync to Supabase and reconcile local state with cloud result
             toggleFavoriteInSupabase(user.id, termId, currentFavorites)
                 .then(newFavorites => {
-                    setUserProgress(prev => prev ? { ...prev, favorites: newFavorites } : prev);
+                    // Update React state with the authoritative cloud result
+                    setUserProgress(prev => {
+                        if (!prev) return prev;
+                        const reconciled = { ...prev, favorites: newFavorites };
+                        // Also persist cloud result to local storage for cross-device consistency
+                        saveLocalUserProgress(reconciled);
+                        return reconciled;
+                    });
                 })
                 .catch(error => {
                     console.error('Failed to sync favorite to cloud:', error);
                 });
+
+            return { success: true, limitReached: false };
         }
 
-        // Always update local state immediately for responsiveness
+        // Guest mode — local storage only
         const updated = toggleFavoriteInStorage(termId);
         setUserProgress(updated);
         return { success: true, limitReached: false };

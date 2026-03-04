@@ -18,6 +18,7 @@ import SmartCard from '@/components/SmartCard';
 import TelegramLinkCard from '@/components/TelegramLinkCard';
 import TelegramBanner from '@/components/TelegramBanner';
 import { ProfileEditForm } from '@/components/features/profile/ProfileEditForm';
+import InstallButton from '@/components/InstallButton';
 
 function ProfileContent() {
     // 1. Hook Logic
@@ -160,16 +161,6 @@ function ProfileContent() {
                             setTheme={setTheme}
                             onResetClick={() => setShowResetConfirm(true)}
                         />
-
-                        {/* Logout Button */}
-                        {isAuthenticated && (
-                            <button
-                                onClick={authLogic.logout}
-                                className="w-full py-4 text-red-500 font-bold bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm mt-4"
-                            >
-                                {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
-                            </button>
-                        )}
                     </div>
 
                 </div>
@@ -201,6 +192,18 @@ function ProfileContent() {
                         )}
                     </section>
 
+                    {/* Install App Button — Profile */}
+                    <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                                {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить приложение' : 'Install App'}
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {language === 'tr' ? 'Ana ekranınıza ekleyin' : language === 'ru' ? 'Добавить на главный экран' : 'Add to your home screen'}
+                            </p>
+                        </div>
+                        <InstallButton />
+                    </section>
                 </div>
             </div>
 
@@ -217,6 +220,16 @@ function ProfileContent() {
                 onConfirm={() => handleDataReset(refreshData)}
                 language={language}
             />
+
+            {/* Logout Button — always at the very bottom */}
+            {isAuthenticated && (
+                <button
+                    onClick={authLogic.logout}
+                    className="w-full py-4 text-red-500 font-bold bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm mt-8"
+                >
+                    {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
+                </button>
+            )}
 
             <footer className="text-center text-xs text-gray-400 mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
                 <p>FinTechTerms v1.0.0</p>

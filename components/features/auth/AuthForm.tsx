@@ -12,7 +12,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <div className="flex items-center gap-3 mb-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                     {authMode === 'login' ? t('auth.login') : authMode === 'register' ? t('auth.register') :
-                        (t('auth.forgotPassword') || (typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Şifreyi Sıfırla' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Сброс пароля' : 'Reset Password'))}
+                        (t('auth.resetPassword') || t('auth.forgotPassword') || 'Reset Password')}
                 </h3>
             </div>
 
@@ -25,9 +25,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         value={authForm.email}
                         onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
-                        placeholder={authMode === 'forgot-password' && typeof window !== 'undefined' ?
-                            (localStorage.getItem('language') === 'tr' ? 'E-posta' : localStorage.getItem('language') === 'ru' ? 'Эл. почта' : 'Email')
-                            : t('auth.email')}
+                        placeholder={t('auth.email') || 'Email'}
                     />
                 </div>
 
@@ -54,10 +52,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                 value={authForm.birthDate || ''}
                                 onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
                                 className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 appearance-none bg-transparent"
+                                aria-label={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
                             />
-                            {/* Overlay text if empty to show custom placeholder since date input placeholder is spotty */}
+                            {/* Overlay placeholder — only visible when empty, hidden when date is picked */}
                             {!authForm.birthDate && (
-                                <span className="absolute left-4 top-3.5 text-gray-400 pointer-events-none">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm bg-transparent dark:bg-gray-700 pr-2">
                                     {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
                                 </span>
                             )}
@@ -92,8 +91,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                     <button
                         onClick={async () => {
                             const res = await resetPassword(authForm.email);
-                            const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'ru' : 'ru';
                             if (res.success) {
+                                const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
                                 setAuthError(lang === 'tr' ? '✅ Lütfen e-posta (ve spam) kutunuzu kontrol edin' : lang === 'ru' ? '✅ Проверьте почту (и папку спам)' : '✅ Check email (and spam folder)');
                             } else {
                                 setAuthError(res.error || 'Error');
@@ -101,7 +100,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         }}
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors"
                     >
-                        {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Sıfırlama Linki Gönder' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Отправить ссылку' : 'Send Reset Link'}
+                        {t('auth.sendResetLink') || 'Send Reset Link'}
                     </button>
                 ) : (
                     <button
@@ -117,7 +116,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 <div className="text-center space-y-2 mt-4">
                     {authMode === 'login' && (
                         <button onClick={() => setAuthMode('forgot-password')} className="text-xs text-primary-400 dark:text-primary-300 hover:text-primary-600 dark:hover:text-primary-200 hover:underline transition-colors">
-                            {t('auth.forgotPassword') || (typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Şifremi Unuttum?' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Забыли пароль?' : 'Forgot Password?')}
+                            {t('auth.forgotPassword') || 'Forgot Password?'}
                         </button>
                     )}
                     <button

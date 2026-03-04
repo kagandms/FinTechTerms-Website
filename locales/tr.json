@@ -99,6 +99,9 @@
         "or": "veya",
         "alreadyHaveAccount": "Zaten hesabınız var mı?",
         "noAccount": "Hesabınız yok mu?",
+        "forgotPassword": "Şifremi Unuttum?",
+        "resetPassword": "Şifreyi Sıfırla",
+        "sendResetLink": "Sıfırlama Linki Gönder",
         "passwordRequirements": "Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir sembol içermelidir."
     },
     "categories": {

@@ -99,6 +99,9 @@
         "or": "или",
         "alreadyHaveAccount": "Уже есть аккаунт?",
         "noAccount": "Нет аккаунта?",
+        "forgotPassword": "Забыли пароль?",
+        "resetPassword": "Сброс пароля",
+        "sendResetLink": "Отправить ссылку",
         "passwordRequirements": "Пароль должен содержать минимум 8 символов, одну заглавную букву, одну строчную, цифру и символ."
     },
     "categories": {

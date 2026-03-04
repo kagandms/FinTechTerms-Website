@@ -76,8 +76,8 @@ export default function InstallButton() {
                 className="flex items-center justify-center gap-2 p-1.5 sm:px-3 sm:py-2 bg-primary-600 hover:bg-primary-700 dark:bg-white/10 dark:hover:bg-white/20 text-white dark:text-white rounded-lg sm:rounded-xl transition-colors text-sm font-medium shadow-sm backdrop-blur-sm active:scale-95 border border-transparent dark:border-white/20"
             >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                    {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить' : 'Install App'}
+                <span className="text-xs sm:text-sm">
+                    {language === 'tr' ? 'Yükle' : language === 'ru' ? 'Установить' : 'Install'}
                 </span>
             </button>
 

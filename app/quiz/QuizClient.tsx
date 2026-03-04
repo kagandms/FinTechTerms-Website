@@ -21,6 +21,7 @@ export default function QuizPage() {
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
     const [showQuizOptions, setShowQuizOptions] = useState(false);
     const [hasChosenMode, setHasChosenMode] = useState(false);
+    const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -39,16 +40,21 @@ export default function QuizPage() {
 
     const currentTerm = sessionTerms[currentIndex];
 
-    // Start quick quiz with selected word count
+    // Start quick quiz with selected word count and category
     const startQuickQuiz = (count: number) => {
-        const shuffled = [...terms].sort(() => Math.random() - 0.5);
-        const quizTerms = shuffled.slice(0, Math.min(count, terms.length));
+        let pool = [...terms];
+        if (quickQuizCategory && quickQuizCategory !== 'all') {
+            pool = pool.filter(t => t.category === quickQuizCategory);
+        }
+        const shuffled = pool.sort(() => Math.random() - 0.5);
+        const quizTerms = shuffled.slice(0, Math.min(count, pool.length));
         setSessionTerms(quizTerms);
         setCurrentIndex(0);
         setCorrectCount(0);
         setIsComplete(false);
         setIsQuickQuiz(true);
         setShowQuizOptions(false);
+        setQuickQuizCategory(null);
     };
 
     const handleAnswer = (isCorrect: boolean, responseTimeMs: number) => {
@@ -168,21 +174,53 @@ export default function QuizPage() {
                         >
                             {t('quiz.startQuickQuiz')}
                         </button>
+                    ) : !quickQuizCategory ? (
+                        /* Category Selection Step */
+                        <div className="space-y-2">
+                            <p className="text-white/80 text-xs mb-1">
+                                {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Kategori Seçin:' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { key: 'all', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Hepsi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Все' : 'All' },
+                                    { key: 'Finance', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Finans' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Финансы' : 'Finance' },
+                                    { key: 'Technology', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Yazılım' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Технологии' : 'Technology' },
+                                    { key: 'Fintech', label: typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'FinTech' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Финтех' : 'FinTech' },
+                                ].map(cat => (
+                                    <button
+                                        key={cat.key}
+                                        onClick={() => setQuickQuizCategory(cat.key)}
+                                        className="py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors text-sm"
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     ) : (
-                        <div className="grid grid-cols-4 gap-2">
-                            {quizOptions.map(count => (
-                                <button
-                                    key={count}
-                                    onClick={() => startQuickQuiz(count)}
-                                    disabled={terms.length < count}
-                                    className={`py-2.5 font-bold rounded-xl transition-colors ${terms.length >= count
-                                        ? 'bg-white text-primary-600 hover:bg-gray-100'
-                                        : 'bg-white/30 text-white/50 cursor-not-allowed'
-                                        }`}
-                                >
-                                    {count}
-                                </button>
-                            ))}
+                        /* Question Count Selection Step */
+                        <div className="space-y-2">
+                            <p className="text-white/80 text-xs mb-1">
+                                {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Soru Sayısı:' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
+                            </p>
+                            <div className="grid grid-cols-4 gap-2">
+                                {quizOptions.map(count => {
+                                    const pool = quickQuizCategory === 'all' ? terms : terms.filter(t => t.category === quickQuizCategory);
+                                    return (
+                                        <button
+                                            key={count}
+                                            onClick={() => startQuickQuiz(count)}
+                                            disabled={pool.length < count}
+                                            className={`py-2.5 font-bold rounded-xl transition-colors ${pool.length >= count
+                                                ? 'bg-white text-primary-600 hover:bg-gray-100'
+                                                : 'bg-white/30 text-white/50 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            {count}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>

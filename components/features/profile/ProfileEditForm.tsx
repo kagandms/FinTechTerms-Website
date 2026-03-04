@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { profileSchema, ProfileFormValues } from '@/lib/validations/profile';
+import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -37,7 +37,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         reset,
         formState: { errors, isSubmitting },
     } = useForm<ProfileFormValues>({
-        resolver: zodResolver(profileSchema),
+        resolver: zodResolver(createProfileSchema(language)),
         defaultValues: {
             name: defaultFirstName,
             surname: defaultLastName,
