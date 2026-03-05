@@ -95,9 +95,12 @@ export async function generateMetadata(): Promise<Metadata> {
             },
         },
         icons: {
-            icon: '/favicon.ico',
-            shortcut: '/favicon.ico',
-            apple: '/apple-icon.png',
+            icon: [
+                { url: '/home-logo.png', type: 'image/png', sizes: '512x512' },
+                { url: '/favicon.ico' },
+            ],
+            shortcut: '/home-logo.png',
+            apple: '/home-logo.png',
         },
         manifest: '/manifest.json',
         openGraph: {

@@ -296,7 +296,7 @@ async def _build_account_home_text(
         return t("account_data_error", lang, error=error_text), _link_hint_keyboard(lang), lang
 
     if not context["is_linked"]:
-        return t("welcome", lang), _main_menu_keyboard(lang), lang
+        return _build_start_text(context, first_name), _start_keyboard(False), "ru"
 
     raw_name = context["full_name"] or first_name or username or "Пользователь"
     safe_name = html.escape(str(raw_name))
@@ -314,7 +314,7 @@ async def _build_account_favorites_text(
         return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
 
     if not context["is_linked"] or not context["user_id"]:
-        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+        return _build_start_text(context), _start_keyboard(False), "ru"
 
     try:
         favorites = await get_favorites_by_user_id(str(context["user_id"]), limit=20)
@@ -364,7 +364,7 @@ async def _build_account_stats_text(
         return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
 
     if not context["is_linked"] or not context["user_id"]:
-        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+        return _build_start_text(context), _start_keyboard(False), "ru"
 
     try:
         stats = await get_activity_stats_by_user_id(str(context["user_id"]))

@@ -195,7 +195,8 @@ async def save_username(telegram_id: int, username: str | None) -> None:
 async def get_linked_profile_context(telegram_id: int, username: str | None = None) -> dict[str, Any]:
     """
     Resolve Telegram -> Web profile linkage using the single source of truth.
-    Linked state requires BOTH telegram_users.user_id and profiles.id match.
+    Linked state is driven by telegram_users.user_id mapping (source of truth).
+    Profile row is optional for display enrichment and must not break linked state.
     """
 
     def _resolve() -> dict[str, Any]:
@@ -258,15 +259,10 @@ async def get_linked_profile_context(telegram_id: int, username: str | None = No
             .execute()
         )
         profile_rows = profile_res.data or []
-        if not profile_rows:
-            return {
-                "is_linked": False,
-                "user_id": None,
-                "full_name": None,
-                "language": language,
-            }
+        full_name = None
+        if profile_rows:
+            full_name = (profile_rows[0].get("full_name") or "").strip() or None
 
-        full_name = (profile_rows[0].get("full_name") or "").strip() or None
         return {
             "is_linked": True,
             "user_id": user_id,
