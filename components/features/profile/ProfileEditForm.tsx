@@ -218,15 +218,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             const normalizedBirthDate = toDateInputValue(data.birthDate);
 
             const { data: updatedProfile, error: profileError } = await withTimeout(
-                supabase
-                    .from('profiles')
-                    .update({
-                        full_name: fullName,
-                        birth_date: normalizedBirthDate || null,
-                    })
-                    .eq('id', user.id)
-                    .select('id')
-                    .single(),
+                (async () =>
+                    supabase
+                        .from('profiles')
+                        .update({
+                            full_name: fullName,
+                            birth_date: normalizedBirthDate || null,
+                        })
+                        .eq('id', user.id)
+                        .select('id')
+                        .single()
+                )(),
                 15000,
                 dict.timeoutError
             );

@@ -9,7 +9,7 @@
     "lint": "eslint app components contexts hooks lib types utils --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
     "test:watch": "jest --watch",
-    "prepare": "husky || true"
+    "prepare": "command -v husky >/dev/null 2>&1 && husky || true"
   },
   "overrides": {
     "glob": "^10.3.10",
