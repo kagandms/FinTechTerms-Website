@@ -55,7 +55,23 @@ const seoMeta: Record<SeoLanguage, {
     },
 };
 
-const resolveSeoLanguage = (acceptLanguageHeader: string | null): SeoLanguage => {
+const isTelegramCrawler = (userAgentHeader: string | null): boolean => {
+    if (!userAgentHeader) {
+        return false;
+    }
+
+    const ua = userAgentHeader.toLowerCase();
+    return ua.includes('telegrambot') || ua.includes('telegram');
+};
+
+const resolveSeoLanguage = (
+    acceptLanguageHeader: string | null,
+    userAgentHeader: string | null = null
+): SeoLanguage => {
+    if (isTelegramCrawler(userAgentHeader)) {
+        return 'ru';
+    }
+
     if (!acceptLanguageHeader) {
         return 'ru';
     }
@@ -76,7 +92,10 @@ const resolveSeoLanguage = (acceptLanguageHeader: string | null): SeoLanguage =>
 
 export async function generateMetadata(): Promise<Metadata> {
     const headerStore = await headers();
-    const lang = resolveSeoLanguage(headerStore.get('accept-language'));
+    const lang = resolveSeoLanguage(
+        headerStore.get('accept-language'),
+        headerStore.get('user-agent')
+    );
     const content = seoMeta[lang];
 
     return {
@@ -144,7 +163,10 @@ export default async function RootLayout({
     children: React.ReactNode;
 }) {
     const headerStore = await headers();
-    const lang = resolveSeoLanguage(headerStore.get('accept-language'));
+    const lang = resolveSeoLanguage(
+        headerStore.get('accept-language'),
+        headerStore.get('user-agent')
+    );
     const schemaDescription = seoMeta[lang].description;
 
     return (
