@@ -395,13 +395,10 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     user_id = update.effective_user.id
     await save_username(user_id, update.effective_user.username)
-    account_context = await _resolve_account_context(
-        user_id,
-        "ru",
-        username=update.effective_user.username,
-    )
-    text = _build_start_text(account_context, update.effective_user.first_name)
-    keyboard = _start_keyboard(bool(account_context.get("is_linked")))
+    lang = await get_user_language(user_id)
+    
+    text = START_WELCOME_TEXT + "\n\n" + t("welcome", lang)
+    keyboard = _main_menu_keyboard(lang)
 
     await update.message.reply_text(
         text,
@@ -411,7 +408,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show dynamic account dashboard with linked-data actions."""
+    """Show the main menu."""
     if not update.effective_user or not update.message:
         return
 
@@ -419,12 +416,9 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await save_username(user_id, update.effective_user.username)
     lang = await get_user_language(user_id)
 
-    text, keyboard, _ = await _build_account_home_text(
-        user_id,
-        lang,
-        username=update.effective_user.username,
-        first_name=update.effective_user.first_name,
-    )
+    text = t("welcome", lang)
+    keyboard = _main_menu_keyboard(lang)
+    
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
@@ -874,8 +868,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     data = query.data
 
     try:
-        # ── Start screen ──
-        if data == "start:home":
+        # ── Start screen / Old Main Menu ──
+        if data == "menu:main":
+            await query.edit_message_text(
+                t("welcome", lang),
+                parse_mode=ParseMode.HTML,
+                reply_markup=_main_menu_keyboard(lang),
+            )
+            return
+
+        elif data == "start:home":
             account_context = await _resolve_account_context(
                 user_id,
                 "ru",
