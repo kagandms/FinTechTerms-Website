@@ -161,7 +161,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                             name: firstName,
                             surname: restName.join(' '),
                             email: fallbackUserEmail,
-                            birthDate: initialData?.birthDate || '',
+                            birthDate: '',
                             currentPassword: '',
                             newPassword: '',
                             confirmPassword: '',
