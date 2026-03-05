@@ -206,6 +206,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
                     setTerms(mergedTerms);
                     setUserProgress(cloudProgress);
+                    // Persist cloud truth to localStorage so the next optimistic load
+                    // on THIS device starts with the correct favorites (cross-device sync).
+                    saveLocalUserProgress(cloudProgress);
                 } else {
                     setTerms(currentTerms);
                     setUserProgress(getLocalUserProgress());
