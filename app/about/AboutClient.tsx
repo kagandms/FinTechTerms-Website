@@ -16,8 +16,6 @@ import {
     Smartphone,
     Code,
     Cpu,
-    Github,
-    Linkedin,
     Mail,
     Send,
     ArrowLeft,
@@ -323,15 +321,6 @@ export default function AboutPage() {
                     >
                         <Mail className="w-4 h-4" />
                         Email
-                    </a>
-                    <a
-                        href="https://github.com/kagandms"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:border-gray-900 dark:hover:border-white transition-colors"
-                    >
-                        <Github className="w-4 h-4" />
-                        GitHub
                     </a>
                 </div>
             </section>

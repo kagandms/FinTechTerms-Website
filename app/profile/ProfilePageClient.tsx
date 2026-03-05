@@ -6,7 +6,7 @@ import { useAuthLogic } from '@/hooks/useAuthLogic';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
-import { Settings, BookMarked } from 'lucide-react';
+import { Settings, BookMarked, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 // Feature Components
@@ -262,6 +262,27 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
                     {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
                 </button>
             )}
+
+            {/* Contact Section */}
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mt-8">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                    {language === 'tr' ? 'İletişim' : language === 'ru' ? 'Контакты' : 'Contact'}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {language === 'tr'
+                        ? 'Sorularınız veya önerileriniz için bize ulaşabilirsiniz:'
+                        : language === 'ru'
+                            ? 'Свяжитесь с нами по вопросам или предложениям:'
+                            : 'Reach out to us with questions or suggestions:'}
+                </p>
+                <a
+                    href="mailto:fintechterms@mail.ru"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 font-medium rounded-xl border border-primary-100 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
+                >
+                    <Mail className="w-4 h-4" />
+                    fintechterms@mail.ru
+                </a>
+            </section>
 
             <footer className="text-center text-xs text-gray-400 mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
                 <p>FinTechTerms v1.0.0</p>
