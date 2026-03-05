@@ -218,7 +218,8 @@ export async function POST(request: Request) {
     }
 
     try {
-        const { user, supabase } = await resolveAuthenticatedContext(request);
+        // Authenticate the user first
+        const { user } = await resolveAuthenticatedContext(request);
 
         if (!user) {
             return NextResponse.json(
@@ -229,10 +230,26 @@ export async function POST(request: Request) {
 
         const { token } = validatedData.data;
 
-        const { data, error } = await supabase.rpc('link_telegram_account', { p_token: token });
+        // Use Service Role admin client to bypass RLS on account_link_tokens table
+        // The table has RLS enabled but NO read policies for authenticated users,
+        // which was causing the RPC call to fail silently.
+        const supabaseAdmin = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                global: {
+                    fetch: timeoutFetch
+                }
+            }
+        );
+
+        const { data, error } = await supabaseAdmin.rpc('link_telegram_account_v2', {
+            p_token: token,
+            p_web_user_id: user.id
+        });
 
         if (error) {
-            console.error('RPC Error (link_telegram_account):', error);
+            console.error('RPC Error (link_telegram_account_v2):', error);
             // Translate common RPC errors for the frontend
             if (error.message.includes('Geçersiz veya süresi dolmuş token') || error.message.includes('Expired')) {
                 return NextResponse.json({ error: 'Неверный или просроченный код. Invalid or expired code. Geçersiz veya süresi dolmuş kod.' }, { status: 400 });
