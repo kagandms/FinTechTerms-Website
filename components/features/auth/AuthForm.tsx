@@ -11,6 +11,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     const nameLabel = uiLang === 'tr' ? 'Ad' : uiLang === 'ru' ? 'Имя' : 'Name';
     const surnameLabel = uiLang === 'tr' ? 'Soyad' : uiLang === 'ru' ? 'Фамилия' : 'Surname';
     const birthDateLabel = uiLang === 'tr' ? 'Doğum Tarihi' : uiLang === 'ru' ? 'Дата рождения' : 'Date of Birth';
+    const loginLoadingLabel = uiLang === 'tr' ? 'Giriş Yapılıyor...' : uiLang === 'ru' ? 'Выполняется вход...' : 'Signing in...';
+    const registerLoadingLabel = uiLang === 'tr' ? 'Kayıt Yapılıyor...' : uiLang === 'ru' ? 'Регистрация...' : 'Registering...';
 
     return (
         <>
@@ -124,7 +126,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         disabled={authLoading}
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {authLoading ? '...' : authMode === 'login' ? t('auth.login') : t('auth.register')}
+                        {authLoading
+                            ? (authMode === 'login' ? loginLoadingLabel : registerLoadingLabel)
+                            : authMode === 'login' ? t('auth.login') : t('auth.register')}
                     </button>
                 )}
 

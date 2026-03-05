@@ -129,15 +129,35 @@ export function useAuthLogic() {
 
         // Registration Validation
         if (authMode === 'register') {
-            if (!authForm.name.trim()) return setAuthError(t('auth.nameRequired') || 'Name required');
-            if (!authForm.surname.trim()) return setAuthError(t('auth.surnameRequired') || 'Surname required');
-            if (!authForm.birthDate || !validateAge(authForm.birthDate)) {
-                return setAuthError(language === 'tr'
-                    ? 'Geçerli bir doğum tarihi girin (13+)'
-                    : language === 'ru' ? 'Введите действительную дату рождения (13+)' : 'Enter valid birth date (13+)');
+            if (!authForm.name.trim()) {
+                const msg = t('auth.nameRequired') || 'Name required';
+                setAuthError(msg);
+                showToast(msg, 'error');
+                return;
             }
+
+            if (!authForm.surname.trim()) {
+                const msg = t('auth.surnameRequired') || 'Surname required';
+                setAuthError(msg);
+                showToast(msg, 'error');
+                return;
+            }
+
+            if (!authForm.birthDate || !validateAge(authForm.birthDate)) {
+                const msg = language === 'tr'
+                    ? 'Geçerli bir doğum tarihi girin (13+)'
+                    : language === 'ru' ? 'Введите действительную дату рождения (13+)' : 'Enter valid birth date (13+)';
+                setAuthError(msg);
+                showToast(msg, 'error');
+                return;
+            }
+
             const pwdCheck = validatePassword(authForm.password);
-            if (!pwdCheck.valid) return setAuthError(pwdCheck.message);
+            if (!pwdCheck.valid) {
+                setAuthError(pwdCheck.message);
+                showToast(pwdCheck.message, 'error');
+                return;
+            }
         }
 
         setAuthLoading(true);
@@ -155,15 +175,57 @@ export function useAuthLogic() {
                     setAuthError('');
                     setOtpCode('');
                     startCooldown();
+                    showToast(
+                        language === 'tr'
+                            ? 'Doğrulama kodu gönderildi.'
+                            : language === 'ru'
+                                ? 'Код подтверждения отправлен.'
+                                : 'Verification code sent.',
+                        'success'
+                    );
                 } else {
                     setShowAuthModal(false);
                     resetForm();
+
+                    if (authMode === 'login') {
+                        showToast(
+                            language === 'tr'
+                                ? 'Giriş başarılı.'
+                                : language === 'ru'
+                                    ? 'Вход выполнен.'
+                                    : 'Login successful.',
+                            'success'
+                        );
+
+                        try {
+                            router.refresh();
+                            router.push('/profile');
+                        } catch (navError: any) {
+                            const navErrorMsg = translateAuthError(navError?.message || 'Navigation failed', language);
+                            setAuthError(navErrorMsg);
+                            showToast(navErrorMsg, 'error');
+                        }
+                    } else {
+                        showToast(
+                            language === 'tr'
+                                ? 'Kayıt başarılı.'
+                                : language === 'ru'
+                                    ? 'Регистрация успешна.'
+                                    : 'Registration successful.',
+                            'success'
+                        );
+                        router.refresh();
+                    }
                 }
             } else {
-                setAuthError(translateAuthError(result.error || '', language));
+                const msg = translateAuthError(result.error || '', language);
+                setAuthError(msg);
+                showToast(msg, 'error');
             }
         } catch (error: any) {
-            setAuthError(translateAuthError(error.message || '', language));
+            const msg = translateAuthError(error?.message || '', language);
+            setAuthError(msg);
+            showToast(msg, 'error');
         } finally {
             setAuthLoading(false);
         }
