@@ -104,7 +104,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         timeoutError: language === 'tr' ? 'Sunucu zaman aşımına uğradı, lütfen tekrar deneyin.' : language === 'ru' ? 'Тайм-аут сервера, попробуйте снова.' : 'Server timeout. Please try again.',
         unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
         loadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить профиль.' : 'Failed to load profile data.',
-        profileUpdated: language === 'tr' ? 'Bilgileriniz güncellendi ✅' : language === 'ru' ? 'Профиль обновлен ✅' : 'Profile updated ✅',
+        profileUpdated: language === 'tr' ? 'İşleminiz başarılı ✅' : language === 'ru' ? 'Операция выполнена успешно ✅' : 'Operation successful ✅',
         passwordUpdated: language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' : language === 'ru' ? '🔐 Пароль успешно обновлён!' : '🔐 Password updated successfully!',
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
         authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
@@ -132,7 +132,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
     useEffect(() => {
         let isMounted = true;
-        
+
         // Prevent re-hydration if it has already been hydrated once.
         // This solves the bug where `router.refresh()` feeds stale Server Component data 
         // into the component, wiping the user's just-saved edits.
