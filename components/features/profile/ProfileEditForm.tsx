@@ -370,7 +370,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             });
 
             toast.success(dict.profileUpdated);
-            router.refresh();
+
+            // Delay refresh slightly so the toast animation can start before the UI freezes/unmounts
+            setTimeout(() => {
+                router.refresh();
+            }, 100);
             return;
         } catch (error: any) {
             console.error('Profile update failed:', error);
