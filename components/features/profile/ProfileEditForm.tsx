@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
+    initialData?: ProfileFormInitialData | null;
 }
 
 type ProfileRow = {
@@ -19,6 +20,14 @@ type ProfileRow = {
     full_name: string | null;
     birth_date: string | null;
 };
+
+export interface ProfileFormInitialData {
+    userId: string;
+    name: string;
+    surname: string;
+    email: string;
+    birthDate: string;
+}
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
     return new Promise<T>((resolve, reject) => {
@@ -60,7 +69,7 @@ const toDateInputValue = (value: unknown): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) => {
+export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
     const { user } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
@@ -71,7 +80,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
-    const [isHydrating, setIsHydrating] = useState(true);
+    const [isHydrating, setIsHydrating] = useState(!initialData);
     const [supabaseClient] = useState(() =>
         createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -114,10 +123,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(createProfileSchema(language)),
         defaultValues: {
-            name: '',
-            surname: '',
-            email: user?.email || '',
-            birthDate: '',
+            name: initialData?.name || '',
+            surname: initialData?.surname || '',
+            email: initialData?.email || user?.email || '',
+            birthDate: initialData?.birthDate || '',
             currentPassword: '',
             newPassword: '',
             confirmPassword: '',
@@ -128,6 +137,20 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         let isMounted = true;
 
         const hydrateProfileForm = async () => {
+            if (initialData) {
+                reset({
+                    name: initialData.name,
+                    surname: initialData.surname,
+                    email: initialData.email || user?.email || '',
+                    birthDate: initialData.birthDate,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                });
+                setIsHydrating(false);
+                return;
+            }
+
             setIsHydrating(true);
 
             try {
@@ -210,7 +233,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         return () => {
             isMounted = false;
         };
-    }, [reset, showToast, user?.name, user?.email, dict.authRequired, dict.loadError, dict.timeoutError, supabaseClient]);
+    }, [
+        initialData,
+        reset,
+        showToast,
+        user?.name,
+        user?.email,
+        dict.authRequired,
+        dict.loadError,
+        dict.timeoutError,
+        supabaseClient
+    ]);
 
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);

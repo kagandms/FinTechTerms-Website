@@ -48,9 +48,10 @@ from bot.rate_limiter import is_rate_limited
 
 logger = logging.getLogger(__name__)
 
-PUBLIC_START_MENU_MESSAGE_RU = (
-    "Привет! Добро пожаловать в FinTechTerms. Пожалуйста, привяжите свой аккаунт через веб-сайт, "
-    "чтобы получить доступ к функциям."
+START_WELCOME_TEXT = (
+    "🇷🇺 <b>Привет! Добро пожаловать в FinTechTerms.</b>\n"
+    "🇹🇷 FinTechTerms'e hoş geldiniz.\n"
+    "🇬🇧 Welcome to FinTechTerms."
 )
 
 # ── Helpers ────────────────────────────────────────────────
@@ -204,6 +205,43 @@ def _public_site_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def _start_keyboard(is_linked: bool) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton("🔑 Получить код (Kod Al / Get Code)", callback_data="start:get_code")],
+    ]
+
+    if is_linked:
+        rows.append(
+            [
+                InlineKeyboardButton("⭐ Мои избранные", callback_data="account:favorites"),
+                InlineKeyboardButton("📊 Моя статистика", callback_data="account:stats"),
+            ]
+        )
+
+    rows.extend(
+        [
+            [
+                InlineKeyboardButton("📖 Меню / Menu", callback_data="menu:main"),
+                InlineKeyboardButton("ℹ️ Помощь / Help", callback_data="menu:help"),
+            ],
+            [InlineKeyboardButton("🌐 Открыть сайт / Open Website", url=WEB_APP_URL)],
+        ]
+    )
+
+    return InlineKeyboardMarkup(rows)
+
+
+def _start_code_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🔙 Назад / Back", callback_data="start:home"),
+                InlineKeyboardButton("🌐 " + t("open_web", lang), url=WEB_APP_URL),
+            ]
+        ]
+    )
+
+
 async def _resolve_account_context(
     telegram_id: int, fallback_lang: str, username: str | None = None
 ) -> dict[str, Any]:
@@ -230,6 +268,23 @@ async def _resolve_account_context(
         }
 
 
+def _build_start_text(context: dict[str, Any], first_name: str | None = None) -> str:
+    if context.get("is_linked"):
+        raw_name = context.get("full_name") or first_name or "Пользователь"
+        safe_name = html.escape(str(raw_name))
+        status = (
+            f"✅ <b>Аккаунт привязан: {safe_name}</b>\n"
+            "Можно пользоваться полным функционалом без повторной привязки."
+        )
+    else:
+        status = (
+            "⚠️ Аккаунт пока не привязан.\n"
+            "Нажмите кнопку «Получить код (Kod Al / Get Code)» и завершите привязку на сайте."
+        )
+
+    return f"{START_WELCOME_TEXT}\n\n{status}"
+
+
 async def _build_account_home_text(
     telegram_id: int, fallback_lang: str, username: str | None = None, first_name: str | None = None
 ) -> tuple[str, InlineKeyboardMarkup, str]:
@@ -241,7 +296,7 @@ async def _build_account_home_text(
         return t("account_data_error", lang, error=error_text), _link_hint_keyboard(lang), lang
 
     if not context["is_linked"]:
-        return PUBLIC_START_MENU_MESSAGE_RU, _public_site_keyboard(), "ru"
+        return t("welcome", lang), _main_menu_keyboard(lang), lang
 
     raw_name = context["full_name"] or first_name or username or "Пользователь"
     safe_name = html.escape(str(raw_name))
@@ -334,20 +389,20 @@ async def _build_account_stats_text(
 
 # ── /start & /menu ─────────────────────────────────────────
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send account dashboard after start."""
+    """Send trilingual public welcome with inline actions."""
     if not update.effective_user or not update.message:
         return
 
     user_id = update.effective_user.id
     await save_username(user_id, update.effective_user.username)
-    lang = await get_user_language(user_id)
-
-    text, keyboard, _ = await _build_account_home_text(
+    account_context = await _resolve_account_context(
         user_id,
-        lang,
+        "ru",
         username=update.effective_user.username,
-        first_name=update.effective_user.first_name,
     )
+    text = _build_start_text(account_context, update.effective_user.first_name)
+    keyboard = _start_keyboard(bool(account_context.get("is_linked")))
+
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
@@ -707,6 +762,19 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
+
+    account_context = await _resolve_account_context(
+        user_id,
+        lang,
+        username=update.effective_user.username,
+    )
+    if account_context.get("is_linked"):
+        await update.message.reply_text(
+            "✅ <b>Аккаунт уже привязан.</b>\nВы можете сразу пользоваться командами бота.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
+        return
     
     text = await _build_link_text(user_id, lang)
     if not text:
@@ -806,8 +874,47 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     data = query.data
 
     try:
+        # ── Start screen ──
+        if data == "start:home":
+            account_context = await _resolve_account_context(
+                user_id,
+                "ru",
+                username=update.effective_user.username,
+            )
+            start_text = _build_start_text(account_context, update.effective_user.first_name)
+            await query.edit_message_text(
+                start_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=_start_keyboard(bool(account_context.get("is_linked"))),
+            )
+
+        # ── Generate link code from start button ──
+        elif data == "start:get_code":
+            account_context = await _resolve_account_context(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+            )
+            if account_context.get("is_linked"):
+                await query.edit_message_text(
+                    "✅ <b>Аккаунт уже привязан.</b>\nКод больше не нужен, используйте команды бота.",
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=_start_keyboard(True),
+                )
+            else:
+                link_lang = account_context.get("lang") or lang
+                link_text = await _build_link_text(user_id, link_lang)
+                if not link_text:
+                    link_text = "⏳ Не удалось получить код прямо сейчас. Попробуйте снова через несколько секунд."
+
+                await query.edit_message_text(
+                    link_text,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=_start_code_keyboard(link_lang),
+                )
+
         # ── Account dashboard ──
-        if data in ("menu:main", "account:home"):
+        elif data in ("menu:main", "account:home"):
             home_text, home_keyboard, _ = await _build_account_home_text(
                 user_id,
                 lang,
@@ -904,9 +1011,17 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         # ── Link ──
         elif data == "menu:link":
-            text = await _build_link_text(user_id, lang)
-            if not text:
-                text = "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
+            account_context = await _resolve_account_context(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+            )
+            if account_context.get("is_linked"):
+                text = "✅ <b>Аккаунт уже привязан.</b>\nКод не требуется."
+            else:
+                text = await _build_link_text(user_id, lang)
+                if not text:
+                    text = "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
                 
             await query.edit_message_text(
                 text,

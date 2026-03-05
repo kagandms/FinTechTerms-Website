@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { SRSProvider } from '@/contexts/SRSContext';
@@ -24,117 +25,108 @@ const jetbrainsMono = JetBrains_Mono({
     display: 'swap',
 });
 
+type SeoLanguage = 'ru' | 'tr' | 'en';
+
 const siteUrl = 'https://fintechterms.com';
 
-
-export const metadata: Metadata = {
-    // Basic Meta
-    title: {
-        default: 'FinTechTerms | Global Finance & Technology Dictionary (EN-TR-RU)',
-        template: '%s | FinTechTerms',
+const seoMeta: Record<SeoLanguage, {
+    title: string;
+    description: string;
+    ogLocale: 'ru_RU' | 'tr_TR' | 'en_US';
+    alternateLocale: ('ru_RU' | 'tr_TR' | 'en_US')[];
+}> = {
+    ru: {
+        title: 'FinTechTerms | Словарь финансовых, финтех и IT-терминов',
+        description: 'Изучайте финансовые, финтех и IT-термины на русском, турецком и английском. Умный словарь с SRS-повторением и практикой.',
+        ogLocale: 'ru_RU',
+        alternateLocale: ['tr_TR', 'en_US'],
     },
-    description: 'Master Fintech, Finance, AI, and Blockchain terms. Trilingual dictionary with SRS-based smart flashcards in English, Turkish, and Russian.',
-    keywords: [
-        // Brand
-        'FinTechTerms', 'FinTerms', 'FTT',
-        // General
-        'Finance Dictionary', 'Fintech Dictionary', 'Economic Terms', 'IT Dictionary',
-        'Finans Sözlüğü', 'Fintech Sözlüğü', 'Ekonomi Terimleri', 'Bilişim Sözlüğü',
-        'Финансовый словарь', 'Финтех словарь', 'Экономические термины', 'IT словарь',
-        // Specific Topics
-        'Blockchain', 'Crypto', 'AI', 'Machine Learning', 'DeFi', 'NFT', 'SaaS', 'Cloud Computing',
-        // Education/Method
-        'SRS', 'Spaced Repetition', 'Flashcard', 'Vocabulary', 'Learn English', 'Learn Turkish', 'Learn Russian',
-        // Variations
-        'definition', 'meaning', 'what is', 'nedir', 'ne demek', 'anlamı', 'что это', 'значение',
-        'Terms', 'Concepts', 'Terminology',
-        'Banking', 'Investment', 'Economics'
-    ],
-    authors: [{ name: 'FinTechTerms Team', url: siteUrl }],
-    creator: 'FinTechTerms',
-    publisher: 'FinTechTerms',
-    applicationName: 'FinTechTerms',
-
-    // Canonical & Alternates (hreflang)
-    metadataBase: new URL(siteUrl),
-    alternates: {
-        canonical: '/',
-        languages: {
-            'en-US': '/',
-            'tr-TR': '/',
-            'ru-RU': '/',
-        },
+    tr: {
+        title: 'FinTechTerms | Finans, Fintech ve Teknoloji Sözlüğü',
+        description: 'Finans, fintech ve teknoloji terimlerini Türkçe, Rusça ve İngilizce öğrenin. SRS destekli akıllı sözlük ve pratik akışı.',
+        ogLocale: 'tr_TR',
+        alternateLocale: ['ru_RU', 'en_US'],
     },
-
-    // Robots
-    robots: {
-        index: true,
-        follow: true,
-        nocache: false,
-        googleBot: {
-            index: true,
-            follow: true,
-            'max-video-preview': -1,
-            'max-image-preview': 'large',
-            'max-snippet': -1,
-        },
-    },
-
-    // Open Graph
-    openGraph: {
-        title: 'FinTechTerms | Global Finance & Technology Dictionary',
-        description: 'Master Fintech, Economics, and Software terms. English, Turkish, and Russian dictionary with smart SRS learning system.',
-        url: siteUrl,
-        siteName: 'FinTechTerms',
-        locale: 'ru_RU',
-        alternateLocale: ['en_US', 'tr_TR'],
-        type: 'website',
-        images: [
-            {
-                url: '/og-image.jpg',
-                width: 1200,
-                height: 630,
-                alt: 'FinTechTerms - Trilingual Dictionary Interface',
-            },
-        ],
-    },
-
-    // Twitter
-    twitter: {
-        card: 'summary_large_image',
-        title: 'FinTechTerms | World of Finance & Technology',
-        description: 'Learn Fintech, Economics, and Tech terms in 3 languages. Never forget with SRS algorithm.',
-        images: ['/og-image.jpg'],
-        creator: '@fintechterms',
-        site: '@fintechterms',
-    },
-
-    // Category & Classification
-    category: 'education',
-
-    // PWA
-    manifest: '/manifest.json',
-    icons: {
-        icon: '/ftt.png',
-        shortcut: '/ftt.png',
-        apple: '/ftt.png',
-        other: [
-            {
-                rel: 'apple-touch-icon-precomposed',
-                url: '/ftt.png',
-            },
-        ],
-    },
-    appleWebApp: {
-        capable: true,
-        statusBarStyle: 'default',
-        title: 'FinTechTerms',
-    },
-
-    verification: {
-        google: 'PMRC4aPZGyCq4numhKkezHjQtR6ObwfyXe-KNr-ke4c',
+    en: {
+        title: 'FinTechTerms | Finance, Fintech, and Technology Dictionary',
+        description: 'Learn finance, fintech, and technology terms in English, Russian, and Turkish with smart SRS-based review and practice.',
+        ogLocale: 'en_US',
+        alternateLocale: ['ru_RU', 'tr_TR'],
     },
 };
+
+const resolveSeoLanguage = (acceptLanguageHeader: string | null): SeoLanguage => {
+    if (!acceptLanguageHeader) {
+        return 'ru';
+    }
+
+    const orderedCodes = acceptLanguageHeader
+        .split(',')
+        .map((part) => part.trim().split(';')[0]?.toLowerCase() || '')
+        .filter(Boolean);
+
+    for (const code of orderedCodes) {
+        if (code.startsWith('ru')) return 'ru';
+        if (code.startsWith('tr')) return 'tr';
+        if (code.startsWith('en')) return 'en';
+    }
+
+    return 'ru';
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+    const headerStore = await headers();
+    const lang = resolveSeoLanguage(headerStore.get('accept-language'));
+    const content = seoMeta[lang];
+
+    return {
+        metadataBase: new URL(siteUrl),
+        title: {
+            default: content.title,
+            template: '%s | FinTechTerms',
+        },
+        description: content.description,
+        alternates: {
+            canonical: '/',
+            languages: {
+                'ru-RU': '/?lang=ru',
+                'tr-TR': '/?lang=tr',
+                'en-US': '/?lang=en',
+            },
+        },
+        icons: {
+            icon: '/favicon.ico',
+            shortcut: '/favicon.ico',
+            apple: '/apple-icon.png',
+        },
+        manifest: '/manifest.json',
+        openGraph: {
+            title: content.title,
+            description: content.description,
+            url: siteUrl,
+            siteName: 'FinTechTerms',
+            locale: content.ogLocale,
+            alternateLocale: content.alternateLocale,
+            type: 'website',
+            images: [
+                {
+                    url: '/og-image.jpg',
+                    width: 1200,
+                    height: 630,
+                    alt: 'FinTechTerms',
+                },
+            ],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: content.title,
+            description: content.description,
+            images: ['/og-image.jpg'],
+            creator: '@fintechterms',
+            site: '@fintechterms',
+        },
+    };
+}
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -144,17 +136,18 @@ export const viewport: Viewport = {
     themeColor: '#0e3b5e',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const headerStore = await headers();
+    const lang = resolveSeoLanguage(headerStore.get('accept-language'));
+    const schemaDescription = seoMeta[lang].description;
+
     return (
-        <html lang="ru" suppressHydrationWarning>
+        <html lang={lang} suppressHydrationWarning>
             <head>
-                <link rel="icon" href="/ftt.png" sizes="any" />
-                <link rel="apple-touch-icon" href="/ftt.png" />
-                {/* Schema.org JSON-LD for SEO */}
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
@@ -162,8 +155,8 @@ export default function RootLayout({
                             '@context': 'https://schema.org',
                             '@type': 'WebApplication',
                             name: 'FinTechTerms',
-                            description: 'Türkçe, İngilizce ve Rusça ekonomi, fintek ve bilişim terimlerini öğrenmek için SRS tabanlı akıllı sözlük uygulaması.',
-                            url: 'https://fintechterms.com',
+                            description: schemaDescription,
+                            url: siteUrl,
                             applicationCategory: 'EducationalApplication',
                             operatingSystem: 'Web',
                             offers: {
@@ -171,7 +164,7 @@ export default function RootLayout({
                                 price: '0',
                                 priceCurrency: 'USD',
                             },
-                            inLanguage: ['ru', 'en', 'tr'],
+                            inLanguage: ['ru', 'tr', 'en'],
                             author: {
                                 '@type': 'Organization',
                                 name: 'FinTechTerms',
