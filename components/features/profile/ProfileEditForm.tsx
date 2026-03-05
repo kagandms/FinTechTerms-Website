@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
@@ -71,6 +71,8 @@ const toDateInputValue = (value: unknown): string => {
 
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
     const { user } = useAuth();
+    const fallbackUserName = user?.name || '';
+    const fallbackUserEmail = user?.email || '';
     const { showToast } = useToast();
     const router = useRouter();
     const toast = {
@@ -81,12 +83,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [isHydrating, setIsHydrating] = useState(!initialData);
-    const [supabaseClient] = useState(() =>
-        createBrowserClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
-    );
 
     // Password visibility toggles
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -108,7 +104,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         timeoutError: language === 'tr' ? 'Sunucu zaman aşımına uğradı, lütfen tekrar deneyin.' : language === 'ru' ? 'Тайм-аут сервера, попробуйте снова.' : 'Server timeout. Please try again.',
         unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
         loadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить профиль.' : 'Failed to load profile data.',
-        profileMissing: language === 'tr' ? 'Profil satırı bulunamadı. Lütfen yöneticinizle iletişime geçin.' : language === 'ru' ? 'Строка профиля не найдена. Обратитесь к администратору.' : 'Profile row not found. Please contact support.',
         profileUpdated: language === 'tr' ? 'Bilgileriniz güncellendi ✅' : language === 'ru' ? 'Профиль обновлен ✅' : 'Profile updated ✅',
         passwordUpdated: language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' : language === 'ru' ? '🔐 Пароль успешно обновлён!' : '🔐 Password updated successfully!',
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
@@ -125,7 +120,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         defaultValues: {
             name: initialData?.name || '',
             surname: initialData?.surname || '',
-            email: initialData?.email || user?.email || '',
+            email: initialData?.email || fallbackUserEmail,
             birthDate: initialData?.birthDate || '',
             currentPassword: '',
             newPassword: '',
@@ -141,7 +136,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 reset({
                     name: initialData.name,
                     surname: initialData.surname,
-                    email: initialData.email || user?.email || '',
+                    email: initialData.email || fallbackUserEmail,
                     birthDate: initialData.birthDate,
                     currentPassword: '',
                     newPassword: '',
@@ -155,11 +150,24 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             try {
                 const { data, error } = await withTimeout(
-                    supabaseClient.auth.getUser(),
+                    supabase.auth.getUser(),
                     15000,
                     dict.timeoutError
                 );
                 if (error || !data.user) {
+                    if (fallbackUserName || fallbackUserEmail) {
+                        const [firstName = '', ...restName] = fallbackUserName.trim().split(' ').filter(Boolean);
+                        reset({
+                            name: firstName,
+                            surname: restName.join(' '),
+                            email: fallbackUserEmail,
+                            birthDate: initialData?.birthDate || '',
+                            currentPassword: '',
+                            newPassword: '',
+                            confirmPassword: '',
+                        });
+                        return;
+                    }
                     throw error || new Error(dict.authRequired);
                 }
 
@@ -167,7 +175,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 let fullName = (
                     supabaseUser.user_metadata?.full_name ||
                     supabaseUser.user_metadata?.name ||
-                    user?.name ||
+                    fallbackUserName ||
                     ''
                 ).trim();
                 let birthDate = toDateInputValue(supabaseUser.user_metadata?.birth_date || '');
@@ -175,7 +183,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 try {
                     const profileResult = await withTimeout(
                         (async () =>
-                            supabaseClient
+                            supabase
                                 .from('profiles')
                                 .select('id, full_name, birth_date')
                                 .eq('id', supabaseUser.id)
@@ -213,7 +221,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 reset({
                     name: firstName,
                     surname: lastName,
-                    email: supabaseUser.email || user?.email || '',
+                    email: supabaseUser.email || fallbackUserEmail,
                     birthDate,
                     currentPassword: '',
                     newPassword: '',
@@ -237,12 +245,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         initialData,
         reset,
         showToast,
-        user?.name,
-        user?.email,
+        fallbackUserName,
+        fallbackUserEmail,
         dict.authRequired,
         dict.loadError,
         dict.timeoutError,
-        supabaseClient
     ]);
 
     const onSubmit = async (data: ProfileFormValues) => {
@@ -250,7 +257,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
         try {
             const sessionResult = await withTimeout(
-                supabaseClient.auth.getSession(),
+                supabase.auth.getSession(),
                 15000,
                 dict.timeoutError
             );
@@ -272,64 +279,30 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 full_name: fullName,
                 birth_date: normalizedBirthDate || null,
             };
-            let ensuredProfileId: string | null = null;
-
-            const profileUpdateResult = await withTimeout(
+            const profileUpsertResult = await withTimeout(
                 (async () =>
-                    supabaseClient
+                    supabase
                         .from('profiles')
-                        .update(profilePayload)
-                        .eq('id', sessionUser.id)
-                        .select()
+                        .upsert(
+                            {
+                                id: sessionUser.id,
+                                ...profilePayload,
+                            },
+                            { onConflict: 'id' }
+                        )
                 )(),
                 15000,
                 dict.timeoutError
             );
-            const { data: updatedProfiles, error: updateError } = profileUpdateResult;
+            const { error: profileUpsertError } = profileUpsertResult;
 
-            if (updateError) {
-                console.error('SUPABASE_UPDATE_ERROR:', updateError);
-                throw updateError;
-            }
-
-            ensuredProfileId = updatedProfiles?.[0]?.id || null;
-
-            // If update returns no row, row might be missing or blocked by RLS visibility.
-            if (!ensuredProfileId) {
-                console.error('SUPABASE_UPDATE_ERROR:', {
-                    message: 'No rows returned from profiles.update(). Possible RLS block or missing profile row.',
-                    userId: sessionUser.id,
-                });
-
-                const profileInsertResult = await withTimeout(
-                    (async () =>
-                        supabaseClient
-                            .from('profiles')
-                            .insert({
-                                id: sessionUser.id,
-                                ...profilePayload,
-                            })
-                            .select()
-                    )(),
-                    15000,
-                    dict.timeoutError
-                );
-                const { data: insertedProfiles, error: insertError } = profileInsertResult;
-
-                if (insertError) {
-                    console.error('SUPABASE_UPDATE_ERROR:', insertError);
-                    throw insertError;
-                }
-
-                ensuredProfileId = insertedProfiles?.[0]?.id || null;
-            }
-
-            if (!ensuredProfileId) {
-                throw new Error(dict.profileMissing);
+            if (profileUpsertError) {
+                console.error('SUPABASE_UPDATE_ERROR:', profileUpsertError);
+                throw profileUpsertError;
             }
 
             const metadataResult = await withTimeout(
-                supabaseClient.auth.updateUser({
+                supabase.auth.updateUser({
                     data: {
                         name: fullName,
                         full_name: fullName,
@@ -346,8 +319,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             if (showPasswordSection && data.newPassword) {
                 const reauthResult = await withTimeout(
-                    supabaseClient.auth.signInWithPassword({
-                        email: data.email,
+                    supabase.auth.signInWithPassword({
+                        email: sessionUser.email || data.email,
                         password: data.currentPassword || '',
                     }),
                     15000,
@@ -359,7 +332,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 }
 
                 const passwordResult = await withTimeout(
-                    supabaseClient.auth.updateUser({ password: data.newPassword }),
+                    supabase.auth.updateUser({ password: data.newPassword }),
                     15000,
                     dict.timeoutError
                 );
