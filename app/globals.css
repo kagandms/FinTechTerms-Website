@@ -388,3 +388,24 @@ a:focus-visible {
 .animate-slide-up {
   animation: slideUp 0.4s ease-out;
 }
+
+/* Date input consistency for mobile register form */
+.auth-date-input {
+  color-scheme: light;
+}
+
+.dark .auth-date-input {
+  color-scheme: dark;
+}
+
+.auth-date-input::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+.auth-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0.85;
+}
+
+.dark .auth-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}

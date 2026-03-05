@@ -216,8 +216,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
+            let ensuredProfileId: string | null = null;
 
-            const { data: updatedProfile, error: profileError } = await withTimeout(
+            const profileUpdateResult = await withTimeout(
                 (async () =>
                     supabase
                         .from('profiles')
@@ -227,17 +228,44 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                         })
                         .eq('id', user.id)
                         .select('id')
-                        .single()
+                        .maybeSingle()
                 )(),
                 15000,
                 dict.timeoutError
             );
 
-            if (profileError) {
-                throw profileError;
+            if (profileUpdateResult.error) {
+                throw profileUpdateResult.error;
             }
 
-            if (!updatedProfile?.id) {
+            ensuredProfileId = profileUpdateResult.data?.id || null;
+
+            // If the profile row does not exist yet, create it and retry once.
+            if (!ensuredProfileId) {
+                const profileInsertResult = await withTimeout(
+                    (async () =>
+                        supabase
+                            .from('profiles')
+                            .insert({
+                                id: user.id,
+                                full_name: fullName,
+                                birth_date: normalizedBirthDate || null,
+                            })
+                            .select('id')
+                            .maybeSingle()
+                    )(),
+                    15000,
+                    dict.timeoutError
+                );
+
+                if (profileInsertResult.error) {
+                    throw profileInsertResult.error;
+                }
+
+                ensuredProfileId = profileInsertResult.data?.id || null;
+            }
+
+            if (!ensuredProfileId) {
                 throw new Error(dict.profileMissing);
             }
 
@@ -301,7 +329,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             return;
         } catch (error: any) {
             console.error('Profile update failed:', error);
-            toast.error(error?.message || dict.unknownError);
+            const detailedMessage = [
+                error?.message,
+                error?.details,
+                error?.hint,
+                error?.code ? `code:${error.code}` : null,
+            ].filter(Boolean).join(' | ');
+            toast.error(detailedMessage || dict.unknownError);
         } finally {
             setIsPending(false);
         }

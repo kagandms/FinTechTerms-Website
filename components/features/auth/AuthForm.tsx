@@ -75,7 +75,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                 type="date"
                                 value={authForm.birthDate || ''}
                                 onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
-                                className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
+                                className="auth-date-input w-full min-h-[48px] px-4 py-3 border rounded-xl bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                 aria-label={birthDateLabel}
                             />
                         </div>

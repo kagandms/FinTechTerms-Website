@@ -337,9 +337,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "tr": "Hesabı bağla",
     },
     "account_data_error": {
-        "ru": "❌ Ошибка синхронизации с базой: <code>{error}</code>",
-        "en": "❌ Database sync error: <code>{error}</code>",
-        "tr": "❌ Veritabanı senkronizasyon hatası: <code>{error}</code>",
+        "ru": "❌ Не удалось синхронизировать данные. Попробуйте снова через /menu.",
+        "en": "❌ Failed to sync data. Please try again with /menu.",
+        "tr": "❌ Veri senkronizasyonu başarısız. Lütfen /menu ile tekrar deneyin.",
     },
     "account_favorites_header": {
         "ru": "⭐ <b>Мои избранные ({count})</b>",

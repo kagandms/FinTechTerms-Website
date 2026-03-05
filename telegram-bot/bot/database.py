@@ -278,7 +278,12 @@ async def get_linked_profile_context(telegram_id: int, username: str | None = No
         return await asyncio.to_thread(_resolve)
     except Exception as e:
         logger.exception("Failed to resolve linked profile for %s: %s", telegram_id, e)
-        raise ConnectionError("VERITABANI_BAGLANTI_HATASI")
+        return {
+            "is_linked": False,
+            "user_id": None,
+            "full_name": None,
+            "language": _normalize_language(config.default_language),
+        }
 
 async def generate_link_token(telegram_id: int) -> str | None:
     """Generate a 6-digit OTP for linking the Telegram bot account to a Web account."""
