@@ -38,6 +38,9 @@ from bot.database import (
     save_username,
     generate_link_token,
     get_user_favorites,
+    get_linked_profile_context,
+    get_favorites_by_user_id,
+    get_activity_stats_by_user_id,
 )
 from bot.i18n import t
 from bot.tts import generate_tts_audio
@@ -166,22 +169,200 @@ def _term_keyboard(term: dict[str, Any], lang: str) -> InlineKeyboardMarkup:
     )
 
 
-# ── /start — only command that sends a NEW message ────────
+def _account_menu_keyboard() -> InlineKeyboardMarkup:
+    """Russian-first account dashboard keyboard."""
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("⭐ Мои избранные", callback_data="account:favorites"),
+                InlineKeyboardButton("📊 Моя статистика", callback_data="account:stats"),
+            ]
+        ]
+    )
+
+
+def _account_back_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🔙 Меню", callback_data="account:home")]]
+    )
+
+
+def _link_hint_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🔗 " + t("link_account_button", lang), callback_data="menu:link")]]
+    )
+
+
+async def _resolve_account_context(
+    telegram_id: int, fallback_lang: str, username: str | None = None
+) -> dict[str, Any]:
+    try:
+        linked = await get_linked_profile_context(telegram_id, username=username)
+        lang = linked.get("language") or fallback_lang
+        return {
+            "ok": True,
+            "lang": lang,
+            "is_linked": bool(linked.get("is_linked")),
+            "user_id": linked.get("user_id"),
+            "full_name": linked.get("full_name"),
+            "error": None,
+        }
+    except Exception as exc:
+        logger.exception("Failed to resolve account context for %s", telegram_id)
+        return {
+            "ok": False,
+            "lang": fallback_lang,
+            "is_linked": False,
+            "user_id": None,
+            "full_name": None,
+            "error": str(exc),
+        }
+
+
+async def _build_account_home_text(
+    telegram_id: int, fallback_lang: str, username: str | None = None, first_name: str | None = None
+) -> tuple[str, InlineKeyboardMarkup, str]:
+    context = await _resolve_account_context(telegram_id, fallback_lang, username=username)
+    lang = context["lang"]
+
+    if not context["ok"]:
+        error_text = html.escape(context["error"] or "Unknown error")
+        return t("account_data_error", lang, error=error_text), _link_hint_keyboard(lang), lang
+
+    if not context["is_linked"]:
+        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+
+    raw_name = context["full_name"] or first_name or username or "Пользователь"
+    safe_name = html.escape(str(raw_name))
+    return t("account_welcome", lang, name=safe_name), _account_menu_keyboard(), lang
+
+
+async def _build_account_favorites_text(
+    telegram_id: int, fallback_lang: str, username: str | None = None
+) -> tuple[str, InlineKeyboardMarkup, str]:
+    context = await _resolve_account_context(telegram_id, fallback_lang, username=username)
+    lang = context["lang"]
+
+    if not context["ok"]:
+        error_text = html.escape(context["error"] or "Unknown error")
+        return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
+
+    if not context["is_linked"] or not context["user_id"]:
+        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+
+    try:
+        favorites = await get_favorites_by_user_id(str(context["user_id"]), limit=20)
+    except Exception as exc:
+        logger.exception("Favorites fetch failed for telegram_id %s", telegram_id)
+        error_text = html.escape(str(exc))
+        return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
+
+    if not favorites:
+        return t("account_favorites_empty", lang), _account_back_keyboard(), lang
+
+    header = t("account_favorites_header", lang, count=len(favorites))
+    lines = [header]
+
+    display_terms = favorites[:12]
+    for index, term in enumerate(display_terms, start=1):
+        category = term.get("category", "Fintech")
+        cat_emoji = CATEGORY_EMOJI.get(category, "📖")
+        lines.append(
+            t(
+                "account_favorites_item",
+                lang,
+                num=index,
+                cat_emoji=cat_emoji,
+                term_ru=html.escape(str(term.get("term_ru", "—"))),
+                term_en=html.escape(str(term.get("term_en", "—"))),
+                term_tr=html.escape(str(term.get("term_tr", "—"))),
+            )
+        )
+
+    if len(favorites) > len(display_terms):
+        remaining = len(favorites) - len(display_terms)
+        lines.append(t("account_favorites_more", lang, remaining=remaining))
+
+    lines.append(t("account_favorites_footer", lang))
+    return "\n".join(lines), _account_back_keyboard(), lang
+
+
+async def _build_account_stats_text(
+    telegram_id: int, fallback_lang: str, username: str | None = None
+) -> tuple[str, InlineKeyboardMarkup, str]:
+    context = await _resolve_account_context(telegram_id, fallback_lang, username=username)
+    lang = context["lang"]
+
+    if not context["ok"]:
+        error_text = html.escape(context["error"] or "Unknown error")
+        return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
+
+    if not context["is_linked"] or not context["user_id"]:
+        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+
+    try:
+        stats = await get_activity_stats_by_user_id(str(context["user_id"]))
+    except Exception as exc:
+        logger.exception("Stats fetch failed for telegram_id %s", telegram_id)
+        error_text = html.escape(str(exc))
+        return t("account_data_error", lang, error=error_text), _account_back_keyboard(), lang
+
+    text = t(
+        "account_stats",
+        lang,
+        quizzes_taken=stats.get("quizzes_taken", 0),
+        quizzes_correct=stats.get("quizzes_correct", 0),
+        accuracy=stats.get("accuracy", 0),
+        words_added=stats.get("words_added", 0),
+        words_reviewed=stats.get("words_reviewed", 0),
+        favorites_count=stats.get("favorites_count", 0),
+        active_days=stats.get("active_days", 0),
+    )
+    return text, _account_back_keyboard(), lang
+
+
+# ── /start & /menu ─────────────────────────────────────────
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send welcome message with main menu (initial message)."""
+    """Send account dashboard after start."""
     if not update.effective_user or not update.message:
         return
 
     user_id = update.effective_user.id
+    await save_username(user_id, update.effective_user.username)
     lang = await get_user_language(user_id)
 
-    # Persist Telegram username for admin dashboard
-    await save_username(user_id, update.effective_user.username)
-
+    text, keyboard, _ = await _build_account_home_text(
+        user_id,
+        lang,
+        username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+    )
     await update.message.reply_text(
-        t("welcome", lang),
+        text,
         parse_mode=ParseMode.HTML,
-        reply_markup=_main_menu_keyboard(lang),
+        reply_markup=keyboard,
+    )
+
+
+async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show dynamic account dashboard with linked-data actions."""
+    if not update.effective_user or not update.message:
+        return
+
+    user_id = update.effective_user.id
+    await save_username(user_id, update.effective_user.username)
+    lang = await get_user_language(user_id)
+
+    text, keyboard, _ = await _build_account_home_text(
+        user_id,
+        lang,
+        username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+    )
+    await update.message.reply_text(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard,
     )
 
 
@@ -543,11 +724,15 @@ async def favorites_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if await is_rate_limited(user_id):
         return
 
-    text = await _build_favorites_text(user_id, lang)
+    text, keyboard, _ = await _build_account_favorites_text(
+        user_id,
+        lang,
+        username=update.effective_user.username,
+    )
     await update.message.reply_text(
         text,
         parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        reply_markup=keyboard,
     )
 
 
@@ -610,12 +795,44 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     data = query.data
 
     try:
-        # ── Back to main menu ──
-        if data == "menu:main":
+        # ── Account dashboard ──
+        if data in ("menu:main", "account:home"):
+            home_text, home_keyboard, _ = await _build_account_home_text(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+                first_name=update.effective_user.first_name,
+            )
             await query.edit_message_text(
-                t("welcome", lang),
+                home_text,
                 parse_mode=ParseMode.HTML,
-                reply_markup=_main_menu_keyboard(lang),
+                reply_markup=home_keyboard,
+            )
+
+        # ── Account favorites (live Supabase fetch) ──
+        elif data == "account:favorites":
+            favorites_text, favorites_keyboard, _ = await _build_account_favorites_text(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+            )
+            await query.edit_message_text(
+                favorites_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=favorites_keyboard,
+            )
+
+        # ── Account statistics (live Supabase fetch) ──
+        elif data == "account:stats":
+            stats_text, stats_keyboard, _ = await _build_account_stats_text(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+            )
+            await query.edit_message_text(
+                stats_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=stats_keyboard,
             )
 
         # ── Search prompt ──
@@ -696,11 +913,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         # ── Favorites ──
         elif data == "menu:favorites":
-            text = await _build_favorites_text(user_id, lang)
+            text, keyboard, _ = await _build_account_favorites_text(
+                user_id,
+                lang,
+                username=update.effective_user.username,
+            )
             await query.edit_message_text(
                 text,
                 parse_mode=ParseMode.HTML,
-                reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                reply_markup=keyboard,
             )
 
         # ── Language change ──
@@ -708,11 +929,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             new_lang = data.split(":")[1]
             if new_lang in SUPPORTED_LANGUAGES:
                 await set_user_language(user_id, new_lang)
-                # After changing language, show welcome in the new language
+                home_text, home_keyboard, _ = await _build_account_home_text(
+                    user_id,
+                    new_lang,
+                    username=update.effective_user.username,
+                    first_name=update.effective_user.first_name,
+                )
                 await query.edit_message_text(
-                    t("lang_changed", new_lang) + "\n\n" + t("welcome", new_lang),
+                    t("lang_changed", new_lang) + "\n\n" + home_text,
                     parse_mode=ParseMode.HTML,
-                    reply_markup=_main_menu_keyboard(new_lang),
+                    reply_markup=home_keyboard,
                 )
 
         # ── Quiz answer ──

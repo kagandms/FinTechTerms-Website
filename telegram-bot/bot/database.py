@@ -13,12 +13,22 @@ from typing import Any, Optional
 
 from supabase import create_client, Client
 
-from bot.config import config
+from bot.config import config, SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
 
 # ── Supabase Client ────────────────────────────────────────
 _client: Optional[Client] = None
+
+
+def _normalize_language(language: Any) -> str:
+    if isinstance(language, str) and language in SUPPORTED_LANGUAGES:
+        return language
+
+    if config.default_language in SUPPORTED_LANGUAGES:
+        return config.default_language
+
+    return "ru"
 
 def get_client() -> Client:
     """Lazy-initialise and return the Supabase client."""
@@ -181,6 +191,95 @@ async def save_username(telegram_id: int, username: str | None) -> None:
     if username:
         await sync_user(telegram_id, username)
 
+
+async def get_linked_profile_context(telegram_id: int, username: str | None = None) -> dict[str, Any]:
+    """
+    Resolve Telegram -> Web profile linkage using the single source of truth.
+    Linked state requires BOTH telegram_users.user_id and profiles.id match.
+    """
+
+    def _resolve() -> dict[str, Any]:
+        client = get_client()
+
+        mapping_res = (
+            client.table("telegram_users")
+            .select("user_id, telegram_username")
+            .eq("telegram_id", telegram_id)
+            .limit(1)
+            .execute()
+        )
+        mapping_rows = mapping_res.data or []
+        if not mapping_rows:
+            return {
+                "is_linked": False,
+                "user_id": None,
+                "full_name": None,
+                "language": _normalize_language(config.default_language),
+            }
+
+        mapping = mapping_rows[0]
+        user_id = mapping.get("user_id")
+        if not user_id:
+            return {
+                "is_linked": False,
+                "user_id": None,
+                "full_name": None,
+                "language": _normalize_language(config.default_language),
+            }
+
+        if username and username != mapping.get("telegram_username"):
+            (
+                client.table("telegram_users")
+                .update({"telegram_username": username})
+                .eq("telegram_id", telegram_id)
+                .execute()
+            )
+
+        settings_res = (
+            client.table("user_settings")
+            .select("preferred_language")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        settings_rows = settings_res.data or []
+        preferred_language = (
+            settings_rows[0].get("preferred_language")
+            if settings_rows
+            else config.default_language
+        )
+        language = _normalize_language(preferred_language)
+
+        profile_res = (
+            client.table("profiles")
+            .select("full_name")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        profile_rows = profile_res.data or []
+        if not profile_rows:
+            return {
+                "is_linked": False,
+                "user_id": None,
+                "full_name": None,
+                "language": language,
+            }
+
+        full_name = (profile_rows[0].get("full_name") or "").strip() or None
+        return {
+            "is_linked": True,
+            "user_id": user_id,
+            "full_name": full_name,
+            "language": language,
+        }
+
+    try:
+        return await asyncio.to_thread(_resolve)
+    except Exception as e:
+        logger.exception("Failed to resolve linked profile for %s: %s", telegram_id, e)
+        raise ConnectionError("VERITABANI_BAGLANTI_HATASI")
+
 async def generate_link_token(telegram_id: int) -> str | None:
     """Generate a 6-digit OTP for linking the Telegram bot account to a Web account."""
     def _generate():
@@ -271,34 +370,115 @@ async def get_bot_user_count() -> int:
 
 async def get_user_favorites(telegram_id: int) -> list[dict[str, Any]]:
     """
-    Fetch the user's favorite terms from Supabase.
-    Pipeline: telegram_id → sync_user (get UUID) → user_progress.favorites → terms table.
-    Returns a list of term dicts, or empty list on failure/no favorites.
-    Time Complexity: O(1) DB round-trips (2 queries).
+    Fetch the linked user's favorite terms from the `favorites` table in realtime.
     """
-    data = await sync_user(telegram_id)
-    user_id = data.get("user_id")
-    if not user_id:
+    linked = await get_linked_profile_context(telegram_id)
+    user_id = linked.get("user_id")
+    if not linked.get("is_linked") or not user_id:
         return []
 
-    def _fetch_favorites():
-        # Step 1: Get the favorites UUID array from user_progress
-        progress_res = get_client().table("user_progress").select("favorites").eq("user_id", user_id).limit(1).execute()
-        progress_data = progress_res.data
-        if not progress_data or not progress_data[0].get("favorites"):
+    return await get_favorites_by_user_id(str(user_id))
+
+
+async def get_favorites_by_user_id(user_id: str, limit: int = 25) -> list[dict[str, Any]]:
+    """Fetch favorites directly from `favorites` and hydrate term payload from `terms`."""
+
+    def _fetch_favorites() -> list[dict[str, Any]]:
+        client = get_client()
+        favorites_res = (
+            client.table("favorites")
+            .select("term_id, created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        favorite_rows = favorites_res.data or []
+        if not favorite_rows:
             return []
 
-        fav_ids: list[str] = progress_data[0]["favorites"]
-        if not fav_ids:
+        term_ids: list[str] = [
+            row["term_id"]
+            for row in favorite_rows
+            if isinstance(row.get("term_id"), str) and row["term_id"]
+        ]
+        if not term_ids:
             return []
 
-        # Step 2: Fetch full term details for favorite IDs
-        # Supabase .in_() accepts a list of values
-        terms_res = get_client().table("terms").select("*").in_("id", fav_ids).execute()
-        return terms_res.data or []
+        terms_res = (
+            client.table("terms")
+            .select("id, term_ru, term_en, term_tr, category")
+            .in_("id", term_ids)
+            .execute()
+        )
+        terms_by_id = {
+            row.get("id"): row
+            for row in (terms_res.data or [])
+            if isinstance(row.get("id"), str)
+        }
+
+        ordered_terms: list[dict[str, Any]] = []
+        for favorite_row in favorite_rows:
+            term = terms_by_id.get(favorite_row.get("term_id"))
+            if term:
+                ordered_terms.append(term)
+        return ordered_terms
 
     try:
         return await asyncio.to_thread(_fetch_favorites)
     except Exception as e:
-        logger.error("Failed to fetch favorites for telegram_id %s: %s", telegram_id, e)
-        return []
+        logger.exception("Failed to fetch favorites for user_id %s: %s", user_id, e)
+        raise
+
+
+async def get_activity_stats_by_user_id(user_id: str) -> dict[str, Any]:
+    """Fetch user activity stats for the Telegram account dashboard."""
+
+    def _fetch_stats() -> dict[str, Any]:
+        client = get_client()
+
+        attempts_res = (
+            client.table("quiz_attempts")
+            .select("is_correct")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        attempts = attempts_res.data or []
+        quizzes_taken = len(attempts)
+        quizzes_correct = sum(1 for row in attempts if row.get("is_correct"))
+        accuracy = round((quizzes_correct / quizzes_taken) * 100) if quizzes_taken else 0
+
+        learning_res = (
+            client.table("daily_learning_log")
+            .select("log_date, words_reviewed, new_words_learned")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        learning_rows = learning_res.data or []
+        words_reviewed = sum(int(row.get("words_reviewed") or 0) for row in learning_rows)
+        words_added = sum(int(row.get("new_words_learned") or 0) for row in learning_rows)
+        active_days = len({row.get("log_date") for row in learning_rows if row.get("log_date")})
+
+        favorites_res = (
+            client.table("favorites")
+            .select("term_id", count="exact")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        favorites_count = int(favorites_res.count or 0)
+
+        return {
+            "quizzes_taken": quizzes_taken,
+            "quizzes_correct": quizzes_correct,
+            "accuracy": accuracy,
+            "words_reviewed": words_reviewed,
+            "words_added": words_added,
+            "favorites_count": favorites_count,
+            "active_days": active_days,
+        }
+
+    try:
+        return await asyncio.to_thread(_fetch_stats)
+    except Exception as e:
+        logger.exception("Failed to fetch activity stats for user_id %s: %s", user_id, e)
+        raise

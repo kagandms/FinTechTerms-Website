@@ -64,6 +64,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     const { user } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
+    const toast = {
+        success: (message: string) => showToast(message, 'success'),
+        error: (message: string) => showToast(message, 'error'),
+    };
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
@@ -213,27 +217,25 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
 
-            const profileUpdateResult = await withTimeout(
-                (async () =>
-                    supabase
-                        .from('profiles')
-                        .upsert({
-                            id: user.id,
-                            full_name: fullName,
-                            birth_date: normalizedBirthDate || null,
-                        }, { onConflict: 'id' })
-                        .select('id')
-                        .maybeSingle()
-                )(),
+            const { data: updatedProfile, error: profileError } = await withTimeout(
+                supabase
+                    .from('profiles')
+                    .update({
+                        full_name: fullName,
+                        birth_date: normalizedBirthDate || null,
+                    })
+                    .eq('id', user.id)
+                    .select('id')
+                    .single(),
                 15000,
                 dict.timeoutError
             );
 
-            if (profileUpdateResult.error) {
-                throw profileUpdateResult.error;
+            if (profileError) {
+                throw profileError;
             }
 
-            if (!profileUpdateResult.data?.id) {
+            if (!updatedProfile?.id) {
                 throw new Error(dict.profileMissing);
             }
 
@@ -291,11 +293,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 confirmPassword: '',
             });
 
-            showToast(dict.profileUpdated, 'success');
+            toast.success('Profil güncellendi');
+            setIsPending(false);
             router.refresh();
+            return;
         } catch (error: any) {
-            const message = error?.message || dict.unknownError;
-            showToast(message, 'error');
+            console.error('Profile update failed:', error);
+            toast.error(error?.message || dict.unknownError);
         } finally {
             setIsPending(false);
         }

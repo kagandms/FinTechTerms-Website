@@ -296,6 +296,108 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "🌟 <i>Great job! You're actively learning fintech terms!</i>",
         "tr": "🌟 <i>Harika iş! Fintek terimlerini aktif olarak öğreniyorsunuz!</i>",
     },
+    # ── Account Dashboard (Russian-first UX) ──────────────
+    "account_welcome": {
+        "ru": (
+            "👋 <b>Привет, {name}!</b>\n"
+            "Merhaba, {name}!\n\n"
+            "Выберите действие ниже."
+        ),
+        "en": (
+            "👋 <b>Привет, {name}!</b>\n"
+            "Hello, {name}!\n\n"
+            "Choose an action below."
+        ),
+        "tr": (
+            "👋 <b>Привет, {name}!</b>\n"
+            "Merhaba, {name}!\n\n"
+            "Aşağıdan bir işlem seçin."
+        ),
+    },
+    "account_not_linked": {
+        "ru": (
+            "⚠️ <b>Ваш аккаунт еще не привязан.</b>\n"
+            "Hesabınız henüz bağlanmamış.\n\n"
+            "🔗 Нажмите кнопку ниже и завершите привязку на сайте."
+        ),
+        "en": (
+            "⚠️ <b>Ваш аккаунт еще не привязан.</b>\n"
+            "Your account is not linked yet.\n\n"
+            "🔗 Tap the button below and complete linking on the website."
+        ),
+        "tr": (
+            "⚠️ <b>Ваш аккаунт еще не привязан.</b>\n"
+            "Hesabınız henüz bağlanmamış.\n\n"
+            "🔗 Aşağıdaki butona basıp sitede bağlantıyı tamamlayın."
+        ),
+    },
+    "link_account_button": {
+        "ru": "Привязать аккаунт",
+        "en": "Link account",
+        "tr": "Hesabı bağla",
+    },
+    "account_data_error": {
+        "ru": "❌ Ошибка синхронизации с базой: <code>{error}</code>",
+        "en": "❌ Database sync error: <code>{error}</code>",
+        "tr": "❌ Veritabanı senkronizasyon hatası: <code>{error}</code>",
+    },
+    "account_favorites_header": {
+        "ru": "⭐ <b>Мои избранные ({count})</b>",
+        "en": "⭐ <b>Мои избранные ({count})</b>",
+        "tr": "⭐ <b>Мои избранные ({count})</b>",
+    },
+    "account_favorites_item": {
+        "ru": "{num}. {cat_emoji} 🇷🇺 <b>{term_ru}</b> · 🇬🇧 {term_en} · 🇹🇷 {term_tr}",
+        "en": "{num}. {cat_emoji} 🇷🇺 <b>{term_ru}</b> · 🇬🇧 {term_en} · 🇹🇷 {term_tr}",
+        "tr": "{num}. {cat_emoji} 🇷🇺 <b>{term_ru}</b> · 🇬🇧 {term_en} · 🇹🇷 {term_tr}",
+    },
+    "account_favorites_more": {
+        "ru": "… и ещё {remaining} термин(ов) на сайте.",
+        "en": "… and {remaining} more term(s) on the website.",
+        "tr": "… ve sitede {remaining} terim daha var.",
+    },
+    "account_favorites_footer": {
+        "ru": "\n🌐 fintechterms.com",
+        "en": "\n🌐 fintechterms.com",
+        "tr": "\n🌐 fintechterms.com",
+    },
+    "account_favorites_empty": {
+        "ru": "⭐ Избранных пока нет. Добавьте слова на сайте и вернитесь в /menu.",
+        "en": "⭐ Favorites are empty. Add terms on the website and return to /menu.",
+        "tr": "⭐ Henüz favori yok. Kelimeleri sitede ekleyip /menu'ye dönün.",
+    },
+    "account_stats": {
+        "ru": (
+            "📊 <b>Моя статистика</b>\n\n"
+            "🎯 Тесты: <b>{quizzes_taken}</b>\n"
+            "✅ Верно: <b>{quizzes_correct}</b>\n"
+            "📈 Точность: <b>{accuracy}%</b>\n"
+            "🆕 Добавлено слов: <b>{words_added}</b>\n"
+            "🔁 Повторено слов: <b>{words_reviewed}</b>\n"
+            "⭐ Избранных: <b>{favorites_count}</b>\n"
+            "📅 Активных дней: <b>{active_days}</b>"
+        ),
+        "en": (
+            "📊 <b>Моя статистика</b>\n\n"
+            "🎯 Quizzes: <b>{quizzes_taken}</b>\n"
+            "✅ Correct: <b>{quizzes_correct}</b>\n"
+            "📈 Accuracy: <b>{accuracy}%</b>\n"
+            "🆕 Added words: <b>{words_added}</b>\n"
+            "🔁 Reviewed words: <b>{words_reviewed}</b>\n"
+            "⭐ Favorites: <b>{favorites_count}</b>\n"
+            "📅 Active days: <b>{active_days}</b>"
+        ),
+        "tr": (
+            "📊 <b>Моя статистика</b>\n\n"
+            "🎯 Testler: <b>{quizzes_taken}</b>\n"
+            "✅ Doğru: <b>{quizzes_correct}</b>\n"
+            "📈 Doğruluk: <b>{accuracy}%</b>\n"
+            "🆕 Eklenen kelime: <b>{words_added}</b>\n"
+            "🔁 Tekrar edilen: <b>{words_reviewed}</b>\n"
+            "⭐ Favoriler: <b>{favorites_count}</b>\n"
+            "📅 Aktif gün: <b>{active_days}</b>"
+        ),
+    },
     # ── Favorites ──────────────────────────────────
     "favorites_header": {
         "ru": "⭐ <b>Ваши избранные термины ({count})</b>\n━━━━━━━━━━━━━━━━━━━━━",

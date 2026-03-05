@@ -27,6 +27,7 @@ from telegram import BotCommand, BotCommandScopeDefault
 from bot.config import config
 from bot.handlers import (
     start_handler,
+    menu_handler,
     search_handler,
     daily_handler,
     quiz_handler,
@@ -57,6 +58,7 @@ async def post_init(application: Application) -> None:
     """Sync bot commands to Telegram Servers dynamically per language."""
     commands_en = [
         BotCommand("start", "Main menu"),
+        BotCommand("menu", "My dashboard"),
         BotCommand("search", "Search a term"),
         BotCommand("daily", "Term of the day"),
         BotCommand("quiz", "Quick quiz"),
@@ -69,6 +71,7 @@ async def post_init(application: Application) -> None:
     ]
     commands_ru = [
         BotCommand("start", "Главное меню"),
+        BotCommand("menu", "Мой кабинет"),
         BotCommand("search", "Поиск термина"),
         BotCommand("daily", "Термин дня"),
         BotCommand("quiz", "Быстрый тест"),
@@ -81,6 +84,7 @@ async def post_init(application: Application) -> None:
     ]
     commands_tr = [
         BotCommand("start", "Ana menü"),
+        BotCommand("menu", "Panelim"),
         BotCommand("search", "Terim ara"),
         BotCommand("daily", "Günün terimi"),
         BotCommand("quiz", "Hızlı test"),
@@ -128,6 +132,7 @@ def main() -> None:
     app = ApplicationBuilder().token(config.bot_token).post_init(post_init).build()
 
     app.add_handler(CommandHandler("start", start_handler))
+    app.add_handler(CommandHandler("menu", menu_handler))
     app.add_handler(CommandHandler("search", search_handler))
     app.add_handler(CommandHandler("daily", daily_handler))
     app.add_handler(CommandHandler("quiz", quiz_handler))
