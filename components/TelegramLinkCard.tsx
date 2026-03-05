@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/contexts/ToastContext';
+
+type TelegramLinkStatus = {
+    isLinked: boolean;
+    telegram_username?: string | null;
+    error?: string;
+};
 
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
@@ -14,6 +20,7 @@ export default function TelegramLinkCard() {
     const [linkedUsername, setLinkedUsername] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+
     const router = useRouter();
     const { language: lang } = useLanguage();
     const { showToast } = useToast();
@@ -28,7 +35,6 @@ export default function TelegramLinkCard() {
         connected: lang === 'tr' ? 'Hesap Bağlandı ✓' : lang === 'ru' ? 'Аккаунт привязан ✓' : 'Account Linked ✓',
         instruction: lang === 'tr' ? 'Kod almak için Telegram botumuza gidin ve ' : lang === 'ru' ? 'Чтобы получить код, перейдите в нашего Telegram-бота и напишите ' : 'To get a code, go to our Telegram bot and type ',
         write: lang === 'tr' ? ' yazın.' : lang === 'ru' ? '.' : '.',
-
         errFormat: lang === 'tr' ? 'Lütfen 6 haneli geçerli bir kod girin.' : lang === 'ru' ? 'Пожалуйста, введите действительный 6-значный код.' : 'Please enter a valid 6-digit code.',
         errUnknown: lang === 'tr' ? 'Bilinmeyen bir hata oluştu.' : lang === 'ru' ? 'Произошла неизвестная ошибка.' : 'An unknown error occurred.',
         successMsg: lang === 'tr' ? 'Telegram hesabınız başarıyla bağlandı!' : lang === 'ru' ? 'Ваш аккаунт Telegram успешно привязан!' : 'Your Telegram account has been successfully linked!',
@@ -41,33 +47,70 @@ export default function TelegramLinkCard() {
         invalidJsonError: lang === 'tr' ? 'Sunucudan geçersiz yanıt geldi (JSON değil).' : lang === 'ru' ? 'Получен недействительный ответ от сервера (не JSON).' : 'Received invalid response from server (not JSON).',
         linkFailed: lang === 'tr' ? 'Bağlantı başarısız oldu: ' : lang === 'ru' ? 'Ошибка привязки: ' : 'Linking failed: ',
         actionFailed: lang === 'tr' ? 'İşlem başarısız: ' : lang === 'ru' ? 'Ошибка: ' : 'Action failed: ',
+        authTokenError: lang === 'tr' ? 'Oturum doğrulama bilgisi alınamadı.' : lang === 'ru' ? 'Не удалось получить токен авторизации.' : 'Unable to get auth token.',
     };
 
-    // On mount, check if account is already linked
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const res = await fetch('/api/telegram/link');
-                if (!res.ok) {
-                    throw new Error(dict.statusError);
-                }
+    const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            throw new Error(sessionError.message || dict.authTokenError);
+        }
 
-                const data = await res.json();
-                if (data.isLinked) {
-                    setIsLinked(true);
-                    setSuccess(dict.connected);
-                    setLinkedUsername(data.telegram_username);
-                }
-            } catch (err: any) {
-                const message = err?.message || dict.statusError;
-                setError(message);
-                showToast(message, 'error');
-            } finally {
-                setVerifying(false); // Done loading initial state
+        const accessToken = data.session?.access_token;
+        return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    }, [dict.authTokenError]);
+
+    const parseJsonResponse = useCallback(async (res: Response) => {
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(dict.invalidJsonError);
+        }
+        return res.json();
+    }, [dict.invalidJsonError]);
+
+    const fetchLinkStatus = useCallback(async (showSuccessToast = false) => {
+        setVerifying(true);
+        setError(null);
+
+        try {
+            const authHeaders = await getAuthHeaders();
+            const res = await fetch('/api/telegram/link', { headers: authHeaders });
+            const data = await parseJsonResponse(res) as TelegramLinkStatus;
+
+            if (!res.ok) {
+                throw new Error(data.error || dict.statusError);
             }
-        };
-        checkStatus();
-    }, [dict.connected, dict.statusError, showToast]);
+
+            const linked = Boolean(data.isLinked);
+            setIsLinked(linked);
+            setLinkedUsername(data.telegram_username ?? null);
+            setSuccess(linked ? dict.connected : null);
+
+            if (linked && showSuccessToast) {
+                showToast(dict.successMsg, 'success');
+            }
+        } catch (err: any) {
+            const message = err?.message || dict.statusError;
+            setIsLinked(false);
+            setLinkedUsername(null);
+            setSuccess(null);
+            setError(message);
+            showToast(message, 'error');
+        } finally {
+            setVerifying(false);
+        }
+    }, [
+        dict.connected,
+        dict.statusError,
+        dict.successMsg,
+        getAuthHeaders,
+        parseJsonResponse,
+        showToast
+    ]);
+
+    useEffect(() => {
+        void fetchLinkStatus(false);
+    }, [fetchLinkStatus]);
 
     const handleDisconnect = async () => {
         if (!confirm(lang === 'tr' ? 'Bağlantıyı kesmek istediğinize emin misiniz?' : lang === 'ru' ? 'Вы уверены, что хотите отключиться?' : 'Are you sure you want to disconnect?')) {
@@ -76,18 +119,22 @@ export default function TelegramLinkCard() {
 
         setLoading(true);
         setError(null);
-        try {
-            const res = await fetch('/api/telegram/link', {
-                method: 'DELETE'
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'unknown');
+        setSuccess(null);
 
-            setIsLinked(false);
-            setLinkedUsername(null);
-            setSuccess(dict.unlinkedMsg);
+        try {
+            const authHeaders = await getAuthHeaders();
+            const res = await fetch('/api/telegram/link', {
+                method: 'DELETE',
+                headers: authHeaders
+            });
+
+            const data = await parseJsonResponse(res);
+            if (!res.ok) {
+                throw new Error(data.error || dict.errUnknown);
+            }
+
+            await fetchLinkStatus(false);
             setToken('');
-            setTimeout(() => setSuccess(null), 3000); // clear success msg after 3s
             showToast(dict.unlinkedMsg, 'success');
             router.refresh();
         } catch (err: any) {
@@ -104,7 +151,6 @@ export default function TelegramLinkCard() {
         setError(null);
         setSuccess(null);
 
-        // Basic frontend validation
         if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
             setError(dict.errFormat);
             showToast(dict.errFormat, 'error');
@@ -113,58 +159,37 @@ export default function TelegramLinkCard() {
 
         setLoading(true);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout against hanging requests
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         try {
-            // Get session securely via Supabase client
-            let sessionToken = '';
-            const sessionResult = await supabase.auth.getSession();
-            if (sessionResult.data?.session?.access_token) {
-                sessionToken = sessionResult.data.session.access_token;
-            }
-
+            const authHeaders = await getAuthHeaders();
             const res = await fetch('/api/telegram/link', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
+                    ...authHeaders
                 },
                 body: JSON.stringify({ token }),
                 signal: controller.signal
             });
 
-            const contentType = res.headers.get("content-type");
-            let data: any = {};
-
-            if (contentType && contentType.includes("application/json")) {
-                data = await res.json();
-            } else {
-                throw new Error(dict.invalidJsonError);
-            }
-
+            const data = await parseJsonResponse(res);
             if (!res.ok) {
-                throw new Error(data.error || 'Server returned an error');
+                throw new Error(data.error || dict.errUnknown);
             }
 
-            setIsLinked(true);
-            setLinkedUsername(data.telegram_username ?? null);
-            setSuccess(dict.successMsg);
             setToken('');
-            setError(null);
-            showToast(dict.successMsg, 'success');
-
+            await fetchLinkStatus(true);
             router.refresh();
         } catch (err: any) {
             let message = dict.errUnknown;
 
-            if (err.name === 'AbortError') {
+            if (err?.name === 'AbortError') {
                 message = dict.timeoutError;
-            } else if (err.message === 'unauthorized') {
+            } else if (err?.message === 'unauthorized') {
                 message = dict.unauthorizedError;
-            } else if (err.message === 'unknown') {
-                message = dict.errUnknown;
-            } else {
-                message = dict.linkFailed + (err?.message || dict.errUnknown);
+            } else if (err?.message) {
+                message = dict.linkFailed + err.message;
             }
 
             setError(message);
@@ -237,9 +262,9 @@ export default function TelegramLinkCard() {
                                 id="telegram-code"
                                 type="text"
                                 maxLength={6}
-                                disabled={loading || !!success}
+                                disabled={loading}
                                 value={token}
-                                onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))} // Numeric only
+                                onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
                                 placeholder={dict.placeholder}
                                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none font-mono tracking-widest text-center text-lg disabled:opacity-50"
                             />
@@ -266,7 +291,7 @@ export default function TelegramLinkCard() {
 
                     <button
                         type="submit"
-                        disabled={loading || !!success || token.length !== 6}
+                        disabled={loading || token.length !== 6}
                         className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 transition-colors disabled:cursor-not-allowed"
                     >
                         {loading ? (
@@ -278,11 +303,11 @@ export default function TelegramLinkCard() {
                                 {dict.processing}
                             </>
                         ) : (
-                            success ? dict.connected : dict.btnText
+                            dict.btnText
                         )}
                     </button>
 
-                    {!success && !isLinked && (
+                    {!isLinked && (
                         <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
                             {dict.instruction}<code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400">/link</code>{dict.write}
                         </p>

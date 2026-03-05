@@ -14,10 +14,15 @@ interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
 }
 
+type ProfileRow = {
+    id: string;
+    full_name: string | null;
+    birth_date: string | null;
+};
+
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
     return new Promise<T>((resolve, reject) => {
         const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
-
         promise
             .then((value) => {
                 clearTimeout(timeoutId);
@@ -30,6 +35,31 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string
     });
 };
 
+const toDateInputValue = (value: unknown): string => {
+    if (!value) return '';
+
+    const raw = String(value).trim();
+    if (!raw) return '';
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return raw;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+        return raw.slice(0, 10);
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+        return '';
+    }
+
+    const yyyy = parsed.getUTCFullYear();
+    const mm = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) => {
     const { user } = useAuth();
     const { showToast } = useToast();
@@ -37,13 +67,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
+    const [isHydrating, setIsHydrating] = useState(true);
 
     // Password visibility toggles
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Dictionary for localization
     const dict = {
         name: language === 'tr' ? 'Ad' : language === 'ru' ? 'Имя' : 'First Name',
         surname: language === 'tr' ? 'Soyad' : language === 'ru' ? 'Фамилия' : 'Last Name',
@@ -51,6 +81,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         birthDate: language === 'tr' ? 'Doğum Tarihi' : language === 'ru' ? 'Дата рождения' : 'Date of Birth',
         saveBtn: language === 'tr' ? 'Değişiklikleri Kaydet' : language === 'ru' ? 'Сохранить изменения' : 'Save Changes',
         saving: language === 'tr' ? 'Kaydediliyor...' : language === 'ru' ? 'Сохранение...' : 'Saving...',
+        loadingProfile: language === 'tr' ? 'Profil yükleniyor...' : language === 'ru' ? 'Загрузка профиля...' : 'Loading profile...',
         pwdTitle: language === 'tr' ? 'Şifre Değiştir' : language === 'ru' ? 'Изменить пароль' : 'Change Password',
         pwdCurrent: language === 'tr' ? 'Mevcut Şifre' : language === 'ru' ? 'Текущий пароль' : 'Current Password',
         pwdNew: language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password',
@@ -58,15 +89,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         timeoutError: language === 'tr' ? 'Sunucu zaman aşımına uğradı, lütfen tekrar deneyin.' : language === 'ru' ? 'Тайм-аут сервера, попробуйте снова.' : 'Server timeout. Please try again.',
         unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
         loadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить профиль.' : 'Failed to load profile data.',
+        profileMissing: language === 'tr' ? 'Profil satırı bulunamadı. Lütfen yöneticinizle iletişime geçin.' : language === 'ru' ? 'Строка профиля не найдена. Обратитесь к администратору.' : 'Profile row not found. Please contact support.',
         profileUpdated: language === 'tr' ? 'Bilgileriniz güncellendi ✅' : language === 'ru' ? 'Профиль обновлен ✅' : 'Profile updated ✅',
         passwordUpdated: language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' : language === 'ru' ? '🔐 Пароль успешно обновлён!' : '🔐 Password updated successfully!',
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
+        authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
     };
-
-    // Split name into first and last name safely
-    const nameParts = user?.name ? user.name.split(' ') : [''];
-    const defaultFirstName = nameParts[0] || '';
-    const defaultLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
     const {
         register,
@@ -76,8 +104,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(createProfileSchema(language)),
         defaultValues: {
-            name: defaultFirstName,
-            surname: defaultLastName,
+            name: '',
+            surname: '',
             email: user?.email || '',
             birthDate: '',
             currentPassword: '',
@@ -90,23 +118,48 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         let isMounted = true;
 
         const hydrateProfileForm = async () => {
+            setIsHydrating(true);
+
             try {
-                const { data, error } = await supabase.auth.getUser();
-                if (error) throw error;
+                const { data, error } = await withTimeout(
+                    supabase.auth.getUser(),
+                    15000,
+                    dict.timeoutError
+                );
+                if (error || !data.user) {
+                    throw error || new Error(dict.authRequired);
+                }
 
                 const supabaseUser = data.user;
-                if (!supabaseUser) return;
+                const profileResult = await withTimeout(
+                    (async () =>
+                        supabase
+                            .from('profiles')
+                            .select('id, full_name, birth_date')
+                            .eq('id', supabaseUser.id)
+                            .maybeSingle()
+                    )(),
+                    15000,
+                    dict.timeoutError
+                );
 
+                if (profileResult.error) {
+                    throw profileResult.error;
+                }
+
+                const profile = profileResult.data as ProfileRow | null;
                 const fullName = (
+                    profile?.full_name ||
                     supabaseUser.user_metadata?.full_name ||
                     supabaseUser.user_metadata?.name ||
                     user?.name ||
                     ''
                 ).trim();
-                const profileNameParts = fullName ? fullName.split(' ') : [''];
-                const firstName = profileNameParts[0] || '';
-                const lastName = profileNameParts.length > 1 ? profileNameParts.slice(1).join(' ') : '';
-                const birthDate = String(supabaseUser.user_metadata?.birth_date || '');
+
+                const nameParts = fullName ? fullName.split(' ') : [''];
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                const birthDate = toDateInputValue(profile?.birth_date || supabaseUser.user_metadata?.birth_date || '');
 
                 if (!isMounted) return;
                 reset({
@@ -121,35 +174,68 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             } catch (error: any) {
                 const message = error?.message || dict.loadError;
                 showToast(message, 'error');
+            } finally {
+                if (isMounted) {
+                    setIsHydrating(false);
+                }
             }
         };
 
-        hydrateProfileForm();
+        void hydrateProfileForm();
         return () => {
             isMounted = false;
         };
-    }, [reset, showToast, user?.name, user?.email, dict.loadError]);
+    }, [reset, showToast, user?.name, user?.email, dict.authRequired, dict.loadError, dict.timeoutError]);
 
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);
 
         try {
-            const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
+            if (!user?.id) {
+                throw new Error(dict.authRequired);
+            }
 
-            const profileResult = await withTimeout(
+            const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
+            const normalizedBirthDate = toDateInputValue(data.birthDate);
+
+            const profileUpdateResult = await withTimeout(
+                (async () =>
+                    supabase
+                        .from('profiles')
+                        .update({
+                            full_name: fullName,
+                            birth_date: normalizedBirthDate || null,
+                        })
+                        .eq('id', user.id)
+                        .select('id')
+                        .maybeSingle()
+                )(),
+                15000,
+                dict.timeoutError
+            );
+
+            if (profileUpdateResult.error) {
+                throw profileUpdateResult.error;
+            }
+
+            if (!profileUpdateResult.data?.id) {
+                throw new Error(dict.profileMissing);
+            }
+
+            const metadataResult = await withTimeout(
                 supabase.auth.updateUser({
                     data: {
                         name: fullName,
                         full_name: fullName,
-                        birth_date: data.birthDate || null,
+                        birth_date: normalizedBirthDate || null,
                     },
                 }),
                 15000,
                 dict.timeoutError
             );
 
-            if (profileResult.error) {
-                throw profileResult.error;
+            if (metadataResult.error) {
+                throw metadataResult.error;
             }
 
             if (showPasswordSection && data.newPassword) {
@@ -180,21 +266,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 showToast(dict.passwordUpdated, 'success');
             }
 
-            const refreshResult = await withTimeout(
-                supabase.auth.refreshSession(),
-                15000,
-                dict.timeoutError
-            );
-
-            if (refreshResult.error) {
-                throw refreshResult.error;
-            }
-
             reset({
                 name: data.name.trim(),
                 surname: data.surname.trim(),
                 email: data.email,
-                birthDate: data.birthDate || '',
+                birthDate: normalizedBirthDate,
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
@@ -209,6 +285,15 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             setIsPending(false);
         }
     };
+
+    if (isHydrating) {
+        return (
+            <div className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-300">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>{dict.loadingProfile}</span>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -251,7 +336,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                     {errors.birthDate && <p className="text-sm text-red-500 mt-1">{errors.birthDate.message}</p>}
                 </div>
 
-                {/* Email (Readonly mostly, but Zod validated) */}
+                {/* Email */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.email}</label>
                     <input

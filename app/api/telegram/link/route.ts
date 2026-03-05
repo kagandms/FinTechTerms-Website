@@ -17,12 +17,51 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, timeoutMsg: stri
     return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
 };
 
+const getBearerToken = (request: Request): string | null => {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return null;
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    return token || null;
+};
+
+const resolveAuthenticatedContext = async (request: Request): Promise<{
+    user: any | null;
+    supabase: any;
+    error: string | null;
+}> => {
+    const bearerToken = getBearerToken(request);
+
+    if (bearerToken) {
+        const tokenSupabase = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                global: {
+                    headers: { Authorization: `Bearer ${bearerToken}` }
+                }
+            }
+        );
+
+        const { data, error } = await tokenSupabase.auth.getUser();
+        if (!error && data.user) {
+            return { user: data.user, supabase: tokenSupabase, error: null };
+        }
+    }
+
+    const cookieSupabase = await createServerClient();
+    const { data, error } = await cookieSupabase.auth.getUser();
+    if (error || !data.user) {
+        return { user: null, supabase: cookieSupabase, error: error?.message || 'unauthorized' };
+    }
+
+    return { user: data.user, supabase: cookieSupabase, error: null };
+};
+
 export async function GET(request: Request) {
     try {
-        const supabase = await createServerClient();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        const { user } = await resolveAuthenticatedContext(request);
+        if (!user) {
             return NextResponse.json({ error: 'unauthorized', isLinked: false }, { status: 401 });
         }
 
@@ -60,10 +99,8 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
-        const supabase = await createServerClient();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        const { user } = await resolveAuthenticatedContext(request);
+        if (!user) {
             return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
         }
 
@@ -103,32 +140,7 @@ export async function POST(request: Request) {
     }
 
     try {
-        // 2. Extract Auth Header
-        const authHeader = request.headers.get('Authorization');
-        const tokenStr = authHeader?.replace('Bearer ', '');
-
-        let supabase;
-        let user;
-
-        if (tokenStr) {
-            // Instantiate a client authenticated directly with the client JWT
-            supabase = createSupabaseClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                {
-                    global: {
-                        headers: { Authorization: `Bearer ${tokenStr}` }
-                    }
-                }
-            );
-            const { data } = await supabase.auth.getUser();
-            user = data.user;
-        } else {
-            // Fallback to cookies if available
-            supabase = await createServerClient();
-            const { data } = await supabase.auth.getUser();
-            user = data.user;
-        }
+        const { user, supabase } = await resolveAuthenticatedContext(request);
 
         if (!user) {
             return NextResponse.json(
