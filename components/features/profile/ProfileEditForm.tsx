@@ -256,22 +256,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         setIsPending(true);
 
         try {
-            const sessionResult = await withTimeout(
-                supabase.auth.getSession(),
+            const userResult = await withTimeout(
+                supabase.auth.getUser(),
                 15000,
                 dict.timeoutError
             );
 
-            if (sessionResult.error) {
-                throw sessionResult.error;
+            if (userResult.error || !userResult.data.user) {
+                throw userResult.error || new Error(dict.authRequired);
             }
 
-            const session = sessionResult.data.session;
-            const sessionUser = session?.user;
-
-            if (!session?.access_token || !sessionUser?.id) {
-                throw new Error(dict.authRequired);
-            }
+            const authUser = userResult.data.user;
 
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
@@ -279,27 +274,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 full_name: fullName,
                 birth_date: normalizedBirthDate || null,
             };
-            const profileUpsertResult = await withTimeout(
-                (async () =>
-                    supabase
-                        .from('profiles')
-                        .upsert(
-                            {
-                                id: sessionUser.id,
-                                ...profilePayload,
-                            },
-                            { onConflict: 'id' }
-                        )
-                )(),
-                15000,
-                dict.timeoutError
-            );
-            const { error: profileUpsertError } = profileUpsertResult;
-
-            if (profileUpsertError) {
-                console.error('SUPABASE_UPDATE_ERROR:', profileUpsertError);
-                throw profileUpsertError;
-            }
 
             const metadataResult = await withTimeout(
                 supabase.auth.updateUser({
@@ -317,10 +291,31 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 throw metadataResult.error;
             }
 
+            // Keep profiles table in sync when policies allow it, but do not block profile save
+            // since auth metadata is the source used across the app.
+            try {
+                const profileUpdateResult = await withTimeout(
+                    (async () =>
+                        supabase
+                            .from('profiles')
+                            .update(profilePayload)
+                            .eq('id', authUser.id)
+                    )(),
+                    15000,
+                    dict.timeoutError
+                );
+
+                if (profileUpdateResult.error) {
+                    console.warn('PROFILE_SYNC_WARNING:', profileUpdateResult.error);
+                }
+            } catch (profileSyncError) {
+                console.warn('PROFILE_SYNC_WARNING:', profileSyncError);
+            }
+
             if (showPasswordSection && data.newPassword) {
                 const reauthResult = await withTimeout(
                     supabase.auth.signInWithPassword({
-                        email: sessionUser.email || data.email,
+                        email: authUser.email || data.email,
                         password: data.currentPassword || '',
                     }),
                     15000,
