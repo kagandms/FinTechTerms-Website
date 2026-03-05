@@ -12,6 +12,21 @@ type TelegramLinkStatus = {
     error?: string;
 };
 
+const withClientTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise
+            .then((value) => {
+                clearTimeout(timeoutId);
+                resolve(value);
+            })
+            .catch((error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+            });
+    });
+};
+
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
     const [loading, setLoading] = useState(false);
@@ -51,14 +66,18 @@ export default function TelegramLinkCard() {
     };
 
     const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-        const { data, error: sessionError } = await supabase.auth.getSession();
+        const { data, error: sessionError } = await withClientTimeout(
+            supabase.auth.getSession(),
+            10000,
+            dict.timeoutError
+        );
         if (sessionError) {
             throw new Error(sessionError.message || dict.authTokenError);
         }
 
         const accessToken = data.session?.access_token;
         return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-    }, [dict.authTokenError]);
+    }, [dict.authTokenError, dict.timeoutError]);
 
     const parseJsonResponse = useCallback(async (res: Response) => {
         const contentType = res.headers.get('content-type');
@@ -71,10 +90,15 @@ export default function TelegramLinkCard() {
     const fetchLinkStatus = useCallback(async (showSuccessToast = false) => {
         setVerifying(true);
         setError(null);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         try {
             const authHeaders = await getAuthHeaders();
-            const res = await fetch('/api/telegram/link', { headers: authHeaders });
+            const res = await fetch('/api/telegram/link', {
+                headers: authHeaders,
+                signal: controller.signal
+            });
             const data = await parseJsonResponse(res) as TelegramLinkStatus;
 
             if (!res.ok) {
@@ -90,19 +114,23 @@ export default function TelegramLinkCard() {
                 showToast(dict.successMsg, 'success');
             }
         } catch (err: any) {
-            const message = err?.message || dict.statusError;
+            const message = err?.name === 'AbortError'
+                ? dict.timeoutError
+                : err?.message || dict.statusError;
             setIsLinked(false);
             setLinkedUsername(null);
             setSuccess(null);
             setError(message);
             showToast(message, 'error');
         } finally {
+            clearTimeout(timeoutId);
             setVerifying(false);
         }
     }, [
         dict.connected,
         dict.statusError,
         dict.successMsg,
+        dict.timeoutError,
         getAuthHeaders,
         parseJsonResponse,
         showToast

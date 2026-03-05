@@ -131,35 +131,50 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 }
 
                 const supabaseUser = data.user;
-                const profileResult = await withTimeout(
-                    (async () =>
-                        supabase
-                            .from('profiles')
-                            .select('id, full_name, birth_date')
-                            .eq('id', supabaseUser.id)
-                            .maybeSingle()
-                    )(),
-                    15000,
-                    dict.timeoutError
-                );
-
-                if (profileResult.error) {
-                    throw profileResult.error;
-                }
-
-                const profile = profileResult.data as ProfileRow | null;
-                const fullName = (
-                    profile?.full_name ||
+                let fullName = (
                     supabaseUser.user_metadata?.full_name ||
                     supabaseUser.user_metadata?.name ||
                     user?.name ||
                     ''
                 ).trim();
+                let birthDate = toDateInputValue(supabaseUser.user_metadata?.birth_date || '');
+
+                try {
+                    const profileResult = await withTimeout(
+                        (async () =>
+                            supabase
+                                .from('profiles')
+                                .select('id, full_name, birth_date')
+                                .eq('id', supabaseUser.id)
+                                .maybeSingle()
+                        )(),
+                        15000,
+                        dict.timeoutError
+                    );
+
+                    if (profileResult.error) {
+                        throw profileResult.error;
+                    }
+
+                    const profile = profileResult.data as ProfileRow | null;
+                    if (profile?.full_name) {
+                        fullName = profile.full_name.trim();
+                    }
+                    if (profile?.birth_date) {
+                        birthDate = toDateInputValue(profile.birth_date);
+                    }
+                } catch (profileError: any) {
+                    const message = profileError?.message || dict.loadError;
+                    showToast(message, 'error');
+                }
+
+                if (!fullName) {
+                    fullName = (supabaseUser.email?.split('@')[0] || '').trim();
+                }
 
                 const nameParts = fullName ? fullName.split(' ') : [''];
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-                const birthDate = toDateInputValue(profile?.birth_date || supabaseUser.user_metadata?.birth_date || '');
 
                 if (!isMounted) return;
                 reset({
@@ -202,11 +217,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 (async () =>
                     supabase
                         .from('profiles')
-                        .update({
+                        .upsert({
+                            id: user.id,
                             full_name: fullName,
                             birth_date: normalizedBirthDate || null,
-                        })
-                        .eq('id', user.id)
+                        }, { onConflict: 'id' })
                         .select('id')
                         .maybeSingle()
                 )(),
