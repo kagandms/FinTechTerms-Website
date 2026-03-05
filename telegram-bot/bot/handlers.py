@@ -48,6 +48,11 @@ from bot.rate_limiter import is_rate_limited
 
 logger = logging.getLogger(__name__)
 
+PUBLIC_START_MENU_MESSAGE_RU = (
+    "Привет! Добро пожаловать в FinTechTerms. Пожалуйста, привяжите свой аккаунт через веб-сайт, "
+    "чтобы получить доступ к функциям."
+)
+
 # ── Helpers ────────────────────────────────────────────────
 def sanitize_input(user_input: str) -> str:
     """
@@ -193,6 +198,12 @@ def _link_hint_keyboard(lang: str) -> InlineKeyboardMarkup:
     )
 
 
+def _public_site_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🌐 Перейти на сайт", url=WEB_APP_URL)]]
+    )
+
+
 async def _resolve_account_context(
     telegram_id: int, fallback_lang: str, username: str | None = None
 ) -> dict[str, Any]:
@@ -230,7 +241,7 @@ async def _build_account_home_text(
         return t("account_data_error", lang, error=error_text), _link_hint_keyboard(lang), lang
 
     if not context["is_linked"]:
-        return t("account_not_linked", lang), _link_hint_keyboard(lang), lang
+        return PUBLIC_START_MENU_MESSAGE_RU, _public_site_keyboard(), "ru"
 
     raw_name = context["full_name"] or first_name or username or "Пользователь"
     safe_name = html.escape(str(raw_name))

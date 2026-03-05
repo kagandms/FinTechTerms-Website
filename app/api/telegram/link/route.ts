@@ -6,15 +6,67 @@ import { z } from 'zod';
 
 // Token schema: 6 digit string
 const LinkTokenSchema = z.object({
-    token: z.string().length(6).regex(/^\d+$/, "Token must be a 6-digit number")
+    token: z.string().length(6).regex(/^\d+$/, 'Token must be a 6-digit number')
 });
 
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, timeoutMsg: string): Promise<T> => {
-    let timeoutHandle: NodeJS.Timeout;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutHandle = setTimeout(() => reject(new Error(timeoutMsg)), timeoutMs);
-    });
-    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
+const SUPABASE_TIMEOUT_MS = 8000;
+const SUPABASE_TIMEOUT_ERROR = 'SUPABASE_REQUEST_TIMEOUT_8S';
+
+const errorToMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    if (typeof error === 'string' && error.trim()) {
+        return error;
+    }
+
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return 'Unknown error';
+    }
+};
+
+const timeoutFetch: typeof fetch = async (input, init = {}) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
+    const upstreamSignal = init.signal;
+    const relayAbort = () => controller.abort();
+
+    if (upstreamSignal) {
+        if (upstreamSignal.aborted) {
+            relayAbort();
+        } else {
+            upstreamSignal.addEventListener('abort', relayAbort, { once: true });
+        }
+    }
+
+    try {
+        return await fetch(input, {
+            ...init,
+            signal: controller.signal
+        });
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(SUPABASE_TIMEOUT_ERROR);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+        if (upstreamSignal) {
+            upstreamSignal.removeEventListener('abort', relayAbort);
+        }
+    }
+};
+
+const buildCatchErrorResponse = (scope: string, error: unknown, extra: Record<string, unknown> = {}) => {
+    const message = `${scope}: ${errorToMessage(error)}`;
+    console.error(message, error);
+    return NextResponse.json(
+        { error: message, ...extra },
+        { status: 500 }
+    );
 };
 
 const getBearerToken = (request: Request): string | null => {
@@ -38,6 +90,7 @@ const resolveAuthenticatedContext = async (request: Request): Promise<{
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
                 global: {
+                    fetch: timeoutFetch,
                     headers: { Authorization: `Bearer ${bearerToken}` }
                 }
             }
@@ -68,7 +121,12 @@ export async function GET(request: Request) {
         // Service Role client to bypass RLS for fetching
         const supabaseAdmin = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                global: {
+                    fetch: timeoutFetch
+                }
+            }
         );
 
         const { data, error } = await supabaseAdmin
@@ -92,8 +150,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ isLinked: false });
     } catch (e) {
-        console.error('GET /api/telegram/link error:', e);
-        return NextResponse.json({ error: 'Server error', isLinked: false }, { status: 500 });
+        return buildCatchErrorResponse('GET_TELEGRAM_LINK_FAILED', e, { isLinked: false });
     }
 }
 
@@ -107,7 +164,12 @@ export async function DELETE(request: Request) {
         // Service Role client to bypass RLS for deletion
         const supabaseAdmin = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+                global: {
+                    fetch: timeoutFetch
+                }
+            }
         );
 
         const { error } = await supabaseAdmin
@@ -122,8 +184,7 @@ export async function DELETE(request: Request) {
 
         return NextResponse.json({ success: true, message: 'Telegram unlinked' });
     } catch (e) {
-        console.error('DELETE /api/telegram/link error:', e);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        return buildCatchErrorResponse('DELETE_TELEGRAM_LINK_FAILED', e);
     }
 }
 
@@ -134,9 +195,26 @@ export async function POST(request: Request) {
 
     if (!limitCheck.allowed) {
         return NextResponse.json(
-            { error: 'Too many requests / Слишком много запросов / Çok fazla istek atıldı. Lütfen daha sonra tekrar deneyin.' },
+            { error: 'Слишком много запросов. Too many requests. Çok fazla istek atıldı. Lütfen daha sonra tekrar deneyin.' },
             { status: 429, headers: { 'Retry-After': limitCheck.retryAfter.toString() } }
         );
+    }
+
+    let body: unknown;
+    try {
+        body = await request.json();
+    } catch (error) {
+        return NextResponse.json({
+            error: `Неверный JSON payload. ${errorToMessage(error)}`
+        }, { status: 400 });
+    }
+
+    const validatedData = LinkTokenSchema.safeParse(body);
+    if (!validatedData.success) {
+        return NextResponse.json({
+            error: 'Неверный формат кода привязки.',
+            details: validatedData.error.issues
+        }, { status: 400 });
     }
 
     try {
@@ -149,53 +227,27 @@ export async function POST(request: Request) {
             );
         }
 
-        const body = await request.json();
+        const { token } = validatedData.data;
 
-        // 3. Validation with Zod
-        const validatedData = LinkTokenSchema.parse(body);
-        const { token } = validatedData;
-
-        // 4. Call the RPC function 'link_telegram_account' with Backend Timeout Enforcement
-        const { data, error } = await withTimeout<any>(
-            Promise.resolve(supabase.rpc('link_telegram_account', { p_token: token })),
-            8000,
-            'DB_RPC_TIMEOUT'
-        );
+        const { data, error } = await supabase.rpc('link_telegram_account', { p_token: token });
 
         if (error) {
             console.error('RPC Error (link_telegram_account):', error);
             // Translate common RPC errors for the frontend
             if (error.message.includes('Geçersiz veya süresi dolmuş token') || error.message.includes('Expired')) {
-                return NextResponse.json({ error: 'Invalid or expired code. Please get a new one from the bot. / Неверный код. / Geçersiz veya süresi dolmuş kod.' }, { status: 400 });
+                return NextResponse.json({ error: 'Неверный или просроченный код. Invalid or expired code. Geçersiz veya süresi dolmuş kod.' }, { status: 400 });
             }
-            return NextResponse.json({ error: error.message || 'Database error occurred. / Ошибка базы данных. / Veritabanı hatası oluştu.' }, { status: 500 });
+            return NextResponse.json({ error: error.message || 'Ошибка базы данных. Database error occurred. Veritabanı hatası oluştu.' }, { status: 500 });
         }
 
         // Successfully linked
         return NextResponse.json({
             success: true,
-            message: data?.message || 'Telegram account successfully linked! / Аккаунт привязан! / Hesap başarıyla bağlandı!',
+            message: data?.message || 'Аккаунт Telegram успешно привязан! Telegram account successfully linked! Hesap başarıyla bağlandı!',
             telegram_id: data?.telegram_id
         });
 
-    } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            return NextResponse.json({
-                error: 'Invalid format / Неверный формат / Geçersiz format',
-                details: error.errors
-            }, { status: 400 });
-        }
-
-        if (error?.message === 'DB_RPC_TIMEOUT') {
-            console.error('Backend Timeout in /api/telegram/link');
-            return NextResponse.json({
-                error: 'Request timed out waiting for database. / Сервер не отвечает. / Sunucu veritabanı yanıt vermedi (Zaman Aşımı).'
-            }, { status: 504 });
-        }
-
-        console.error('Internal Server Error in /api/telegram/link:', error);
-        return NextResponse.json({
-            error: 'Server error / Ошибка сервера / Sunucu hatası oluştu.'
-        }, { status: 500 });
+    } catch (error) {
+        return buildCatchErrorResponse('POST_TELEGRAM_LINK_FAILED', error);
     }
 }

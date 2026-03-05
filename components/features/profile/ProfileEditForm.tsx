@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
-import { supabase } from '@/lib/supabase';
+import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
@@ -72,6 +72,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [isHydrating, setIsHydrating] = useState(true);
+    const [supabaseClient] = useState(() =>
+        createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+    );
 
     // Password visibility toggles
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -126,7 +132,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
             try {
                 const { data, error } = await withTimeout(
-                    supabase.auth.getUser(),
+                    supabaseClient.auth.getUser(),
                     15000,
                     dict.timeoutError
                 );
@@ -146,7 +152,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 try {
                     const profileResult = await withTimeout(
                         (async () =>
-                            supabase
+                            supabaseClient
                                 .from('profiles')
                                 .select('id, full_name, birth_date')
                                 .eq('id', supabaseUser.id)
@@ -204,65 +210,85 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         return () => {
             isMounted = false;
         };
-    }, [reset, showToast, user?.name, user?.email, dict.authRequired, dict.loadError, dict.timeoutError]);
+    }, [reset, showToast, user?.name, user?.email, dict.authRequired, dict.loadError, dict.timeoutError, supabaseClient]);
 
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);
 
         try {
-            if (!user?.id) {
+            const sessionResult = await withTimeout(
+                supabaseClient.auth.getSession(),
+                15000,
+                dict.timeoutError
+            );
+
+            if (sessionResult.error) {
+                throw sessionResult.error;
+            }
+
+            const session = sessionResult.data.session;
+            const sessionUser = session?.user;
+
+            if (!session?.access_token || !sessionUser?.id) {
                 throw new Error(dict.authRequired);
             }
 
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
+            const profilePayload = {
+                full_name: fullName,
+                birth_date: normalizedBirthDate || null,
+            };
             let ensuredProfileId: string | null = null;
 
             const profileUpdateResult = await withTimeout(
                 (async () =>
-                    supabase
+                    supabaseClient
                         .from('profiles')
-                        .update({
-                            full_name: fullName,
-                            birth_date: normalizedBirthDate || null,
-                        })
-                        .eq('id', user.id)
-                        .select('id')
-                        .maybeSingle()
+                        .update(profilePayload)
+                        .eq('id', sessionUser.id)
+                        .select()
                 )(),
                 15000,
                 dict.timeoutError
             );
+            const { data: updatedProfiles, error: updateError } = profileUpdateResult;
 
-            if (profileUpdateResult.error) {
-                throw profileUpdateResult.error;
+            if (updateError) {
+                console.error('SUPABASE_UPDATE_ERROR:', updateError);
+                throw updateError;
             }
 
-            ensuredProfileId = profileUpdateResult.data?.id || null;
+            ensuredProfileId = updatedProfiles?.[0]?.id || null;
 
-            // If the profile row does not exist yet, create it and retry once.
+            // If update returns no row, row might be missing or blocked by RLS visibility.
             if (!ensuredProfileId) {
+                console.error('SUPABASE_UPDATE_ERROR:', {
+                    message: 'No rows returned from profiles.update(). Possible RLS block or missing profile row.',
+                    userId: sessionUser.id,
+                });
+
                 const profileInsertResult = await withTimeout(
                     (async () =>
-                        supabase
+                        supabaseClient
                             .from('profiles')
                             .insert({
-                                id: user.id,
-                                full_name: fullName,
-                                birth_date: normalizedBirthDate || null,
+                                id: sessionUser.id,
+                                ...profilePayload,
                             })
-                            .select('id')
-                            .maybeSingle()
+                            .select()
                     )(),
                     15000,
                     dict.timeoutError
                 );
+                const { data: insertedProfiles, error: insertError } = profileInsertResult;
 
-                if (profileInsertResult.error) {
-                    throw profileInsertResult.error;
+                if (insertError) {
+                    console.error('SUPABASE_UPDATE_ERROR:', insertError);
+                    throw insertError;
                 }
 
-                ensuredProfileId = profileInsertResult.data?.id || null;
+                ensuredProfileId = insertedProfiles?.[0]?.id || null;
             }
 
             if (!ensuredProfileId) {
@@ -270,7 +296,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             }
 
             const metadataResult = await withTimeout(
-                supabase.auth.updateUser({
+                supabaseClient.auth.updateUser({
                     data: {
                         name: fullName,
                         full_name: fullName,
@@ -287,7 +313,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
 
             if (showPasswordSection && data.newPassword) {
                 const reauthResult = await withTimeout(
-                    supabase.auth.signInWithPassword({
+                    supabaseClient.auth.signInWithPassword({
                         email: data.email,
                         password: data.currentPassword || '',
                     }),
@@ -300,7 +326,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 }
 
                 const passwordResult = await withTimeout(
-                    supabase.auth.updateUser({ password: data.newPassword }),
+                    supabaseClient.auth.updateUser({ password: data.newPassword }),
                     15000,
                     dict.timeoutError
                 );
@@ -323,8 +349,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                 confirmPassword: '',
             });
 
-            toast.success('Profil güncellendi');
-            setIsPending(false);
+            toast.success(dict.profileUpdated);
             router.refresh();
             return;
         } catch (error: any) {
