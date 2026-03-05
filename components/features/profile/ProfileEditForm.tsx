@@ -371,10 +371,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             toast.success(dict.profileUpdated);
 
-            // Delay refresh slightly so the toast animation can start before the UI freezes/unmounts
-            setTimeout(() => {
-                router.refresh();
-            }, 100);
+            // We do NOT call router.refresh() here.
+            // Next.js App Router's refresh() forcefully reconstructs the Server Component
+            // tree, which in this specific force-dynamic page, unmounts the ToastContext.
+            // Since we already did `reset({...updatedData})` on line ~362, the UI is already
+            // optimistically updated.
             return;
         } catch (error: any) {
             console.error('Profile update failed:', error);
