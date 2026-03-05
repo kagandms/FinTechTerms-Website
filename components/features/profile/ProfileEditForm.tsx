@@ -130,23 +130,32 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
     useEffect(() => {
         let isMounted = true;
+        const applyFormValues = (values: { name: string; surname: string; email: string; birthDate: string }) => {
+            if (!isMounted) return;
+
+            reset({
+                name: values.name,
+                surname: values.surname,
+                email: values.email,
+                birthDate: values.birthDate,
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            });
+        };
 
         const hydrateProfileForm = async () => {
             if (initialData) {
-                reset({
+                applyFormValues({
                     name: initialData.name,
                     surname: initialData.surname,
                     email: initialData.email || fallbackUserEmail,
                     birthDate: initialData.birthDate,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
                 });
                 setIsHydrating(false);
-                return;
+            } else {
+                setIsHydrating(true);
             }
-
-            setIsHydrating(true);
 
             try {
                 const { data, error } = await withTimeout(
@@ -157,18 +166,19 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 if (error || !data.user) {
                     if (fallbackUserName || fallbackUserEmail) {
                         const [firstName = '', ...restName] = fallbackUserName.trim().split(' ').filter(Boolean);
-                        reset({
+                        applyFormValues({
                             name: firstName,
                             surname: restName.join(' '),
                             email: fallbackUserEmail,
-                            birthDate: '',
-                            currentPassword: '',
-                            newPassword: '',
-                            confirmPassword: '',
+                            birthDate: initialData?.birthDate || '',
                         });
                         return;
                     }
-                    throw error || new Error(dict.authRequired);
+
+                    if (!initialData) {
+                        throw error || new Error(dict.authRequired);
+                    }
+                    return;
                 }
 
                 const supabaseUser = data.user;
@@ -217,19 +227,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-                if (!isMounted) return;
-                reset({
+                applyFormValues({
                     name: firstName,
                     surname: lastName,
                     email: supabaseUser.email || fallbackUserEmail,
                     birthDate,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
                 });
             } catch (error: any) {
-                const message = error?.message || dict.loadError;
-                showToast(message, 'error');
+                if (!initialData) {
+                    const message = error?.message || dict.loadError;
+                    showToast(message, 'error');
+                }
             } finally {
                 if (isMounted) {
                     setIsHydrating(false);
