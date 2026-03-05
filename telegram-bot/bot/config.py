@@ -29,6 +29,9 @@ class Config:
     supabase_key: str = field(
         default_factory=lambda: os.getenv("SUPABASE_KEY", "")
     )
+    supabase_service_role_key: str = field(
+        default_factory=lambda: os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    )
 
     # Redis (Rate Limiting)
     redis_url: str = field(
@@ -57,8 +60,8 @@ class Config:
         """Raise ValueError if critical config is missing."""
         if not self.bot_token:
             raise ValueError("BOT_TOKEN is required. Get one from @BotFather.")
-        if not self.supabase_key:
-            raise ValueError("SUPABASE_KEY is required.")
+        if not self.supabase_key and not self.supabase_service_role_key:
+            raise ValueError("Set SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY.")
 
 
 # Singleton instance

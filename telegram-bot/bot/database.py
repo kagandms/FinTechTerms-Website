@@ -17,8 +17,10 @@ from bot.config import config, SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
 
-# ── Supabase Client ────────────────────────────────────────
-_client: Optional[Client] = None
+# ── Supabase Clients ────────────────────────────────────────
+_public_client: Optional[Client] = None
+_admin_client: Optional[Client] = None
+_warned_admin_fallback = False
 
 
 def _normalize_language(language: Any) -> str:
@@ -30,18 +32,44 @@ def _normalize_language(language: Any) -> str:
 
     return "ru"
 
+def get_public_client() -> Client:
+    """Lazy-initialise public Supabase client (anon/service key from SUPABASE_KEY)."""
+    global _public_client
+    if _public_client is None:
+        public_key = config.supabase_key or config.supabase_service_role_key
+        _public_client = create_client(config.supabase_url, public_key)
+    return _public_client
+
+
+def get_admin_client() -> Client:
+    """
+    Lazy-initialise admin Supabase client.
+
+    Uses SUPABASE_SERVICE_ROLE_KEY when available so account/favorites/stats lookups
+    are not blocked by RLS. Falls back to SUPABASE_KEY if service key is missing.
+    """
+    global _admin_client, _warned_admin_fallback
+    if _admin_client is None:
+        admin_key = config.supabase_service_role_key or config.supabase_key
+        _admin_client = create_client(config.supabase_url, admin_key)
+        if not config.supabase_service_role_key and not _warned_admin_fallback:
+            logger.warning(
+                "SUPABASE_SERVICE_ROLE_KEY is not set; falling back to SUPABASE_KEY. "
+                "Account linkage/favorites/stats may be limited by RLS."
+            )
+            _warned_admin_fallback = True
+    return _admin_client
+
+
 def get_client() -> Client:
-    """Lazy-initialise and return the Supabase client."""
-    global _client
-    if _client is None:
-        _client = create_client(config.supabase_url, config.supabase_key)
-    return _client
+    """Backward-compatible alias for legacy call sites."""
+    return get_public_client()
 
 # ── Term Queries ───────────────────────────────────────────
 async def fetch_all_terms() -> list[dict[str, Any]]:
     """Fetch all terms from the Supabase `terms` table."""
     def _fetch():
-        return get_client().table("terms").select("*").execute()
+        return get_public_client().table("terms").select("*").execute()
     try:
         response = await asyncio.to_thread(_fetch)
         return response.data or []
@@ -52,7 +80,7 @@ async def fetch_all_terms() -> list[dict[str, Any]]:
 async def fetch_term_by_id(term_id: str) -> Optional[dict[str, Any]]:
     """Fetch a single term by its ID."""
     def _fetch():
-        return get_client().table("terms").select("*").eq("id", term_id).limit(1).execute()
+        return get_public_client().table("terms").select("*").eq("id", term_id).limit(1).execute()
     try:
         response = await asyncio.to_thread(_fetch)
         data = response.data
@@ -67,7 +95,7 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
     Complexity: O(log N) due to GIN Indexes in DB.
     """
     def _search():
-        return get_client().rpc("search_terms_trigram", {"search_query": query, "max_limit": limit}).execute()
+        return get_public_client().rpc("search_terms_trigram", {"search_query": query, "max_limit": limit}).execute()
     try:
         response = await asyncio.to_thread(_search)
         return response.data or []
@@ -78,7 +106,7 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
 async def get_random_term() -> Optional[dict[str, Any]]:
     """Return a random term for the Daily Term feature."""
     def _get():
-        return get_client().table("terms").select("id").execute()
+        return get_public_client().table("terms").select("id").execute()
     try:
         response = await asyncio.to_thread(_get)
         ids = [row["id"] for row in (response.data or [])]
@@ -93,7 +121,7 @@ async def get_random_term() -> Optional[dict[str, Any]]:
 async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
     """Fetch terms filtered by category (Fintech / Finance / Technology)."""
     def _fetch():
-        return get_client().table("terms").select("*").eq("category", category).execute()
+        return get_public_client().table("terms").select("*").eq("category", category).execute()
     try:
         response = await asyncio.to_thread(_fetch)
         return response.data or []
@@ -108,7 +136,7 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
 async def sync_user(telegram_id: int, username: str | None = None) -> dict[str, Any]:
     """Ensures Telegram user is synced via RPC. Returns dict with user_id and language."""
     def _sync():
-        return get_client().rpc("sync_telegram_user", {
+        return get_admin_client().rpc("sync_telegram_user", {
             "p_telegram_id": telegram_id,
             "p_username": username,
             "p_default_language": config.default_language
@@ -131,14 +159,15 @@ async def get_user_language(telegram_id: int) -> str:
 async def set_user_language(telegram_id: int, language: str) -> None:
     """Set the user's preferred language and persist."""
     def _set():
+        client = get_admin_client()
         # First ensure they exist and get UUID
-        rpc = get_client().rpc("sync_telegram_user", {
+        rpc = client.rpc("sync_telegram_user", {
             "p_telegram_id": telegram_id,
             "p_default_language": config.default_language
         }).execute()
         
         if rpc.data and rpc.data.get("user_id"):
-            get_client().table("user_settings").update(
+            client.table("user_settings").update(
                 {"preferred_language": language}
             ).eq("user_id", rpc.data["user_id"]).execute()
             
@@ -155,16 +184,17 @@ async def track_activity(telegram_id: int, action: str, **kwargs: Any) -> None:
         return
 
     def _track():
+        client = get_admin_client()
         if action == "quiz_taken":
             is_correct = kwargs.get("correct", False)
-            get_client().table("quiz_attempts").insert({
+            client.table("quiz_attempts").insert({
                 "user_id": user_id,
                 "term_id": kwargs.get("term_id", ""),
                 "is_correct": is_correct,
                 "quiz_type": "telegram_bot"
             }).execute()
             
-            get_client().rpc("log_daily_learning", {
+            client.rpc("log_daily_learning", {
                 "p_user_id": user_id,
                 "p_words_reviewed": 1,
                 "p_words_correct": 1 if is_correct else 0,
@@ -173,7 +203,7 @@ async def track_activity(telegram_id: int, action: str, **kwargs: Any) -> None:
             }).execute()
             
         elif action == "term_viewed":
-            get_client().rpc("log_daily_learning", {
+            client.rpc("log_daily_learning", {
                 "p_user_id": user_id,
                 "p_words_reviewed": 1,
                 "p_words_correct": 0,
@@ -200,7 +230,7 @@ async def get_linked_profile_context(telegram_id: int, username: str | None = No
     """
 
     def _resolve() -> dict[str, Any]:
-        client = get_client()
+        client = get_admin_client()
 
         mapping_res = (
             client.table("telegram_users")
@@ -284,7 +314,7 @@ async def get_linked_profile_context(telegram_id: int, username: str | None = No
 async def generate_link_token(telegram_id: int) -> str | None:
     """Generate a 6-digit OTP for linking the Telegram bot account to a Web account."""
     def _generate():
-        return get_client().rpc("generate_telegram_link_token", {
+        return get_admin_client().rpc("generate_telegram_link_token", {
             "p_telegram_id": telegram_id
         }).execute()
         
@@ -303,13 +333,14 @@ async def get_user_report(telegram_id: int) -> dict[str, Any]:
         return {}
 
     def _report():
-        attempts_res = get_client().table("quiz_attempts").select("is_correct").eq("user_id", user_id).execute()
+        client = get_admin_client()
+        attempts_res = client.table("quiz_attempts").select("is_correct").eq("user_id", user_id).execute()
         attempts = attempts_res.data or []
         tot_quiz = len(attempts)
         tot_correct = sum(1 for a in attempts if a.get("is_correct"))
         accuracy = round((tot_correct / tot_quiz) * 100) if tot_quiz > 0 else 0
         
-        daily_logs = get_client().table("daily_learning_log").select("words_reviewed", "new_words_learned").eq("user_id", user_id).execute()
+        daily_logs = client.table("daily_learning_log").select("words_reviewed", "new_words_learned").eq("user_id", user_id).execute()
         words_reviewed = sum(row.get("words_reviewed", 0) for row in daily_logs.data or [])
         new_words = sum(row.get("new_words_learned", 0) for row in daily_logs.data or [])
         
@@ -334,7 +365,7 @@ async def get_user_report(telegram_id: int) -> dict[str, Any]:
 async def get_term_count() -> int:
     """Return total number of terms in the database."""
     def _count():
-        return get_client().table("terms").select("id", count="exact").execute()
+        return get_public_client().table("terms").select("id", count="exact").execute()
     try:
         response = await asyncio.to_thread(_count)
         return response.count or 0
@@ -345,7 +376,7 @@ async def get_term_count() -> int:
 async def get_category_counts() -> dict[str, int]:
     """Return term counts per category."""
     def _counts():
-        return get_client().table("terms").select("category").execute()
+        return get_public_client().table("terms").select("category").execute()
     try:
         response = await asyncio.to_thread(_counts)
         counts: dict[str, int] = {}
@@ -360,7 +391,7 @@ async def get_category_counts() -> dict[str, int]:
 async def get_bot_user_count() -> int:
     """Return total number of bot users."""
     def _count():
-        return get_client().table("telegram_users").select("telegram_id", count="exact").execute()
+        return get_admin_client().table("telegram_users").select("telegram_id", count="exact").execute()
     try:
         response = await asyncio.to_thread(_count)
         return response.count or 0
@@ -385,7 +416,7 @@ async def get_favorites_by_user_id(user_id: str, limit: int = 25) -> list[dict[s
     """Fetch favorites directly from `favorites` and hydrate term payload from `terms`."""
 
     def _fetch_favorites() -> list[dict[str, Any]]:
-        client = get_client()
+        client = get_admin_client()
         favorites_res = (
             client.table("favorites")
             .select("term_id, created_at")
@@ -436,7 +467,7 @@ async def get_activity_stats_by_user_id(user_id: str) -> dict[str, Any]:
     """Fetch user activity stats for the Telegram account dashboard."""
 
     def _fetch_stats() -> dict[str, Any]:
-        client = get_client()
+        client = get_admin_client()
 
         attempts_res = (
             client.table("quiz_attempts")
