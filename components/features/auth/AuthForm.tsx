@@ -7,7 +7,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     authLoading, handleAuth, authError, setAuthError,
     showPassword, setShowPassword, resetPassword, t
 }) => {
-    const [isDateFocused, setIsDateFocused] = React.useState(false);
+    const uiLang = typeof window !== 'undefined' ? localStorage.getItem('language') : 'en';
+    const nameLabel = uiLang === 'tr' ? 'Ad' : uiLang === 'ru' ? 'Имя' : 'Name';
+    const surnameLabel = uiLang === 'tr' ? 'Soyad' : uiLang === 'ru' ? 'Фамилия' : 'Surname';
+    const birthDateLabel = uiLang === 'tr' ? 'Doğum Tarihi' : uiLang === 'ru' ? 'Дата рождения' : 'Date of Birth';
 
     return (
         <>
@@ -34,36 +37,45 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 {/* Register Fields */}
                 {authMode === 'register' && (
                     <>
-                        <input
-                            type="text"
-                            value={authForm.name}
-                            onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                            className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                            placeholder={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Ad' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Имя' : 'Name'}
-                        />
-                        <input
-                            type="text"
-                            value={authForm.surname}
-                            onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
-                            className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                            placeholder={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Soyad' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Фамилия' : 'Surname'}
-                        />
-                        <div className="relative">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {nameLabel}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={authForm.name}
+                                    onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                    className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
+                                    placeholder={nameLabel}
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {surnameLabel}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={authForm.surname}
+                                    onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
+                                    className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
+                                    placeholder={surnameLabel}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {birthDateLabel}
+                            </label>
                             <input
                                 type="date"
                                 value={authForm.birthDate || ''}
-                                onFocus={() => setIsDateFocused(true)}
-                                onBlur={() => setIsDateFocused(false)}
                                 onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
-                                className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 appearance-none bg-transparent"
-                                aria-label={typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
+                                className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
+                                aria-label={birthDateLabel}
                             />
-                            {/* Overlay placeholder — only visible when empty AND not focused */}
-                            {!authForm.birthDate && !isDateFocused && (
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-sm bg-transparent dark:bg-gray-700 pr-2">
-                                    {typeof window !== 'undefined' && localStorage.getItem('language') === 'tr' ? 'Doğum Tarihi' : typeof window !== 'undefined' && localStorage.getItem('language') === 'ru' ? 'Дата рождения' : 'Date of Birth'}
-                                </span>
-                            )}
                         </div>
                     </>
                 )}

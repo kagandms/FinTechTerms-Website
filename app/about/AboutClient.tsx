@@ -20,6 +20,7 @@ import {
     Linkedin,
     Mail,
     Send,
+    ArrowLeft,
 } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
 
@@ -62,6 +63,7 @@ export default function AboutPage() {
                 terms: 'terim',
                 languages: 'dil'
             },
+            back: 'Geri',
         },
         en: {
             title: 'About',
@@ -97,6 +99,7 @@ export default function AboutPage() {
                 terms: 'terms',
                 languages: 'languages'
             },
+            back: 'Back',
         },
         ru: {
             title: 'О проекте',
@@ -132,6 +135,7 @@ export default function AboutPage() {
                 terms: 'терминов',
                 languages: 'языков'
             },
+            back: 'Назад',
         },
     };
 
@@ -156,6 +160,16 @@ export default function AboutPage() {
                     }),
                 }}
             />
+
+            <div className="mb-6">
+                <Link
+                    href="/profile"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    {t.back}
+                </Link>
+            </div>
 
             {/* Header */}
             <header className="text-center mb-10">

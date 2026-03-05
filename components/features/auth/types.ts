@@ -37,6 +37,7 @@ export interface OTPVerificationProps extends CommonAuthProps {
     resendCooldown: number;
     startCooldown: () => void;
     onClose: () => void;
+    showToast: (msg: string, type: 'success' | 'error') => void;
 }
 
 export interface UpdatePasswordProps extends CommonAuthProps {

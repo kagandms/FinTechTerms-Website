@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function TelegramLinkCard() {
     const [token, setToken] = useState('');
@@ -15,6 +16,7 @@ export default function TelegramLinkCard() {
     const [success, setSuccess] = useState<string | null>(null);
     const router = useRouter();
     const { language: lang } = useLanguage();
+    const { showToast } = useToast();
 
     const dict = {
         title: lang === 'tr' ? "Telegram'ı Bağla" : lang === 'ru' ? 'Привязать Telegram' : 'Link Telegram',
@@ -33,6 +35,12 @@ export default function TelegramLinkCard() {
         disconnectBtn: lang === 'tr' ? 'Bağlantıyı Kes' : lang === 'ru' ? 'Отключить' : 'Disconnect',
         disconnecting: lang === 'tr' ? 'Bağlantı kesiliyor...' : lang === 'ru' ? 'Отключение...' : 'Disconnecting...',
         unlinkedMsg: lang === 'tr' ? 'Bağlantı başarıyla kesildi.' : lang === 'ru' ? 'Подключение успешно удалено.' : 'Successfully disconnected.',
+        statusError: lang === 'tr' ? 'Telegram bağlantı durumu alınamadı.' : lang === 'ru' ? 'Не удалось получить статус Telegram.' : 'Failed to fetch Telegram link status.',
+        timeoutError: lang === 'tr' ? 'İşlem zaman aşımına uğradı. Sunucu yanıt vermiyor.' : lang === 'ru' ? 'Превышено время ожидания. Сервер не отвечает.' : 'Request timed out. Server is not responding.',
+        unauthorizedError: lang === 'tr' ? 'Oturum açmadınız. İşlem reddedildi.' : lang === 'ru' ? 'Вы не авторизованы. Операция отклонена.' : 'You must be logged in. Operation denied.',
+        invalidJsonError: lang === 'tr' ? 'Sunucudan geçersiz yanıt geldi (JSON değil).' : lang === 'ru' ? 'Получен недействительный ответ от сервера (не JSON).' : 'Received invalid response from server (not JSON).',
+        linkFailed: lang === 'tr' ? 'Bağlantı başarısız oldu: ' : lang === 'ru' ? 'Ошибка привязки: ' : 'Linking failed: ',
+        actionFailed: lang === 'tr' ? 'İşlem başarısız: ' : lang === 'ru' ? 'Ошибка: ' : 'Action failed: ',
     };
 
     // On mount, check if account is already linked
@@ -40,20 +48,26 @@ export default function TelegramLinkCard() {
         const checkStatus = async () => {
             try {
                 const res = await fetch('/api/telegram/link');
+                if (!res.ok) {
+                    throw new Error(dict.statusError);
+                }
+
                 const data = await res.json();
                 if (data.isLinked) {
                     setIsLinked(true);
                     setSuccess(dict.connected);
                     setLinkedUsername(data.telegram_username);
                 }
-            } catch (err) {
-                console.error("Failed to fetch telegram link status", err);
+            } catch (err: any) {
+                const message = err?.message || dict.statusError;
+                setError(message);
+                showToast(message, 'error');
             } finally {
                 setVerifying(false); // Done loading initial state
             }
         };
         checkStatus();
-    }, [dict.connected]);
+    }, [dict.connected, dict.statusError, showToast]);
 
     const handleDisconnect = async () => {
         if (!confirm(lang === 'tr' ? 'Bağlantıyı kesmek istediğinize emin misiniz?' : lang === 'ru' ? 'Вы уверены, что хотите отключиться?' : 'Are you sure you want to disconnect?')) {
@@ -74,9 +88,12 @@ export default function TelegramLinkCard() {
             setSuccess(dict.unlinkedMsg);
             setToken('');
             setTimeout(() => setSuccess(null), 3000); // clear success msg after 3s
+            showToast(dict.unlinkedMsg, 'success');
             router.refresh();
         } catch (err: any) {
-            setError(lang === 'tr' ? 'İşlem başarısız: ' + err.message : lang === 'ru' ? 'Ошибка: ' + err.message : 'Action failed: ' + err.message);
+            const message = dict.actionFailed + (err?.message || dict.errUnknown);
+            setError(message);
+            showToast(message, 'error');
         } finally {
             setLoading(false);
         }
@@ -90,25 +107,21 @@ export default function TelegramLinkCard() {
         // Basic frontend validation
         if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
             setError(dict.errFormat);
+            showToast(dict.errFormat, 'error');
             return;
         }
 
         setLoading(true);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout against hanging requests
 
         try {
             // Get session securely via Supabase client
             let sessionToken = '';
-            try {
-                const { data } = await supabase.auth.getSession();
-                if (data?.session?.access_token) {
-                    sessionToken = data.session.access_token;
-                }
-            } catch (e) {
-                console.error("Failed to fetch session:", e);
+            const sessionResult = await supabase.auth.getSession();
+            if (sessionResult.data?.session?.access_token) {
+                sessionToken = sessionResult.data.session.access_token;
             }
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout against hanging requests
 
             const res = await fetch('/api/telegram/link', {
                 method: 'POST',
@@ -120,41 +133,44 @@ export default function TelegramLinkCard() {
                 signal: controller.signal
             });
 
-            clearTimeout(timeoutId);
-
             const contentType = res.headers.get("content-type");
             let data: any = {};
 
             if (contentType && contentType.includes("application/json")) {
                 data = await res.json();
             } else {
-                // If it's a 500 error page from Next.js (not JSON)
-                throw new Error(lang === 'tr' ? 'Sunucudan geçersiz yanıt geldi (JSON değil).' : lang === 'ru' ? 'Получен недействительный ответ от сервера (не JSON).' : 'Received invalid response from server (not JSON).');
+                throw new Error(dict.invalidJsonError);
             }
 
             if (!res.ok) {
                 throw new Error(data.error || 'Server returned an error');
             }
 
+            setIsLinked(true);
+            setLinkedUsername(data.telegram_username ?? null);
             setSuccess(dict.successMsg);
             setToken('');
+            setError(null);
+            showToast(dict.successMsg, 'success');
 
-            // Optionally refresh the page or user session data
             router.refresh();
-
         } catch (err: any) {
-            setLoading(false); // Explicitly clear loading on error
+            let message = dict.errUnknown;
+
             if (err.name === 'AbortError') {
-                setError(lang === 'tr' ? 'İşlem zaman aşımına uğradı. Sunucu yanıt vermiyor.' : lang === 'ru' ? 'Превышено время ожидания. Сервер не отвечает.' : 'Request timed out. Server is not responding.');
+                message = dict.timeoutError;
             } else if (err.message === 'unauthorized') {
-                setError(lang === 'tr' ? 'Oturum açmadınız. İşlem reddedildi.' : lang === 'ru' ? 'Вы не авторизованы. Операция отклонена.' : 'You must be logged in. Operation denied.');
+                message = dict.unauthorizedError;
             } else if (err.message === 'unknown') {
-                setError(dict.errUnknown);
+                message = dict.errUnknown;
             } else {
-                setError(lang === 'tr' ? 'Bağlantı başarısız oldu: ' + err.message : lang === 'ru' ? 'Ошибка привязки: ' + err.message : 'Linking failed: ' + err.message);
+                message = dict.linkFailed + (err?.message || dict.errUnknown);
             }
+
+            setError(message);
+            showToast(message, 'error');
         } finally {
-            // Keep finally for safety, though we clear it in catch/success too
+            clearTimeout(timeoutId);
             setLoading(false);
         }
     };

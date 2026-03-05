@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -14,136 +14,34 @@ interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
 }
 
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+
+        promise
+            .then((value) => {
+                clearTimeout(timeoutId);
+                resolve(value);
+            })
+            .catch((error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+            });
+    });
+};
+
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) => {
     const { user } = useAuth();
     const { showToast } = useToast();
     const router = useRouter();
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
+    const [isPending, setIsPending] = useState(false);
 
     // Password visibility toggles
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-    // Split name into first and last name safely
-    const nameParts = user?.name ? user.name.split(' ') : [''];
-    const defaultFirstName = nameParts[0];
-    const defaultLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors, isSubmitting },
-    } = useForm<ProfileFormValues>({
-        resolver: zodResolver(createProfileSchema(language)),
-        defaultValues: {
-            name: defaultFirstName,
-            surname: defaultLastName,
-            email: user?.email || '',
-            birthDate: (user as any)?.user_metadata?.birth_date || '', // Pre-filled from metadata
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: '',
-        },
-    });
-
-    const onSubmit = async (data: ProfileFormValues) => {
-        try {
-            // 1. Update Profile Information (User Metadata)
-            const fullName = `${data.name.trim()} ${data.surname.trim()}`;
-
-            const updatePromise = supabase.auth.updateUser({
-                data: {
-                    name: fullName,
-                    full_name: fullName,
-                    birth_date: data.birthDate,
-                }
-            });
-
-            // Fallback timeout protection against frozen network requests
-            const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
-                setTimeout(() => reject(new Error('Network timeout: Sunucu yanıt vermedi.')), 15000)
-            );
-
-            const { error: profileError } = await Promise.race([updatePromise, timeoutPromise]);
-
-            if (profileError) throw profileError;
-
-            // 2. Update Password (if fields are filled and valid)
-            if (showPasswordSection && data.newPassword) {
-                // Supabase doesn't natively require 'currentPassword' for standard authenticated users to update their own password,
-                // but requiring it in the UI makes it more secure against session hijacking.
-                // Note: Realistically, to verify the current password, we either re-authenticate them,
-                // or we rely on the fact that they are already logged in via active JWT.
-
-                // Optional: Re-authenticate to verify current password (Strict Security)
-                const { error: reauthError } = await supabase.auth.signInWithPassword({
-                    email: data.email,
-                    password: data.currentPassword || ''
-                });
-
-                if (reauthError) {
-                    throw new Error(
-                        language === 'tr' ? 'Mevcut şifre yanlış' :
-                            language === 'ru' ? 'Текущий пароль неверен' :
-                                'Current password incorrect'
-                    );
-                }
-
-                // Update the password
-                const { error: passwordError } = await supabase.auth.updateUser({
-                    password: data.newPassword
-                });
-
-                if (passwordError) throw passwordError;
-
-                // Clear password fields after successful update
-                reset((formValues) => ({
-                    ...formValues,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: ''
-                }));
-                setShowPasswordSection(false);
-
-                // Password-specific success toast
-                showToast(
-                    language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' :
-                        language === 'ru' ? '🔐 Пароль успешно обновлён!' :
-                            '🔐 Password updated successfully!',
-                    'success'
-                );
-            }
-
-            // Force session refresh so AuthContext picks up the new user metadata (name, birthDate) immediately
-            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
-
-            // Verify if metadata is updated in the refreshed session
-            if (refreshedSession?.user?.user_metadata?.full_name !== fullName) {
-                console.warn('Metadata not immediately synced in session, waiting for next refresh cycle.');
-            }
-
-            showToast(
-                language === 'tr' ? 'Bilgileriniz güncellendi ✅' :
-                    language === 'ru' ? 'Профиль обновлен ✅' :
-                        'Profile updated ✅',
-                'success'
-            );
-
-            // Gecikmeli refresh (Toast mesajının ekranda görülebilmesi için ve session senkronizasyonu için)
-            setTimeout(() => {
-                if (typeof window !== 'undefined') {
-                    window.location.reload(); // Hard reload for full meta sync
-                }
-            }, 800); // Reduced delay for snappier feel
-
-        } catch (error: any) {
-            console.error('Profile update error:', error);
-            showToast(error.message || 'Something went wrong', 'error');
-        }
-    };
 
     // Dictionary for localization
     const dict = {
@@ -157,6 +55,159 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
         pwdCurrent: language === 'tr' ? 'Mevcut Şifre' : language === 'ru' ? 'Текущий пароль' : 'Current Password',
         pwdNew: language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password',
         pwdConfirm: language === 'tr' ? 'Yeni Şifre (Tekrar)' : language === 'ru' ? 'Новый пароль (Еще раз)' : 'Confirm New Password',
+        timeoutError: language === 'tr' ? 'Sunucu zaman aşımına uğradı, lütfen tekrar deneyin.' : language === 'ru' ? 'Тайм-аут сервера, попробуйте снова.' : 'Server timeout. Please try again.',
+        unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
+        loadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить профиль.' : 'Failed to load profile data.',
+        profileUpdated: language === 'tr' ? 'Bilgileriniz güncellendi ✅' : language === 'ru' ? 'Профиль обновлен ✅' : 'Profile updated ✅',
+        passwordUpdated: language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' : language === 'ru' ? '🔐 Пароль успешно обновлён!' : '🔐 Password updated successfully!',
+        currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
+    };
+
+    // Split name into first and last name safely
+    const nameParts = user?.name ? user.name.split(' ') : [''];
+    const defaultFirstName = nameParts[0] || '';
+    const defaultLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors, isSubmitting },
+    } = useForm<ProfileFormValues>({
+        resolver: zodResolver(createProfileSchema(language)),
+        defaultValues: {
+            name: defaultFirstName,
+            surname: defaultLastName,
+            email: user?.email || '',
+            birthDate: '',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+        },
+    });
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const hydrateProfileForm = async () => {
+            try {
+                const { data, error } = await supabase.auth.getUser();
+                if (error) throw error;
+
+                const supabaseUser = data.user;
+                if (!supabaseUser) return;
+
+                const fullName = (
+                    supabaseUser.user_metadata?.full_name ||
+                    supabaseUser.user_metadata?.name ||
+                    user?.name ||
+                    ''
+                ).trim();
+                const profileNameParts = fullName ? fullName.split(' ') : [''];
+                const firstName = profileNameParts[0] || '';
+                const lastName = profileNameParts.length > 1 ? profileNameParts.slice(1).join(' ') : '';
+                const birthDate = String(supabaseUser.user_metadata?.birth_date || '');
+
+                if (!isMounted) return;
+                reset({
+                    name: firstName,
+                    surname: lastName,
+                    email: supabaseUser.email || user?.email || '',
+                    birthDate,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                });
+            } catch (error: any) {
+                const message = error?.message || dict.loadError;
+                showToast(message, 'error');
+            }
+        };
+
+        hydrateProfileForm();
+        return () => {
+            isMounted = false;
+        };
+    }, [reset, showToast, user?.name, user?.email, dict.loadError]);
+
+    const onSubmit = async (data: ProfileFormValues) => {
+        setIsPending(true);
+
+        try {
+            const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
+
+            const profileResult = await withTimeout(
+                supabase.auth.updateUser({
+                    data: {
+                        name: fullName,
+                        full_name: fullName,
+                        birth_date: data.birthDate || null,
+                    },
+                }),
+                15000,
+                dict.timeoutError
+            );
+
+            if (profileResult.error) {
+                throw profileResult.error;
+            }
+
+            if (showPasswordSection && data.newPassword) {
+                const reauthResult = await withTimeout(
+                    supabase.auth.signInWithPassword({
+                        email: data.email,
+                        password: data.currentPassword || '',
+                    }),
+                    15000,
+                    dict.timeoutError
+                );
+
+                if (reauthResult.error) {
+                    throw new Error(dict.currentPasswordError);
+                }
+
+                const passwordResult = await withTimeout(
+                    supabase.auth.updateUser({ password: data.newPassword }),
+                    15000,
+                    dict.timeoutError
+                );
+
+                if (passwordResult.error) {
+                    throw passwordResult.error;
+                }
+
+                setShowPasswordSection(false);
+                showToast(dict.passwordUpdated, 'success');
+            }
+
+            const refreshResult = await withTimeout(
+                supabase.auth.refreshSession(),
+                15000,
+                dict.timeoutError
+            );
+
+            if (refreshResult.error) {
+                throw refreshResult.error;
+            }
+
+            reset({
+                name: data.name.trim(),
+                surname: data.surname.trim(),
+                email: data.email,
+                birthDate: data.birthDate || '',
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            });
+
+            showToast(dict.profileUpdated, 'success');
+            router.refresh();
+        } catch (error: any) {
+            const message = error?.message || dict.unknownError;
+            showToast(message, 'error');
+        } finally {
+            setIsPending(false);
+        }
     };
 
     return (
@@ -206,7 +257,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                     <input
                         {...register('email')}
                         type="email"
-                        disabled // Disabled by default to prevent easy email changes without explicit verification flows
+                        disabled
                         className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 cursor-not-allowed"
                     />
                 </div>
@@ -234,7 +285,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                         <div className="relative">
                             <input
                                 {...register('currentPassword')}
-                                type={showCurrentPassword ? "text" : "password"}
+                                type={showCurrentPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.currentPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button
@@ -254,7 +305,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                         <div className="relative">
                             <input
                                 {...register('newPassword')}
-                                type={showNewPassword ? "text" : "password"}
+                                type={showNewPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.newPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button
@@ -274,7 +325,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
                         <div className="relative">
                             <input
                                 {...register('confirmPassword')}
-                                type={showConfirmPassword ? "text" : "password"}
+                                type={showConfirmPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button
@@ -294,10 +345,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language }) =>
             <div className="pt-2 flex justify-end">
                 <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isPending}
                     className="flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-primary-500/20"
                 >
-                    {isSubmitting ? (
+                    {(isSubmitting || isPending) ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             {dict.saving}

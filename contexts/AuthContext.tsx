@@ -7,6 +7,7 @@ import {
     getUserProgressFromSupabase,
     createUserProgress,
 } from '@/lib/supabaseStorage';
+import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 
 interface User {
     id: string;
@@ -223,6 +224,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
      */
     const verifyOTP = useCallback(async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
         try {
+            if (!isValidEmailOtp(token)) {
+                return {
+                    success: false,
+                    error: `Verification code must be exactly ${EMAIL_OTP_LENGTH} digits.`,
+                };
+            }
+
             const { data, error } = await supabase.auth.verifyOtp({
                 email,
                 token,
