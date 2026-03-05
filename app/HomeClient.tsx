@@ -65,9 +65,9 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                 <Image
                     src="/home-logo.png"
                     alt="FinTechTerms Logo"
-                    height={100}
+                    height={90}
                     width={100}
-                    className="w-24 h-24 object-contain drop-shadow-lg rounded-2xl"
+                    className="w-24 h-auto object-contain drop-shadow-lg rounded-2xl"
                     priority
                 />
                 <div className="text-center">
@@ -114,15 +114,14 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                 <div className="flex items-center gap-8">
                     <div className="relative group shrink-0">
                         {/* Wrapper with soft rounded corners */}
-                        <div className="relative w-40 h-40 overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105 bg-transparent rounded-3xl">
-                            <Image
-                                src="/home-logo.png"
-                                alt="FinTechTerms Logo"
-                                fill
-                                className="object-contain transform origin-center"
-                                priority
-                            />
-                        </div>
+                        <Image
+                            src="/home-logo.png"
+                            alt="FinTechTerms Logo"
+                            width={160}
+                            height={144}
+                            className="w-40 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
+                            priority
+                        />
                     </div>
                     <div className="flex flex-col justify-center h-40">
                         <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tighter mb-2">
