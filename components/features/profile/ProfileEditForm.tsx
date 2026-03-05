@@ -128,8 +128,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         },
     });
 
+    const hasHydrated = React.useRef(false);
+
     useEffect(() => {
         let isMounted = true;
+        
+        // Prevent re-hydration if it has already been hydrated once.
+        // This solves the bug where `router.refresh()` feeds stale Server Component data 
+        // into the component, wiping the user's just-saved edits.
+        if (hasHydrated.current) return;
+
         const applyFormValues = (values: { name: string; surname: string; email: string; birthDate: string }) => {
             if (!isMounted) return;
 
@@ -172,12 +180,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                             email: fallbackUserEmail,
                             birthDate: initialData?.birthDate || '',
                         });
+                        hasHydrated.current = true;
                         return;
                     }
 
                     if (!initialData) {
                         throw error || new Error(dict.authRequired);
                     }
+                    hasHydrated.current = true;
                     return;
                 }
 
@@ -216,7 +226,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     }
                 } catch (profileError: any) {
                     const message = profileError?.message || dict.loadError;
-                    showToast(message, 'error');
+                    // Intentionally ignore failure to load from 'profiles' if user_metadata is good enough
                 }
 
                 if (!fullName) {
@@ -233,6 +243,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     email: supabaseUser.email || fallbackUserEmail,
                     birthDate,
                 });
+                hasHydrated.current = true;
             } catch (error: any) {
                 if (!initialData) {
                     const message = error?.message || dict.loadError;

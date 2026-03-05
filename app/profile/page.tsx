@@ -2,6 +2,9 @@ import ProfilePageClient from './ProfilePageClient';
 import { createClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 const toDateInputValue = (value: unknown): string => {
     if (!value) return '';
 
