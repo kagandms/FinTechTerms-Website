@@ -1,5 +1,19 @@
 import { z } from 'zod';
 
+const ContextTagValueSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+    z.array(z.boolean()),
+]);
+
+const ContextTagsSchema = z
+    .record(ContextTagValueSchema)
+    .catch({})
+    .transform((value) => value ?? {});
+
 // Zod Schema mirroring the Term interface
 export const TermSchema = z.object({
     id: z.string().catch('unknown'),
@@ -19,6 +33,9 @@ export const TermSchema = z.object({
     example_sentence_en: z.string().nullable().catch('').transform(s => s || ''),
     example_sentence_ru: z.string().nullable().catch('').transform(s => s || ''),
     example_sentence_tr: z.string().nullable().catch('').transform(s => s || ''),
+
+    context_tags: ContextTagsSchema.default({}),
+    regional_market: z.enum(['MOEX', 'BIST', 'GLOBAL']).default('GLOBAL'),
 
     // SRS Data (with safe defaults)
     srs_level: z.number().default(0),
@@ -51,4 +68,3 @@ export const QuizAttemptSchema = z.object({
     user_id: z.string().optional().nullable(),
     metadata: z.record(z.unknown()).optional(),
 });
-

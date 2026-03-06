@@ -2,7 +2,7 @@
  * DynamicHtmlLang — Client-side html lang attribute updater (M32)
  * Skill: i18n-localization, react-best-practices
  *
- * Since Next.js App Router renders <html lang="en"> at build time,
+ * Since the app shell now renders <html lang="ru"> by default,
  * this effect updates it dynamically based on the user's selected language.
  */
 

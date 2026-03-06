@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { AuthFormProps } from './types';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
     authLoading, handleAuth, authError, setAuthError,
-    showPassword, setShowPassword, resetPassword, t
+    showPassword, setShowPassword, resetPassword, showToast, t
 }) => {
     const uiLang = typeof window !== 'undefined' ? localStorage.getItem('language') : 'en';
     const nameLabel = uiLang === 'tr' ? 'Ad' : uiLang === 'ru' ? 'Имя' : 'Name';
@@ -13,6 +13,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     const birthDateLabel = uiLang === 'tr' ? 'Doğum Tarihi' : uiLang === 'ru' ? 'Дата рождения' : 'Date of Birth';
     const loginLoadingLabel = uiLang === 'tr' ? 'Giriş Yapılıyor...' : uiLang === 'ru' ? 'Выполняется вход...' : 'Signing in...';
     const registerLoadingLabel = uiLang === 'tr' ? 'Kayıt Yapılıyor...' : uiLang === 'ru' ? 'Регистрация...' : 'Registering...';
+    const resetLoadingLabel = uiLang === 'tr' ? 'Gönderiliyor...' : uiLang === 'ru' ? 'Отправка...' : 'Sending...';
+    const [isResetting, setIsResetting] = useState(false);
 
     return (
         <>
@@ -108,17 +110,39 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 {authMode === 'forgot-password' ? (
                     <button
                         onClick={async () => {
-                            const res = await resetPassword(authForm.email);
-                            if (res.success) {
-                                const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
-                                setAuthError(lang === 'tr' ? '✅ Lütfen e-posta (ve spam) kutunuzu kontrol edin' : lang === 'ru' ? '✅ Проверьте почту (и папку спам)' : '✅ Check email (and spam folder)');
-                            } else {
-                                setAuthError(res.error || 'Error');
+                            setIsResetting(true);
+                            setAuthError('');
+
+                            try {
+                                const res = await resetPassword(authForm.email);
+                                if (res.success) {
+                                    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
+                                    const successMessage = lang === 'tr'
+                                        ? '✅ Lütfen e-posta (ve spam) kutunuzu kontrol edin'
+                                        : lang === 'ru'
+                                            ? '✅ Проверьте почту (и папку спам)'
+                                            : '✅ Check email (and spam folder)';
+
+                                    setAuthError(successMessage);
+                                    showToast(successMessage, 'success');
+                                } else {
+                                    const errorMessage = res.error || 'Error';
+                                    setAuthError(errorMessage);
+                                    showToast(errorMessage, 'error');
+                                }
+                            } catch (error) {
+                                console.error('AUTH_RESET_PASSWORD_UI_ERROR', error);
+                                const errorMessage = error instanceof Error ? error.message : 'Error';
+                                setAuthError(errorMessage);
+                                showToast(errorMessage, 'error');
+                            } finally {
+                                setIsResetting(false);
                             }
                         }}
+                        disabled={isResetting}
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors"
                     >
-                        {t('auth.sendResetLink') || 'Send Reset Link'}
+                        {isResetting ? resetLoadingLabel : (t('auth.sendResetLink') || 'Send Reset Link')}
                     </button>
                 ) : (
                     <button

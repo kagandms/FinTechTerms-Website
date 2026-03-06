@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { startTransition, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 
@@ -15,12 +14,6 @@ interface ProfileEditFormProps {
     initialData?: ProfileFormInitialData | null;
 }
 
-type ProfileRow = {
-    id: string;
-    full_name: string | null;
-    birth_date: string | null;
-};
-
 export interface ProfileFormInitialData {
     userId: string;
     name: string;
@@ -28,21 +21,6 @@ export interface ProfileFormInitialData {
     email: string;
     birthDate: string;
 }
-
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
-    return new Promise<T>((resolve, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
-        promise
-            .then((value) => {
-                clearTimeout(timeoutId);
-                resolve(value);
-            })
-            .catch((error) => {
-                clearTimeout(timeoutId);
-                reject(error);
-            });
-    });
-};
 
 const toDateInputValue = (value: unknown): string => {
     if (!value) return '';
@@ -70,21 +48,16 @@ const toDateInputValue = (value: unknown): string => {
 };
 
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
-    const { user } = useAuth();
-    const fallbackUserName = user?.name || '';
-    const fallbackUserEmail = user?.email || '';
-    const { showToast } = useToast();
+    const { showToast, showToastAfterRefresh } = useToast();
     const router = useRouter();
-    const toast = {
-        success: (message: string) => showToast(message, 'success'),
-        error: (message: string) => showToast(message, 'error'),
-    };
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
-    const [isHydrating, setIsHydrating] = useState(!initialData);
 
-    // Password visibility toggles
+    // UI Alerts
+    const [formSuccess, setFormSuccess] = useState<string | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -96,18 +69,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         birthDate: language === 'tr' ? 'Doğum Tarihi' : language === 'ru' ? 'Дата рождения' : 'Date of Birth',
         saveBtn: language === 'tr' ? 'Değişiklikleri Kaydet' : language === 'ru' ? 'Сохранить изменения' : 'Save Changes',
         saving: language === 'tr' ? 'Kaydediliyor...' : language === 'ru' ? 'Сохранение...' : 'Saving...',
-        loadingProfile: language === 'tr' ? 'Profil yükleniyor...' : language === 'ru' ? 'Загрузка профиля...' : 'Loading profile...',
         pwdTitle: language === 'tr' ? 'Şifre Değiştir' : language === 'ru' ? 'Изменить пароль' : 'Change Password',
         pwdCurrent: language === 'tr' ? 'Mevcut Şifre' : language === 'ru' ? 'Текущий пароль' : 'Current Password',
         pwdNew: language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password',
         pwdConfirm: language === 'tr' ? 'Yeni Şifre (Tekrar)' : language === 'ru' ? 'Новый пароль (Еще раз)' : 'Confirm New Password',
-        timeoutError: language === 'tr' ? 'Sunucu zaman aşımına uğradı, lütfen tekrar deneyin.' : language === 'ru' ? 'Тайм-аут сервера, попробуйте снова.' : 'Server timeout. Please try again.',
         unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
-        loadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить профиль.' : 'Failed to load profile data.',
-        profileUpdated: language === 'tr' ? 'İşleminiz başarılı ✅' : language === 'ru' ? 'Операция выполнена успешно ✅' : 'Operation successful ✅',
-        passwordUpdated: language === 'tr' ? '🔐 Şifreniz başarıyla güncellendi!' : language === 'ru' ? '🔐 Пароль успешно обновлён!' : '🔐 Password updated successfully!',
+        profileUpdated: language === 'tr' ? 'Başarıyla kaydedildi' : language === 'ru' ? 'Успешно сохранено' : 'Successfully saved',
+        passwordUpdated: language === 'tr' ? 'Şifreniz başarıyla güncellendi!' : language === 'ru' ? 'Пароль успешно обновлён!' : 'Password updated successfully!',
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
         authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
+        profileLoadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить данные профиля.' : 'Unable to load profile data.',
     };
 
     const {
@@ -117,10 +88,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         formState: { errors, isSubmitting },
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(createProfileSchema(language)),
-        defaultValues: {
+        values: {
             name: initialData?.name || '',
             surname: initialData?.surname || '',
-            email: initialData?.email || fallbackUserEmail,
+            email: initialData?.email || '',
             birthDate: initialData?.birthDate || '',
             currentPassword: '',
             newPassword: '',
@@ -128,287 +99,177 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         },
     });
 
-    const hasHydrated = React.useRef(false);
-
     useEffect(() => {
         let isMounted = true;
 
-        // Prevent re-hydration if it has already been hydrated once.
-        // This solves the bug where `router.refresh()` feeds stale Server Component data 
-        // into the component, wiping the user's just-saved edits.
-        if (hasHydrated.current) return;
-
-        const applyFormValues = (values: { name: string; surname: string; email: string; birthDate: string }) => {
-            if (!isMounted) return;
-
-            reset({
-                name: values.name,
-                surname: values.surname,
-                email: values.email,
-                birthDate: values.birthDate,
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: '',
-            });
-        };
-
-        const hydrateProfileForm = async () => {
+        const loadProfileData = async () => {
             if (initialData) {
-                applyFormValues({
-                    name: initialData.name,
-                    surname: initialData.surname,
-                    email: initialData.email || fallbackUserEmail,
-                    birthDate: initialData.birthDate,
-                });
-                setIsHydrating(false);
-            } else {
-                setIsHydrating(true);
+                if (isMounted) {
+                    reset({
+                        name: initialData.name || '',
+                        surname: initialData.surname || '',
+                        email: initialData.email || '',
+                        birthDate: initialData.birthDate || '',
+                        currentPassword: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                    });
+                }
+                return;
             }
 
             try {
-                const { data, error } = await withTimeout(
-                    supabase.auth.getUser(),
-                    15000,
-                    dict.timeoutError
-                );
+                const { data, error } = await supabase.auth.getUser();
                 if (error || !data.user) {
-                    if (fallbackUserName || fallbackUserEmail) {
-                        const [firstName = '', ...restName] = fallbackUserName.trim().split(' ').filter(Boolean);
-                        applyFormValues({
-                            name: firstName,
-                            surname: restName.join(' '),
-                            email: fallbackUserEmail,
-                            birthDate: initialData?.birthDate || '',
-                        });
-                        hasHydrated.current = true;
-                        return;
+                    console.warn('PROFILE_FORM_SESSION_UNAVAILABLE', error);
+                    if (isMounted) {
+                        setFormError(dict.authRequired);
                     }
-
-                    if (!initialData) {
-                        throw error || new Error(dict.authRequired);
-                    }
-                    hasHydrated.current = true;
+                    showToast(dict.authRequired, 'warning');
                     return;
                 }
 
                 const supabaseUser = data.user;
-                let fullName = (
-                    supabaseUser.user_metadata?.full_name ||
-                    supabaseUser.user_metadata?.name ||
-                    fallbackUserName ||
-                    ''
-                ).trim();
+                let fullName = (supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || '').trim();
                 let birthDate = toDateInputValue(supabaseUser.user_metadata?.birth_date || '');
 
-                try {
-                    const profileResult = await withTimeout(
-                        (async () =>
-                            supabase
-                                .from('profiles')
-                                .select('id, full_name, birth_date')
-                                .eq('id', supabaseUser.id)
-                                .maybeSingle()
-                        )(),
-                        15000,
-                        dict.timeoutError
-                    );
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name, birth_date')
+                    .eq('id', supabaseUser.id)
+                    .maybeSingle();
 
-                    if (profileResult.error) {
-                        throw profileResult.error;
-                    }
+                if (profile?.full_name) fullName = profile.full_name.trim();
+                if (profile?.birth_date) birthDate = toDateInputValue(profile.birth_date);
 
-                    const profile = profileResult.data as ProfileRow | null;
-                    if (profile?.full_name) {
-                        fullName = profile.full_name.trim();
-                    }
-                    if (profile?.birth_date) {
-                        birthDate = toDateInputValue(profile.birth_date);
-                    }
-                } catch (profileError: any) {
-                    const message = profileError?.message || dict.loadError;
-                    // Intentionally ignore failure to load from 'profiles' if user_metadata is good enough
-                }
-
-                if (!fullName) {
-                    fullName = (supabaseUser.email?.split('@')[0] || '').trim();
-                }
+                if (!fullName) fullName = (supabaseUser.email?.split('@')[0] || '').trim();
 
                 const nameParts = fullName ? fullName.split(' ') : [''];
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-                applyFormValues({
-                    name: firstName,
-                    surname: lastName,
-                    email: supabaseUser.email || fallbackUserEmail,
-                    birthDate,
-                });
-                hasHydrated.current = true;
-            } catch (error: any) {
-                if (!initialData) {
-                    const message = error?.message || dict.loadError;
-                    showToast(message, 'error');
-                }
-            } finally {
                 if (isMounted) {
-                    setIsHydrating(false);
+                    reset({
+                        name: firstName,
+                        surname: lastName,
+                        email: supabaseUser.email || '',
+                        birthDate,
+                        currentPassword: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                    });
                 }
+            } catch (err) {
+                console.error('PROFILE_FORM_LOAD_ERROR', err);
+                if (isMounted) {
+                    setFormError(dict.profileLoadError);
+                }
+                showToast(dict.profileLoadError, 'error');
             }
         };
 
-        void hydrateProfileForm();
+        void loadProfileData();
+
         return () => {
             isMounted = false;
         };
-    }, [
-        initialData,
-        reset,
-        showToast,
-        fallbackUserName,
-        fallbackUserEmail,
-        dict.authRequired,
-        dict.loadError,
-        dict.timeoutError,
-    ]);
+    }, [dict.authRequired, dict.profileLoadError, initialData, reset, showToast]);
 
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);
+        setFormSuccess(null);
+        setFormError(null);
 
         try {
-            const userResult = await withTimeout(
-                supabase.auth.getUser(),
-                15000,
-                dict.timeoutError
-            );
+            const { data: userResultData, error: userError } = await supabase.auth.getUser();
 
-            if (userResult.error || !userResult.data.user) {
-                throw userResult.error || new Error(dict.authRequired);
+            if (userError || !userResultData?.user) {
+                throw userError || new Error(dict.authRequired);
             }
 
-            const authUser = userResult.data.user;
-
+            const authUser = userResultData.user;
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
-            const profilePayload = {
-                full_name: fullName,
-                birth_date: normalizedBirthDate || null,
-            };
 
-            const metadataResult = await withTimeout(
-                supabase.auth.updateUser({
-                    data: {
-                        name: fullName,
-                        full_name: fullName,
-                        birth_date: normalizedBirthDate || null,
-                    },
-                }),
-                15000,
-                dict.timeoutError
-            );
+            // 1. Update Profile Table (Optional sync, do not throw on RLS failure)
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
+                .eq('id', authUser.id);
 
-            if (metadataResult.error) {
-                throw metadataResult.error;
+            if (profileError) {
+                console.warn('Profile table sync warning (RLS restricted):', profileError);
             }
 
-            // Keep profiles table in sync when policies allow it, but do not block profile save
-            // since auth metadata is the source used across the app.
-            try {
-                const profileUpdateResult = await withTimeout(
-                    (async () =>
-                        supabase
-                            .from('profiles')
-                            .update(profilePayload)
-                            .eq('id', authUser.id)
-                    )(),
-                    15000,
-                    dict.timeoutError
-                );
+            // 2. Update Auth Metadata (Source of truth)
+            const { error: metadataError } = await supabase.auth.updateUser({
+                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
+            });
 
-                if (profileUpdateResult.error) {
-                    console.warn('PROFILE_SYNC_WARNING:', profileUpdateResult.error);
-                }
-            } catch (profileSyncError) {
-                console.warn('PROFILE_SYNC_WARNING:', profileSyncError);
-            }
+            if (metadataError) throw metadataError;
 
+            // 3. Optional Password Update
             if (showPasswordSection && data.newPassword) {
-                const reauthResult = await withTimeout(
-                    supabase.auth.signInWithPassword({
-                        email: authUser.email || data.email,
-                        password: data.currentPassword || '',
-                    }),
-                    15000,
-                    dict.timeoutError
-                );
+                const { error: reauthError } = await supabase.auth.signInWithPassword({
+                    email: authUser.email || data.email,
+                    password: data.currentPassword || '',
+                });
 
-                if (reauthResult.error) {
-                    throw new Error(dict.currentPasswordError);
-                }
+                if (reauthError) throw new Error(dict.currentPasswordError);
 
-                const passwordResult = await withTimeout(
-                    supabase.auth.updateUser({ password: data.newPassword }),
-                    15000,
-                    dict.timeoutError
-                );
-
-                if (passwordResult.error) {
-                    throw passwordResult.error;
-                }
+                const { error: passwordError } = await supabase.auth.updateUser({ password: data.newPassword });
+                if (passwordError) throw passwordError;
 
                 setShowPasswordSection(false);
                 showToast(dict.passwordUpdated, 'success');
             }
 
+            // Success state handling
+            setFormSuccess(dict.profileUpdated);
+            showToastAfterRefresh(dict.profileUpdated, 'success');
+
+            // Soft reset to update values instantly
             reset({
-                name: data.name.trim(),
-                surname: data.surname.trim(),
-                email: data.email,
-                birthDate: normalizedBirthDate,
+                ...data,
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
             });
 
-            toast.success(dict.profileUpdated);
+            startTransition(() => {
+                router.refresh();
+            });
 
-            // We do NOT call router.refresh() here.
-            // Next.js App Router's refresh() forcefully reconstructs the Server Component
-            // tree, which in this specific force-dynamic page, unmounts the ToastContext.
-            // Since we already did `reset({...updatedData})` on line ~362, the UI is already
-            // optimistically updated.
-            return;
         } catch (error: any) {
             console.error('Profile update failed:', error);
-            const detailedMessage = [
-                error?.message,
-                error?.details,
-                error?.hint,
-                error?.code ? `code:${error.code}` : null,
-            ].filter(Boolean).join(' | ');
-            toast.error(detailedMessage || dict.unknownError);
+            const detailedMessage = error?.message || error?.details || error?.hint || dict.unknownError;
+            setFormError(detailedMessage);
+            showToast(detailedMessage, 'error');
         } finally {
             setIsPending(false);
         }
     };
 
-    if (isHydrating) {
-        return (
-            <div className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-300">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>{dict.loadingProfile}</span>
-            </div>
-        );
-    }
-
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            {/* Personal Information */}
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                 {language === 'tr' ? 'Kişisel Bilgiler' : language === 'ru' ? 'Личные данные' : 'Personal Information'}
             </h2>
 
+            {/* Inline Alerts */}
+            {formSuccess && (
+                <div className="mb-4 p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg">
+                    {formSuccess}
+                </div>
+            )}
+
+            {formError && (
+                <div className="mb-4 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg">
+                    {formError}
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Name */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.name}</label>
                     <input
@@ -419,7 +280,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>}
                 </div>
 
-                {/* Surname */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.surname}</label>
                     <input
@@ -430,7 +290,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     {errors.surname && <p className="text-sm text-red-500 mt-1">{errors.surname.message}</p>}
                 </div>
 
-                {/* Birth Date */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.birthDate}</label>
                     <input
@@ -441,7 +300,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     {errors.birthDate && <p className="text-sm text-red-500 mt-1">{errors.birthDate.message}</p>}
                 </div>
 
-                {/* Email */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.email}</label>
                     <input
@@ -455,7 +313,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             <hr className="border-gray-100 dark:border-gray-700 my-6" />
 
-            {/* Password Change Toggle */}
             <div>
                 <button
                     type="button"
@@ -466,10 +323,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 </button>
             </div>
 
-            {/* Password Fields */}
             {showPasswordSection && (
                 <div className="space-y-4 animate-fade-in bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
-                    {/* Current Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.pwdCurrent}</label>
                         <div className="relative">
@@ -478,18 +333,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                                 type={showCurrentPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.currentPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
+                            <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
                                 {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
                         </div>
                         {errors.currentPassword && <p className="text-sm text-red-500 mt-1">{errors.currentPassword.message}</p>}
                     </div>
 
-                    {/* New Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.pwdNew}</label>
                         <div className="relative">
@@ -498,18 +348,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                                 type={showNewPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.newPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
+                            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
                                 {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
                         </div>
                         {errors.newPassword && <p className="text-sm text-red-500 mt-1">{errors.newPassword.message}</p>}
                     </div>
 
-                    {/* Confirm New Password */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.pwdConfirm}</label>
                         <div className="relative">
@@ -518,11 +363,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                                 type={showConfirmPassword ? 'text' : 'password'}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
                                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
                         </div>
@@ -531,7 +372,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 </div>
             )}
 
-            {/* Submit */}
             <div className="pt-2 flex justify-end">
                 <button
                     type="submit"

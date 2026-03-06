@@ -7,6 +7,7 @@
  */
 
 import { Term } from '@/types';
+import { createSafeTerm } from '@/utils/termUtils';
 
 /**
  * Deduplicates an array of terms by normalized English title.
@@ -55,7 +56,8 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
     const merged: Term[] = localTerms.map(localTerm => {
         const dbTerm = dbTermsMap.get(localTerm.id);
         if (dbTerm) {
-            return {
+            return createSafeTerm({
+                ...localTerm,
                 ...dbTerm,
                 // Preserve local SRS data
                 srs_level: localTerm.srs_level,
@@ -65,7 +67,7 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
                 retention_rate: localTerm.retention_rate,
                 times_reviewed: localTerm.times_reviewed,
                 times_correct: localTerm.times_correct,
-            } as Term;
+            });
         }
         return localTerm;
     });
@@ -90,18 +92,8 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
  * Creates a Term with default SRS values from a partial DB record.
  */
 export function createDefaultSRSTerm(partial: Partial<Term>): Term {
-    return {
-        id: partial.id || '',
-        term_en: partial.term_en || '',
-        term_tr: partial.term_tr || '',
-        term_ru: partial.term_ru || '',
-        category: partial.category || 'Fintech',
-        definition_en: partial.definition_en || '',
-        definition_tr: partial.definition_tr || '',
-        definition_ru: partial.definition_ru || '',
-        example_sentence_en: partial.example_sentence_en || '',
-        example_sentence_tr: partial.example_sentence_tr || '',
-        example_sentence_ru: partial.example_sentence_ru || '',
+    return createSafeTerm({
+        ...partial,
         srs_level: 1,
         next_review_date: new Date().toISOString(),
         last_reviewed: null,
@@ -109,7 +101,7 @@ export function createDefaultSRSTerm(partial: Partial<Term>): Term {
         retention_rate: 0,
         times_reviewed: 0,
         times_correct: 0,
-    };
+    });
 }
 
 /**

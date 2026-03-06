@@ -1,6 +1,8 @@
 import ProfilePageClient from './ProfilePageClient';
+import { getLearningStats } from '@/app/actions/getLearningStats';
 import { createClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
+import type { ProfileWarningCode } from './ProfilePageClient';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -43,19 +45,31 @@ const splitName = (fullName: string) => {
     };
 };
 
-const loadInitialProfileData = async (): Promise<ProfileFormInitialData | null> => {
+const loadInitialProfileData = async (): Promise<{
+    data: ProfileFormInitialData | null;
+    warningCode: ProfileWarningCode | null;
+}> => {
     const supabase = await createClient();
+    let warningCode: ProfileWarningCode | null = null;
+
+    // First safely get session to avoid console AuthSessionMissingError
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+        return { data: null, warningCode: null };
+    }
+
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (userError) {
-        console.error('PROFILE_RSC_USER_FETCH_ERROR:', userError);
-        return null;
+    if (userError || !userData.user) {
+        if (userError) {
+            console.error('PROFILE_RSC_AUTH_ERROR:', userError);
+            warningCode = 'PROFILE_DATA_LOAD_FAILED';
+        }
+
+        return { data: null, warningCode };
     }
 
     const user = userData.user;
-    if (!user) {
-        return null;
-    }
 
     let fullName = (
         user.user_metadata?.full_name ||
@@ -73,6 +87,7 @@ const loadInitialProfileData = async (): Promise<ProfileFormInitialData | null> 
 
     if (profileError) {
         console.error('PROFILE_RSC_FETCH_ERROR:', profileError);
+        warningCode = 'PROFILE_DATA_PARTIAL';
     } else if (profileData) {
         if (profileData.full_name) {
             fullName = String(profileData.full_name).trim();
@@ -85,15 +100,28 @@ const loadInitialProfileData = async (): Promise<ProfileFormInitialData | null> 
     const { name, surname } = splitName(fullName);
 
     return {
-        userId: user.id,
-        email: user.email || '',
-        name,
-        surname,
-        birthDate,
+        data: {
+            userId: user.id,
+            email: user.email || '',
+            name,
+            surname,
+            birthDate,
+        },
+        warningCode,
     };
 };
 
 export default async function ProfilePage() {
-    const initialProfileData = await loadInitialProfileData();
-    return <ProfilePageClient initialProfileData={initialProfileData} />;
+    const [{ data: initialProfileData, warningCode: profileWarningCode }, learningStats] = await Promise.all([
+        loadInitialProfileData(),
+        getLearningStats(),
+    ]);
+
+    return (
+        <ProfilePageClient
+            initialProfileData={initialProfileData}
+            learningStats={learningStats}
+            profileWarningCode={profileWarningCode}
+        />
+    );
 }

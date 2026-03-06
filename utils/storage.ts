@@ -5,6 +5,7 @@
 
 import { Term, UserProgress, QuizAttempt } from '@/types';
 import { mockTerms, defaultUserProgress } from '@/data/mockData';
+import { createSafeTerm } from '@/utils/termUtils';
 
 const STORAGE_KEYS = {
     TERMS: 'globalfinterm_terms',
@@ -26,7 +27,7 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-01-14-v2'; // Force data refresh with new 1000+ terms
+const DATA_VERSION = '2026-03-06-v3'; // Force refresh after contest taxonomy fields were added
 
 /**
  * Get all terms from storage (or initialize with mock data)
@@ -47,7 +48,7 @@ export function getTerms(): Term[] {
         }
 
         if (stored) {
-            const parsedTerms = JSON.parse(stored) as Term[];
+            const parsedTerms = (JSON.parse(stored) as Array<Partial<Term>>).map((term) => createSafeTerm(term));
             // If mockTerms has more terms, update localStorage with new data
             if (parsedTerms.length < mockTerms.length) {
                 localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));

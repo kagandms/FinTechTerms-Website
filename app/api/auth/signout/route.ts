@@ -1,26 +1,51 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
+import {
+    createRequestId,
+    errorResponse,
+    handleRouteError,
+    successResponse,
+} from '@/lib/api-response';
 
-export async function POST() {
+export async function POST(request: Request) {
+    const requestId = createRequestId(request);
+
     try {
         const supabase = await createClient();
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
 
-        // 1. Invalidate GoTrue token
-        await supabase.auth.signOut({ scope: 'local' });
+        if (signOutError) {
+            console.error('SIGN_OUT_ERROR', signOutError);
+            return errorResponse({
+                status: 500,
+                code: 'SIGNOUT_FAILED',
+                message: 'Unable to sign out.',
+                requestId,
+                retryable: true,
+            });
+        }
 
-        // 2. Bruteforce delete all Supabase cookies from the server-side to prevent SSR auto-login
         const cookieStore = await cookies();
         const allCookies = cookieStore.getAll();
-        allCookies.forEach(cookie => {
+
+        allCookies.forEach((cookie) => {
             if (cookie.name.startsWith('sb-')) {
                 cookieStore.delete(cookie.name);
             }
         });
 
-        return NextResponse.json({ success: true, message: 'Signed out successfully' }, { status: 200 });
-    } catch (e: any) {
-        console.error('Sign out error:', e);
-        return NextResponse.json({ error: e.message || 'Error occurred during sign out' }, { status: 500 });
+        return successResponse(
+            { success: true, message: 'Signed out successfully' },
+            requestId
+        );
+    } catch (error) {
+        return handleRouteError(error, {
+            requestId,
+            code: 'SIGNOUT_FAILED',
+            message: 'Unable to sign out.',
+            timeoutCode: 'SIGNOUT_TIMEOUT',
+            timeoutMessage: 'Sign-out request timed out.',
+            logLabel: 'SIGNOUT_ROUTE_FAILED',
+        });
     }
 }

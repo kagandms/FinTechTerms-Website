@@ -1,270 +1,409 @@
-import { NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/utils/supabase/server';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { globalRateLimiter } from '@/lib/rate-limiter';
+import { createClient as createSupabaseClient, type User } from '@supabase/supabase-js';
 import { z } from 'zod';
+import {
+    createRequestId,
+    createTimeoutFetch,
+    errorResponse,
+    getClientIp,
+    getDeviceFingerprint,
+    handleRouteError,
+    successResponse,
+} from '@/lib/api-response';
+import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
+import { telegramLinkRateLimiter } from '@/lib/rate-limiter';
+import { createClient as createServerClient } from '@/utils/supabase/server';
 
-// Token schema: 6 digit string
+export const dynamic = 'force-dynamic';
+
 const LinkTokenSchema = z.object({
-    token: z.string().length(6).regex(/^\d+$/, 'Token must be a 6-digit number')
+    token: z.string().length(6).regex(/^\d+$/, 'Token must be a 6-digit number'),
+    idempotencyKey: z.string().uuid(),
 });
 
-const SUPABASE_TIMEOUT_MS = 8000;
-const SUPABASE_TIMEOUT_ERROR = 'SUPABASE_REQUEST_TIMEOUT_8S';
+const TELEGRAM_LINK_LIMIT = 5;
 
-const errorToMessage = (error: unknown): string => {
-    if (error instanceof Error && error.message) {
-        return error.message;
+const createRouteSupabaseClient = (
+    apiKey: string,
+    bearerToken?: string
+) => createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    apiKey,
+    {
+        global: {
+            fetch: createTimeoutFetch(),
+            headers: bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined,
+        },
     }
-
-    if (typeof error === 'string' && error.trim()) {
-        return error;
-    }
-
-    try {
-        return JSON.stringify(error);
-    } catch {
-        return 'Unknown error';
-    }
-};
-
-const timeoutFetch: typeof fetch = async (input, init = {}) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
-    const upstreamSignal = init.signal;
-    const relayAbort = () => controller.abort();
-
-    if (upstreamSignal) {
-        if (upstreamSignal.aborted) {
-            relayAbort();
-        } else {
-            upstreamSignal.addEventListener('abort', relayAbort, { once: true });
-        }
-    }
-
-    try {
-        return await fetch(input, {
-            ...init,
-            signal: controller.signal
-        });
-    } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error(SUPABASE_TIMEOUT_ERROR);
-        }
-        throw error;
-    } finally {
-        clearTimeout(timeoutId);
-        if (upstreamSignal) {
-            upstreamSignal.removeEventListener('abort', relayAbort);
-        }
-    }
-};
-
-const buildCatchErrorResponse = (scope: string, error: unknown, extra: Record<string, unknown> = {}) => {
-    const message = `${scope}: ${errorToMessage(error)}`;
-    console.error(message, error);
-    return NextResponse.json(
-        { error: message, ...extra },
-        { status: 500 }
-    );
-};
+);
 
 const getBearerToken = (request: Request): string | null => {
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return null;
+    if (!authHeader?.startsWith('Bearer ')) {
+        return null;
+    }
 
     const token = authHeader.replace('Bearer ', '').trim();
     return token || null;
 };
 
-const resolveAuthenticatedContext = async (request: Request): Promise<{
-    user: any | null;
-    supabase: any;
-    error: string | null;
-}> => {
+const isInvalidLinkTokenError = (message: string): boolean => {
+    const normalized = message.toLowerCase();
+    return normalized.includes('geçersiz veya süresi dolmuş token')
+        || normalized.includes('invalid token')
+        || normalized.includes('expired');
+};
+
+const resolveAuthenticatedUser = async (request: Request): Promise<User | null> => {
     const bearerToken = getBearerToken(request);
 
     if (bearerToken) {
-        const tokenSupabase = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        const tokenSupabase = createRouteSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                global: {
-                    fetch: timeoutFetch,
-                    headers: { Authorization: `Bearer ${bearerToken}` }
-                }
-            }
+            bearerToken
         );
 
         const { data, error } = await tokenSupabase.auth.getUser();
         if (!error && data.user) {
-            return { user: data.user, supabase: tokenSupabase, error: null };
+            return data.user;
         }
     }
 
     const cookieSupabase = await createServerClient();
     const { data, error } = await cookieSupabase.auth.getUser();
     if (error || !data.user) {
-        return { user: null, supabase: cookieSupabase, error: error?.message || 'unauthorized' };
+        return null;
     }
 
-    return { user: data.user, supabase: cookieSupabase, error: null };
+    return data.user;
+};
+
+const createAdminClient = () => createRouteSupabaseClient(
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const markTelegramFailure = async (
+    supabaseAdmin: ReturnType<typeof createAdminClient>,
+    userId: string,
+    idempotencyKey: string | null,
+    statusCode: number,
+    responseBody: unknown
+) => {
+    if (!idempotencyKey) {
+        return;
+    }
+
+    try {
+        await failIdempotentRequest({
+            supabaseAdmin,
+            userId,
+            action: 'telegram_link',
+            idempotencyKey,
+            statusCode,
+            responseBody,
+        });
+    } catch (error) {
+        console.error('TELEGRAM_LINK_IDEMPOTENCY_FAIL_ERROR', error);
+    }
 };
 
 export async function GET(request: Request) {
+    const requestId = createRequestId(request);
+
     try {
-        const { user } = await resolveAuthenticatedContext(request);
+        const user = await resolveAuthenticatedUser(request);
         if (!user) {
-            return NextResponse.json({ error: 'unauthorized', isLinked: false }, { status: 401 });
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required.',
+                requestId,
+                retryable: false,
+            });
         }
 
-        // Service Role client to bypass RLS for fetching
-        const supabaseAdmin = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            {
-                global: {
-                    fetch: timeoutFetch
-                }
-            }
-        );
-
+        const supabaseAdmin = createAdminClient();
         const { data, error } = await supabaseAdmin
             .from('telegram_users')
             .select('telegram_id, telegram_username')
             .eq('user_id', user.id)
             .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
-            console.error('Error fetching telegram connection status:', error);
-            return NextResponse.json({ error: 'Database error', isLinked: false }, { status: 500 });
-        }
-
-        if (data) {
-            return NextResponse.json({
-                isLinked: true,
-                telegram_id: data.telegram_id,
-                telegram_username: data.telegram_username
+        if (error && error.code !== 'PGRST116') {
+            console.error('GET_TELEGRAM_LINK_STATUS_DB_ERROR', error);
+            return errorResponse({
+                status: 500,
+                code: 'TELEGRAM_LINK_STATUS_FAILED',
+                message: 'Unable to load Telegram link status.',
+                requestId,
+                retryable: true,
             });
         }
 
-        return NextResponse.json({ isLinked: false });
-    } catch (e) {
-        return buildCatchErrorResponse('GET_TELEGRAM_LINK_FAILED', e, { isLinked: false });
+        if (data) {
+            return successResponse(
+                {
+                    isLinked: true,
+                    telegram_id: data.telegram_id,
+                    telegram_username: data.telegram_username,
+                },
+                requestId
+            );
+        }
+
+        return successResponse({ isLinked: false }, requestId);
+    } catch (error) {
+        return handleRouteError(error, {
+            requestId,
+            code: 'TELEGRAM_LINK_STATUS_FAILED',
+            message: 'Unable to load Telegram link status.',
+            timeoutCode: 'TELEGRAM_LINK_STATUS_TIMEOUT',
+            timeoutMessage: 'Telegram link status request timed out.',
+            logLabel: 'GET_TELEGRAM_LINK_FAILED',
+        });
     }
 }
 
 export async function DELETE(request: Request) {
+    const requestId = createRequestId(request);
+
     try {
-        const { user } = await resolveAuthenticatedContext(request);
+        const user = await resolveAuthenticatedUser(request);
         if (!user) {
-            return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required.',
+                requestId,
+                retryable: false,
+            });
         }
 
-        // Service Role client to bypass RLS for deletion
-        const supabaseAdmin = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            {
-                global: {
-                    fetch: timeoutFetch
-                }
-            }
-        );
+        const supabaseAdmin = createAdminClient();
 
-        const { error } = await supabaseAdmin
+        const { error: deletionError } = await supabaseAdmin
             .from('telegram_users')
             .delete()
             .eq('user_id', user.id);
 
-        if (error) {
-            console.error('Error deleting telegram connection:', error);
-            return NextResponse.json({ error: 'Database error' }, { status: 500 });
+        if (deletionError) {
+            console.error('DELETE_TELEGRAM_LINK_MAPPING_ERROR', deletionError);
+            return errorResponse({
+                status: 500,
+                code: 'TELEGRAM_UNLINK_FAILED',
+                message: 'Unable to unlink Telegram account.',
+                requestId,
+                retryable: true,
+            });
         }
 
-        return NextResponse.json({ success: true, message: 'Telegram unlinked' });
-    } catch (e) {
-        return buildCatchErrorResponse('DELETE_TELEGRAM_LINK_FAILED', e);
+        const { error: profileUpdateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ telegram_id: null })
+            .eq('id', user.id);
+
+        if (profileUpdateError) {
+            console.warn('DELETE_TELEGRAM_LINK_PROFILE_SYNC_WARNING', profileUpdateError);
+        }
+
+        return successResponse(
+            {
+                success: true,
+                message: 'Telegram authentication successfully unlinked',
+                isLinked: false,
+            },
+            requestId
+        );
+    } catch (error) {
+        return handleRouteError(error, {
+            requestId,
+            code: 'TELEGRAM_UNLINK_FAILED',
+            message: 'Unable to unlink Telegram account.',
+            timeoutCode: 'TELEGRAM_UNLINK_TIMEOUT',
+            timeoutMessage: 'Telegram unlink request timed out.',
+            logLabel: 'DELETE_TELEGRAM_LINK_FAILED',
+        });
     }
 }
 
 export async function POST(request: Request) {
-    // 1. Rate Limiting based on IP
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    const limitCheck = globalRateLimiter.check(ip);
-
-    if (!limitCheck.allowed) {
-        return NextResponse.json(
-            { error: 'Слишком много запросов. Too many requests. Çok fazla istek atıldı. Lütfen daha sonra tekrar deneyin.' },
-            { status: 429, headers: { 'Retry-After': limitCheck.retryAfter.toString() } }
-        );
-    }
-
+    const requestId = createRequestId(request);
+    let authenticatedUserId: string | null = null;
     let body: unknown;
+
     try {
         body = await request.json();
     } catch (error) {
-        return NextResponse.json({
-            error: `Неверный JSON payload. ${errorToMessage(error)}`
-        }, { status: 400 });
+        console.error('POST_TELEGRAM_LINK_INVALID_JSON', error);
+        return errorResponse({
+            status: 400,
+            code: 'INVALID_JSON',
+            message: 'Invalid JSON payload.',
+            requestId,
+            retryable: false,
+        });
     }
 
     const validatedData = LinkTokenSchema.safeParse(body);
     if (!validatedData.success) {
-        return NextResponse.json({
-            error: 'Неверный формат кода привязки.',
-            details: validatedData.error.issues
-        }, { status: 400 });
+        console.error('POST_TELEGRAM_LINK_VALIDATION_ERROR', validatedData.error.flatten());
+        return errorResponse({
+            status: 400,
+            code: 'INVALID_LINK_TOKEN',
+            message: 'Link code must be a 6-digit numeric token.',
+            requestId,
+            retryable: false,
+        });
     }
 
-    try {
-        // Authenticate the user first
-        const { user } = await resolveAuthenticatedContext(request);
+    let rateLimitHeaders: HeadersInit | undefined;
+    let idempotencyKey: string | null = null;
 
+    try {
+        const user = await resolveAuthenticatedUser(request);
         if (!user) {
-            return NextResponse.json(
-                { error: 'unauthorized' },
-                { status: 401 }
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required.',
+                requestId,
+                retryable: false,
+            });
+        }
+        authenticatedUserId = user.id;
+
+        const rateLimitKey = `${getClientIp(request)}:${getDeviceFingerprint(request) || user.id}`;
+        const limitCheck = telegramLinkRateLimiter.check(rateLimitKey);
+        rateLimitHeaders = {
+            'X-RateLimit-Limit': TELEGRAM_LINK_LIMIT.toString(),
+            'X-RateLimit-Remaining': limitCheck.remaining.toString(),
+        };
+
+        if (!limitCheck.allowed) {
+            return errorResponse({
+                status: 429,
+                code: 'TELEGRAM_LINK_RATE_LIMITED',
+                message: 'Too many Telegram link attempts. Please try again later.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...rateLimitHeaders,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            });
+        }
+
+        const supabaseAdmin = createAdminClient();
+        const { token, idempotencyKey: requestIdempotencyKey } = validatedData.data;
+        idempotencyKey = requestIdempotencyKey;
+
+        const reservation = await reserveIdempotentRequest({
+            supabaseAdmin,
+            userId: user.id,
+            action: 'telegram_link',
+            idempotencyKey,
+            payload: { token },
+        });
+
+        if (reservation.kind === 'replay') {
+            return successResponse(
+                reservation.responseBody,
+                requestId,
+                {
+                    status: reservation.statusCode,
+                    headers: rateLimitHeaders,
+                }
             );
         }
 
-        const { token } = validatedData.data;
-
-        // Use Service Role admin client to bypass RLS on account_link_tokens table
-        // The table has RLS enabled but NO read policies for authenticated users,
-        // which was causing the RPC call to fail silently.
-        const supabaseAdmin = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            {
-                global: {
-                    fetch: timeoutFetch
-                }
-            }
-        );
+        if (reservation.kind === 'conflict') {
+            return errorResponse({
+                status: 409,
+                code: reservation.code,
+                message: reservation.message,
+                requestId,
+                retryable: reservation.code === 'REQUEST_IN_PROGRESS',
+                headers: rateLimitHeaders,
+            });
+        }
 
         const { data, error } = await supabaseAdmin.rpc('link_telegram_account_v2', {
             p_token: token,
-            p_web_user_id: user.id
+            p_web_user_id: user.id,
         });
 
         if (error) {
-            console.error('RPC Error (link_telegram_account_v2):', error);
-            // Translate common RPC errors for the frontend
-            if (error.message.includes('Geçersiz veya süresi dolmuş token') || error.message.includes('Expired')) {
-                return NextResponse.json({ error: 'Неверный или просроченный код. Invalid or expired code. Geçersiz veya süresi dolmuş kod.' }, { status: 400 });
+            console.error('POST_TELEGRAM_LINK_RPC_ERROR', error);
+
+            if (isInvalidLinkTokenError(error.message || '')) {
+                await markTelegramFailure(supabaseAdmin, user.id, idempotencyKey, 400, {
+                    code: 'INVALID_LINK_TOKEN',
+                    message: 'Link code is invalid or expired.',
+                });
+                return errorResponse({
+                    status: 400,
+                    code: 'INVALID_LINK_TOKEN',
+                    message: 'Link code is invalid or expired.',
+                    requestId,
+                    retryable: false,
+                    headers: rateLimitHeaders,
+                });
             }
-            return NextResponse.json({ error: error.message || 'Ошибка базы данных. Database error occurred. Veritabanı hatası oluştu.' }, { status: 500 });
+
+            await markTelegramFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
+                code: 'TELEGRAM_LINK_FAILED',
+                message: 'Unable to link Telegram account.',
+            });
+            return errorResponse({
+                status: 500,
+                code: 'TELEGRAM_LINK_FAILED',
+                message: 'Unable to link Telegram account.',
+                requestId,
+                retryable: true,
+                headers: rateLimitHeaders,
+            });
         }
 
-        // Successfully linked
-        return NextResponse.json({
+        const responseBody = {
             success: true,
-            message: data?.message || 'Аккаунт Telegram успешно привязан! Telegram account successfully linked! Hesap başarıyla bağlandı!',
-            telegram_id: data?.telegram_id
-        });
+            message: data?.message || 'Telegram account successfully linked.',
+            telegram_id: data?.telegram_id,
+        };
 
+        try {
+            await completeIdempotentRequest({
+                supabaseAdmin,
+                userId: user.id,
+                action: 'telegram_link',
+                idempotencyKey,
+                statusCode: 200,
+                responseBody,
+            });
+        } catch (error) {
+            console.error('TELEGRAM_LINK_IDEMPOTENCY_COMPLETE_ERROR', error);
+        }
+
+        return successResponse(
+            responseBody,
+            requestId,
+            { headers: rateLimitHeaders }
+        );
     } catch (error) {
-        return buildCatchErrorResponse('POST_TELEGRAM_LINK_FAILED', error);
+        if (authenticatedUserId) {
+            const supabaseAdmin = createAdminClient();
+            await markTelegramFailure(supabaseAdmin, authenticatedUserId, idempotencyKey, 500, {
+                code: 'TELEGRAM_LINK_FAILED',
+                message: 'Unable to link Telegram account.',
+            });
+        }
+
+        return handleRouteError(error, {
+            requestId,
+            code: 'TELEGRAM_LINK_FAILED',
+            message: 'Unable to link Telegram account.',
+            timeoutCode: 'TELEGRAM_LINK_TIMEOUT',
+            timeoutMessage: 'Telegram linking request timed out.',
+            headers: rateLimitHeaders,
+            logLabel: 'POST_TELEGRAM_LINK_FAILED',
+        });
     }
 }

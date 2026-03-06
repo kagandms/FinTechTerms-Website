@@ -54,4 +54,15 @@ describe('Term Database Validation', () => {
 
         expect(terms.length).toBeGreaterThan(1000);
     });
+
+    it('should include contest taxonomy fields on every term', () => {
+        const validMarkets = new Set(['MOEX', 'BIST', 'GLOBAL']);
+
+        terms.forEach((term) => {
+            expect(validMarkets.has(term.regional_market)).toBe(true);
+            expect(term.context_tags).toBeDefined();
+            expect(Array.isArray(term.context_tags.disciplines)).toBe(true);
+            expect(Array.isArray(term.context_tags.target_universities)).toBe(true);
+        });
+    });
 });

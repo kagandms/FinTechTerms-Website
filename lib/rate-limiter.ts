@@ -84,4 +84,10 @@ export class RateLimiter {
 }
 
 // Singleton export for shared state (within same lambda instance)
-export const globalRateLimiter = new RateLimiter(100, 60000); // 100 req/min
+export const apiRouteRateLimiter = new RateLimiter(100, 60000); // 100 req/min
+export const quizMutationRateLimiter = new RateLimiter(20, 10000); // 20 quiz writes / 10 sec
+export const favoritesMutationRateLimiter = new RateLimiter(10, 10000); // 10 favorite writes / 10 sec
+export const telegramLinkRateLimiter = new RateLimiter(5, 10 * 60 * 1000); // 5 attempts / 10 min
+
+// Backwards-compatible alias for existing imports.
+export const globalRateLimiter = apiRouteRateLimiter;

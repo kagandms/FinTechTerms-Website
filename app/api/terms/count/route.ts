@@ -1,7 +1,14 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import {
+    createRequestId,
+    errorResponse,
+    handleRouteError,
+    successResponse,
+} from '@/lib/api-response';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const requestId = createRequestId(request);
+
     try {
         const supabase = await createClient();
         const { count, error } = await supabase
@@ -9,13 +16,25 @@ export async function GET() {
             .select('*', { count: 'exact', head: true });
 
         if (error) {
-            console.error('Error fetching term count:', error);
-            return NextResponse.json({ count: 500 }, { status: 200 });
+            console.error('TERMS_COUNT_FETCH_ERROR', error);
+            return errorResponse({
+                status: 500,
+                code: 'TERMS_COUNT_FETCH_FAILED',
+                message: 'Unable to fetch term count.',
+                requestId,
+                retryable: true,
+            });
         }
 
-        return NextResponse.json({ count: count || 500 }, { status: 200 });
-    } catch (e: any) {
-        console.error('Term count API error:', e);
-        return NextResponse.json({ count: 500 }, { status: 200 });
+        return successResponse({ count: count || 0 }, requestId);
+    } catch (error) {
+        return handleRouteError(error, {
+            requestId,
+            code: 'TERMS_COUNT_FETCH_FAILED',
+            message: 'Unable to fetch term count.',
+            timeoutCode: 'TERMS_COUNT_TIMEOUT',
+            timeoutMessage: 'Term count request timed out.',
+            logLabel: 'TERMS_COUNT_ROUTE_FAILED',
+        });
     }
 }

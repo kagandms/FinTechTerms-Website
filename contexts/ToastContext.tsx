@@ -5,6 +5,8 @@ import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+const TOAST_STORAGE_KEY = 'ftt_pending_toast';
+
 interface Toast {
     id: string;
     message: string;
@@ -13,6 +15,7 @@ interface Toast {
 
 interface ToastContextType {
     showToast: (message: string, type?: ToastType) => void;
+    showToastAfterRefresh: (message: string, type?: ToastType) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -55,8 +58,50 @@ export function ToastProvider({ children }: ToastProviderProps) {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
+    const showToastAfterRefresh = useCallback((message: string, type: ToastType = 'info') => {
+        if (typeof window === 'undefined') {
+            showToast(message, type);
+            return;
+        }
+
+        try {
+            window.sessionStorage.setItem(
+                TOAST_STORAGE_KEY,
+                JSON.stringify({ message, type })
+            );
+        } catch (error) {
+            console.error('TOAST_PERSIST_FAILED', error);
+            showToast(message, type);
+        }
+    }, [showToast]);
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const rawToast = window.sessionStorage.getItem(TOAST_STORAGE_KEY);
+        if (!rawToast) {
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(rawToast) as Partial<Toast>;
+            if (parsed.message) {
+                showToast(
+                    parsed.message,
+                    (parsed.type as ToastType | undefined) || 'info'
+                );
+            }
+        } catch (error) {
+            console.error('TOAST_RESTORE_FAILED', error);
+        } finally {
+            window.sessionStorage.removeItem(TOAST_STORAGE_KEY);
+        }
+    }, [showToast]);
+
     return (
-        <ToastContext.Provider value={{ showToast }}>
+        <ToastContext.Provider value={{ showToast, showToastAfterRefresh }}>
             {children}
 
             {/* Toast Container */}

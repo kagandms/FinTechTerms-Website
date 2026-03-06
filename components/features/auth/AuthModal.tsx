@@ -6,6 +6,12 @@ import { OTPVerification } from './OTPVerification';
 import { UpdatePasswordForm } from './UpdatePasswordForm';
 import { AuthForm } from './AuthForm';
 
+interface AuthModalRouter {
+    push: (href: string) => void;
+    replace: (href: string) => void;
+    refresh: () => void;
+}
+
 // Re-defining props with strict types (no 'any')
 // We use the imported interfaces but AuthModal orchestrates them
 interface AuthModalProps {
@@ -42,9 +48,9 @@ interface AuthModalProps {
     // Tools
     t: (key: string) => string;
     language: string;
-    showToast: (msg: string, type: 'success' | 'error') => void;
-    logout: () => void;
-    router: any;
+    showToast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+    logout: () => Promise<void>;
+    router: AuthModalRouter;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = (props) => {
@@ -137,10 +143,10 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                         resetPassword={props.resetPassword}
                         t={t}
                         language={language}
+                        showToast={props.showToast}
                     />
                 )}
             </div>
         </div>
     );
 };
-

@@ -5,33 +5,89 @@
 
 import { supabase } from './supabase';
 import { UserProgress, QuizAttempt, Term } from '@/types';
+import { createIdempotencyKey } from '@/lib/idempotency';
+
+interface FavoriteToggleResponse {
+    favorites: string[];
+    isFavorite: boolean;
+}
+
+export interface RecordQuizResult {
+    userProgress: Pick<UserProgress, 'current_streak' | 'last_study_date' | 'total_words_learned' | 'updated_at'>;
+    termSrs: {
+        term_id: string;
+        srs_level: number;
+        next_review_date: string;
+        last_reviewed: string;
+        difficulty_score: number;
+        retention_rate: number;
+        times_reviewed: number;
+        times_correct: number;
+    };
+}
+
+interface StreakSummaryRow {
+    current_streak: number;
+    last_study_date: string | null;
+}
+
+const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
+    try {
+        const payload = await response.json();
+        return payload?.message || payload?.error || fallbackMessage;
+    } catch {
+        return fallbackMessage;
+    }
+};
 
 /**
  * Fetch user progress from Supabase
  */
 export async function getUserProgressFromSupabase(userId: string): Promise<UserProgress | null> {
-    const { data, error } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+    const [
+        { data: progressData, error: progressError },
+        { data: favoritesData, error: favoritesError },
+        { data: quizData },
+        { data: settingsData },
+        { data: streakData, error: streakError },
+    ] = await Promise.all([
+        supabase
+            .from('user_progress')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle(),
+        supabase
+            .from('user_favorites')
+            .select('term_id')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('quiz_attempts')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(100),
+        supabase
+            .from('user_settings')
+            .select('preferred_language')
+            .eq('user_id', userId)
+            .maybeSingle(),
+        supabase.rpc('get_user_streak_summary'),
+    ]);
 
-    if (error || !data) {
+    if (progressError || favoritesError || streakError) {
+        console.error('Failed to load user progress:', progressError || favoritesError || streakError);
         return null;
     }
 
-    // Fetch quiz history
-    const { data: quizData } = await supabase
-        .from('quiz_attempts')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(100);
+    const createdAt = progressData?.created_at || new Date().toISOString();
+    const updatedAt = progressData?.updated_at || createdAt;
+    const streakSummary = (Array.isArray(streakData) ? streakData[0] : null) as StreakSummaryRow | null;
 
     return {
-        user_id: data.user_id,
-        favorites: data.favorites || [],
-        current_language: 'tr', // Default, managed client-side
+        user_id: userId,
+        favorites: (favoritesData || []).map((row) => row.term_id),
+        current_language: settingsData?.preferred_language || 'ru',
         quiz_history: (quizData || []).map((q) => ({
             id: q.id,
             term_id: q.term_id,
@@ -40,114 +96,70 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
             timestamp: q.created_at,
             quiz_type: q.quiz_type as 'daily' | 'practice' | 'review',
         })),
-        total_words_learned: data.total_words_learned,
-        current_streak: data.current_streak,
-        last_study_date: data.last_study_date,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
+        total_words_learned: progressData?.total_words_learned ?? 0,
+        current_streak: streakSummary?.current_streak ?? 0,
+        last_study_date: streakSummary?.last_study_date ?? null,
+        created_at: createdAt,
+        updated_at: updatedAt,
     };
-}
-
-/**
- * Create initial user progress in Supabase
- */
-export async function createUserProgress(userId: string): Promise<UserProgress> {
-    const newProgress = {
-        user_id: userId,
-        favorites: [],
-        current_streak: 0,
-        last_study_date: null,
-        total_words_learned: 0,
-    };
-
-    const { data, error } = await supabase
-        .from('user_progress')
-        .insert(newProgress)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Failed to create user progress:', error);
-        throw error;
-    }
-
-    return {
-        ...newProgress,
-        current_language: 'tr',
-        quiz_history: [],
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-    };
-}
-
-/**
- * Update user progress in Supabase
- */
-export async function saveUserProgressToSupabase(
-    userId: string,
-    progress: Partial<UserProgress>
-): Promise<void> {
-    const { error } = await supabase
-        .from('user_progress')
-        .update({
-            favorites: progress.favorites,
-            current_streak: progress.current_streak,
-            last_study_date: progress.last_study_date,
-            total_words_learned: progress.total_words_learned,
-        })
-        .eq('user_id', userId);
-
-    if (error) {
-        console.error('Failed to save user progress:', error);
-        throw error;
-    }
 }
 
 /**
  * Toggle a favorite term
  */
 export async function toggleFavoriteInSupabase(
-    userId: string,
+    _userId: string,
     termId: string,
-    currentFavorites: string[]
-): Promise<string[]> {
-    const isFavorite = currentFavorites.includes(termId);
-    const newFavorites = isFavorite
-        ? currentFavorites.filter((id) => id !== termId)
-        : [...currentFavorites, termId];
+    shouldFavorite: boolean
+): Promise<FavoriteToggleResponse> {
+    const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            termId,
+            shouldFavorite,
+            idempotencyKey: createIdempotencyKey(),
+        }),
+    });
 
-    const { error } = await supabase
-        .from('user_progress')
-        .update({ favorites: newFavorites })
-        .eq('user_id', userId);
-
-    if (error) {
-        console.error('Failed to toggle favorite:', error);
-        throw error;
+    if (!response.ok) {
+        const message = await readApiError(response, 'Failed to toggle favorite.');
+        throw new Error(message);
     }
 
-    return newFavorites;
+    return await response.json() as FavoriteToggleResponse;
 }
 
 /**
  * Save a quiz attempt to Supabase
  */
 export async function saveQuizAttemptToSupabase(
-    userId: string,
+    _userId: string,
     attempt: QuizAttempt
-): Promise<void> {
-    const { error } = await supabase.from('quiz_attempts').insert({
-        user_id: userId,
-        term_id: attempt.term_id,
-        is_correct: attempt.is_correct,
-        response_time_ms: attempt.response_time_ms,
-        quiz_type: attempt.quiz_type,
+): Promise<RecordQuizResult> {
+    const response = await fetch('/api/record-quiz', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            term_id: attempt.term_id,
+            is_correct: attempt.is_correct,
+            response_time_ms: attempt.response_time_ms,
+            quiz_type: attempt.quiz_type,
+            idempotencyKey: attempt.id || createIdempotencyKey(),
+        }),
     });
 
-    if (error) {
-        console.error('Failed to save quiz attempt:', error);
-        throw error;
+    if (!response.ok) {
+        const message = await readApiError(response, 'Failed to save quiz attempt.');
+        throw new Error(message);
     }
+
+    const payload = await response.json() as { state: RecordQuizResult };
+    return payload.state;
 }
 
 /**
@@ -178,37 +190,6 @@ export async function getTermSRSFromSupabase(
 }
 
 /**
- * Save/Update term SRS data in Supabase
- */
-export async function saveTermSRSToSupabase(
-    userId: string,
-    termId: string,
-    srsData: Partial<Term>
-): Promise<void> {
-    const { error } = await supabase.from('user_term_srs').upsert(
-        {
-            user_id: userId,
-            term_id: termId,
-            srs_level: srsData.srs_level,
-            next_review_date: srsData.next_review_date,
-            last_reviewed: srsData.last_reviewed,
-            difficulty_score: srsData.difficulty_score,
-            retention_rate: srsData.retention_rate,
-            times_reviewed: srsData.times_reviewed,
-            times_correct: srsData.times_correct,
-        },
-        {
-            onConflict: 'user_id,term_id',
-        }
-    );
-
-    if (error) {
-        console.error('Failed to save term SRS data:', error);
-        throw error;
-    }
-}
-
-/**
  * Get all user's SRS data for terms
  */
 export async function getAllTermSRSFromSupabase(
@@ -236,54 +217,6 @@ export async function getAllTermSRSFromSupabase(
 
     return srsMap;
 }
-
-/**
- * Update streak based on last study date
- */
-export async function updateStreakInSupabase(userId: string): Promise<number> {
-    // Get current progress
-    const { data } = await supabase
-        .from('user_progress')
-        .select('current_streak, last_study_date')
-        .eq('user_id', userId)
-        .single();
-
-    if (!data) return 0;
-
-    const today = new Date().toDateString();
-    const lastStudy = data.last_study_date
-        ? new Date(data.last_study_date).toDateString()
-        : null;
-
-    let newStreak = data.current_streak;
-
-    // Only hit DB if they haven't studied today OR their current streak is artificially stuck at 0
-    if (data.current_streak === 0 || lastStudy !== today) {
-        if (data.current_streak === 0) {
-            newStreak = 1;
-        } else {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            if (lastStudy === yesterday.toDateString()) {
-                newStreak += 1;
-            } else if (lastStudy !== today) {
-                newStreak = 1;
-            }
-        }
-
-        await supabase
-            .from('user_progress')
-            .update({
-                current_streak: newStreak,
-                last_study_date: new Date().toISOString(),
-            })
-            .eq('user_id', userId);
-    }
-
-    return newStreak;
-}
-
 /**
  * Fetch all static terms from Supabase
  * Returns just the content, not user SRS data

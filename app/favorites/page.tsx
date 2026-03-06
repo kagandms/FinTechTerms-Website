@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import FavoritesClient from './FavoritesClient';
 
 export const metadata: Metadata = {
-    title: 'Favorilerim | FinTechTerms',
-    description: 'Favori teknoloji ve finans terimleriniz.',
+    title: 'Избранные термины | FinTechTerms',
+    description: 'Ваши сохранённые термины по экономике, финтеху и ИТ.',
     alternates: {
         canonical: '/favorites',
     },

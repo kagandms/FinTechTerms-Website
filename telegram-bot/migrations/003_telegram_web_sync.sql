@@ -1,3 +1,6 @@
+-- DEPRECATED: superseded by supabase/migrations/20260306170000_phase1_database_unification_lockdown.sql.
+-- This migration depends on legacy `favorites` and `daily_learning_log` structures and should not be applied on new environments.
+
 -- ============================================
 -- Migration 003: Single Source of Truth & Account Linking
 -- Links Telegram Users to Supabase Auth & Resolves Dual-Identity Edge Case

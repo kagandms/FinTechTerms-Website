@@ -19,22 +19,27 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import {
     getUserProgressFromSupabase,
-    saveUserProgressToSupabase,
     toggleFavoriteInSupabase,
     saveQuizAttemptToSupabase,
-    saveTermSRSToSupabase,
     getAllTermSRSFromSupabase,
-    updateStreakInSupabase,
     fetchTermsFromSupabase,
 } from '@/lib/supabaseStorage';
+import { createIdempotencyKey } from '@/lib/idempotency';
+
+interface FavoriteToggleResult {
+    success: boolean;
+    limitReached: boolean;
+    isFavorite?: boolean;
+    error?: string;
+}
 
 interface SRSContextType {
     terms: Term[];
     userProgress: UserProgress;
     dueTerms: Term[];
-    toggleFavorite: (termId: string) => { success: boolean; limitReached: boolean };
+    toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
-    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs?: number) => void;
+    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs?: number) => Promise<void>;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
@@ -58,7 +63,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user } = useAuth();
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
-    const [isHydrated, setIsHydrated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
     /**
@@ -95,8 +99,16 @@ export function SRSProvider({ children }: SRSProviderProps) {
         // Convert back to array
         currentTerms = Array.from(uniqueLocalTerms.values());
 
-        // Optimistically set local user progress first
-        setUserProgress(getLocalUserProgress());
+        // Authenticated streak state must come from the server, not from local heuristics.
+        const localProgress = getLocalUserProgress();
+        const optimisticProgress = isAuthenticated
+            ? {
+                ...localProgress,
+                current_streak: 0,
+                last_study_date: null,
+            }
+            : localProgress;
+        setUserProgress(optimisticProgress);
 
         // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
         if (currentTerms.length > 0) {
@@ -190,20 +202,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         return term;
                     });
 
-                    // FIRE & FORGET: Fetch current streak dynamically and sync device state
-                    updateStreakInSupabase(user.id).then(newStreak => {
-                        if (newStreak !== cloudProgress.current_streak) {
-                            setUserProgress(prev => {
-                                if (prev) {
-                                    const reconciled = { ...prev, current_streak: newStreak };
-                                    saveLocalUserProgress(reconciled); // Cross-device safety sync
-                                    return reconciled;
-                                }
-                                return prev;
-                            });
-                        }
-                    }).catch(e => console.error("Streak sync failed:", e));
-
                     setTerms(mergedTerms);
                     setUserProgress(cloudProgress);
                     // Persist cloud truth to localStorage so the next optimistic load
@@ -211,21 +209,20 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     saveLocalUserProgress(cloudProgress);
                 } else {
                     setTerms(currentTerms);
-                    setUserProgress(getLocalUserProgress());
+                    setUserProgress(optimisticProgress);
                 }
             } catch (error) {
                 console.error('Failed to load user data from cloud:', error);
                 setTerms(currentTerms);
-                setUserProgress(getLocalUserProgress());
+                setUserProgress(optimisticProgress);
             }
         } else {
             // Guest mode
             // setTerms(currentTerms); (already set above)
-            setUserProgress(getLocalUserProgress());
+            setUserProgress(optimisticProgress);
         }
 
         setIsSyncing(false);
-        setIsHydrated(true);
     }, [isAuthenticated, user]);
 
     // Load data on mount and when auth state changes
@@ -252,9 +249,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
     /**
      * Toggle a term's favorite status with limit check
      */
-    const toggleFavorite = useCallback((termId: string): { success: boolean; limitReached: boolean } => {
+    const toggleFavorite = useCallback(async (termId: string): Promise<FavoriteToggleResult> => {
         const currentFavorites = userProgress?.favorites ?? [];
         const isCurrentlyFavorite = currentFavorites.includes(termId);
+        const shouldFavorite = !isCurrentlyFavorite;
 
         // If trying to add and limit reached
         if (!isCurrentlyFavorite && !isAuthenticated && currentFavorites.length >= favoriteLimit) {
@@ -267,28 +265,43 @@ export function SRSProvider({ children }: SRSProviderProps) {
             setUserProgress(updated);
 
             // Sync to Supabase and reconcile local state with cloud result
-            toggleFavoriteInSupabase(user.id, termId, currentFavorites)
-                .then(newFavorites => {
-                    // Update React state with the authoritative cloud result
-                    setUserProgress(prev => {
-                        if (!prev) return prev;
-                        const reconciled = { ...prev, favorites: newFavorites };
-                        // Also persist cloud result to local storage for cross-device consistency
-                        saveLocalUserProgress(reconciled);
-                        return reconciled;
-                    });
-                })
-                .catch(error => {
-                    console.error('Failed to sync favorite to cloud:', error);
+            try {
+                const response = await toggleFavoriteInSupabase(user.id, termId, shouldFavorite);
+                setUserProgress(prev => {
+                    if (!prev) return prev;
+                    const reconciled = { ...prev, favorites: response.favorites };
+                    saveLocalUserProgress(reconciled);
+                    return reconciled;
                 });
 
-            return { success: true, limitReached: false };
+                return {
+                    success: true,
+                    limitReached: false,
+                    isFavorite: response.isFavorite,
+                };
+            } catch (error) {
+                console.error('Failed to sync favorite to cloud:', error);
+                const rolledBack = { ...updated, favorites: currentFavorites };
+                setUserProgress(rolledBack);
+                saveLocalUserProgress(rolledBack);
+
+                return {
+                    success: false,
+                    limitReached: false,
+                    isFavorite: isCurrentlyFavorite,
+                    error: error instanceof Error ? error.message : 'Failed to update favorite.',
+                };
+            }
         }
 
         // Guest mode — local storage only
         const updated = toggleFavoriteInStorage(termId);
         setUserProgress(updated);
-        return { success: true, limitReached: false };
+        return {
+            success: true,
+            limitReached: false,
+            isFavorite: updated.favorites.includes(termId),
+        };
     }, [userProgress, favoriteLimit, isAuthenticated, user]);
 
     /**
@@ -312,43 +325,70 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         // Record the quiz attempt
         const attempt: QuizAttempt = {
-            id: `attempt_${Date.now()}`,
+            id: createIdempotencyKey(),
             term_id: termId,
             is_correct: isCorrect,
             response_time_ms: responseTimeMs,
             timestamp: new Date().toISOString(),
             quiz_type: 'daily',
         };
-        const updatedProgress = addQuizAttemptToStorage(attempt);
-        setUserProgress(updatedProgress);
+        const baseProgress = userProgress ?? getLocalUserProgress();
+
+        if (isAuthenticated && user) {
+            const optimisticProgress = {
+                ...baseProgress,
+                quiz_history: [...baseProgress.quiz_history, attempt],
+                updated_at: new Date().toISOString(),
+            };
+            setUserProgress(optimisticProgress);
+            saveLocalUserProgress(optimisticProgress);
+        } else {
+            const updatedProgress = addQuizAttemptToStorage(attempt);
+            setUserProgress(updatedProgress);
+        }
 
         // Sync to Supabase if authenticated
         if (isAuthenticated && user) {
             try {
-                await saveQuizAttemptToSupabase(user.id, attempt);
-                await saveTermSRSToSupabase(user.id, termId, {
-                    srs_level: updatedTerm.srs_level,
-                    next_review_date: updatedTerm.next_review_date,
-                    last_reviewed: updatedTerm.last_reviewed,
-                    difficulty_score: updatedTerm.difficulty_score,
-                    retention_rate: updatedTerm.retention_rate,
-                    times_reviewed: updatedTerm.times_reviewed,
-                    times_correct: updatedTerm.times_correct,
-                });
-                await updateStreakInSupabase(user.id);
+                const result = await saveQuizAttemptToSupabase(user.id, attempt);
+                const { term_id: _termId, ...serverTermSrs } = result.termSrs;
 
-                // Sync progress
-                await saveUserProgressToSupabase(user.id, {
-                    favorites: updatedProgress.favorites,
-                    current_streak: updatedProgress.current_streak,
-                    last_study_date: updatedProgress.last_study_date,
-                    total_words_learned: updatedProgress.total_words_learned,
+                setTerms(prev => {
+                    const reconciledTerms = prev.map(existingTerm => (
+                        existingTerm.id === termId
+                            ? { ...existingTerm, ...serverTermSrs }
+                            : existingTerm
+                    ));
+
+                    saveTerms(reconciledTerms);
+                    return reconciledTerms;
+                });
+
+                setUserProgress(prev => {
+                    if (!prev) {
+                        return prev;
+                    }
+
+                    const reconciledProgress = {
+                        ...prev,
+                        quiz_history: prev.quiz_history.some((existingAttempt) => existingAttempt.id === attempt.id)
+                            ? prev.quiz_history
+                            : [...prev.quiz_history, attempt],
+                        current_streak: result.userProgress.current_streak,
+                        last_study_date: result.userProgress.last_study_date,
+                        total_words_learned: result.userProgress.total_words_learned,
+                        updated_at: result.userProgress.updated_at,
+                    };
+
+                    saveLocalUserProgress(reconciledProgress);
+                    return reconciledProgress;
                 });
             } catch (error) {
                 console.error('Failed to sync quiz answer to cloud:', error);
+                loadData();
             }
         }
-    }, [terms, isAuthenticated, user]);
+    }, [terms, userProgress, isAuthenticated, user, loadData]);
 
     /**
      * Manually refresh all data from storage
@@ -361,7 +401,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const safeProgress = userProgress ?? {
         user_id: 'guest',
         favorites: [],
-        current_language: 'tr' as const,
+        current_language: 'ru' as const,
         quiz_history: [],
         total_words_learned: 0,
         current_streak: 0,

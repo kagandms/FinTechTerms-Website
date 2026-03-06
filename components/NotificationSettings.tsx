@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, BellOff, Clock, Check } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
 
 interface NotificationSettingsProps {
     language: 'tr' | 'en' | 'ru';
@@ -20,6 +21,9 @@ const translations = {
         permissionNeeded: 'Bildirim izni gerekli',
         active: 'Aktif',
         inactive: 'Pasif',
+        storageError: 'Kayıtlı veri bozuk olduğu için bildirim ayarları sıfırlandı.',
+        serviceWorkerError: 'Bildirimler açıldı ancak service worker kaydedilemedi.',
+        savingError: 'Bildirim ayarları kaydedilemedi.',
     },
     en: {
         title: 'Daily Reminder',
@@ -33,6 +37,9 @@ const translations = {
         permissionNeeded: 'Notification permission required',
         active: 'Active',
         inactive: 'Inactive',
+        storageError: 'Notification settings were reset because saved data was invalid.',
+        serviceWorkerError: 'Notifications were enabled, but the service worker could not be registered.',
+        savingError: 'Notification settings could not be saved.',
     },
     ru: {
         title: 'Ежедневное напоминание',
@@ -46,10 +53,14 @@ const translations = {
         permissionNeeded: 'Требуется разрешение на уведомления',
         active: 'Активно',
         inactive: 'Неактивно',
+        storageError: 'Настройки уведомлений были сброшены из-за повреждённых данных.',
+        serviceWorkerError: 'Уведомления включены, но service worker не удалось зарегистрировать.',
+        savingError: 'Не удалось сохранить настройки уведомлений.',
     },
 };
 
-const STORAGE_KEY = 'ftt_notification_settings';
+export const NOTIFICATION_SETTINGS_STORAGE_KEY = 'ftt_notification_settings';
+const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = { enabled: false, hour: 9, minute: 0 };
 
 interface NotificationConfig {
     enabled: boolean;
@@ -57,28 +68,60 @@ interface NotificationConfig {
     minute: number;
 }
 
-function getStoredConfig(): NotificationConfig {
-    if (typeof window === 'undefined') return { enabled: false, hour: 9, minute: 0 };
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return JSON.parse(stored);
-    } catch {
-        // Ignore parse errors
+function readStoredConfig(): { config: NotificationConfig; error: string | null } {
+    if (typeof window === 'undefined') {
+        return { config: DEFAULT_NOTIFICATION_CONFIG, error: null };
     }
-    return { enabled: false, hour: 9, minute: 0 };
+
+    try {
+        const stored = localStorage.getItem(NOTIFICATION_SETTINGS_STORAGE_KEY);
+        if (!stored) {
+            return { config: DEFAULT_NOTIFICATION_CONFIG, error: null };
+        }
+
+        const parsed = JSON.parse(stored) as Partial<NotificationConfig>;
+        const hour = typeof parsed.hour === 'number' ? parsed.hour : DEFAULT_NOTIFICATION_CONFIG.hour;
+        const minute = typeof parsed.minute === 'number' ? parsed.minute : DEFAULT_NOTIFICATION_CONFIG.minute;
+        const enabled = typeof parsed.enabled === 'boolean' ? parsed.enabled : DEFAULT_NOTIFICATION_CONFIG.enabled;
+
+        return {
+            config: { enabled, hour, minute },
+            error: null,
+        };
+    } catch (error) {
+        console.error('NOTIFICATION_SETTINGS_PARSE_ERROR', error);
+    }
+
+    return {
+        config: DEFAULT_NOTIFICATION_CONFIG,
+        error: 'NOTIFICATION_SETTINGS_PARSE_ERROR',
+    };
 }
 
-function saveConfig(config: NotificationConfig): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+function saveConfig(config: NotificationConfig): boolean {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        localStorage.setItem(NOTIFICATION_SETTINGS_STORAGE_KEY, JSON.stringify(config));
+        return true;
+    } catch (error) {
+        console.error('NOTIFICATION_SETTINGS_SAVE_ERROR', error);
+        return false;
+    }
 }
 
 export default function NotificationSettings({ language }: NotificationSettingsProps) {
     const t = translations[language];
-    const [config, setConfig] = useState<NotificationConfig>(getStoredConfig);
+    const { showToast } = useToast();
+    const [initialStorageRead] = useState(() => readStoredConfig());
+    const [config, setConfig] = useState<NotificationConfig>(initialStorageRead.config);
+    const [storageError, setStorageError] = useState<string | null>(initialStorageRead.error);
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [showSaved, setShowSaved] = useState(false);
     const [isSupported, setIsSupported] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -87,6 +130,15 @@ export default function NotificationSettings({ language }: NotificationSettingsP
         }
         setPermission(Notification.permission);
     }, []);
+
+    useEffect(() => {
+        if (!storageError) {
+            return;
+        }
+
+        showToast(t.storageError, 'warning');
+        setStorageError(null);
+    }, [showToast, storageError, t.storageError]);
 
     // Schedule checker: runs every minute, fires notification at the right time
     const checkAndNotify = useCallback(() => {
@@ -138,7 +190,9 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             // Disable
             const newConfig = { ...config, enabled: false };
             setConfig(newConfig);
-            saveConfig(newConfig);
+            if (!saveConfig(newConfig)) {
+                showToast(t.savingError, 'error');
+            }
             return;
         }
 
@@ -148,22 +202,39 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             return;
         }
 
-        const perm = await Notification.requestPermission();
-        setPermission(perm);
+        setIsUpdating(true);
 
-        if (perm === 'granted') {
-            const newConfig = { ...config, enabled: true };
-            setConfig(newConfig);
-            saveConfig(newConfig);
+        try {
+            const perm = await Notification.requestPermission();
+            setPermission(perm);
 
-            // Register the notification service worker
-            if ('serviceWorker' in navigator) {
-                try {
-                    await navigator.serviceWorker.register('/notification-sw.js');
-                } catch {
-                    // SW registration failed, but Notification API still works
+            if (perm === 'granted') {
+                const newConfig = { ...config, enabled: true };
+                setConfig(newConfig);
+                if (!saveConfig(newConfig)) {
+                    showToast(t.savingError, 'error');
                 }
+
+                if ('serviceWorker' in navigator) {
+                    try {
+                        await navigator.serviceWorker.register('/notification-sw.js');
+                    } catch (error) {
+                        console.error('NOTIFICATION_SERVICE_WORKER_REGISTER_ERROR', error);
+                        showToast(t.serviceWorkerError, 'warning');
+                    }
+                }
+
+                return;
             }
+
+            if (perm === 'denied') {
+                showToast(t.denied, 'error');
+            }
+        } catch (error) {
+            console.error('NOTIFICATION_SETTINGS_TOGGLE_ERROR', error);
+            showToast(t.permissionNeeded, 'error');
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -173,7 +244,9 @@ export default function NotificationSettings({ language }: NotificationSettingsP
         const m = parts[1] ?? config.minute;
         const newConfig = { ...config, hour: h, minute: m };
         setConfig(newConfig);
-        saveConfig(newConfig);
+        if (!saveConfig(newConfig)) {
+            showToast(t.savingError, 'error');
+        }
         setShowSaved(true);
         setTimeout(() => setShowSaved(false), 2000);
     };
@@ -231,6 +304,7 @@ export default function NotificationSettings({ language }: NotificationSettingsP
                 {/* Toggle Button */}
                 <button
                     onClick={handleToggle}
+                    disabled={isUpdating}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${config.enabled
                         ? 'bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30'
                         : 'bg-primary-500 text-white hover:bg-primary-600'

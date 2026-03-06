@@ -23,6 +23,7 @@ export default function QuizPage() {
     const [hasChosenMode, setHasChosenMode] = useState(false);
     const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
     const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
+    const [isPending, setIsPending] = useState(false);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -64,26 +65,32 @@ export default function QuizPage() {
         setQuickQuizCategory(null);
     };
 
-    const handleAnswer = (isCorrect: boolean, responseTimeMs: number) => {
-        if (!currentTerm) return;
+    const handleAnswer = async (isCorrect: boolean, responseTimeMs: number) => {
+        if (!currentTerm || isPending) return;
 
-        // Increment session counter
-        incrementQuizAttempt();
+        setIsPending(true);
 
-        // Submit to SRS system (only for actual favorites, not quick quiz)
-        if (!isQuickQuiz) {
-            submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs);
-        }
+        try {
+            // Increment session counter
+            incrementQuizAttempt();
 
-        if (isCorrect) {
-            setCorrectCount(c => c + 1);
-        }
+            // Submit to SRS system (only for actual favorites, not quick quiz)
+            if (!isQuickQuiz) {
+                await submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs);
+            }
 
-        // Move to next or complete
-        if (currentIndex + 1 >= sessionTerms.length) {
-            setIsComplete(true);
-        } else {
-            setCurrentIndex(i => i + 1);
+            if (isCorrect) {
+                setCorrectCount(c => c + 1);
+            }
+
+            // Move to next or complete
+            if (currentIndex + 1 >= sessionTerms.length) {
+                setIsComplete(true);
+            } else {
+                setCurrentIndex(i => i + 1);
+            }
+        } finally {
+            setIsPending(false);
         }
     };
 
@@ -455,6 +462,7 @@ export default function QuizPage() {
                     key={currentTerm.id}
                     term={currentTerm}
                     onAnswer={handleAnswer}
+                    isPending={isPending}
                 />
             )}
 

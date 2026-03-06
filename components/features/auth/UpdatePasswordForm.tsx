@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { UpdatePasswordProps } from './types';
 
@@ -8,13 +8,15 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
     showToast, logout, onSuccess
 }) => {
     const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'ru' : 'ru';
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const dict = {
         title: lang === 'tr' ? 'Yeni Şifre Belirle' : lang === 'ru' ? 'Новый пароль' : 'Set New Password',
         placeholder: lang === 'tr' ? 'Yeni Şifre' : lang === 'ru' ? 'Новый пароль' : 'New Password',
         btnText: lang === 'tr' ? 'Şifreyi Güncelle' : lang === 'ru' ? 'Обновить пароль' : 'Update Password',
+        loading: lang === 'tr' ? 'Güncelleniyor...' : lang === 'ru' ? 'Обновление...' : 'Updating...',
         success: lang === 'tr' ? 'Şifreniz güncellendi!' : lang === 'ru' ? 'Пароль обновлен!' : 'Password updated!',
-        error: lang === 'tr' ? 'Hata oluştu' : lang === 'ru' ? 'Ошибка' : 'Error'
+        error: lang === 'tr' ? 'Hata oluştu' : lang === 'ru' ? 'Ошибка' : 'Error',
     };
 
     return (
@@ -40,20 +42,41 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
 
                 <button
                     onClick={async () => {
-                        const check = validatePassword(authForm.password);
-                        if (!check.valid) return setAuthError(check.message);
-                        const res = await updatePassword(authForm.password);
-                        if (res.success) {
-                            showToast(dict.success, 'success');
-                            logout();
-                            onSuccess();
-                        } else {
-                            setAuthError(res.error || dict.error);
+                        setIsUpdating(true);
+                        setAuthError('');
+
+                        try {
+                            const check = validatePassword(authForm.password);
+                            if (!check.valid) {
+                                setAuthError(check.message);
+                                showToast(check.message, 'error');
+                                return;
+                            }
+
+                            const res = await updatePassword(authForm.password);
+                            if (res.success) {
+                                showToast(dict.success, 'success');
+                                void Promise.resolve(logout());
+                                onSuccess();
+                                return;
+                            }
+
+                            const errorMessage = res.error || dict.error;
+                            setAuthError(errorMessage);
+                            showToast(errorMessage, 'error');
+                        } catch (error) {
+                            console.error('AUTH_UPDATE_PASSWORD_UI_ERROR', error);
+                            const errorMessage = error instanceof Error ? error.message : dict.error;
+                            setAuthError(errorMessage);
+                            showToast(errorMessage, 'error');
+                        } finally {
+                            setIsUpdating(false);
                         }
                     }}
+                    disabled={isUpdating}
                     className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors"
                 >
-                    {dict.btnText}
+                    {isUpdating ? dict.loading : dict.btnText}
                 </button>
             </div>
         </>

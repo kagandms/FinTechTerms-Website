@@ -35,6 +35,11 @@ function createMockTerm(overrides: Partial<Term> = {}): Term {
         example_sentence_en: 'Blockchain enables...',
         example_sentence_tr: 'Blockchain sağlar...',
         example_sentence_ru: 'Блокчейн обеспечивает...',
+        context_tags: {
+            disciplines: ['economics', 'mis'],
+            target_universities: ['SPbU', 'HSE'],
+        },
+        regional_market: 'GLOBAL',
         srs_level: 1,
         next_review_date: new Date().toISOString(),
         last_reviewed: null,

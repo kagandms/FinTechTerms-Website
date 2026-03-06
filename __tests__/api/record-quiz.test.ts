@@ -5,6 +5,8 @@
  */
 
 describe('Quiz API - Input Validation Logic', () => {
+    const validIdempotencyKey = '550e8400-e29b-41d4-a716-446655440000';
+
     it('should reject missing term_id', () => {
         const body: any = { is_correct: true, response_time_ms: 500 };
         const hasTermId = !!body.term_id && typeof body.term_id === 'string';
@@ -23,17 +25,30 @@ describe('Quiz API - Input Validation Logic', () => {
         expect(isValidTime).toBe(false);
     });
 
+    it('should reject missing idempotencyKey', () => {
+        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500 };
+        const hasIdempotencyKey = typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0;
+        expect(hasIdempotencyKey).toBe(false);
+    });
+
+    it('should reject malformed idempotencyKey values', () => {
+        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500, idempotencyKey: 'not-a-uuid' };
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey);
+        expect(isUuid).toBe(false);
+    });
+
     it('should accept valid quiz attempt body', () => {
-        const body = { term_id: 'test_1', is_correct: true, response_time_ms: 1500 };
+        const body = { term_id: 'test_1', is_correct: true, response_time_ms: 1500, idempotencyKey: validIdempotencyKey };
         const isValid =
             !!body.term_id && typeof body.term_id === 'string' &&
             typeof body.is_correct === 'boolean' &&
-            typeof body.response_time_ms === 'number' && body.response_time_ms >= 0;
+            typeof body.response_time_ms === 'number' && body.response_time_ms >= 0 &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey);
         expect(isValid).toBeTruthy();
     });
 
     it('should default quiz_type to simulation when not provided', () => {
-        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500 };
+        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500, idempotencyKey: validIdempotencyKey };
         const quizType = body.quiz_type || 'simulation';
         expect(quizType).toBe('simulation');
     });

@@ -1,3 +1,6 @@
+-- DEPRECATED: superseded by supabase/migrations/20260306170000_phase1_database_unification_lockdown.sql.
+-- This patch still targets the legacy split learning-log model and should remain only for historical reference.
+
 -- ============================================
 -- Migration 004: Fix Telegram Link RPC (v2 - Admin Client Compatible)
 -- Resolves RLS blocking on account_link_tokens table

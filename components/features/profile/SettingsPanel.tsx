@@ -41,7 +41,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </div>
 
                     <div className="flex gap-2">
-                        {(['tr', 'en', 'ru'] as Language[]).map((lang) => (
+                        {(['ru', 'en', 'tr'] as Language[]).map((lang) => (
                             <button
                                 key={lang}
                                 onClick={() => setLanguage(lang)}

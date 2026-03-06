@@ -7,8 +7,10 @@ All database operations are moved to a thread pool to avoid blocking the asyncio
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import random
+import re
 from typing import Any, Optional
 
 from supabase import create_client, Client
@@ -17,10 +19,31 @@ from bot.config import config, SUPPORTED_LANGUAGES
 
 logger = logging.getLogger(__name__)
 
+VALID_REGIONAL_MARKETS = {"MOEX", "BIST", "GLOBAL"}
+ACADEMIC_SEARCH_FILTERS: tuple[tuple[str, dict[str, Any]], ...] = (
+    ("moex", {"regional_market": "MOEX"}),
+    ("мосбиржа", {"regional_market": "MOEX"}),
+    ("мосбир", {"regional_market": "MOEX"}),
+    ("moscow exchange", {"regional_market": "MOEX"}),
+    ("bist", {"regional_market": "BIST"}),
+    ("borsa istanbul", {"regional_market": "BIST"}),
+    ("economics", {"context_tags": {"disciplines": ["economics"]}}),
+    ("экономика", {"context_tags": {"disciplines": ["economics"]}}),
+    ("ekonomi", {"context_tags": {"disciplines": ["economics"]}}),
+    ("mis", {"context_tags": {"disciplines": ["mis"]}}),
+    ("management information systems", {"context_tags": {"disciplines": ["mis"]}}),
+    ("управленческие информационные системы", {"context_tags": {"disciplines": ["mis"]}}),
+    ("yonetim bilisim sistemleri", {"context_tags": {"disciplines": ["mis"]}}),
+    ("yönetim bilişim sistemleri", {"context_tags": {"disciplines": ["mis"]}}),
+    ("spbu", {"context_tags": {"target_universities": ["SPbU"]}}),
+    ("спбгу", {"context_tags": {"target_universities": ["SPbU"]}}),
+    ("hse", {"context_tags": {"target_universities": ["HSE"]}}),
+    ("вшэ", {"context_tags": {"target_universities": ["HSE"]}}),
+)
+
 # ── Supabase Clients ────────────────────────────────────────
 _public_client: Optional[Client] = None
 _admin_client: Optional[Client] = None
-_warned_admin_fallback = False
 
 
 def _normalize_language(language: Any) -> str:
@@ -31,6 +54,80 @@ def _normalize_language(language: Any) -> str:
         return config.default_language
 
     return "ru"
+
+
+def _normalize_regional_market(value: Any) -> str:
+    if isinstance(value, str):
+        normalized = value.strip().upper()
+        if normalized in VALID_REGIONAL_MARKETS:
+            return normalized
+    return "GLOBAL"
+
+
+def _normalize_context_tags(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+
+    normalized: dict[str, Any] = {}
+    for key, raw_value in value.items():
+        if not isinstance(key, str) or not key.strip():
+            continue
+
+        if isinstance(raw_value, (list, tuple, set)):
+            cleaned = [
+                str(item).strip()
+                for item in raw_value
+                if str(item).strip()
+            ]
+            if cleaned:
+                normalized[key] = cleaned
+            continue
+
+        if isinstance(raw_value, str):
+            cleaned = raw_value.strip()
+            if cleaned:
+                normalized[key] = cleaned
+            continue
+
+        if isinstance(raw_value, (int, float, bool)):
+            normalized[key] = raw_value
+
+    return normalized
+
+
+def normalize_term_payload(term: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(term)
+    normalized["regional_market"] = _normalize_regional_market(normalized.get("regional_market"))
+    normalized["context_tags"] = _normalize_context_tags(normalized.get("context_tags"))
+    return normalized
+
+
+def _tokenize_query(query: str) -> set[str]:
+    return {token for token in re.split(r"[^\w]+", query.casefold()) if token}
+
+
+def build_academic_search_filters(query: str) -> list[dict[str, Any]]:
+    normalized_query = (query or "").casefold()
+    if not normalized_query:
+        return []
+
+    tokens = _tokenize_query(normalized_query)
+    filters: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for needle, filter_spec in ACADEMIC_SEARCH_FILTERS:
+        matches = needle in normalized_query if " " in needle else needle in tokens
+        if not matches:
+            continue
+
+        signature = json.dumps(filter_spec, sort_keys=True)
+        if signature in seen:
+            continue
+
+        seen.add(signature)
+        filters.append(filter_spec)
+
+    return filters
 
 def get_public_client() -> Client:
     """Lazy-initialise public Supabase client (anon/service key from SUPABASE_KEY)."""
@@ -45,19 +142,12 @@ def get_admin_client() -> Client:
     """
     Lazy-initialise admin Supabase client.
 
-    Uses SUPABASE_SERVICE_ROLE_KEY when available so account/favorites/stats lookups
-    are not blocked by RLS. Falls back to SUPABASE_KEY if service key is missing.
+    Uses SUPABASE_SERVICE_ROLE_KEY so secure account/favorites/stats writes continue
+    to work after RLS is restricted to service-role-only mutations.
     """
-    global _admin_client, _warned_admin_fallback
+    global _admin_client
     if _admin_client is None:
-        admin_key = config.supabase_service_role_key or config.supabase_key
-        _admin_client = create_client(config.supabase_url, admin_key)
-        if not config.supabase_service_role_key and not _warned_admin_fallback:
-            logger.warning(
-                "SUPABASE_SERVICE_ROLE_KEY is not set; falling back to SUPABASE_KEY. "
-                "Account linkage/favorites/stats may be limited by RLS."
-            )
-            _warned_admin_fallback = True
+        _admin_client = create_client(config.supabase_url, config.supabase_service_role_key)
     return _admin_client
 
 
@@ -72,7 +162,7 @@ async def fetch_all_terms() -> list[dict[str, Any]]:
         return get_public_client().table("terms").select("*").execute()
     try:
         response = await asyncio.to_thread(_fetch)
-        return response.data or []
+        return [normalize_term_payload(row) for row in (response.data or [])]
     except Exception as e:
         logger.error("Failed to fetch all terms (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -84,7 +174,7 @@ async def fetch_term_by_id(term_id: str) -> Optional[dict[str, Any]]:
     try:
         response = await asyncio.to_thread(_fetch)
         data = response.data
-        return data[0] if data else None
+        return normalize_term_payload(data[0]) if data else None
     except Exception as e:
         logger.error("Failed to fetch term %s (Database Unreachable): %s", term_id, e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -94,11 +184,48 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
     Search terms across all three languages using Trigram (pg_trgm) fuzzy search RPC.
     Complexity: O(log N) due to GIN Indexes in DB.
     """
+    academic_filters = build_academic_search_filters(query)
+
     def _search():
-        return get_public_client().rpc("search_terms_trigram", {"search_query": query, "max_limit": limit}).execute()
+        client = get_public_client()
+        merged_rows: dict[str, dict[str, Any]] = {}
+
+        trigram_response = client.rpc(
+            "search_terms_trigram",
+            {"search_query": query, "max_limit": limit},
+        ).execute()
+
+        for row in trigram_response.data or []:
+            normalized = normalize_term_payload(row)
+            term_id = normalized.get("id")
+            if isinstance(term_id, str) and term_id:
+                merged_rows[term_id] = normalized
+
+        for filter_spec in academic_filters:
+            query_builder = client.table("terms").select("*")
+
+            if filter_spec.get("regional_market"):
+                query_builder = query_builder.eq(
+                    "regional_market",
+                    filter_spec["regional_market"],
+                )
+
+            if filter_spec.get("context_tags"):
+                query_builder = query_builder.contains(
+                    "context_tags",
+                    filter_spec["context_tags"],
+                )
+
+            filtered_response = query_builder.limit(limit).execute()
+            for row in filtered_response.data or []:
+                normalized = normalize_term_payload(row)
+                term_id = normalized.get("id")
+                if isinstance(term_id, str) and term_id:
+                    merged_rows.setdefault(term_id, normalized)
+
+        return list(merged_rows.values())[:limit]
     try:
-        response = await asyncio.to_thread(_search)
-        return response.data or []
+        return await asyncio.to_thread(_search)
     except Exception as e:
         logger.error("Search failed for '%s' (Database Unreachable): %s", query, e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -124,7 +251,7 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
         return get_public_client().table("terms").select("*").eq("category", category).execute()
     try:
         response = await asyncio.to_thread(_fetch)
-        return response.data or []
+        return [normalize_term_payload(row) for row in (response.data or [])]
     except Exception as e:
         logger.error("Failed to fetch terms for category %s: %s", category, e)
         return []
@@ -340,7 +467,7 @@ async def get_user_report(telegram_id: int) -> dict[str, Any]:
         tot_correct = sum(1 for a in attempts if a.get("is_correct"))
         accuracy = round((tot_correct / tot_quiz) * 100) if tot_quiz > 0 else 0
         
-        daily_logs = client.table("daily_learning_log").select("words_reviewed", "new_words_learned").eq("user_id", user_id).execute()
+        daily_logs = client.table("daily_learning_logs").select("words_reviewed", "new_words_learned").eq("user_id", user_id).execute()
         words_reviewed = sum(row.get("words_reviewed", 0) for row in daily_logs.data or [])
         new_words = sum(row.get("new_words_learned", 0) for row in daily_logs.data or [])
         
@@ -402,7 +529,7 @@ async def get_bot_user_count() -> int:
 
 async def get_user_favorites(telegram_id: int) -> list[dict[str, Any]]:
     """
-    Fetch the linked user's favorite terms from the `favorites` table in realtime.
+    Fetch the linked user's favorite terms from the unified `user_favorites` table.
     """
     linked = await get_linked_profile_context(telegram_id)
     user_id = linked.get("user_id")
@@ -413,12 +540,12 @@ async def get_user_favorites(telegram_id: int) -> list[dict[str, Any]]:
 
 
 async def get_favorites_by_user_id(user_id: str, limit: int = 25) -> list[dict[str, Any]]:
-    """Fetch favorites directly from `favorites` and hydrate term payload from `terms`."""
+    """Fetch favorites directly from `user_favorites` and hydrate term payload from `terms`."""
 
     def _fetch_favorites() -> list[dict[str, Any]]:
         client = get_admin_client()
         favorites_res = (
-            client.table("favorites")
+            client.table("user_favorites")
             .select("term_id, created_at")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
@@ -439,12 +566,12 @@ async def get_favorites_by_user_id(user_id: str, limit: int = 25) -> list[dict[s
 
         terms_res = (
             client.table("terms")
-            .select("id, term_ru, term_en, term_tr, category")
+            .select("id, term_ru, term_en, term_tr, category, regional_market, context_tags")
             .in_("id", term_ids)
             .execute()
         )
         terms_by_id = {
-            row.get("id"): row
+            row.get("id"): normalize_term_payload(row)
             for row in (terms_res.data or [])
             if isinstance(row.get("id"), str)
         }
@@ -481,7 +608,7 @@ async def get_activity_stats_by_user_id(user_id: str) -> dict[str, Any]:
         accuracy = round((quizzes_correct / quizzes_taken) * 100) if quizzes_taken else 0
 
         learning_res = (
-            client.table("daily_learning_log")
+            client.table("daily_learning_logs")
             .select("log_date, words_reviewed, new_words_learned")
             .eq("user_id", user_id)
             .execute()
@@ -492,7 +619,7 @@ async def get_activity_stats_by_user_id(user_id: str) -> dict[str, Any]:
         active_days = len({row.get("log_date") for row in learning_rows if row.get("log_date")})
 
         favorites_res = (
-            client.table("favorites")
+            client.table("user_favorites")
             .select("term_id", count="exact")
             .eq("user_id", user_id)
             .execute()

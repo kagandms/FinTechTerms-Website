@@ -11,9 +11,10 @@ import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 interface QuizCardProps {
     term: Term;
     onAnswer: (isCorrect: boolean, responseTimeMs: number) => void;
+    isPending?: boolean;
 }
 
-export default function QuizCard({ term, onAnswer }: QuizCardProps) {
+export default function QuizCard({ term, onAnswer, isPending = false }: QuizCardProps) {
     const {
         t,
         language,
@@ -37,6 +38,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
     }, [startTimer]);
 
     const handleFlip = () => {
+        if (isPending || isFlipped) return;
         const time = stopTimer();
         setRecallTime(time);
         setIsFlipped(true);
@@ -64,7 +66,12 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
     // currentTerm is provided by useTermTranslation hook
 
     // All languages for display
-    const allLanguages: Language[] = ['tr', 'en', 'ru'];
+    const allLanguages: Language[] = ['ru', 'en', 'tr'];
+    const pendingLabel = language === 'tr'
+        ? 'Kaydediliyor...'
+        : language === 'ru'
+            ? 'Сохраняем...'
+            : 'Saving...';
 
     return (
         <div className="w-full max-w-md mx-auto">
@@ -109,9 +116,13 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     <div className="mt-6">
                         <button
                             onClick={handleFlip}
-                            className="w-full py-4 bg-primary-500 text-white font-semibold rounded-2xl hover:bg-primary-600 transition-colors shadow-md"
+                            disabled={isPending}
+                            className={`w-full py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                                ? 'bg-primary-300 cursor-not-allowed'
+                                : 'bg-primary-500 hover:bg-primary-600'
+                                }`}
                         >
-                            {t('quiz.showAnswer')}
+                            {isPending ? pendingLabel : t('quiz.showAnswer')}
                         </button>
                     </div>
                 </div>
@@ -156,10 +167,17 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                         <div className="w-full bg-gray-50 rounded-xl p-3 space-y-2">
                             <p className="text-xs text-gray-400 mb-2">{t('card.listen')} / {language === 'tr' ? 'Dili Değiştir' : language === 'ru' ? 'Сменить язык' : 'Change Language'}</p>
                             {allLanguages.map(lang => (
-                                <button
+                                <div
                                     key={lang}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => handleSelectLang(lang)}
-                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${lang === selectedLang
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            handleSelectLang(lang);
+                                        }
+                                    }}
+                                    className={`w-full flex items-center cursor-pointer justify-between px-3 py-2 rounded-lg transition-all ${lang === selectedLang
                                         ? 'bg-primary-100 ring-2 ring-primary-300'
                                         : 'bg-white hover:bg-gray-100'
                                         }`}
@@ -171,6 +189,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                                         {getTermByLang(lang)}
                                     </span>
                                     <button
+                                        type="button"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleSpeak(getTermByLang(lang), lang);
@@ -179,7 +198,7 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                                     >
                                         <Volume2 className="w-4 h-4" />
                                     </button>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -193,7 +212,11 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
                     <div className="flex gap-3">
                         <button
                             onClick={() => onAnswer(false, recallTime)}
-                            className="flex-1 flex items-center justify-center gap-2 py-4 bg-red-500 text-white font-semibold rounded-2xl hover:bg-red-600 transition-colors shadow-md"
+                            disabled={isPending}
+                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                                ? 'bg-red-300 cursor-not-allowed'
+                                : 'bg-red-500 hover:bg-red-600'
+                                }`}
                         >
                             <X className="w-5 h-5" />
                             <span>{t('quiz.didntKnow')}</span>
@@ -201,7 +224,11 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
 
                         <button
                             onClick={() => onAnswer(true, recallTime)}
-                            className="flex-1 flex items-center justify-center gap-2 py-4 bg-green-500 text-white font-semibold rounded-2xl hover:bg-green-600 transition-colors shadow-md"
+                            disabled={isPending}
+                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                                ? 'bg-green-300 cursor-not-allowed'
+                                : 'bg-green-500 hover:bg-green-600'
+                                }`}
                         >
                             <Check className="w-5 h-5" />
                             <span>{t('quiz.knew')}</span>
@@ -214,7 +241,11 @@ export default function QuizCard({ term, onAnswer }: QuizCardProps) {
             {isFlipped && (
                 <button
                     onClick={() => setIsFlipped(false)}
-                    className="mt-4 mx-auto flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
+                    disabled={isPending}
+                    className={`mt-4 mx-auto flex items-center gap-2 transition-colors ${isPending
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-500 hover:text-gray-700'
+                        }`}
                 >
                     <RotateCcw className="w-4 h-4" />
                     <span className="text-sm">{t('quiz.flipCard')}</span>

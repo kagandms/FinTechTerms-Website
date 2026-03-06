@@ -19,6 +19,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    Message,
 )
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
@@ -48,6 +49,10 @@ from bot.rate_limiter import is_rate_limited
 
 logger = logging.getLogger(__name__)
 
+MAX_TELEGRAM_MESSAGE_LENGTH = 3900
+PAGINATION_STORE_KEY = "paginated_messages"
+MAX_PAGINATION_SESSIONS = 20
+
 START_WELCOME_TEXT = (
     "🇷🇺 <b>Привет! Добро пожаловать в FinTechTerms.</b>\n"
     "🇹🇷 FinTechTerms'e hoş geldiniz.\n"
@@ -68,21 +73,87 @@ def sanitize_input(user_input: str) -> str:
     return html.escape(safe_query.strip())
 
 
+def _localize_context_value(value: Any, lang: str) -> str:
+    localized = {
+        "ru": {
+            "economics": "Экономика",
+            "mis": "MIS",
+        },
+        "en": {
+            "economics": "Economics",
+            "mis": "MIS",
+        },
+        "tr": {
+            "economics": "Ekonomi",
+            "mis": "MIS",
+        },
+    }
+
+    raw_value = str(value).strip()
+    if not raw_value:
+        return ""
+
+    return html.escape(localized.get(lang, {}).get(raw_value.casefold(), raw_value))
+
+
+def _format_term_taxonomy(term: dict[str, Any], lang: str) -> str:
+    labels = {
+        "ru": {"market": "Рынок", "context": "Контекст"},
+        "en": {"market": "Market", "context": "Context"},
+        "tr": {"market": "Pazar", "context": "Bağlam"},
+    }.get(lang, {"market": "Market", "context": "Context"})
+
+    lines: list[str] = []
+    market = str(term.get("regional_market") or "").strip().upper()
+    if market:
+        lines.append(f"🏛️ <b>{labels['market']}:</b> {html.escape(market)}")
+
+    context_tags = term.get("context_tags") if isinstance(term.get("context_tags"), dict) else {}
+    context_values: list[str] = []
+
+    for key in ("disciplines", "target_universities"):
+        raw_value = context_tags.get(key)
+        values = raw_value if isinstance(raw_value, list) else [raw_value] if raw_value else []
+        for value in values:
+            localized_value = _localize_context_value(value, lang)
+            if localized_value and localized_value not in context_values:
+                context_values.append(localized_value)
+
+    if context_values:
+        lines.append(f"🎓 <b>{labels['context']}:</b> {', '.join(context_values[:5])}")
+
+    return "\n" + "\n".join(lines) if lines else ""
+
+
 def _format_term_card(term: dict[str, Any], lang: str) -> str:
     """Format a term into a rich Telegram message."""
     cat = term.get("category", "Fintech")
     cat_emoji = CATEGORY_EMOJI.get(cat, "📖")
 
     def_key = f"definition_{lang}"
-    ex_key = f"example_{lang}"
-    definition = term.get(def_key) or term.get("definition_en", "—")
-    example = term.get(ex_key) or term.get("example_en", "—")
+    ex_key = f"example_sentence_{lang}"
+    definition = (
+        term.get(def_key)
+        or term.get("definition_ru")
+        or term.get("definition_en")
+        or term.get("definition_tr")
+        or "—"
+    )
+    example = (
+        term.get(ex_key)
+        or term.get("example_sentence_ru")
+        or term.get("example_sentence_en")
+        or term.get("example_sentence_tr")
+        or "—"
+    )
+    metadata_block = _format_term_taxonomy(term, lang)
 
     return t(
         "term_card",
         lang,
         cat_emoji=cat_emoji,
         category=cat,
+        metadata_block=metadata_block,
         term_en=term.get("term_en", "—"),
         term_tr=term.get("term_tr", "—"),
         term_ru=term.get("term_ru", "—"),
@@ -205,6 +276,244 @@ def _link_hint_keyboard(lang: str) -> InlineKeyboardMarkup:
 def _public_site_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton("🌐 Перейти на сайт", url=WEB_APP_URL)]]
+    )
+
+
+def _busy_message(lang: str) -> str:
+    return {
+        "tr": "Sistem meşgul, lütfen birkaç saniye sonra tekrar deneyin.",
+        "ru": "Система занята, попробуйте снова через несколько секунд.",
+        "en": "System is busy, please try again in a few seconds.",
+    }.get(lang, "System is busy, please try again in a few seconds.")
+
+
+def _callback_error_message(lang: str) -> str:
+    return {
+        "tr": "İşlem başarısız, tekrar dene",
+        "ru": "Операция не удалась, попробуйте снова",
+        "en": "Action failed, try again",
+    }.get(lang, "Action failed, try again")
+
+
+def _pagination_labels(lang: str) -> dict[str, str]:
+    return {
+        "tr": {"prev": "⬅️ Önceki", "next": "Sonraki ➡️"},
+        "ru": {"prev": "⬅️ Назад", "next": "Далее ➡️"},
+        "en": {"prev": "⬅️ Prev", "next": "Next ➡️"},
+    }.get(lang, {"prev": "⬅️ Prev", "next": "Next ➡️"})
+
+
+def _chunk_text(text: str, max_length: int = MAX_TELEGRAM_MESSAGE_LENGTH) -> list[str]:
+    if len(text) <= max_length:
+        return [text]
+
+    chunks: list[str] = []
+    current = ""
+
+    for line in text.split("\n"):
+        candidate = line if not current else f"{current}\n{line}"
+        if len(candidate) <= max_length:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current)
+            current = ""
+
+        remaining = line
+        while len(remaining) > max_length:
+            split_at = remaining.rfind(" ", 0, max_length)
+            if split_at <= 0:
+                split_at = max_length
+            chunks.append(remaining[:split_at].rstrip())
+            remaining = remaining[split_at:].lstrip()
+
+        current = remaining
+
+    if current:
+        chunks.append(current)
+
+    return chunks or [text[:max_length]]
+
+
+def _clone_keyboard(markup: InlineKeyboardMarkup | None) -> list[list[InlineKeyboardButton]]:
+    if not markup:
+        return []
+    return [list(row) for row in markup.inline_keyboard]
+
+
+def _pagination_store(context: ContextTypes.DEFAULT_TYPE) -> dict[str, dict[str, Any]]:
+    store = context.user_data.setdefault(PAGINATION_STORE_KEY, {})
+    return store
+
+
+def _remember_paginated_message(
+    context: ContextTypes.DEFAULT_TYPE,
+    key: str,
+    pages: list[str],
+    lang: str,
+    reply_markup: InlineKeyboardMarkup | None,
+    parse_mode: str | None,
+) -> None:
+    store = _pagination_store(context)
+    store[key] = {
+        "pages": pages,
+        "lang": lang,
+        "reply_markup": reply_markup,
+        "parse_mode": parse_mode,
+    }
+
+    while len(store) > MAX_PAGINATION_SESSIONS:
+        oldest_key = next(iter(store))
+        store.pop(oldest_key, None)
+
+
+def _build_paginated_keyboard(
+    key: str,
+    page_index: int,
+    total_pages: int,
+    lang: str,
+    base_markup: InlineKeyboardMarkup | None,
+) -> InlineKeyboardMarkup | None:
+    rows = _clone_keyboard(base_markup)
+
+    if total_pages > 1:
+        labels = _pagination_labels(lang)
+        nav_row: list[InlineKeyboardButton] = []
+
+        if page_index > 0:
+            nav_row.append(
+                InlineKeyboardButton(
+                    labels["prev"],
+                    callback_data=f"page:{key}:{page_index - 1}",
+                )
+            )
+
+        nav_row.append(
+            InlineKeyboardButton(
+                f"{page_index + 1}/{total_pages}",
+                callback_data="page:noop",
+            )
+        )
+
+        if page_index < total_pages - 1:
+            nav_row.append(
+                InlineKeyboardButton(
+                    labels["next"],
+                    callback_data=f"page:{key}:{page_index + 1}",
+                )
+            )
+
+        rows.append(nav_row)
+
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+async def _send_busy_fallback(
+    message: Message,
+    lang: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    try:
+        await message.reply_text(
+            _busy_message(lang),
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup,
+        )
+    except Exception as exc:
+        logger.warning("Failed to send busy fallback: %s", exc)
+
+
+async def _reply_paginated(
+    message: Message,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    lang: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    parse_mode: str | None = ParseMode.HTML,
+    scope: str = "message",
+) -> None:
+    pages = _chunk_text(text)
+    outgoing_markup = reply_markup
+
+    if len(pages) > 1:
+        key = f"{scope}:{int(time.time() * 1000)}"
+        _remember_paginated_message(context, key, pages, lang, reply_markup, parse_mode)
+        outgoing_markup = _build_paginated_keyboard(
+            key,
+            0,
+            len(pages),
+            lang,
+            reply_markup,
+        )
+
+    try:
+        await message.reply_text(
+            pages[0],
+            parse_mode=parse_mode,
+            reply_markup=outgoing_markup,
+        )
+    except telegram.error.RetryAfter as exc:
+        logger.warning("Reply rate-limited: %s", exc)
+        await _send_busy_fallback(message, lang, reply_markup=reply_markup)
+    except telegram.error.TimedOut as exc:
+        logger.warning("Reply timed out: %s", exc)
+        await _send_busy_fallback(message, lang, reply_markup=reply_markup)
+
+
+async def _edit_paginated(
+    query: Any,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    lang: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    parse_mode: str | None = ParseMode.HTML,
+    scope: str = "callback",
+) -> None:
+    pages = _chunk_text(text)
+    outgoing_markup = reply_markup
+
+    if len(pages) > 1:
+        key = f"{scope}:{int(time.time() * 1000)}"
+        _remember_paginated_message(context, key, pages, lang, reply_markup, parse_mode)
+        outgoing_markup = _build_paginated_keyboard(
+            key,
+            0,
+            len(pages),
+            lang,
+            reply_markup,
+        )
+
+    await query.edit_message_text(
+        pages[0],
+        parse_mode=parse_mode,
+        reply_markup=outgoing_markup,
+    )
+
+
+async def _show_stored_page(
+    query: Any,
+    context: ContextTypes.DEFAULT_TYPE,
+    pagination_key: str,
+    page_index: int,
+) -> None:
+    store = _pagination_store(context)
+    payload = store.get(pagination_key)
+    if not payload:
+        raise ValueError("Pagination state expired")
+
+    pages = payload["pages"]
+    safe_index = max(0, min(page_index, len(pages) - 1))
+    await query.edit_message_text(
+        pages[safe_index],
+        parse_mode=payload["parse_mode"],
+        reply_markup=_build_paginated_keyboard(
+            pagination_key,
+            safe_index,
+            len(pages),
+            payload["lang"],
+            payload["reply_markup"],
+        ),
     )
 
 
@@ -399,14 +708,18 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_user.id
     await save_username(user_id, update.effective_user.username)
     lang = await get_user_language(user_id)
-    
+
     text = START_WELCOME_TEXT + "\n\n" + t("welcome", lang)
     keyboard = _main_menu_keyboard(lang)
 
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         text,
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=keyboard,
+        parse_mode=ParseMode.HTML,
+        scope="start",
     )
 
 
@@ -421,11 +734,15 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     text = t("welcome", lang)
     keyboard = _main_menu_keyboard(lang)
-    
-    await update.message.reply_text(
+
+    await _reply_paginated(
+        update.message,
+        context,
         text,
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=keyboard,
+        parse_mode=ParseMode.HTML,
+        scope="menu",
     )
 
 
@@ -439,45 +756,65 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     lang = await get_user_language(user_id)
 
     if await is_rate_limited(user_id):
-        # Ignore silently to prevent spam feedback loops
+        await _send_busy_fallback(
+            update.message,
+            lang,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
         return
 
     if not context.args:
-        await update.message.reply_text(
+        await _reply_paginated(
+            update.message,
+            context,
             t("search_prompt", lang),
-            parse_mode=ParseMode.HTML,
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="search-prompt",
         )
         return
 
     raw_query = " ".join(context.args)
     query = sanitize_input(raw_query)
-    
+
     if not query:
-        await update.message.reply_text(
+        await _reply_paginated(
+            update.message,
+            context,
             t("search_prompt", lang),
-            parse_mode=ParseMode.HTML,
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="search-empty",
         )
         return
 
     try:
         results = await search_terms(query, limit=3)
     except ConnectionError:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
-            parse_mode=ParseMode.HTML,
+        await _reply_paginated(
+            update.message,
+            context,
+            _busy_message(lang),
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="search-busy",
         )
         return
 
     await track_activity(user_id, "search")
 
     if not results:
-        await update.message.reply_text(
+        await _reply_paginated(
+            update.message,
+            context,
             t("search_no_results", lang, query=query),
-            parse_mode=ParseMode.HTML,
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="search-no-results",
         )
         return
 
@@ -485,10 +822,14 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     term = results[0]
     header = t("search_results_header", lang, count=len(results), query=query)
     card = _format_term_card(term, lang)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         f"{header}\n\n{card}",
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=_term_keyboard(term, lang),
+        parse_mode=ParseMode.HTML,
+        scope="search-results",
     )
 
 
@@ -502,18 +843,17 @@ async def daily_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     lang = await get_user_language(user_id)
 
     if await is_rate_limited(user_id):
+        await _send_busy_fallback(update.message, lang)
         return
 
     try:
         term = await get_random_term()
     except ConnectionError:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
-        )
+        await _reply_paginated(update.message, context, _busy_message(lang), lang, scope="daily-busy")
         return
 
     if not term:
-        await update.message.reply_text(t("error", lang), parse_mode=ParseMode.HTML)
+        await _reply_paginated(update.message, context, t("error", lang), lang, parse_mode=ParseMode.HTML, scope="daily-error")
         return
 
     await track_activity(user_id, "daily")
@@ -522,10 +862,14 @@ async def daily_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     header = t("daily_header", lang)
     card = _format_term_card(term, lang)
 
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         f"{header}\n\n{card}",
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=_term_keyboard(term, lang),
+        parse_mode=ParseMode.HTML,
+        scope="daily-term",
     )
 
 
@@ -539,24 +883,27 @@ async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     lang = await get_user_language(user_id)
 
     if await is_rate_limited(user_id):
+        await _send_busy_fallback(update.message, lang)
         return
 
     try:
         text, keyboard = await _build_quiz(lang)
     except ConnectionError:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
-        )
+        await _reply_paginated(update.message, context, _busy_message(lang), lang, scope="quiz-busy")
         return
 
     if text:
-        await update.message.reply_text(
-            text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+        await _reply_paginated(
+            update.message,
+            context,
+            text,
+            lang,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+            scope="quiz",
         )
     else:
-        await update.message.reply_text(
-            t("quiz_no_terms", lang), parse_mode=ParseMode.HTML
-        )
+        await _reply_paginated(update.message, context, t("quiz_no_terms", lang), lang, parse_mode=ParseMode.HTML, scope="quiz-empty")
 
 
 async def _build_quiz(lang: str) -> tuple[str | None, InlineKeyboardMarkup | None]:
@@ -604,10 +951,14 @@ async def lang_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.effective_user or not update.message:
         return
     lang = await get_user_language(update.effective_user.id)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         t("lang_prompt", lang),
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=_lang_keyboard(lang),
+        parse_mode=ParseMode.HTML,
+        scope="lang",
     )
 
 
@@ -631,10 +982,14 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
     text = await _build_stats_text(lang)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         text,
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        parse_mode=ParseMode.HTML,
+        scope="stats",
     )
 
 
@@ -654,10 +1009,14 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.effective_user or not update.message:
         return
     lang = await get_user_language(update.effective_user.id)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         t("help", lang),
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        parse_mode=ParseMode.HTML,
+        scope="help",
     )
 
 
@@ -669,17 +1028,21 @@ async def report_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
     text = await _build_report_text(user_id, lang)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         text,
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        parse_mode=ParseMode.HTML,
+        scope="report",
     )
 
 
 async def _build_report_text(user_id: int, lang: str) -> str:
     """Build a rich activity report for the user."""
     report = await get_user_report(user_id)
-    
+
     # Fallback to defaults to prevent silent crash if DB/cache is empty
     if not report:
         report = {
@@ -727,7 +1090,7 @@ async def _build_link_text(user_id: int, lang: str) -> str | None:
     token = await generate_link_token(user_id)
     if not token:
         return None
-        
+
     text_parts = {
         "tr": (
             f"🔗 <b>Hesap Birleştirme (Kodu Kopyala)</b>\n\n"
@@ -748,7 +1111,7 @@ async def _build_link_text(user_id: int, lang: str) -> str | None:
             f"<i>⚠️ This code is valid for 15 minutes.</i>"
         )
     }
-    
+
     return text_parts.get(lang, text_parts["en"])
 
 
@@ -766,57 +1129,148 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         username=update.effective_user.username,
     )
     if account_context.get("is_linked"):
-        await update.message.reply_text(
+        await _reply_paginated(
+            update.message,
+            context,
             "✅ <b>Аккаунт уже привязан.</b>\nВы можете сразу пользоваться командами бота.",
-            parse_mode=ParseMode.HTML,
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="link-already",
         )
         return
-    
+
     text = await _build_link_text(user_id, lang)
     if not text:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
-            parse_mode=ParseMode.HTML,
+        await _reply_paginated(
+            update.message,
+            context,
+            _busy_message(lang),
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="link-busy",
         )
         return
-        
-    await update.message.reply_text(
+
+    await _reply_paginated(
+        update.message,
+        context,
         text,
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        parse_mode=ParseMode.HTML,
+        scope="link",
     )
 
 
 # ── /favorites ────────────────────────────────────────────
 async def favorites_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show the user's favorite terms from the web app."""
+    """Show the user's favorite terms from the web app inline."""
     if not update.effective_user or not update.message:
         return
-    user_id = update.effective_user.id
-    lang = await get_user_language(user_id)
 
-    if await is_rate_limited(user_id):
+    telegram_id = update.effective_user.id
+
+    # Ratelimit protection against spam polling
+    if await is_rate_limited(telegram_id):
+        lang = await get_user_language(telegram_id)
+        await _send_busy_fallback(update.message, lang)
         return
 
-    text, keyboard, _ = await _build_account_favorites_text(
-        user_id,
-        lang,
-        username=update.effective_user.username,
-    )
-    await update.message.reply_text(
-        text,
-        parse_mode=ParseMode.HTML,
-        reply_markup=keyboard,
-    )
+    # Fallback languages dict context
+    lang = await get_user_language(telegram_id)
+
+    try:
+        # 1. Resolve Auth linkage via sync user
+        linked_ctx = await get_linked_profile_context(telegram_id, username=update.effective_user.username)
+
+        if not linked_ctx.get("is_linked") or not linked_ctx.get("user_id"):
+            msg = (
+                "⚠️ Вы не привязали аккаунт Telegram к сайту.\n" if lang == "ru" else
+                "⚠️ Telegram hesabınız siteye bağlı değil.\n" if lang == "tr" else
+                "⚠️ Your Telegram account is not linked to the website.\n"
+            )
+            await _reply_paginated(
+                update.message,
+                context,
+                msg + "Используйте /link для привязки. (Use /link to attach profile)",
+                lang,
+                parse_mode=ParseMode.HTML,
+                scope="favorites-link-required",
+            )
+            return
+
+        user_id = str(linked_ctx["user_id"])
+
+        # 2. Fetch Hydrated Favorites List
+        favorites = await get_favorites_by_user_id(user_id, limit=20)
+
+        if not favorites:
+            empty_msg = (
+                "У вас пока нет избранных терминов." if lang == "ru" else
+                "Henüz favori kelimeniz yok." if lang == "tr" else
+                "You have no favorite terms yet."
+            )
+            await _reply_paginated(update.message, context, empty_msg, lang, parse_mode=ParseMode.HTML, scope="favorites-empty")
+            return
+
+        # 3. Construct beautiful UI response
+        lines = [f"⭐ <b>Мои Избранные</b> ({len(favorites)})" if lang == "ru" else
+                 f"⭐ <b>Favorilerim</b> ({len(favorites)})" if lang == "tr" else
+                 f"⭐ <b>My Favorites</b> ({len(favorites)})", ""]
+
+        for idx, term in enumerate(favorites[:15], start=1):
+            term_ru = html.escape(str(term.get("term_ru", "—")))
+            term_tr = html.escape(str(term.get("term_tr", "—")))
+            term_en = html.escape(str(term.get("term_en", "—")))
+
+            # Use dynamic localization rendering based on target language
+            if lang == "ru":
+                display = f"🇷🇺 {term_ru} (🇬🇧 {term_en})"
+            elif lang == "tr":
+                display = f"🇹🇷 {term_tr} (🇬🇧 {term_en})"
+            else:
+                display = f"🇬🇧 {term_en} (🇷🇺 {term_ru})"
+
+            lines.append(f"{idx}. {display}")
+
+        if len(favorites) > 15:
+            lines.append(f"\n...и еще {len(favorites) - 15} терминов на сайте." if lang == "ru" else
+                         f"\n...ve web sitesinde {len(favorites) - 15} terim daha." if lang == "tr" else
+                         f"\n...and {len(favorites) - 15} more terms on the website.")
+
+        final_text = "\n".join(lines)
+
+        # Add open web button layout
+        markup = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🌐 Перейти на сайт" if lang == "ru" else "🌐 Siteye Git", url=WEB_APP_URL)
+        ]])
+
+        await _reply_paginated(
+            update.message,
+            context,
+            final_text,
+            lang,
+            parse_mode=ParseMode.HTML,
+            reply_markup=markup,
+            scope="favorites",
+        )
+
+    except Exception as e:
+        logger.exception("Favorites retrieval failed for telegram ID: %s", telegram_id)
+        error_msg = ("Произошла ошибка базы данных." if lang == "ru" else
+                     "Veritabanı bağlantı hatası oluştu." if lang == "tr" else
+                     "A database error occurred.")
+        await _reply_paginated(update.message, context, error_msg, lang, parse_mode=ParseMode.HTML, scope="favorites-error")
 
 
 async def _build_favorites_text(telegram_id: int, lang: str) -> str:
     """Build a formatted list of the user's favorite terms."""
     try:
         favorites = await get_user_favorites(telegram_id)
-    except Exception:
+    except Exception as exc:
+        logger.exception("Failed to build favorites text for %s", telegram_id)
         return t("error", lang)
 
     if not favorites:
@@ -865,18 +1319,31 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not query or not query.data or not update.effective_user:
         return
 
-    await query.answer()
     user_id = update.effective_user.id
     lang = await get_user_language(user_id)
     data = query.data
+    callback_alert: str | None = None
+    show_alert = False
 
     try:
+        if data == "page:noop":
+            return
+
+        if data.startswith("page:"):
+            _, pagination_key, page_index = data.split(":", 2)
+            await _show_stored_page(query, context, pagination_key, int(page_index))
+            return
+
         # ── Start screen / Old Main Menu ──
         if data == "menu:main":
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 t("welcome", lang),
-                parse_mode=ParseMode.HTML,
                 reply_markup=_main_menu_keyboard(lang),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-main-menu",
             )
             return
 
@@ -887,10 +1354,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 username=update.effective_user.username,
             )
             start_text = _build_start_text(account_context, update.effective_user.first_name)
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 start_text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=_start_keyboard(bool(account_context.get("is_linked"))),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-start-home",
             )
 
         # ── Generate link code from start button ──
@@ -901,21 +1372,29 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 username=update.effective_user.username,
             )
             if account_context.get("is_linked"):
-                await query.edit_message_text(
+                await _edit_paginated(
+                    query,
+                    context,
                     "✅ <b>Аккаунт уже привязан.</b>\nКод больше не нужен, используйте команды бота.",
-                    parse_mode=ParseMode.HTML,
                     reply_markup=_start_keyboard(True),
+                    parse_mode=ParseMode.HTML,
+                    lang=lang,
+                    scope="cb-start-linked",
                 )
             else:
                 link_lang = account_context.get("lang") or lang
                 link_text = await _build_link_text(user_id, link_lang)
                 if not link_text:
-                    link_text = "⏳ Не удалось получить код прямо сейчас. Попробуйте снова через несколько секунд."
+                    link_text = _busy_message(link_lang)
 
-                await query.edit_message_text(
+                await _edit_paginated(
+                    query,
+                    context,
                     link_text,
-                    parse_mode=ParseMode.HTML,
                     reply_markup=_start_code_keyboard(link_lang),
+                    parse_mode=ParseMode.HTML,
+                    lang=link_lang,
+                    scope="cb-start-link",
                 )
 
         # ── Account dashboard ──
@@ -926,10 +1405,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 username=update.effective_user.username,
                 first_name=update.effective_user.first_name,
             )
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 home_text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=home_keyboard,
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-account-home",
             )
 
         # ── Account favorites (live Supabase fetch) ──
@@ -939,10 +1422,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 lang,
                 username=update.effective_user.username,
             )
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 favorites_text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=favorites_keyboard,
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-account-favorites",
             )
 
         # ── Account statistics (live Supabase fetch) ──
@@ -952,18 +1439,26 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 lang,
                 username=update.effective_user.username,
             )
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 stats_text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=stats_keyboard,
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-account-stats",
             )
 
         # ── Search prompt ──
         elif data == "menu:search":
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 t("search_prompt", lang),
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-search",
             )
 
         # ── Daily term ──
@@ -974,44 +1469,66 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 await track_activity(user_id, "term_viewed", category=term.get("category", ""))
                 header = t("daily_header", lang)
                 card = _format_term_card(term, lang)
-                await query.edit_message_text(
+                await _edit_paginated(
+                    query,
+                    context,
                     f"{header}\n\n{card}",
-                    parse_mode=ParseMode.HTML,
                     reply_markup=_term_keyboard(term, lang),
+                    parse_mode=ParseMode.HTML,
+                    lang=lang,
+                    scope="cb-daily",
                 )
 
         # ── Quiz ──
         elif data == "menu:quiz":
             text, keyboard = await _build_quiz(lang)
             if text and keyboard:
-                await query.edit_message_text(
-                    text, parse_mode=ParseMode.HTML, reply_markup=keyboard
+                await _edit_paginated(
+                    query,
+                    context,
+                    text,
+                    lang,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard,
+                    scope="cb-quiz",
                 )
 
         # ── Stats ──
         elif data == "menu:stats":
             text = await _build_stats_text(lang)
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-stats",
             )
 
         # ── Language selection menu ──
         elif data == "menu:lang":
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 t("lang_prompt", lang),
-                parse_mode=ParseMode.HTML,
                 reply_markup=_lang_keyboard(lang),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-lang",
             )
 
         # ── Report ──
         elif data == "menu:report":
             text = await _build_report_text(user_id, lang)
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-report",
             )
 
         # ── Link ──
@@ -1026,20 +1543,28 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             else:
                 text = await _build_link_text(user_id, lang)
                 if not text:
-                    text = "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin."
-                
-            await query.edit_message_text(
+                    text = _busy_message(lang)
+
+            await _edit_paginated(
+                query,
+                context,
                 text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-link",
             )
 
         # ── Help ──
         elif data == "menu:help":
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 t("help", lang),
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-help",
             )
 
         # ── Favorites ──
@@ -1049,10 +1574,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 lang,
                 username=update.effective_user.username,
             )
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-favorites",
             )
 
         # ── Language change ──
@@ -1066,10 +1595,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     username=update.effective_user.username,
                     first_name=update.effective_user.first_name,
                 )
-                await query.edit_message_text(
+                await _edit_paginated(
+                    query,
+                    context,
                     t("lang_changed", new_lang) + "\n\n" + home_text,
-                    parse_mode=ParseMode.HTML,
                     reply_markup=home_keyboard,
+                    parse_mode=ParseMode.HTML,
+                    lang=new_lang,
+                    scope="cb-lang-change",
                 )
 
         # ── Quiz answer ──
@@ -1091,9 +1624,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 result_text = t("quiz_wrong", lang, answer=answer)
 
             # Show result + offer next quiz or back to menu
-            await query.edit_message_text(
+            await _edit_paginated(
+                query,
+                context,
                 result_text,
-                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
@@ -1105,6 +1639,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         ]
                     ]
                 ),
+                parse_mode=ParseMode.HTML,
+                lang=lang,
+                scope="cb-quiz-result",
             )
 
         # ── TTS — this one sends a voice message (can't edit into voice) ──
@@ -1133,15 +1670,42 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
                                 # Auto-delete voice after 10 seconds to keep chat clean
                                 asyncio.create_task(_delete_later(sent, 10))
+                    except telegram.error.RetryAfter as exc:
+                        logger.warning("TTS callback rate-limited: %s", exc)
+                        callback_alert = _busy_message(tts_lang)
+                        show_alert = True
                     except Exception as e:
-                        logger.error("TTS error: %s", e)
+                        logger.exception("TTS error: %s", e)
+                        callback_alert = _callback_error_message(tts_lang)
+                        show_alert = True
 
-    except telegram.error.BadRequest as e:
-        logger.warning("Callback edit failed (BadRequest): %s", e)
+    except telegram.error.RetryAfter as e:
+        logger.warning("Callback rate-limited: %s", e)
+        callback_alert = _busy_message(lang)
+        show_alert = True
     except telegram.error.TimedOut as e:
         logger.warning("Callback timed out: %s", e)
+        callback_alert = _busy_message(lang)
+        show_alert = True
+    except telegram.error.BadRequest as e:
+        if "Message is not modified" in str(e):
+            logger.debug("Callback message not modified: %s", e)
+        else:
+            logger.warning("Callback edit failed (BadRequest): %s", e)
+            callback_alert = _callback_error_message(lang)
+            show_alert = True
     except Exception as e:
-        logger.warning("Callback unexpected error: %s", e)
+        logger.exception("Callback unexpected error: %s", e)
+        callback_alert = _callback_error_message(lang)
+        show_alert = True
+    finally:
+        try:
+            if callback_alert:
+                await query.answer(callback_alert, show_alert=show_alert)
+            else:
+                await query.answer()
+        except Exception as answer_error:
+            logger.warning("Failed to answer callback: %s", answer_error)
 
 
 async def _delete_later(message: Any, delay: float) -> None:
@@ -1160,10 +1724,15 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     user_id = update.effective_user.id
+    lang = await get_user_language(user_id)
     if await is_rate_limited(user_id):
+        await _send_busy_fallback(
+            update.message,
+            lang,
+            reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+        )
         return
 
-    lang = await get_user_language(user_id)
     raw_query = update.message.text.strip()
 
     if not raw_query or raw_query.startswith("/"):
@@ -1176,26 +1745,38 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     try:
         results = await search_terms(query, limit=3)
     except ConnectionError:
-        await update.message.reply_text(
-            "⏳ Sistem şu an yoğun, lütfen daha sonra tekrar deneyin.",
-            parse_mode=ParseMode.HTML,
+        await _reply_paginated(
+            update.message,
+            context,
+            _busy_message(lang),
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="text-search-busy",
         )
         return
 
     if not results:
-        await update.message.reply_text(
+        await _reply_paginated(
+            update.message,
+            context,
             t("search_no_results", lang, query=query),
-            parse_mode=ParseMode.HTML,
+            lang,
             reply_markup=InlineKeyboardMarkup([[_back_button(lang)]]),
+            parse_mode=ParseMode.HTML,
+            scope="text-search-empty",
         )
         return
 
     term = results[0]
     header = t("search_results_header", lang, count=len(results), query=query)
     card = _format_term_card(term, lang)
-    await update.message.reply_text(
+    await _reply_paginated(
+        update.message,
+        context,
         f"{header}\n\n{card}",
-        parse_mode=ParseMode.HTML,
+        lang,
         reply_markup=_term_keyboard(term, lang),
+        parse_mode=ParseMode.HTML,
+        scope="text-search-results",
     )

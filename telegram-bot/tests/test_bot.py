@@ -8,6 +8,7 @@ Tests handler helper functions and i18n system.
 import pytest
 from bot.i18n import t, STRINGS
 from bot.config import CATEGORY_EMOJI, SRS_LEVEL_LABELS, SUPPORTED_LANGUAGES
+from bot.database import build_academic_search_filters, normalize_term_payload
 
 
 # ── i18n Translation System ──────────────────────────────
@@ -27,10 +28,10 @@ class TestI18n:
         result = t("welcome", "tr")
         assert "Hoş Geldiniz" in result
 
-    def test_fallback_to_english(self):
-        """If requested language missing, fall back to English."""
+    def test_fallback_to_russian(self):
+        """If requested language missing, fall back to Russian."""
         result = t("welcome", "xx")  # Non-existent language
-        assert "Welcome" in result
+        assert "Добро пожаловать" in result
 
     def test_unknown_key_returns_key(self):
         """Unknown keys should return the key itself."""
@@ -78,6 +79,29 @@ class TestConfig:
         assert "ru" in SUPPORTED_LANGUAGES
         assert "en" in SUPPORTED_LANGUAGES
         assert "tr" in SUPPORTED_LANGUAGES
+
+
+class TestAcademicTaxonomy:
+    """Tests for contest-ready term taxonomy helpers."""
+
+    def test_build_academic_search_filters(self):
+        filters = build_academic_search_filters("MOEX economics HSE")
+
+        assert {"regional_market": "MOEX"} in filters
+        assert {"context_tags": {"disciplines": ["economics"]}} in filters
+        assert {"context_tags": {"target_universities": ["HSE"]}} in filters
+
+    def test_normalize_term_payload_defaults_taxonomy(self):
+        normalized = normalize_term_payload({
+            "id": "term_001",
+            "term_en": "Liquidity",
+            "category": "Finance",
+            "context_tags": None,
+            "regional_market": None,
+        })
+
+        assert normalized["regional_market"] == "GLOBAL"
+        assert normalized["context_tags"] == {}
 
 
 # ── Report Builder Helper ─────────────────────────────────

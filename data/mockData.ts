@@ -11,7 +11,7 @@ export const mockTerms: Term[] = terms;
 export const defaultUserProgress: import('@/types').UserProgress = {
     user_id: 'guest_user',
     favorites: [],
-    current_language: 'tr',
+    current_language: 'ru',
     quiz_history: [],
     total_words_learned: 0,
     current_streak: 0,

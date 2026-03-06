@@ -6,6 +6,15 @@
 export type Language = 'tr' | 'en' | 'ru';
 
 export type Category = 'Fintech' | 'Finance' | 'Technology';
+export type RegionalMarket = 'MOEX' | 'BIST' | 'GLOBAL';
+export type TermContextTagValue =
+    | string
+    | number
+    | boolean
+    | string[]
+    | number[]
+    | boolean[];
+export type TermContextTags = Record<string, TermContextTagValue | undefined>;
 
 /**
  * Main Term interface - represents a trilingual dictionary entry
@@ -36,6 +45,10 @@ export interface Term {
     example_sentence_en: string;
     example_sentence_ru: string;
     example_sentence_tr: string;
+
+    // Contest-ready academic taxonomy
+    context_tags: TermContextTags;
+    regional_market: RegionalMarket;
 
     // ============================================
     // SRS (Spaced Repetition System) Data

@@ -54,6 +54,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [showLimitWarning, setShowLimitWarning] = useState(false);
+    const [isPending, setIsPending] = useState(false);
 
     const favorite = isFavorite(term.id);
 
@@ -72,28 +73,51 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     };
 
     // Handle favorite toggle with limit check and toast
-    const handleToggleFavorite = () => {
-        const wasFavorite = favorite;
-        const result = toggleFavorite(term.id);
+    const handleToggleFavorite = async () => {
+        if (isPending) {
+            return;
+        }
 
-        if (result.limitReached) {
-            setShowLimitWarning(true);
-            setTimeout(() => setShowLimitWarning(false), 5000);
+        setIsPending(true);
+
+        try {
+            const result = await toggleFavorite(term.id);
+
+            if (result.limitReached) {
+                setShowLimitWarning(true);
+                setTimeout(() => setShowLimitWarning(false), 5000);
+                showToast(
+                    language === 'tr'
+                        ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
+                        : language === 'ru'
+                            ? 'Лимит избранного! Войдите для неограниченного добавления.'
+                            : 'Favorite limit reached! Sign in for unlimited.',
+                    'warning'
+                );
+                return;
+            }
+
+            if (!result.success) {
+                showToast(
+                    result.error
+                        || (language === 'tr'
+                            ? 'Favori güncellenemedi.'
+                            : language === 'ru'
+                                ? 'Не удалось обновить избранное.'
+                                : 'Unable to update favorite.'),
+                    'error'
+                );
+                return;
+            }
+
             showToast(
-                language === 'tr'
-                    ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
-                    : language === 'ru'
-                        ? 'Лимит избранного! Войдите для неограниченного добавления.'
-                        : 'Favorite limit reached! Sign in for unlimited.',
-                'warning'
+                result.isFavorite
+                    ? (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️')
+                    : (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites'),
+                result.isFavorite ? 'success' : 'info'
             );
-        } else if (result.success) {
-            showToast(
-                wasFavorite
-                    ? (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites')
-                    : (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️'),
-                wasFavorite ? 'info' : 'success'
-            );
+        } finally {
+            setIsPending(false);
         }
     };
 
@@ -166,9 +190,12 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                         <button
                             onClick={handleToggleFavorite}
-                            className={`p-2 rounded-full transition-all duration-200 ${favorite
-                                ? 'bg-red-100 text-red-500'
-                                : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-400'
+                            disabled={isPending}
+                            className={`p-2 rounded-full transition-all duration-200 ${isPending
+                                ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                : favorite
+                                    ? 'bg-red-100 text-red-500'
+                                    : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-400'
                                 }`}
                             title={favorite ? t('card.removeFavorite') : t('card.addFavorite')}
                             aria-label={`${favorite ? t('card.removeFavorite') : t('card.addFavorite')}: ${currentTerm}`}

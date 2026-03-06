@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import SearchClient from './SearchClient';
 
 export const metadata: Metadata = {
-    title: 'Terim Ara | FinTechTerms Sözlüğü',
-    description: 'Fintech, ekonomi ve bilişim terimlerinde arama yapın. Binlerce terim arasında hızlıca gezinin.',
+    title: 'Поиск терминов | FinTechTerms',
+    description: 'Ищите термины по финансам, финтеху и ИТ. Быстро находите нужные понятия в многоязычном словаре.',
     robots: {
         index: true,
         follow: true,

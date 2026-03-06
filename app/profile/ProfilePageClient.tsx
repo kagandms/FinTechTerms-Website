@@ -1,11 +1,13 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { User } from 'lucide-react';
 import { useAuthLogic } from '@/hooks/useAuthLogic';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Settings, BookMarked, Mail } from 'lucide-react';
 import Link from 'next/link';
 
@@ -14,24 +16,61 @@ import { StatsGrid } from '@/components/features/profile/StatsGrid';
 import { SettingsPanel } from '@/components/features/profile/SettingsPanel';
 import { AuthModal } from '@/components/features/auth/AuthModal';
 import { ResetConfirmModal } from '@/components/features/profile/ResetConfirmModal';
-import SmartCard from '@/components/SmartCard';
 import TelegramLinkCard from '@/components/TelegramLinkCard';
 import TelegramBanner from '@/components/TelegramBanner';
 import { ProfileEditForm } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
+import type { LearningStatsActionResult } from '@/types/gamification';
 import InstallButton from '@/components/InstallButton';
+import Heatmap from '@/components/profile/Heatmap';
+import StreakCard from '@/components/profile/StreakCard';
+import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 
 interface ProfilePageClientProps {
     initialProfileData: ProfileFormInitialData | null;
+    learningStats: LearningStatsActionResult;
+    profileWarningCode: ProfileWarningCode | null;
 }
 
-function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
+export type ProfileWarningCode = 'PROFILE_DATA_PARTIAL' | 'PROFILE_DATA_LOAD_FAILED';
+
+const gamificationUnavailableCopy = {
+    tr: 'Öğrenme istatistikleri şu anda yüklenemiyor.',
+    en: 'Learning stats are temporarily unavailable.',
+    ru: 'Статистика обучения временно недоступна.',
+};
+
+const profileWarningCopy: Record<ProfileWarningCode, Record<'tr' | 'en' | 'ru', string>> = {
+    PROFILE_DATA_PARTIAL: {
+        tr: 'Bazı profil alanları yüklenemedi. Son bilinen bilgiler gösteriliyor.',
+        en: 'Some profile fields could not be loaded. Showing the latest available data.',
+        ru: 'Часть данных профиля не загрузилась. Показаны последние доступные данные.',
+    },
+    PROFILE_DATA_LOAD_FAILED: {
+        tr: 'Profil verileri şu anda yüklenemiyor.',
+        en: 'Profile data is temporarily unavailable.',
+        ru: 'Данные профиля временно недоступны.',
+    },
+};
+
+const profileRenderErrorCopy = {
+    tr: 'Profil ekranı beklenmeyen bir hata verdi.',
+    en: 'The profile screen hit an unexpected error.',
+    ru: 'Экран профиля завершился с неожиданной ошибкой.',
+};
+
+interface ProfileContentProps {
+    initialProfileData: ProfileFormInitialData | null;
+    learningStats: LearningStatsActionResult;
+}
+
+function ProfileContent({ initialProfileData, learningStats }: ProfileContentProps) {
     // 1. Hook Logic
     const authLogic = useAuthLogic();
     const {
         user, isAuthenticated, language, t,
         showAuthModal, setShowAuthModal,
-        authMode, setAuthMode,
+        setAuthMode,
         showResetConfirm, setShowResetConfirm,
         handleDataReset
     } = authLogic;
@@ -39,7 +78,7 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
     // 2. Additional Contexts
     const { theme, setTheme } = useTheme();
     const { setLanguage } = useLanguage();
-    const { terms, stats, refreshData, userProgress } = useSRS();
+    const { stats, refreshData, userProgress } = useSRS();
 
     // Toggle for Profile Editing
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -49,6 +88,10 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
     const accuracy = userProgress?.quiz_history?.length
         ? Math.round((userProgress?.quiz_history?.filter((q: any) => q.is_correct)?.length || 0) / (userProgress?.quiz_history?.length || 1) * 100)
         : 0;
+    const learningStatsData = learningStats.ok ? learningStats.data : null;
+    const showGamificationFallback = isAuthenticated
+        && !learningStats.ok
+        && learningStats.error.code !== 'UNAUTHORIZED';
 
     const getInitials = (name: string, email: string) => {
         if (!name) return email?.charAt(0).toUpperCase() || 'U';
@@ -133,8 +176,27 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
                         />
                     </section>
 
+                    {isAuthenticated && learningStatsData && (
+                        <section className="order-2 space-y-6">
+                            <StreakCard
+                                currentStreak={learningStatsData.currentStreak}
+                                badges={learningStatsData.badges}
+                                activeDays={learningStatsData.activeDays}
+                                lastStudyDate={learningStatsData.lastStudyDate}
+                                language={language}
+                            />
+                            <Heatmap entries={learningStatsData.heatmap} language={language} />
+                        </section>
+                    )}
+
+                    {showGamificationFallback && (
+                        <section className="order-2 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)] shadow-card">
+                            {gamificationUnavailableCopy[language]}
+                        </section>
+                    )}
+
                     {/* View Favorites CTA - Moved UP in Mobile (order-2), remains on right on Large screens */}
-                    <section className="lg:hidden order-2 bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                    <section className="lg:hidden order-3 bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                         <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-emerald-400 opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
 
@@ -152,7 +214,7 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
 
                     {/* Authenticated Dashboard Forms - order-3 */}
                     {isAuthenticated && (
-                        <div className="grid grid-cols-1 gap-6 order-3 mt-8 lg:mt-0">
+                        <div className="grid grid-cols-1 gap-6 order-4 mt-8 lg:mt-0">
                             {/* Profile Edit Action */}
                             <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div>
@@ -182,7 +244,7 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
                         </div>
                     )}
 
-                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8 order-4">
+                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8 order-5">
                         {/* App Settings Panel */}
                         <SettingsPanel
                             t={t}
@@ -299,10 +361,51 @@ function ProfileContent({ initialProfileData }: ProfilePageClientProps) {
 }
 
 // Wrapper for Suspense (needed for useSearchParams in Hook)
-export default function ProfilePageClient({ initialProfileData }: ProfilePageClientProps) {
+export default function ProfilePageClient({
+    initialProfileData,
+    learningStats,
+    profileWarningCode,
+}: ProfilePageClientProps) {
+    const { isAuthenticated } = useAuth();
+    const { language } = useLanguage();
+    const { showToast } = useToast();
+    const lastProfileWarningRef = useRef<ProfileWarningCode | null>(null);
+    const lastLearningStatsErrorRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!profileWarningCode || lastProfileWarningRef.current === profileWarningCode) {
+            return;
+        }
+
+        console.error('PROFILE_PAGE_WARNING', profileWarningCode);
+        showToast(profileWarningCopy[profileWarningCode][language], 'warning');
+        lastProfileWarningRef.current = profileWarningCode;
+    }, [language, profileWarningCode, showToast]);
+
+    useEffect(() => {
+        if (learningStats.ok || !isAuthenticated || learningStats.error.code === 'UNAUTHORIZED') {
+            return;
+        }
+
+        if (lastLearningStatsErrorRef.current === learningStats.error.code) {
+            return;
+        }
+
+        console.error('PROFILE_PAGE_GAMIFICATION_FALLBACK', learningStats.error);
+        showToast(gamificationUnavailableCopy[language], 'warning');
+        lastLearningStatsErrorRef.current = learningStats.error.code;
+    }, [isAuthenticated, language, learningStats, showToast]);
+
+    const handleBoundaryError = useCallback((error: Error) => {
+        console.error('PROFILE_PAGE_RENDER_ERROR', error);
+        showToast(profileRenderErrorCopy[language], 'error');
+    }, [language, showToast]);
+
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary-500 border-t-transparent animate-spin"></div></div>}>
-            <ProfileContent initialProfileData={initialProfileData} />
-        </Suspense>
+        <ProfileErrorBoundary language={language} onError={handleBoundaryError}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary-500 border-t-transparent animate-spin"></div></div>}>
+                <ProfileContent initialProfileData={initialProfileData} learningStats={learningStats} />
+            </Suspense>
+        </ProfileErrorBoundary>
     );
 }

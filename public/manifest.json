@@ -1,7 +1,7 @@
 {
-    "name": "FinTechTerms",
+    "name": "FinTechTerms | Словарь экономики, финтеха и ИТ",
     "short_name": "FinTechTerms",
-    "description": "TR-EN-RU Ekonomi, Fintek ve Bilişim Sözlüğü - SRS tabanlı akıllı öğrenme uygulaması",
+    "description": "Русско-ориентированный словарь экономики, финтеха и ИТ с интервальным повторением и практикой.",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#f8fafc",
@@ -62,6 +62,6 @@
         "productivity",
         "finance"
     ],
-    "lang": "tr",
+    "lang": "ru",
     "dir": "ltr"
 }

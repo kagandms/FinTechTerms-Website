@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { hasResearchConsent } from './ConsentModal';
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
 
 interface SessionData {
-    id: string;
+    id: string | null;
     startTime: number;
     pageViews: number;
     quizAttempts: number;
@@ -20,9 +19,26 @@ interface SessionData {
  * for academic research purposes
  */
 export default function SessionTracker() {
-    const { user, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
     const sessionRef = useRef<SessionData | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const persistSessionMutation = useCallback(async (payload: Record<string, unknown>) => {
+        const response = await fetch('/api/study-sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+            keepalive: true,
+        });
+
+        if (!response.ok) {
+            throw new Error('Study session request failed.');
+        }
+
+        return response.json();
+    }, []);
 
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
@@ -51,9 +67,8 @@ export default function SessionTracker() {
     const startSession = useCallback(async () => {
         if (!hasResearchConsent()) return;
 
-        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const session: SessionData = {
-            id: sessionId,
+            id: null,
             startTime: Date.now(),
             pageViews: 1,
             quizAttempts: 0,
@@ -68,27 +83,47 @@ export default function SessionTracker() {
             // Silently fail
         }
 
-        // Record session start in Supabase
+        // Record session start through the trusted backend.
         try {
-            await supabase.from('study_sessions').insert({
-                user_id: isAuthenticated && user ? user.id : null,
-                anonymous_id: !isAuthenticated ? getAnonymousId() : null,
-                session_start: new Date().toISOString(),
-                device_type: getDeviceType(),
-                user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-                consent_given: true,
-                consent_timestamp: new Date().toISOString(),
+            const response = await persistSessionMutation({
+                action: 'start',
+                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                deviceType: getDeviceType(),
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+                consentGiven: true,
             });
+
+            session.id = response?.sessionId || null;
+            sessionRef.current = session;
+
+            try {
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            } catch {
+                // Silently fail
+            }
         } catch (error) {
             console.error('Failed to record session start:', error);
         }
-    }, [isAuthenticated, user, getAnonymousId, getDeviceType]);
+    }, [isAuthenticated, getAnonymousId, getDeviceType, persistSessionMutation]);
 
     // Update session (called periodically)
     const updateSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
 
         const session = sessionRef.current;
+
+        try {
+            const stored = localStorage.getItem(SESSION_KEY);
+            if (stored) {
+                const persisted = JSON.parse(stored) as SessionData;
+                session.pageViews = persisted.pageViews;
+                session.quizAttempts = persisted.quizAttempts;
+                session.id = persisted.id || session.id;
+            }
+        } catch {
+            // Silently fail
+        }
+
         const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
 
         // Update in localStorage
@@ -98,55 +133,69 @@ export default function SessionTracker() {
             // Silently fail
         }
 
-        // Update in Supabase
-        try {
-            const userId = isAuthenticated && user ? user.id : null;
-            const anonId = !isAuthenticated ? getAnonymousId() : null;
+        if (!session.id) {
+            return;
+        }
 
-            await supabase
-                .from('study_sessions')
-                .update({
-                    duration_seconds: durationSeconds,
-                    page_views: session.pageViews,
-                    quiz_attempts: session.quizAttempts,
-                })
-                .eq(userId ? 'user_id' : 'anonymous_id', userId || anonId)
-                .order('session_start', { ascending: false })
-                .limit(1);
+        try {
+            await persistSessionMutation({
+                action: 'heartbeat',
+                sessionId: session.id,
+                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                durationSeconds,
+                pageViews: session.pageViews,
+                quizAttempts: session.quizAttempts,
+            });
         } catch (error) {
             console.error('Failed to update session:', error);
         }
-    }, [isAuthenticated, user, getAnonymousId]);
+    }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
 
     // End session (called on unmount or page close)
     const endSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
 
         const session = sessionRef.current;
-        const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
 
         try {
-            const userId = isAuthenticated && user ? user.id : null;
-            const anonId = !isAuthenticated ? getAnonymousId() : null;
+            const stored = localStorage.getItem(SESSION_KEY);
+            if (stored) {
+                const persisted = JSON.parse(stored) as SessionData;
+                session.pageViews = persisted.pageViews;
+                session.quizAttempts = persisted.quizAttempts;
+                session.id = persisted.id || session.id;
+            }
+        } catch {
+            // Silently fail
+        }
 
-            await supabase
-                .from('study_sessions')
-                .update({
-                    session_end: new Date().toISOString(),
-                    duration_seconds: durationSeconds,
-                    page_views: session.pageViews,
-                    quiz_attempts: session.quizAttempts,
-                })
-                .eq(userId ? 'user_id' : 'anonymous_id', userId || anonId)
-                .order('session_start', { ascending: false })
-                .limit(1);
+        const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
+
+        if (!session.id) {
+            try {
+                localStorage.removeItem(SESSION_KEY);
+            } catch {
+                // Silently fail
+            }
+            return;
+        }
+
+        try {
+            await persistSessionMutation({
+                action: 'end',
+                sessionId: session.id,
+                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                durationSeconds,
+                pageViews: session.pageViews,
+                quizAttempts: session.quizAttempts,
+            });
 
             // Clear localStorage
             localStorage.removeItem(SESSION_KEY);
         } catch (error) {
             console.error('Failed to end session:', error);
         }
-    }, [isAuthenticated, user, getAnonymousId]);
+    }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
 
     // Initialize session tracking
     useEffect(() => {

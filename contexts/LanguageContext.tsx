@@ -12,6 +12,12 @@ import ruTranslations from '@/locales/ru.json';
 
 type TranslationKey = string;
 type Translations = typeof trTranslations;
+const configuredDefaultLanguage = process.env.NEXT_PUBLIC_DEFAULT_LANGUAGE;
+const DEFAULT_LANGUAGE: Language = configuredDefaultLanguage === 'tr'
+    || configuredDefaultLanguage === 'en'
+    || configuredDefaultLanguage === 'ru'
+    ? configuredDefaultLanguage
+    : 'ru';
 
 const translations: Record<Language, Translations> = {
     tr: trTranslations,
@@ -66,20 +72,21 @@ const pageTitles: Record<string, Record<Language, string>> = {
 };
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-    const [language, setLanguageState] = useState<Language>('ru');
+    const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
     const [isHydrated, setIsHydrated] = useState(false);
     const pathname = usePathname();
 
     // Hydrate from localStorage on mount
     useEffect(() => {
         const saved = getCurrentLanguage();
-        setLanguageState(saved);
+        setLanguageState(saved || DEFAULT_LANGUAGE);
         setIsHydrated(true);
     }, []);
 
     const setLanguage = useCallback((lang: Language) => {
-        setLanguageState(lang);
-        saveLanguage(lang);
+        const nextLanguage = ['ru', 'en', 'tr'].includes(lang) ? lang : DEFAULT_LANGUAGE;
+        setLanguageState(nextLanguage);
+        saveLanguage(nextLanguage);
     }, []);
 
     // Update document.title and <html lang=...> based on language and current page
@@ -92,7 +99,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         // Find the best matching page title
         const pageTitle = pageTitles[pathname];
         if (pageTitle) {
-            document.title = pageTitle[language] || pageTitle.ru;
+            document.title = pageTitle[language] || pageTitle[DEFAULT_LANGUAGE];
         } else {
             // Fallback for unknown pages
             const defaultTitles: Record<Language, string> = {
@@ -100,7 +107,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
                 tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
                 ru: 'FinTechTerms | Словарь экономики и IT',
             };
-            document.title = defaultTitles[language] || defaultTitles.ru;
+            document.title = defaultTitles[language] || defaultTitles[DEFAULT_LANGUAGE];
         }
     }, [language, isHydrated, pathname]);
 
@@ -110,19 +117,31 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
      */
     const t = useCallback((key: TranslationKey): string => {
         const keys = key.split('.');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        let value: any = translations[language];
+        const resolveNestedValue = (sourceLanguage: Language): unknown => {
+            let value: unknown = translations[sourceLanguage];
 
-        for (const k of keys) {
-            if (value && typeof value === 'object' && k in value) {
-                value = value[k];
-            } else {
-                // Return key if translation not found
-                return key;
+            for (const part of keys) {
+                if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
+                    value = (value as Record<string, unknown>)[part];
+                } else {
+                    return undefined;
+                }
             }
+
+            return value;
+        };
+
+        const localizedValue = resolveNestedValue(language);
+        if (typeof localizedValue === 'string' && localizedValue.trim()) {
+            return localizedValue;
         }
 
-        return typeof value === 'string' ? value : key;
+        const russianFallback = resolveNestedValue(DEFAULT_LANGUAGE);
+        if (typeof russianFallback === 'string' && russianFallback.trim()) {
+            return russianFallback;
+        }
+
+        return key;
     }, [language]);
 
     return (

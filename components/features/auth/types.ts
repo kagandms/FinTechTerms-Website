@@ -9,6 +9,13 @@ export interface AuthFormState {
     birthDate: string;
 }
 
+export type AuthToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface AuthActionResult {
+    success: boolean;
+    error?: string;
+}
+
 export interface CommonAuthProps {
     t: (key: string) => string;
     language: string;
@@ -23,31 +30,32 @@ export interface AuthFormProps extends CommonAuthProps {
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;
     handleAuth: () => void;
-    resetPassword: (email: string) => Promise<any>;
+    resetPassword: (email: string) => Promise<AuthActionResult>;
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;
+    showToast: (msg: string, type: AuthToastType) => void;
 }
 
 export interface OTPVerificationProps extends CommonAuthProps {
     pendingVerificationEmail: string | null;
     otpCode: string;
     setOtpCode: (code: string) => void;
-    verifyOTP: (email: string, code: string) => Promise<any>;
-    resendOTP: (email: string) => Promise<any>;
+    verifyOTP: (email: string, code: string) => Promise<AuthActionResult>;
+    resendOTP: (email: string) => Promise<AuthActionResult>;
     resendCooldown: number;
     startCooldown: () => void;
     onClose: () => void;
-    showToast: (msg: string, type: 'success' | 'error') => void;
+    showToast: (msg: string, type: AuthToastType) => void;
 }
 
 export interface UpdatePasswordProps extends CommonAuthProps {
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;
-    updatePassword: (password: string) => Promise<any>;
+    updatePassword: (password: string) => Promise<AuthActionResult>;
     validatePassword: (password: string) => { valid: boolean; message: string };
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;
-    logout: () => void;
+    logout: () => Promise<void> | void;
     onSuccess: () => void;
-    showToast: (msg: string, type: 'success' | 'error') => void;
+    showToast: (msg: string, type: AuthToastType) => void;
 }

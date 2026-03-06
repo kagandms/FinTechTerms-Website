@@ -184,7 +184,7 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "term_card": {
         "ru": (
-            "{cat_emoji} <b>{category}</b>\n\n"
+            "{cat_emoji} <b>{category}</b>{metadata_block}\n\n"
             "🇬🇧 <b>{term_en}</b>\n"
             "🇹🇷 {term_tr}\n"
             "🇷🇺 {term_ru}\n\n"
@@ -192,7 +192,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "💬 <b>Пример:</b>\n<i>«{example}»</i>"
         ),
         "en": (
-            "{cat_emoji} <b>{category}</b>\n\n"
+            "{cat_emoji} <b>{category}</b>{metadata_block}\n\n"
             "🇬🇧 <b>{term_en}</b>\n"
             "🇹🇷 {term_tr}\n"
             "🇷🇺 {term_ru}\n\n"
@@ -200,7 +200,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "💬 <b>Example:</b>\n<i>\"{example}\"</i>"
         ),
         "tr": (
-            "{cat_emoji} <b>{category}</b>\n\n"
+            "{cat_emoji} <b>{category}</b>{metadata_block}\n\n"
             "🇬🇧 <b>{term_en}</b>\n"
             "🇹🇷 {term_tr}\n"
             "🇷🇺 {term_ru}\n\n"
@@ -441,13 +441,13 @@ def t(key: str, lang: str = "ru", **kwargs: Any) -> str:
     """
     Get a translated string by key and language.
     Supports format kwargs for dynamic values.
-    Falls back to English, then to the raw key.
+    Falls back to Russian, then to the raw key.
     """
     entry = STRINGS.get(key)
     if entry is None:
         return key
 
-    text = entry.get(lang) or entry.get("en") or key
+    text = entry.get(lang) or entry.get("ru") or key
 
     if kwargs:
         try:

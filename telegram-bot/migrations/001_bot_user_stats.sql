@@ -1,3 +1,6 @@
+-- DEPRECATED: superseded by supabase/migrations/20260306170000_phase1_database_unification_lockdown.sql.
+-- This migration creates bot-only user state and open access policies that violate the unified data model.
+
 -- FinTechTerms Bot — User Activity Stats Table
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor → New Query)
 

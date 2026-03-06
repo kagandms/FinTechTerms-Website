@@ -1,6 +1,7 @@
 import HomeClient from './HomeClient';
 import { supabase } from '@/lib/supabase';
 import { Term, Category } from '@/types';
+import { createSafeTerm } from '@/utils/termUtils';
 
 export const revalidate = 3600; // Revalidate every hour
 
@@ -18,7 +19,7 @@ async function getRecentTerms(): Promise<Term[]> {
         }
 
         // Map DB result to Term interface by adding default SRS fields
-        return data.map((t) => ({
+        return data.map((t) => createSafeTerm({
             ...t,
             // Default SRS fields
             srs_level: 0,

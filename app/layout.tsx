@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { headers } from 'next/headers';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { SRSProvider } from '@/contexts/SRSContext';
@@ -10,6 +9,7 @@ import BottomNav from '@/components/BottomNav';
 import ConsentModal from '@/components/ConsentModal';
 import SessionTracker from '@/components/SessionTracker';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import BadgeRealtimeNotifier from '@/components/profile/BadgeRealtimeNotifier';
 
 import { Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -28,6 +28,7 @@ const jetbrainsMono = JetBrains_Mono({
 type SeoLanguage = 'ru' | 'tr' | 'en';
 
 const siteUrl = 'https://fintechterms.com';
+const primaryLanguage: SeoLanguage = 'ru';
 
 const seoMeta: Record<SeoLanguage, {
     title: string;
@@ -54,100 +55,58 @@ const seoMeta: Record<SeoLanguage, {
         alternateLocale: ['ru_RU', 'tr_TR'],
     },
 };
+const primarySeo = seoMeta[primaryLanguage];
 
-const isTelegramCrawler = (userAgentHeader: string | null): boolean => {
-    if (!userAgentHeader) {
-        return false;
-    }
-
-    const ua = userAgentHeader.toLowerCase();
-    return ua.includes('telegrambot') || ua.includes('telegram');
-};
-
-const resolveSeoLanguage = (
-    acceptLanguageHeader: string | null,
-    userAgentHeader: string | null = null
-): SeoLanguage => {
-    if (isTelegramCrawler(userAgentHeader)) {
-        return 'ru';
-    }
-
-    if (!acceptLanguageHeader) {
-        return 'ru';
-    }
-
-    const orderedCodes = acceptLanguageHeader
-        .split(',')
-        .map((part) => part.trim().split(';')[0]?.toLowerCase() || '')
-        .filter(Boolean);
-
-    for (const code of orderedCodes) {
-        if (code.startsWith('ru')) return 'ru';
-        if (code.startsWith('tr')) return 'tr';
-        if (code.startsWith('en')) return 'en';
-    }
-
-    return 'ru';
-};
-
-export async function generateMetadata(): Promise<Metadata> {
-    const headerStore = await headers();
-    const lang = resolveSeoLanguage(
-        headerStore.get('accept-language'),
-        headerStore.get('user-agent')
-    );
-    const content = seoMeta[lang];
-
-    return {
-        metadataBase: new URL(siteUrl),
-        title: {
-            default: content.title,
-            template: '%s | FinTechTerms',
+export const metadata: Metadata = {
+    metadataBase: new URL(siteUrl),
+    title: {
+        default: primarySeo.title,
+        template: '%s | FinTechTerms',
+    },
+    description: primarySeo.description,
+    alternates: {
+        canonical: '/',
+        languages: {
+            'x-default': '/',
+            'ru-RU': '/',
+            'tr-TR': '/?lang=tr',
+            'en-US': '/?lang=en',
         },
-        description: content.description,
-        alternates: {
-            canonical: '/',
-            languages: {
-                'ru-RU': '/?lang=ru',
-                'tr-TR': '/?lang=tr',
-                'en-US': '/?lang=en',
+    },
+    icons: {
+        icon: [
+            { url: '/home-logo.png', type: 'image/png', sizes: '512x512' },
+        ],
+        shortcut: '/home-logo.png',
+        apple: '/home-logo.png',
+    },
+    manifest: '/manifest.json',
+    openGraph: {
+        title: primarySeo.title,
+        description: primarySeo.description,
+        url: siteUrl,
+        siteName: 'FinTechTerms',
+        locale: primarySeo.ogLocale,
+        alternateLocale: primarySeo.alternateLocale,
+        type: 'website',
+        images: [
+            {
+                url: '/home-logo.png',
+                width: 512,
+                height: 512,
+                alt: 'FinTechTerms Logo',
             },
-        },
-        icons: {
-            icon: [
-                { url: '/home-logo.png', type: 'image/png', sizes: '512x512' },
-            ],
-            shortcut: '/home-logo.png',
-            apple: '/home-logo.png',
-        },
-        manifest: '/manifest.json',
-        openGraph: {
-            title: content.title,
-            description: content.description,
-            url: siteUrl,
-            siteName: 'FinTechTerms',
-            locale: content.ogLocale,
-            alternateLocale: content.alternateLocale,
-            type: 'website',
-            images: [
-                {
-                    url: '/home-logo.png',
-                    width: 512,
-                    height: 512,
-                    alt: 'FinTechTerms Logo',
-                },
-            ],
-        },
-        twitter: {
-            card: 'summary',
-            title: content.title,
-            description: content.description,
-            images: ['/home-logo.png'],
-            creator: '@fintechterms',
-            site: '@fintechterms',
-        },
-    };
-}
+        ],
+    },
+    twitter: {
+        card: 'summary',
+        title: primarySeo.title,
+        description: primarySeo.description,
+        images: ['/home-logo.png'],
+        creator: '@fintechterms',
+        site: '@fintechterms',
+    },
+};
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -157,20 +116,13 @@ export const viewport: Viewport = {
     themeColor: '#0e3b5e',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const headerStore = await headers();
-    const lang = resolveSeoLanguage(
-        headerStore.get('accept-language'),
-        headerStore.get('user-agent')
-    );
-    const schemaDescription = seoMeta[lang].description;
-
     return (
-        <html lang={lang} suppressHydrationWarning>
+        <html lang={primaryLanguage} suppressHydrationWarning>
             <head>
                 <script
                     type="application/ld+json"
@@ -179,7 +131,7 @@ export default async function RootLayout({
                             '@context': 'https://schema.org',
                             '@type': 'WebApplication',
                             name: 'FinTechTerms',
-                            description: schemaDescription,
+                            description: primarySeo.description,
                             url: siteUrl,
                             logo: `${siteUrl}/home-logo.png`,
                             applicationCategory: 'EducationalApplication',
@@ -189,7 +141,7 @@ export default async function RootLayout({
                                 price: '0',
                                 priceCurrency: 'USD',
                             },
-                            inLanguage: ['ru', 'tr', 'en'],
+                            inLanguage: ['ru', 'en', 'tr'],
                             author: {
                                 '@type': 'Organization',
                                 name: 'FinTechTerms',
@@ -211,6 +163,7 @@ export default async function RootLayout({
                                         <BottomNav />
                                         <ConsentModal />
                                         <SessionTracker />
+                                        <BadgeRealtimeNotifier />
                                     </div>
                                 </ToastProvider>
                             </SRSProvider>

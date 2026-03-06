@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
     getUserProgressFromSupabase,
-    createUserProgress,
 } from '@/lib/supabaseStorage';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 
@@ -118,10 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 // Check if user has progress, if not create it
                 if (event === 'SIGNED_IN') {
                     try {
-                        const progress = await getUserProgressFromSupabase(session.user.id);
-                        if (!progress) {
-                            await createUserProgress(session.user.id);
-                        }
+                        await getUserProgressFromSupabase(session.user.id);
                     } catch (error) {
                         console.error('Failed to initialize user progress:', error);
                     }
@@ -187,13 +183,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user && data.session) {
-                // User is signed in (Email confirmation might be off)
-                try {
-                    await createUserProgress(data.user.id);
-                } catch (progressError) {
-                    console.error('Failed to create user progress:', progressError);
-                }
-
                 setUser(mapSupabaseUser(data.user));
                 return { success: true };
             }
@@ -243,13 +232,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user && data.session) {
-                // OTP verified, user is now logged in
-                try {
-                    await createUserProgress(data.user.id);
-                } catch (progressError) {
-                    console.error('Failed to create user progress:', progressError);
-                }
-
                 setUser(mapSupabaseUser(data.user));
                 setPendingVerificationEmail(null);
                 return { success: true };
