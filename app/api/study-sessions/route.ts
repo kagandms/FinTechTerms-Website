@@ -5,7 +5,8 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
-import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { createServiceRoleClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
 
 const SessionActionSchema = z.discriminatedUnion('action', [
     z.object({
@@ -96,11 +97,31 @@ export async function POST(request: Request) {
     }
 
     try {
-        const user = await resolveAuthenticatedUser(request);
+        const { user, hadCredentials } = await resolveRequestAuthState(request);
         const supabaseAdmin = createServiceRoleClient();
         const payload = validatedData.data;
 
+        if (hadCredentials && !user) {
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: AUTH_REQUIRED_MESSAGE,
+                requestId,
+                retryable: false,
+            });
+        }
+
         if (payload.action === 'start') {
+            if (!user && !payload.anonymousId) {
+                return errorResponse({
+                    status: 401,
+                    code: 'UNAUTHORIZED',
+                    message: AUTH_REQUIRED_MESSAGE,
+                    requestId,
+                    retryable: false,
+                });
+            }
+
             const response = await supabaseAdmin
                 .from('study_sessions')
                 .insert({

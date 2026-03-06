@@ -23,6 +23,7 @@ jest.mock('@/contexts/SRSContext', () => ({
     useSRS: jest.fn(() => ({
         toggleFavorite: jest.fn().mockReturnValue({ success: true, limitReached: false }),
         isFavorite: jest.fn().mockReturnValue(false),
+        isFavoriteUpdating: jest.fn().mockReturnValue(false),
         favoritesRemaining: 10,
         terms: []
     }))
@@ -46,9 +47,12 @@ jest.mock('@/utils/tts', () => ({
 }));
 
 jest.mock('next/link', () => {
-    return ({ children }: { children: React.ReactNode }) => {
+    const MockLink = ({ children }: { children: React.ReactNode }) => {
         return <span>{children}</span>;
-    }
+    };
+
+    MockLink.displayName = 'MockLink';
+    return MockLink;
 });
 
 describe('SmartCard Component', () => {
@@ -112,6 +116,7 @@ describe('SmartCard Component', () => {
         (useSRS as jest.Mock).mockReturnValue({
             toggleFavorite: toggleMock,
             isFavorite: () => false,
+            isFavoriteUpdating: () => false,
             favoritesRemaining: 10
         });
 

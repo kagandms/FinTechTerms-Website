@@ -80,16 +80,17 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
         if (pendingVerificationEmail) {
             cancelVerification();
         }
+        setAuthError('');
         onClose();
+        router.refresh();
 
         showToast(
             language === 'tr' ? 'Kayıt başarılı! 🎉' : language === 'ru' ? 'Регистрация успешна! 🎉' : 'Registration successful! 🎉',
             'success'
         );
-        router.push('/');
-    }, [onClose, showToast, router, language, pendingVerificationEmail, cancelVerification]);
+    }, [onClose, showToast, router, language, pendingVerificationEmail, cancelVerification, setAuthError]);
 
-    if (!props.isOpen && !props.pendingVerificationEmail) return null;
+    if (!props.isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm">

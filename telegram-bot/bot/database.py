@@ -65,6 +65,16 @@ def _normalize_regional_market(value: Any) -> str:
 
 
 def _normalize_context_tags(value: Any) -> dict[str, Any]:
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return {}
+
+        try:
+            value = json.loads(stripped)
+        except json.JSONDecodeError:
+            return {}
+
     if not isinstance(value, dict):
         return {}
 
@@ -95,7 +105,13 @@ def _normalize_context_tags(value: Any) -> dict[str, Any]:
     return normalized
 
 
-def normalize_term_payload(term: dict[str, Any]) -> dict[str, Any]:
+def normalize_term_payload(term: Any) -> dict[str, Any]:
+    if not isinstance(term, dict):
+        return {
+            "regional_market": "GLOBAL",
+            "context_tags": {},
+        }
+
     normalized = dict(term)
     normalized["regional_market"] = _normalize_regional_market(normalized.get("regional_market"))
     normalized["context_tags"] = _normalize_context_tags(normalized.get("context_tags"))
@@ -185,6 +201,7 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
     Complexity: O(log N) due to GIN Indexes in DB.
     """
     academic_filters = build_academic_search_filters(query)
+    safe_limit = max(1, min(int(limit), 25))
 
     def _search():
         client = get_public_client()
@@ -192,10 +209,11 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
         trigram_response = client.rpc(
             "search_terms_trigram",
-            {"search_query": query, "max_limit": limit},
+            {"search_query": query, "max_limit": safe_limit},
         ).execute()
 
-        for row in trigram_response.data or []:
+        trigram_rows = trigram_response.data if isinstance(trigram_response.data, list) else []
+        for row in trigram_rows:
             normalized = normalize_term_payload(row)
             term_id = normalized.get("id")
             if isinstance(term_id, str) and term_id:
@@ -216,14 +234,15 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
                     filter_spec["context_tags"],
                 )
 
-            filtered_response = query_builder.limit(limit).execute()
-            for row in filtered_response.data or []:
+            filtered_response = query_builder.limit(safe_limit).execute()
+            filtered_rows = filtered_response.data if isinstance(filtered_response.data, list) else []
+            for row in filtered_rows:
                 normalized = normalize_term_payload(row)
                 term_id = normalized.get("id")
                 if isinstance(term_id, str) and term_id:
                     merged_rows.setdefault(term_id, normalized)
 
-        return list(merged_rows.values())[:limit]
+        return list(merged_rows.values())[:safe_limit]
     try:
         return await asyncio.to_thread(_search)
     except Exception as e:

@@ -21,6 +21,8 @@ const readApiMessage = async (response: Response, fallbackMessage: string): Prom
     }
 };
 
+const isUnauthorizedResponse = (response: Response): boolean => response.status === 401;
+
 export default function TelegramLinkCard() {
     const { language: lang } = useLanguage();
     const { showToast } = useToast();
@@ -55,6 +57,11 @@ export default function TelegramLinkCard() {
             const response = await fetch('/api/telegram/link', {
                 cache: 'no-store',
             });
+
+            if (isUnauthorizedResponse(response)) {
+                setStatus({ isLinked: false });
+                return { isLinked: false };
+            }
 
             if (!response.ok) {
                 throw new Error(await readApiMessage(response, copy.statusError));
@@ -103,6 +110,10 @@ export default function TelegramLinkCard() {
                 }),
             });
 
+            if (isUnauthorizedResponse(response)) {
+                throw new Error(await readApiMessage(response, 'Authentication required'));
+            }
+
             if (!response.ok) {
                 throw new Error(await readApiMessage(response, copy.linkError));
             }
@@ -138,6 +149,10 @@ export default function TelegramLinkCard() {
             const response = await fetch('/api/telegram/link', {
                 method: 'DELETE',
             });
+
+            if (isUnauthorizedResponse(response)) {
+                throw new Error(await readApiMessage(response, 'Authentication required'));
+            }
 
             if (!response.ok) {
                 throw new Error(await readApiMessage(response, copy.unlinkError));

@@ -40,6 +40,90 @@ const readApiError = async (response: Response, fallbackMessage: string): Promis
     }
 };
 
+const sleep = (ms: number) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
+const waitForAccessToken = async (): Promise<string | null> => {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const {
+            data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+            return session.access_token;
+        }
+
+        if (attempt === 1) {
+            try {
+                await supabase.auth.refreshSession();
+            } catch {
+                // Best-effort refresh only. If it fails we fall back to cookies.
+            }
+        }
+
+        await sleep(150);
+    }
+
+    return null;
+};
+
+const getAuthenticatedRequestHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    const accessToken = await waitForAccessToken();
+    if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    return headers;
+};
+
+const fetchWithAuthRetry = async (
+    input: RequestInfo | URL,
+    init: RequestInit,
+    fallbackMessage: string
+): Promise<Response> => {
+    let headers = await getAuthenticatedRequestHeaders();
+    let response = await fetch(input, {
+        ...init,
+        credentials: 'same-origin',
+        headers: {
+            ...headers,
+            ...(init.headers || {}),
+        },
+    });
+
+    if (response.status !== 401) {
+        return response;
+    }
+
+    try {
+        await supabase.auth.refreshSession();
+    } catch {
+        // Retry once with the freshest session state we can get.
+    }
+
+    headers = await getAuthenticatedRequestHeaders();
+    response = await fetch(input, {
+        ...init,
+        credentials: 'same-origin',
+        headers: {
+            ...headers,
+            ...(init.headers || {}),
+        },
+    });
+
+    if (!response.ok && response.status === 401) {
+        const message = await readApiError(response, fallbackMessage);
+        throw new Error(message);
+    }
+
+    return response;
+};
+
 /**
  * Fetch user progress from Supabase
  */
@@ -112,17 +196,14 @@ export async function toggleFavoriteInSupabase(
     termId: string,
     shouldFavorite: boolean
 ): Promise<FavoriteToggleResponse> {
-    const response = await fetch('/api/favorites', {
+    const response = await fetchWithAuthRetry('/api/favorites', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
             termId,
             shouldFavorite,
             idempotencyKey: createIdempotencyKey(),
         }),
-    });
+    }, 'Failed to toggle favorite.');
 
     if (!response.ok) {
         const message = await readApiError(response, 'Failed to toggle favorite.');
@@ -139,11 +220,8 @@ export async function saveQuizAttemptToSupabase(
     _userId: string,
     attempt: QuizAttempt
 ): Promise<RecordQuizResult> {
-    const response = await fetch('/api/record-quiz', {
+    const response = await fetchWithAuthRetry('/api/record-quiz', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
             term_id: attempt.term_id,
             is_correct: attempt.is_correct,
@@ -151,7 +229,7 @@ export async function saveQuizAttemptToSupabase(
             quiz_type: attempt.quiz_type,
             idempotencyKey: attempt.id || createIdempotencyKey(),
         }),
-    });
+    }, 'Failed to save quiz attempt.');
 
     if (!response.ok) {
         const message = await readApiError(response, 'Failed to save quiz attempt.');

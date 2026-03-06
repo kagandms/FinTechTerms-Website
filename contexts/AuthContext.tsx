@@ -7,6 +7,7 @@ import {
     getUserProgressFromSupabase,
 } from '@/lib/supabaseStorage';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
+import { safeGetSupabaseUser } from '@/lib/auth/session';
 
 interface User {
     id: string;
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+    const [pendingVerificationPassword, setPendingVerificationPassword] = useState<string | null>(null);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
         // Check URL immediately on initialization (before Supabase clears the hash)
         if (typeof window !== 'undefined') {
@@ -73,6 +75,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return false;
     });
 
+    const clearClientGhostSession = useCallback(async () => {
+        try {
+            if (typeof window !== 'undefined') {
+                await fetch('/api/auth/signout', { method: 'POST' });
+            }
+        } catch (error) {
+            console.warn('AUTH_GHOST_SESSION_SERVER_SIGNOUT_FAILED', error);
+        }
+
+        try {
+            await supabase.auth.signOut({ scope: 'local' });
+        } catch (error) {
+            console.warn('AUTH_GHOST_SESSION_CLIENT_SIGNOUT_FAILED', error);
+        }
+
+        if (typeof window !== 'undefined') {
+            Object.keys(localStorage).forEach((key) => {
+                if (key.startsWith('sb-')) {
+                    localStorage.removeItem(key);
+                }
+            });
+        }
+
+        setUser(null);
+        setPendingVerificationEmail(null);
+        setPendingVerificationPassword(null);
+    }, []);
+
+    const waitForActiveSessionUser = useCallback(async (): Promise<SupabaseUser | null> => {
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
+
+            if (session?.user) {
+                return session.user;
+            }
+
+            await new Promise((resolve) => {
+                window.setTimeout(resolve, 200);
+            });
+        }
+
+        return null;
+    }, []);
+
     // Initialize auth state and listen for changes
     useEffect(() => {
         // Check if we have Supabase configured
@@ -85,16 +133,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return;
         }
 
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                // Only set user if email is confirmed
-                if (session.user.email_confirmed_at) {
-                    setUser(mapSupabaseUser(session.user));
+        const hydrateInitialUser = async () => {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError) {
+                    console.warn('AUTH_INIT_SESSION_ERROR', sessionError);
+                    setUser(null);
+                    return;
                 }
+
+                if (!session?.user) {
+                    setUser(null);
+                    return;
+                }
+
+                const userState = await safeGetSupabaseUser(supabase);
+                if (!userState.user) {
+                    console.warn('AUTH_GHOST_SESSION_DETECTED', userState.message);
+                    await clearClientGhostSession();
+                    return;
+                }
+
+                if (userState.user.email_confirmed_at) {
+                    setUser(mapSupabaseUser(userState.user));
+                } else {
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error('AUTH_INIT_EXCEPTION', error);
+                setUser(null);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
-        });
+        };
+
+        void hydrateInitialUser();
 
         // Listen for auth changes
         const {
@@ -104,33 +178,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setIsPasswordRecovery(true);
             }
 
-            if (session?.user) {
-                // Only allow login if email is confirmed
-                if (!session.user.email_confirmed_at) {
-                    // Email not confirmed, don't set user as logged in
-                    setUser(null);
-                    return;
-                }
-
-                setUser(mapSupabaseUser(session.user));
-
-                // Check if user has progress, if not create it
-                if (event === 'SIGNED_IN') {
-                    try {
-                        await getUserProgressFromSupabase(session.user.id);
-                    } catch (error) {
-                        console.error('Failed to initialize user progress:', error);
-                    }
-                }
-            } else {
+            if (!session?.user) {
                 setUser(null);
+                return;
+            }
+
+            if (!session.user.email_confirmed_at) {
+                setUser(null);
+                return;
+            }
+
+            setUser(mapSupabaseUser(session.user));
+
+            // Check if user has progress, if not create it
+            if (event === 'SIGNED_IN') {
+                try {
+                    await getUserProgressFromSupabase(session.user.id);
+                } catch (error) {
+                    console.error('Failed to initialize user progress:', error);
+                }
             }
         });
 
         return () => {
             subscription.unsubscribe();
         };
-    }, []);
+    }, [clearClientGhostSession]);
 
     /**
      * Login with email and password
@@ -198,6 +271,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 // New user created, OTP verification required
                 setPendingVerificationEmail(email);
+                setPendingVerificationPassword(password);
                 return { success: true, needsOTPVerification: true };
             }
 
@@ -231,9 +305,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return { success: false, error: error.message };
             }
 
-            if (data.user && data.session) {
-                setUser(mapSupabaseUser(data.user));
+            if (data.user) {
+                let resolvedUser = data.session?.user ?? await waitForActiveSessionUser();
+
+                if (!resolvedUser && pendingVerificationPassword) {
+                    const signInResult = await supabase.auth.signInWithPassword({
+                        email,
+                        password: pendingVerificationPassword,
+                    });
+
+                    if (signInResult.error) {
+                        console.error('OTP verification fallback sign-in error:', signInResult.error.message);
+                    } else {
+                        resolvedUser = signInResult.data.user ?? null;
+                    }
+                }
+
+                setUser(mapSupabaseUser(resolvedUser ?? data.user));
                 setPendingVerificationEmail(null);
+                setPendingVerificationPassword(null);
                 return { success: true };
             }
 
@@ -242,7 +332,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.error('OTP verification exception:', error);
             return { success: false, error: 'Verification failed' };
         }
-    }, []);
+    }, [pendingVerificationPassword, waitForActiveSessionUser]);
 
     /**
      * Resend OTP code
@@ -271,6 +361,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
      */
     const cancelVerification = useCallback(() => {
         setPendingVerificationEmail(null);
+        setPendingVerificationPassword(null);
     }, []);
 
     /**
@@ -395,6 +486,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // 2. Optimistic Logout: Clear state immediately
             setUser(null);
             setPendingVerificationEmail(null);
+            setPendingVerificationPassword(null);
 
             // 3. Tell Supabase Client to nuke session globally
             const { error } = await supabase.auth.signOut({ scope: 'global' });

@@ -51,6 +51,12 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         }
     }, [otpCode]);
 
+    useEffect(() => {
+        if (!pendingVerificationEmail) {
+            setIsVerifying(false);
+        }
+    }, [pendingVerificationEmail]);
+
     const normalizedCode = codeChars.join('');
 
     const updateCode = (index: number, nextChar: string) => {
@@ -124,9 +130,10 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             }
 
             showToast(otpSuccess, 'success');
+            setAuthError('');
             setCodeChars(emptyCode());
             setOtpCode('');
-            onClose();
+            await Promise.resolve(onClose());
         } catch (error: any) {
             const msg = error?.message || otpUnexpected;
             setAuthError(msg);

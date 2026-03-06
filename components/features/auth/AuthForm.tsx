@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { AuthFormProps } from './types';
+import { AuthFormProps, AuthFormState } from './types';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
@@ -15,6 +15,26 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     const registerLoadingLabel = uiLang === 'tr' ? 'Kayıt Yapılıyor...' : uiLang === 'ru' ? 'Регистрация...' : 'Registering...';
     const resetLoadingLabel = uiLang === 'tr' ? 'Gönderiliyor...' : uiLang === 'ru' ? 'Отправка...' : 'Sending...';
     const [isResetting, setIsResetting] = useState(false);
+    const updateAuthField = (field: keyof AuthFormState, value: string) => {
+        setAuthForm({ ...authForm, [field]: value });
+
+        if (authError) {
+            setAuthError('');
+        }
+    };
+
+    const emailField = (
+        <div className="relative">
+            <Mail className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+            <input
+                type="email"
+                value={authForm.email}
+                onChange={(e) => updateAuthField('email', e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
+                placeholder={t('auth.email') || 'Email'}
+            />
+        </div>
+    );
 
     return (
         <>
@@ -26,17 +46,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
 
             <div className="space-y-4">
-                {/* Email Input (Common) */}
-                <div className="relative">
-                    <Mail className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                    <input
-                        type="email"
-                        value={authForm.email}
-                        onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
-                        placeholder={t('auth.email') || 'Email'}
-                    />
-                </div>
+                {authMode !== 'register' && emailField}
 
                 {/* Register Fields */}
                 {authMode === 'register' && (
@@ -49,7 +59,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                 <input
                                     type="text"
                                     value={authForm.name}
-                                    onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                    onChange={(e) => updateAuthField('name', e.target.value)}
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                     placeholder={nameLabel}
                                 />
@@ -62,12 +72,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                 <input
                                     type="text"
                                     value={authForm.surname}
-                                    onChange={(e) => setAuthForm({ ...authForm, surname: e.target.value })}
+                                    onChange={(e) => updateAuthField('surname', e.target.value)}
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                     placeholder={surnameLabel}
                                 />
                             </div>
                         </div>
+
+                        {emailField}
 
                         <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -76,7 +88,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             <input
                                 type="date"
                                 value={authForm.birthDate || ''}
-                                onChange={(e) => setAuthForm({ ...authForm, birthDate: e.target.value })}
+                                onChange={(e) => updateAuthField('birthDate', e.target.value)}
                                 className="auth-date-input w-full min-h-[48px] px-4 py-3 border rounded-xl bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                 aria-label={birthDateLabel}
                             />
@@ -91,7 +103,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         <input
                             type={showPassword ? "text" : "password"}
                             value={authForm.password}
-                            onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                            onChange={(e) => updateAuthField('password', e.target.value)}
                             className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
                             placeholder={t('auth.password')}
                         />

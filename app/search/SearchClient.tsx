@@ -60,10 +60,10 @@ export default function SearchPage() {
             />
             {/* Header */}
             <header className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                     {t('common.search')}
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-300">
                     {t('search.placeholder')}
                 </p>
             </header>
@@ -74,8 +74,8 @@ export default function SearchPage() {
             </div>
 
             {/* Results Count */}
-            <p className="text-sm text-gray-500 mb-4">
-                <span className="font-semibold text-primary-500">{sortedTerms.length}</span> {t('search.results')}
+            <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
+                <span className="font-semibold text-primary-500 dark:text-primary-300">{sortedTerms.length}</span> {t('search.results')}
             </p>
 
             {/* Results */}
@@ -87,10 +87,10 @@ export default function SearchPage() {
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="p-4 bg-gray-100 rounded-full mb-4">
-                        <SearchIcon className="w-8 h-8 text-gray-400" />
+                    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+                        <SearchIcon className="w-8 h-8 text-gray-400 dark:text-gray-300" />
                     </div>
-                    <p className="text-gray-500">{t('search.noResults')}</p>
+                    <p className="text-gray-500 dark:text-gray-300">{t('search.noResults')}</p>
                 </div>
             )}
         </div>

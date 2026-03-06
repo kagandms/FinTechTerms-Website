@@ -14,6 +14,20 @@ interface SessionData {
     quizAttempts: number;
 }
 
+interface PersistSessionResult {
+    ok: boolean;
+    data: { sessionId?: string } | null;
+}
+
+const readApiMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
+    try {
+        const payload = await response.json();
+        return payload?.message || payload?.error || fallbackMessage;
+    } catch {
+        return fallbackMessage;
+    }
+};
+
 /**
  * SessionTracker - Invisible component that tracks user sessions
  * for academic research purposes
@@ -23,7 +37,7 @@ export default function SessionTracker() {
     const sessionRef = useRef<SessionData | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const persistSessionMutation = useCallback(async (payload: Record<string, unknown>) => {
+    const persistSessionMutation = useCallback(async (payload: Record<string, unknown>): Promise<PersistSessionResult> => {
         const response = await fetch('/api/study-sessions', {
             method: 'POST',
             headers: {
@@ -33,11 +47,21 @@ export default function SessionTracker() {
             keepalive: true,
         });
 
-        if (!response.ok) {
-            throw new Error('Study session request failed.');
+        if (response.status === 401) {
+            return { ok: false, data: null };
         }
 
-        return response.json();
+        if (!response.ok) {
+            return {
+                ok: false,
+                data: null,
+            };
+        }
+
+        return {
+            ok: true,
+            data: await response.json(),
+        };
     }, []);
 
     // Generate anonymous ID for non-authenticated users
@@ -93,7 +117,11 @@ export default function SessionTracker() {
                 consentGiven: true,
             });
 
-            session.id = response?.sessionId || null;
+            if (!response.ok) {
+                return;
+            }
+
+            session.id = response.data?.sessionId || null;
             sessionRef.current = session;
 
             try {
@@ -101,8 +129,8 @@ export default function SessionTracker() {
             } catch {
                 // Silently fail
             }
-        } catch (error) {
-            console.error('Failed to record session start:', error);
+        } catch {
+            // Session analytics must never interrupt the UI.
         }
     }, [isAuthenticated, getAnonymousId, getDeviceType, persistSessionMutation]);
 
@@ -138,7 +166,7 @@ export default function SessionTracker() {
         }
 
         try {
-            await persistSessionMutation({
+            const response = await persistSessionMutation({
                 action: 'heartbeat',
                 sessionId: session.id,
                 anonymousId: !isAuthenticated ? getAnonymousId() : null,
@@ -146,8 +174,12 @@ export default function SessionTracker() {
                 pageViews: session.pageViews,
                 quizAttempts: session.quizAttempts,
             });
-        } catch (error) {
-            console.error('Failed to update session:', error);
+
+            if (!response.ok) {
+                return;
+            }
+        } catch {
+            // Session analytics must never interrupt the UI.
         }
     }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
 
@@ -181,7 +213,7 @@ export default function SessionTracker() {
         }
 
         try {
-            await persistSessionMutation({
+            const response = await persistSessionMutation({
                 action: 'end',
                 sessionId: session.id,
                 anonymousId: !isAuthenticated ? getAnonymousId() : null,
@@ -190,10 +222,14 @@ export default function SessionTracker() {
                 quizAttempts: session.quizAttempts,
             });
 
+            if (!response.ok) {
+                return;
+            }
+
             // Clear localStorage
             localStorage.removeItem(SESSION_KEY);
-        } catch (error) {
-            console.error('Failed to end session:', error);
+        } catch {
+            // Session analytics must never interrupt the UI.
         }
     }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
 

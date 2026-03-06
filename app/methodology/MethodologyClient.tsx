@@ -259,7 +259,7 @@ export default function MethodologyPage() {
             {/* Back Button */}
             <Link
                 href="/profile"
-                className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4 transition-colors"
+                className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
             >
                 <ArrowLeft className="w-4 h-4" />
                 {t.back}
@@ -267,34 +267,34 @@ export default function MethodologyPage() {
 
             {/* Header */}
             <header className="text-center mb-8">
-                <div className="inline-flex items-center justify-center p-3 bg-primary-100 rounded-2xl mb-4">
+                <div className="inline-flex items-center justify-center p-3 bg-primary-100 dark:bg-primary-900/30 rounded-2xl mb-4">
                     <Brain className="w-10 h-10 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{t.title}</h1>
-                <p className="text-lg font-semibold text-primary-500">{t.subtitle}</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{t.title}</h1>
+                <p className="text-lg font-semibold text-primary-500 dark:text-primary-300">{t.subtitle}</p>
             </header>
 
             {/* Introduction */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-3">{t.intro.title}</h2>
-                <p className="text-sm text-gray-600 leading-relaxed">{t.intro.text}</p>
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">{t.intro.title}</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{t.intro.text}</p>
             </section>
 
             {/* Forgetting Curve */}
-            <section className="bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-5 mb-6 border border-red-100">
+            <section className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/40 rounded-2xl p-5 mb-6 border border-red-100 dark:border-red-900/40">
                 <div className="flex items-center gap-3 mb-4">
                     <Clock className="w-6 h-6 text-red-500" />
-                    <h2 className="text-lg font-bold text-gray-900">{t.forgettingCurve.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.forgettingCurve.title}</h2>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-4">{t.forgettingCurve.text}</p>
-                <div className="bg-white/80 rounded-xl p-4">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{t.forgettingCurve.text}</p>
+                <div className="bg-white/80 dark:bg-gray-900/50 rounded-xl p-4">
                     {t.forgettingCurve.points.map((point, i) => (
                         <div key={i} className="flex items-center gap-2 py-1">
                             <div
                                 className="h-2 rounded-full bg-red-400"
                                 style={{ width: `${[56, 34, 25, 21][i]}%` }}
                             />
-                            <span className="text-xs text-gray-600 whitespace-nowrap">{point}</span>
+                            <span className="text-xs text-gray-600 dark:text-gray-200 whitespace-nowrap">{point}</span>
                         </div>
                     ))}
                 </div>
@@ -304,9 +304,9 @@ export default function MethodologyPage() {
             <section className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Layers className="w-6 h-6 text-primary-500" />
-                    <h2 className="text-lg font-bold text-gray-900">{t.leitner.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.leitner.title}</h2>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-4">{t.leitner.text}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{t.leitner.text}</p>
 
                 <div className="space-y-3">
                     {t.leitner.boxes.map((box, i) => (
@@ -330,62 +330,62 @@ export default function MethodologyPage() {
             </section>
 
             {/* Algorithm */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <RefreshCw className="w-6 h-6 text-primary-500" />
-                    <h2 className="text-lg font-bold text-gray-900">{t.algorithm.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.algorithm.title}</h2>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-4">{t.algorithm.text}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{t.algorithm.text}</p>
 
                 <div className="grid grid-cols-2 gap-3">
                     {t.algorithm.rules.map((rule, i) => (
-                        <div key={i} className="bg-gray-50 rounded-xl p-3">
+                        <div key={i} className="bg-gray-50 dark:bg-gray-700/60 rounded-xl p-3">
                             <rule.icon className={`w-5 h-5 ${rule.color} mb-2`} />
-                            <h3 className="font-semibold text-gray-900 text-sm">{rule.title}</h3>
-                            <p className="text-xs text-gray-500">{rule.desc}</p>
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{rule.title}</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-300">{rule.desc}</p>
                         </div>
                     ))}
                 </div>
             </section>
 
             {/* Metrics */}
-            <section className="bg-slate-50 rounded-2xl p-5 mb-6">
+            <section className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 mb-6 border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-3 mb-4">
                     <BarChart3 className="w-6 h-6 text-slate-600" />
-                    <h2 className="text-lg font-bold text-gray-900">{t.metrics.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.metrics.title}</h2>
                 </div>
                 <div className="space-y-2">
                     {t.metrics.items.map((item, i) => (
-                        <div key={i} className="bg-white rounded-lg p-3 flex justify-between items-center">
-                            <span className="font-mono text-sm text-primary-600">{item.name}</span>
-                            <span className="text-sm text-gray-500">{item.desc}</span>
+                        <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-3 flex justify-between items-center border border-transparent dark:border-gray-700">
+                            <span className="font-mono text-sm text-primary-600 dark:text-primary-300">{item.name}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-300">{item.desc}</span>
                         </div>
                     ))}
                 </div>
             </section>
 
             {/* Benefits */}
-            <section className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 mb-6 border border-green-100">
+            <section className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-2xl p-5 mb-6 border border-green-100 dark:border-green-900/40">
                 <div className="flex items-center gap-3 mb-4">
                     <Lightbulb className="w-6 h-6 text-green-600" />
-                    <h2 className="text-lg font-bold text-gray-900">{t.benefits.title}</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.benefits.title}</h2>
                 </div>
                 <ul className="space-y-2">
                     {t.benefits.items.map((item, i) => (
                         <li key={i} className="flex items-start gap-2">
                             <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-gray-700">{item}</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-200">{item}</span>
                         </li>
                     ))}
                 </ul>
             </section>
 
             {/* Academic References */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">{t.academic.title}</h2>
+            <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t.academic.title}</h2>
                 <div className="space-y-2">
                     {t.academic.references.map((ref, i) => (
-                        <p key={i} className="text-xs text-gray-500 italic pl-4 border-l-2 border-gray-200">
+                        <p key={i} className="text-xs text-gray-500 dark:text-gray-300 italic pl-4 border-l-2 border-gray-200 dark:border-gray-600">
                             {ref}
                         </p>
                     ))}

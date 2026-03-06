@@ -9,6 +9,7 @@ import {
 import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
 import { apiRouteRateLimiter, favoritesMutationRateLimiter } from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 
 const FavoriteRequestSchema = z.object({
     termId: z.string().min(1, 'Term ID is required'),
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Authentication required.',
+                message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
                 headers,
@@ -282,11 +283,12 @@ export async function POST(request: Request) {
             });
         }
 
+        const favorites = (favoritesResponse.data || []).map((row) => row.term_id);
         const responseBody = {
             success: true,
-            isFavorite: shouldFavorite,
+            isFavorite: favorites.includes(termId),
             termId,
-            favorites: (favoritesResponse.data || []).map((row) => row.term_id),
+            favorites,
         };
 
         try {
@@ -336,7 +338,7 @@ export async function GET(request: Request) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Authentication required.',
+                message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
             });

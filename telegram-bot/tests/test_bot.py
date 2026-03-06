@@ -60,6 +60,11 @@ class TestI18n:
             for lang in SUPPORTED_LANGUAGES:
                 assert lang in translations, f"Key '{key}' missing '{lang}'"
 
+    def test_open_web_labels_are_short_and_localized(self):
+        assert t("open_web", "ru") == "Сайт"
+        assert t("open_web", "en") == "Website"
+        assert t("open_web", "tr") == "Web Sitesi"
+
 
 # ── Config Constants ──────────────────────────────────────
 
@@ -99,6 +104,22 @@ class TestAcademicTaxonomy:
             "context_tags": None,
             "regional_market": None,
         })
+
+        assert normalized["regional_market"] == "GLOBAL"
+        assert normalized["context_tags"] == {}
+
+    def test_normalize_term_payload_parses_stringified_context_tags(self):
+        normalized = normalize_term_payload({
+            "id": "term_002",
+            "context_tags": "{\"disciplines\": [\"economics\"]}",
+            "regional_market": "bist",
+        })
+
+        assert normalized["regional_market"] == "BIST"
+        assert normalized["context_tags"] == {"disciplines": ["economics"]}
+
+    def test_normalize_term_payload_handles_non_dict(self):
+        normalized = normalize_term_payload(None)
 
         assert normalized["regional_market"] == "GLOBAL"
         assert normalized["context_tags"] == {}

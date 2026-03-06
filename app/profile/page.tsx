@@ -3,6 +3,7 @@ import { getLearningStats } from '@/app/actions/getLearningStats';
 import { createClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileWarningCode } from './ProfilePageClient';
+import { safeGetSupabaseUser } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -49,27 +50,39 @@ const loadInitialProfileData = async (): Promise<{
     data: ProfileFormInitialData | null;
     warningCode: ProfileWarningCode | null;
 }> => {
-    const supabase = await createClient();
     let warningCode: ProfileWarningCode | null = null;
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
 
-    // First safely get session to avoid console AuthSessionMissingError
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-        return { data: null, warningCode: null };
+    try {
+        supabase = await createClient();
+    } catch (error) {
+        console.error('PROFILE_RSC_CLIENT_ERROR', error);
+        return {
+            data: null,
+            warningCode: 'PROFILE_DATA_LOAD_FAILED',
+        };
     }
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (!supabase) {
+        return {
+            data: null,
+            warningCode: 'PROFILE_DATA_LOAD_FAILED',
+        };
+    }
 
-    if (userError || !userData.user) {
-        if (userError) {
-            console.error('PROFILE_RSC_AUTH_ERROR:', userError);
-            warningCode = 'PROFILE_DATA_LOAD_FAILED';
+    const authState = await safeGetSupabaseUser(supabase);
+    if (!authState.user) {
+        if (authState.ghostSession && authState.message) {
+            console.warn('PROFILE_RSC_GHOST_SESSION_RECOVERED', authState.message);
         }
 
-        return { data: null, warningCode };
+        return {
+            data: null,
+            warningCode: null,
+        };
     }
 
-    const user = userData.user;
+    const user = authState.user;
 
     let fullName = (
         user.user_metadata?.full_name ||
@@ -112,10 +125,11 @@ const loadInitialProfileData = async (): Promise<{
 };
 
 export default async function ProfilePage() {
-    const [{ data: initialProfileData, warningCode: profileWarningCode }, learningStats] = await Promise.all([
-        loadInitialProfileData(),
-        getLearningStats(),
-    ]);
+    const {
+        data: initialProfileData,
+        warningCode: profileWarningCode,
+    } = await loadInitialProfileData();
+    const learningStats = await getLearningStats();
 
     return (
         <ProfilePageClient

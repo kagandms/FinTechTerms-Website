@@ -127,36 +127,37 @@ def _format_term_taxonomy(term: dict[str, Any], lang: str) -> str:
 
 def _format_term_card(term: dict[str, Any], lang: str) -> str:
     """Format a term into a rich Telegram message."""
-    cat = term.get("category", "Fintech")
+    safe_term = term if isinstance(term, dict) else {}
+    cat = str(safe_term.get("category") or "Fintech")
     cat_emoji = CATEGORY_EMOJI.get(cat, "📖")
 
     def_key = f"definition_{lang}"
     ex_key = f"example_sentence_{lang}"
-    definition = (
-        term.get(def_key)
-        or term.get("definition_ru")
-        or term.get("definition_en")
-        or term.get("definition_tr")
+    definition = html.escape(str(
+        safe_term.get(def_key)
+        or safe_term.get("definition_ru")
+        or safe_term.get("definition_en")
+        or safe_term.get("definition_tr")
         or "—"
-    )
-    example = (
-        term.get(ex_key)
-        or term.get("example_sentence_ru")
-        or term.get("example_sentence_en")
-        or term.get("example_sentence_tr")
+    ))
+    example = html.escape(str(
+        safe_term.get(ex_key)
+        or safe_term.get("example_sentence_ru")
+        or safe_term.get("example_sentence_en")
+        or safe_term.get("example_sentence_tr")
         or "—"
-    )
-    metadata_block = _format_term_taxonomy(term, lang)
+    ))
+    metadata_block = _format_term_taxonomy(safe_term, lang)
 
     return t(
         "term_card",
         lang,
         cat_emoji=cat_emoji,
-        category=cat,
+        category=html.escape(cat),
         metadata_block=metadata_block,
-        term_en=term.get("term_en", "—"),
-        term_tr=term.get("term_tr", "—"),
-        term_ru=term.get("term_ru", "—"),
+        term_en=html.escape(str(safe_term.get("term_en") or "—")),
+        term_tr=html.escape(str(safe_term.get("term_tr") or "—")),
+        term_ru=html.escape(str(safe_term.get("term_ru") or "—")),
         definition=definition,
         example=example,
     )
@@ -233,7 +234,7 @@ def _term_keyboard(term: dict[str, Any], lang: str) -> InlineKeyboardMarkup:
                     t("listen_button", lang), callback_data=f"tts:{term_id}:{lang}"
                 ),
                 InlineKeyboardButton(
-                    t("open_web", lang), url=f"{WEB_APP_URL}/term/{term_id}"
+                    "🌐 " + t("open_web", lang), url=f"{WEB_APP_URL}/term/{term_id}"
                 ),
             ],
             [
@@ -273,9 +274,9 @@ def _link_hint_keyboard(lang: str) -> InlineKeyboardMarkup:
     )
 
 
-def _public_site_keyboard() -> InlineKeyboardMarkup:
+def _public_site_keyboard(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("🌐 Перейти на сайт", url=WEB_APP_URL)]]
+        [[InlineKeyboardButton("🌐 " + t("open_web", lang), url=WEB_APP_URL)]]
     )
 
 
@@ -502,7 +503,10 @@ async def _show_stored_page(
     if not payload:
         raise ValueError("Pagination state expired")
 
-    pages = payload["pages"]
+    pages = payload.get("pages")
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("Pagination state expired")
+
     safe_index = max(0, min(page_index, len(pages) - 1))
     await query.edit_message_text(
         pages[safe_index],
@@ -517,7 +521,7 @@ async def _show_stored_page(
     )
 
 
-def _start_keyboard(is_linked: bool) -> InlineKeyboardMarkup:
+def _start_keyboard(is_linked: bool, lang: str) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = [
         [InlineKeyboardButton("🔑 Получить код (Kod Al / Get Code)", callback_data="start:get_code")],
     ]
@@ -536,7 +540,7 @@ def _start_keyboard(is_linked: bool) -> InlineKeyboardMarkup:
                 InlineKeyboardButton("📖 Меню / Menu", callback_data="menu:main"),
                 InlineKeyboardButton("ℹ️ Помощь / Help", callback_data="menu:help"),
             ],
-            [InlineKeyboardButton("🌐 Открыть сайт / Open Website", url=WEB_APP_URL)],
+            [InlineKeyboardButton("🌐 " + t("open_web", lang), url=WEB_APP_URL)],
         ]
     )
 
@@ -1244,7 +1248,7 @@ async def favorites_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
         # Add open web button layout
         markup = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🌐 Перейти на сайт" if lang == "ru" else "🌐 Siteye Git", url=WEB_APP_URL)
+            InlineKeyboardButton("🌐 " + t("open_web", lang), url=WEB_APP_URL)
         ]])
 
         await _reply_paginated(
@@ -1358,7 +1362,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 query,
                 context,
                 start_text,
-                reply_markup=_start_keyboard(bool(account_context.get("is_linked"))),
+                reply_markup=_start_keyboard(bool(account_context.get("is_linked")), lang),
                 parse_mode=ParseMode.HTML,
                 lang=lang,
                 scope="cb-start-home",
@@ -1376,7 +1380,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     query,
                     context,
                     "✅ <b>Аккаунт уже привязан.</b>\nКод больше не нужен, используйте команды бота.",
-                    reply_markup=_start_keyboard(True),
+                    reply_markup=_start_keyboard(True, lang),
                     parse_mode=ParseMode.HTML,
                     lang=lang,
                     scope="cb-start-linked",

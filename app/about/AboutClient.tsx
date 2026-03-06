@@ -317,9 +317,9 @@ export default function AboutPage() {
                 <div className="flex flex-wrap justify-center gap-3">
                     <a
                         href="mailto:fintechterms@mail.ru"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:border-primary-500 transition-colors"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-primary-400 text-gray-700 dark:text-white font-semibold rounded-xl hover:border-primary-500 dark:hover:bg-gray-800 transition-colors break-all"
                     >
-                        <Mail className="w-4 h-4" />
+                        <Mail className="w-4 h-4 text-primary-500 dark:text-primary-300" />
                         Email
                     </a>
                 </div>

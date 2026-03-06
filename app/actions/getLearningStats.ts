@@ -4,6 +4,7 @@ import { createApiError } from '@/lib/supabaseUtils';
 import type { LearningStatsActionResult } from '@/types/gamification';
 import { createClient } from '@/utils/supabase/server';
 import type { LearningHeatmapEntry, UserBadgeSummary } from '@/types/gamification';
+import { AUTH_REQUIRED_MESSAGE, safeGetSupabaseUser } from '@/lib/auth/session';
 
 const sanitizeError = (
     code: string,
@@ -17,17 +18,17 @@ const sanitizeError = (
 export async function getLearningStats(): Promise<LearningStatsActionResult> {
     try {
         const supabase = await createClient();
-        const { data: authData, error: authError } = await supabase.auth.getUser();
+        const authState = await safeGetSupabaseUser(supabase);
 
-        if (authError || !authData.user) {
-            if (authError) {
-                console.error('GET_LEARNING_STATS_AUTH_ERROR', authError);
+        if (!authState.user) {
+            if (!authState.ghostSession && authState.message && authState.message !== AUTH_REQUIRED_MESSAGE) {
+                console.error('GET_LEARNING_STATS_AUTH_ERROR', authState.message);
             }
 
-            return sanitizeError('UNAUTHORIZED', 'Authentication required.', 401);
+            return sanitizeError('UNAUTHORIZED', AUTH_REQUIRED_MESSAGE, 401);
         }
 
-        const userId = authData.user.id;
+        const userId = authState.user.id;
 
         const [heatmapResult, streakResult, badgesResult] = await Promise.all([
             supabase.rpc('get_user_learning_heatmap'),

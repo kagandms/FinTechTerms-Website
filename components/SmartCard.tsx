@@ -48,15 +48,15 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         currentDefinition,
         currentExample
     } = useTermTranslation(term);
-    const { toggleFavorite, isFavorite, favoritesRemaining } = useSRS();
+    const { toggleFavorite, isFavorite, isFavoriteUpdating, favoritesRemaining } = useSRS();
     const { isAuthenticated } = useAuth();
     const { showToast } = useToast();
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [showLimitWarning, setShowLimitWarning] = useState(false);
-    const [isPending, setIsPending] = useState(false);
 
     const favorite = isFavorite(term.id);
+    const isPending = isFavoriteUpdating(term.id);
 
     // Handle TTS
     const handleSpeak = async (text: string, lang: Language) => {
@@ -78,47 +78,41 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             return;
         }
 
-        setIsPending(true);
+        const result = await toggleFavorite(term.id);
 
-        try {
-            const result = await toggleFavorite(term.id);
-
-            if (result.limitReached) {
-                setShowLimitWarning(true);
-                setTimeout(() => setShowLimitWarning(false), 5000);
-                showToast(
-                    language === 'tr'
-                        ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
-                        : language === 'ru'
-                            ? 'Лимит избранного! Войдите для неограниченного добавления.'
-                            : 'Favorite limit reached! Sign in for unlimited.',
-                    'warning'
-                );
-                return;
-            }
-
-            if (!result.success) {
-                showToast(
-                    result.error
-                        || (language === 'tr'
-                            ? 'Favori güncellenemedi.'
-                            : language === 'ru'
-                                ? 'Не удалось обновить избранное.'
-                                : 'Unable to update favorite.'),
-                    'error'
-                );
-                return;
-            }
-
+        if (result.limitReached) {
+            setShowLimitWarning(true);
+            setTimeout(() => setShowLimitWarning(false), 5000);
             showToast(
-                result.isFavorite
-                    ? (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️')
-                    : (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites'),
-                result.isFavorite ? 'success' : 'info'
+                language === 'tr'
+                    ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
+                    : language === 'ru'
+                        ? 'Лимит избранного! Войдите для неограниченного добавления.'
+                        : 'Favorite limit reached! Sign in for unlimited.',
+                'warning'
             );
-        } finally {
-            setIsPending(false);
+            return;
         }
+
+        if (!result.success) {
+            showToast(
+                result.error
+                    || (language === 'tr'
+                        ? 'Favori güncellenemedi.'
+                        : language === 'ru'
+                            ? 'Не удалось обновить избранное.'
+                            : 'Unable to update favorite.'),
+                'error'
+            );
+            return;
+        }
+
+        showToast(
+            result.isFavorite
+                ? (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️')
+                : (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites'),
+            result.isFavorite ? 'success' : 'info'
+        );
     };
 
     return (
@@ -150,11 +144,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                     {/* Mastery Level or Favorites Remaining */}
                     {term.times_reviewed > 0 ? (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-300">
                             {getMasteryLevel(term.srs_level, language)}
                         </span>
                     ) : !isAuthenticated && favoritesRemaining < 10 && (
-                        <span className="text-xs text-amber-600">
+                        <span className="text-xs text-amber-600 dark:text-amber-300">
                             {favoritesRemaining} {language === 'tr' ? 'hak' : language === 'ru' ? 'осталось' : 'left'}
                         </span>
                     )}
@@ -251,8 +245,8 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                 {isExpanded && (
                     <div className="px-4 pb-4 animate-fade-in">
-                        <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800/50">
-                            <p className="text-sm text-primary-700 dark:text-primary-300 italic">
+                        <div className="p-3 bg-primary-50 dark:bg-gray-700/60 rounded-lg border border-primary-100 dark:border-gray-600">
+                            <p className="text-sm text-primary-700 dark:text-gray-200 italic">
                                 &quot;{currentExample}&quot;
                             </p>
                         </div>

@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient, type User } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import {
     createRequestId,
@@ -11,7 +11,8 @@ import {
 } from '@/lib/api-response';
 import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
 import { telegramLinkRateLimiter } from '@/lib/rate-limiter';
-import { createClient as createServerClient } from '@/utils/supabase/server';
+import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,45 +37,11 @@ const createRouteSupabaseClient = (
     }
 );
 
-const getBearerToken = (request: Request): string | null => {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-        return null;
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
-    return token || null;
-};
-
 const isInvalidLinkTokenError = (message: string): boolean => {
     const normalized = message.toLowerCase();
     return normalized.includes('geçersiz veya süresi dolmuş token')
         || normalized.includes('invalid token')
         || normalized.includes('expired');
-};
-
-const resolveAuthenticatedUser = async (request: Request): Promise<User | null> => {
-    const bearerToken = getBearerToken(request);
-
-    if (bearerToken) {
-        const tokenSupabase = createRouteSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            bearerToken
-        );
-
-        const { data, error } = await tokenSupabase.auth.getUser();
-        if (!error && data.user) {
-            return data.user;
-        }
-    }
-
-    const cookieSupabase = await createServerClient();
-    const { data, error } = await cookieSupabase.auth.getUser();
-    if (error || !data.user) {
-        return null;
-    }
-
-    return data.user;
 };
 
 const createAdminClient = () => createRouteSupabaseClient(
@@ -115,7 +82,7 @@ export async function GET(request: Request) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Authentication required.',
+                message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
             });
@@ -172,7 +139,7 @@ export async function DELETE(request: Request) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Authentication required.',
+                message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
             });
@@ -264,7 +231,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Authentication required.',
+                message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
             });

@@ -10,6 +10,7 @@ import {
 import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { QuizAttemptSchema } from '@/lib/validators';
 
 const RecordQuizRequestSchema = QuizAttemptSchema.extend({
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         return errorResponse({
             status: 401,
             code: 'UNAUTHORIZED',
-            message: 'Authentication required.',
+            message: AUTH_REQUIRED_MESSAGE,
             requestId,
             retryable: false,
             headers,

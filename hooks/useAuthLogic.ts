@@ -6,6 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { supabase } from '@/lib/supabase';
 import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
+import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
 
@@ -94,6 +95,32 @@ export function useAuthLogic() {
         }
     }, [isPasswordRecovery, searchParams, isAuthenticated]);
 
+    useEffect(() => {
+        if (!showAuthModal) {
+            return;
+        }
+
+        if (authMode === 'update-password') {
+            return;
+        }
+
+        if (isAuthenticated) {
+            cancelVerification();
+            setAuthError('');
+            setOtpCode('');
+            setShowAuthModal(false);
+            setAuthForm({
+                email: '',
+                password: '',
+                confirmPassword: '',
+                name: '',
+                surname: '',
+                birthDate: ''
+            });
+            router.refresh();
+        }
+    }, [authMode, cancelVerification, isAuthenticated, router, showAuthModal]);
+
     // Validation Helpers
     const validatePassword = (password: string): { valid: boolean; message: string } => {
         const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -106,21 +133,6 @@ export function useAuthLogic() {
             };
         }
         return { valid: true, message: '' };
-    };
-
-    const validateAge = (birthDate: string): boolean => {
-        if (!birthDate) return false;
-        const dob = new Date(birthDate);
-        if (isNaN(dob.getTime())) return false; // invalid date
-
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-            age--; // hasn't had birthday yet this year
-        }
-
-        return age >= 13 && age <= 120;
     };
 
     // Actions
@@ -143,7 +155,7 @@ export function useAuthLogic() {
                 return;
             }
 
-            if (!authForm.birthDate || !validateAge(authForm.birthDate)) {
+            if (!authForm.birthDate || !isValidRegistrationBirthDate(authForm.birthDate)) {
                 const msg = language === 'tr'
                     ? 'Geçerli bir doğum tarihi girin (13+)'
                     : language === 'ru' ? 'Введите действительную дату рождения (13+)' : 'Enter valid birth date (13+)';

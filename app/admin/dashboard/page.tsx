@@ -2,14 +2,21 @@ import { createClient } from '@/utils/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import DashboardClient from '@/components/DashboardClient';
 import { redirect } from 'next/navigation';
+import { safeGetSupabaseUser } from '@/lib/auth/session';
 
 export default async function AdminDashboard() {
-    // 1. Auth Check (Server Side Cookie Verification)
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    let userEmail: string | undefined;
+    try {
+        const supabaseAuth = await createClient();
+        const authState = await safeGetSupabaseUser(supabaseAuth);
+        userEmail = authState.user?.email;
+    } catch (error) {
+        console.error('ADMIN_DASHBOARD_AUTH_ERROR', error);
+        redirect('/');
+    }
 
     // Security Gate
-    if (!user || user.email !== process.env.ADMIN_EMAIL) {
+    if (!userEmail || userEmail !== process.env.ADMIN_EMAIL) {
         redirect('/'); // Send unauthorized users to home
     }
 

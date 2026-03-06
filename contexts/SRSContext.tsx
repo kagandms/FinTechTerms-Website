@@ -39,6 +39,7 @@ interface SRSContextType {
     dueTerms: Term[];
     toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
+    isFavoriteUpdating: (termId: string) => boolean;
     submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs?: number) => Promise<void>;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
@@ -64,6 +65,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [favoriteOptimisticState, setFavoriteOptimisticState] = useState<Record<string, boolean>>({});
+    const [favoritePendingState, setFavoritePendingState] = useState<Record<string, boolean>>({});
 
     /**
      * Load data from appropriate source
@@ -230,6 +233,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        setFavoriteOptimisticState({});
+        setFavoritePendingState({});
+    }, [isAuthenticated, user?.id]);
+
     // Calculate due terms
     const dueTerms = userProgress
         ? getTermsDueForReview(terms, userProgress.favorites)
@@ -251,65 +259,103 @@ export function SRSProvider({ children }: SRSProviderProps) {
      */
     const toggleFavorite = useCallback(async (termId: string): Promise<FavoriteToggleResult> => {
         const currentFavorites = userProgress?.favorites ?? [];
-        const isCurrentlyFavorite = currentFavorites.includes(termId);
+        const optimisticFavorite = favoriteOptimisticState[termId];
+        const isCurrentlyFavorite = optimisticFavorite ?? currentFavorites.includes(termId);
         const shouldFavorite = !isCurrentlyFavorite;
 
-        // If trying to add and limit reached
-        if (!isCurrentlyFavorite && !isAuthenticated && currentFavorites.length >= favoriteLimit) {
-            return { success: false, limitReached: true };
-        }
-
-        if (isAuthenticated && user) {
-            // Optimistically update local state first
-            const updated = toggleFavoriteInStorage(termId);
-            setUserProgress(updated);
-
-            // Sync to Supabase and reconcile local state with cloud result
-            try {
-                const response = await toggleFavoriteInSupabase(user.id, termId, shouldFavorite);
-                setUserProgress(prev => {
-                    if (!prev) return prev;
-                    const reconciled = { ...prev, favorites: response.favorites };
-                    saveLocalUserProgress(reconciled);
-                    return reconciled;
-                });
-
-                return {
-                    success: true,
-                    limitReached: false,
-                    isFavorite: response.isFavorite,
-                };
-            } catch (error) {
-                console.error('Failed to sync favorite to cloud:', error);
-                const rolledBack = { ...updated, favorites: currentFavorites };
-                setUserProgress(rolledBack);
-                saveLocalUserProgress(rolledBack);
-
+        try {
+            if (favoritePendingState[termId]) {
                 return {
                     success: false,
                     limitReached: false,
                     isFavorite: isCurrentlyFavorite,
-                    error: error instanceof Error ? error.message : 'Failed to update favorite.',
                 };
             }
-        }
 
-        // Guest mode — local storage only
-        const updated = toggleFavoriteInStorage(termId);
-        setUserProgress(updated);
-        return {
-            success: true,
-            limitReached: false,
-            isFavorite: updated.favorites.includes(termId),
-        };
-    }, [userProgress, favoriteLimit, isAuthenticated, user]);
+            // If trying to add and limit reached
+            if (!isCurrentlyFavorite && !isAuthenticated && currentFavorites.length >= favoriteLimit) {
+                return { success: false, limitReached: true };
+            }
+
+            if (isAuthenticated && user) {
+                setFavoritePendingState(prev => ({ ...prev, [termId]: true }));
+                setFavoriteOptimisticState(prev => ({ ...prev, [termId]: shouldFavorite }));
+
+                try {
+                    const response = await toggleFavoriteInSupabase(user.id, termId, shouldFavorite);
+                    setUserProgress(prev => {
+                        const baseProgress = prev ?? getLocalUserProgress();
+                        const reconciled = {
+                            ...baseProgress,
+                            favorites: response.favorites,
+                            updated_at: new Date().toISOString(),
+                        };
+
+                        saveLocalUserProgress(reconciled);
+                        return reconciled;
+                    });
+
+                    return {
+                        success: true,
+                        limitReached: false,
+                        isFavorite: response.isFavorite,
+                    };
+                } catch (error) {
+                    console.error('Failed to sync favorite to cloud:', error);
+
+                    return {
+                        success: false,
+                        limitReached: false,
+                        isFavorite: isCurrentlyFavorite,
+                        error: error instanceof Error ? error.message : 'Failed to update favorite.',
+                    };
+                } finally {
+                    setFavoritePendingState(prev => {
+                        const next = { ...prev };
+                        delete next[termId];
+                        return next;
+                    });
+                    setFavoriteOptimisticState(prev => {
+                        const next = { ...prev };
+                        delete next[termId];
+                        return next;
+                    });
+                }
+            }
+
+            // Guest mode — local storage only
+            const updated = toggleFavoriteInStorage(termId);
+            setUserProgress(updated);
+            return {
+                success: true,
+                limitReached: false,
+                isFavorite: updated.favorites.includes(termId),
+            };
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+            return {
+                success: false,
+                limitReached: false,
+                isFavorite: isCurrentlyFavorite,
+                error: error instanceof Error ? error.message : 'Failed to update favorite.',
+            };
+        }
+    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, isAuthenticated, user, userProgress]);
 
     /**
      * Check if a term is favorited
      */
     const isFavorite = useCallback((termId: string): boolean => {
+        if (Object.prototype.hasOwnProperty.call(favoriteOptimisticState, termId)) {
+            return favoriteOptimisticState[termId] ?? false;
+        }
+
         return userProgress?.favorites.includes(termId) ?? false;
-    }, [userProgress]);
+    }, [favoriteOptimisticState, userProgress]);
+
+    const isFavoriteUpdating = useCallback((termId: string): boolean => (
+        favoritePendingState[termId] ?? false
+    ), [favoritePendingState]);
 
     /**
      * Submit a quiz answer and update SRS data
@@ -418,6 +464,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 dueTerms,
                 toggleFavorite,
                 isFavorite,
+                isFavoriteUpdating,
                 submitQuizAnswer,
                 refreshData,
                 canAddMoreFavorites,

@@ -214,9 +214,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "tr": "🔊 Telaffuz",
     },
     "open_web": {
-        "ru": "🌐 Открыть в браузере",
-        "en": "🌐 Open in browser",
-        "tr": "🌐 Tarayıcıda aç",
+        "ru": "Сайт",
+        "en": "Website",
+        "tr": "Web Sitesi",
     },
     "next_term": {
         "ru": "➡️ Следующий",

@@ -1,21 +1,22 @@
+import Image from 'next/image';
+
 export default function Loading() {
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-4">
-            <div className="text-center">
-                {/* Animated logo pulse */}
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0e3b5e] to-blue-600 mb-6 shadow-lg animate-pulse">
-                    <span className="text-2xl font-bold text-white">FT</span>
+            <div className="w-48 mx-auto flex flex-col items-center text-center">
+                <div className="mb-4 flex justify-center animate-pulse">
+                    <Image
+                        src="/home-logo.png"
+                        alt="FinTechTerms Logo"
+                        width={120}
+                        height={108}
+                        className="w-24 h-auto object-contain drop-shadow-lg rounded-2xl"
+                        priority
+                    />
                 </div>
 
-                {/* Loading bar using Tailwind animation */}
-                <div className="w-48 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto overflow-hidden">
-                    <div
-                        className="h-full rounded-full animate-pulse"
-                        style={{
-                            background: 'linear-gradient(90deg, #0e3b5e, #f59e0b)',
-                            width: '60%',
-                        }}
-                    />
+                <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full w-3/5 rounded-full animate-pulse bg-gradient-to-r from-primary-500 to-accent-500" />
                 </div>
             </div>
         </div>

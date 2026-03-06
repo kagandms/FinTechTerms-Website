@@ -1,6 +1,11 @@
 import { createClient as createSupabaseClient, type User } from '@supabase/supabase-js';
 import { createTimeoutFetch } from '@/lib/api-response';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import {
+    hasRequestAuthCookies,
+    hasRequestAuthCredentials,
+    safeGetSupabaseUser,
+} from '@/lib/auth/session';
 
 const createRouteSupabaseClient = (
     apiKey: string,
@@ -30,8 +35,16 @@ export const createServiceRoleClient = () => createRouteSupabaseClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export const resolveAuthenticatedUser = async (request: Request): Promise<User | null> => {
+export interface RequestAuthState {
+    user: User | null;
+    hadCredentials: boolean;
+    ghostSession: boolean;
+}
+
+export const resolveRequestAuthState = async (request: Request): Promise<RequestAuthState> => {
     const bearerToken = getBearerToken(request);
+    const hadCredentials = hasRequestAuthCredentials(request);
+    let ghostSession = false;
 
     if (bearerToken) {
         const tokenSupabase = createRouteSupabaseClient(
@@ -39,17 +52,41 @@ export const resolveAuthenticatedUser = async (request: Request): Promise<User |
             bearerToken
         );
 
-        const { data, error } = await tokenSupabase.auth.getUser();
-        if (!error && data.user) {
-            return data.user;
+        const tokenUserState = await safeGetSupabaseUser(tokenSupabase);
+        if (tokenUserState.user) {
+            return {
+                user: tokenUserState.user,
+                hadCredentials: true,
+                ghostSession: false,
+            };
         }
+
+        ghostSession = ghostSession || tokenUserState.ghostSession;
     }
 
-    const cookieSupabase = await createServerClient();
-    const { data, error } = await cookieSupabase.auth.getUser();
-    if (error || !data.user) {
-        return null;
+    if (hasRequestAuthCookies(request)) {
+        const cookieSupabase = await createServerClient();
+        const cookieUserState = await safeGetSupabaseUser(cookieSupabase);
+
+        if (cookieUserState.user) {
+            return {
+                user: cookieUserState.user,
+                hadCredentials: true,
+                ghostSession: false,
+            };
+        }
+
+        ghostSession = ghostSession || cookieUserState.ghostSession;
     }
 
-    return data.user;
+    return {
+        user: null,
+        hadCredentials,
+        ghostSession,
+    };
+};
+
+export const resolveAuthenticatedUser = async (request: Request): Promise<User | null> => {
+    const authState = await resolveRequestAuthState(request);
+    return authState.user;
 };
