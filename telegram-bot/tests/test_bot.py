@@ -65,6 +65,20 @@ class TestI18n:
         assert t("open_web", "en") == "Website"
         assert t("open_web", "tr") == "Web Sitesi"
 
+    def test_welcome_copy_excludes_linking_and_report_commands(self):
+        for lang in SUPPORTED_LANGUAGES:
+            welcome = t("welcome", lang)
+            assert "/link" not in welcome
+            assert "/bagla" not in welcome
+            assert "/report" not in welcome
+
+    def test_help_copy_excludes_linking_and_report_commands(self):
+        for lang in SUPPORTED_LANGUAGES:
+            help_text = t("help", lang)
+            assert "/link" not in help_text
+            assert "/bagla" not in help_text
+            assert "/report" not in help_text
+
 
 # ── Config Constants ──────────────────────────────────────
 

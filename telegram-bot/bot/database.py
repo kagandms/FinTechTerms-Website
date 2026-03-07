@@ -1,6 +1,6 @@
 """
 FinTechTerms Bot — Database Layer
-Connects to the same Supabase instance as the web app for full data sync.
+Connects to Supabase for stateless term lookup only.
 All database operations are moved to a thread pool to avoid blocking the asyncio event loop.
 """
 
@@ -43,7 +43,6 @@ ACADEMIC_SEARCH_FILTERS: tuple[tuple[str, dict[str, Any]], ...] = (
 
 # ── Supabase Clients ────────────────────────────────────────
 _public_client: Optional[Client] = None
-_admin_client: Optional[Client] = None
 
 
 def _normalize_language(language: Any) -> str:
@@ -146,7 +145,7 @@ def build_academic_search_filters(query: str) -> list[dict[str, Any]]:
     return filters
 
 def get_public_client() -> Client:
-    """Lazy-initialise public Supabase client (anon/service key from SUPABASE_KEY)."""
+    """Lazy-initialise public Supabase client (anon key preferred, service-role fallback)."""
     global _public_client
     if _public_client is None:
         public_key = config.supabase_key or config.supabase_service_role_key
@@ -154,21 +153,8 @@ def get_public_client() -> Client:
     return _public_client
 
 
-def get_admin_client() -> Client:
-    """
-    Lazy-initialise admin Supabase client.
-
-    Uses SUPABASE_SERVICE_ROLE_KEY so secure account/favorites/stats writes continue
-    to work after RLS is restricted to service-role-only mutations.
-    """
-    global _admin_client
-    if _admin_client is None:
-        _admin_client = create_client(config.supabase_url, config.supabase_service_role_key)
-    return _admin_client
-
-
 def get_client() -> Client:
-    """Backward-compatible alias for legacy call sites."""
+    """Backward-compatible alias for term lookup call sites."""
     return get_public_client()
 
 # ── Term Queries ───────────────────────────────────────────
@@ -275,238 +261,6 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
         logger.error("Failed to fetch terms for category %s: %s", category, e)
         return []
 
-# ══════════════════════════════════════════════════════════
-#  USER PREFERENCES & ACTIVITY — Asynchronous & DB-Backed
-# ══════════════════════════════════════════════════════════
-
-async def sync_user(telegram_id: int, username: str | None = None) -> dict[str, Any]:
-    """Ensures Telegram user is synced via RPC. Returns dict with user_id and language."""
-    def _sync():
-        return get_admin_client().rpc("sync_telegram_user", {
-            "p_telegram_id": telegram_id,
-            "p_username": username,
-            "p_default_language": config.default_language
-        }).execute()
-        
-    try:
-        response = await asyncio.to_thread(_sync)
-        if response.data:
-            return dict(response.data)
-    except Exception as e:
-        logger.error("Failed to sync user %s: %s", telegram_id, e)
-        
-    return {"user_id": None, "language": config.default_language}
-
-async def get_user_language(telegram_id: int) -> str:
-    """Get the user's preferred language."""
-    data = await sync_user(telegram_id)
-    return data.get("language", config.default_language)
-
-async def set_user_language(telegram_id: int, language: str) -> None:
-    """Set the user's preferred language and persist."""
-    def _set():
-        client = get_admin_client()
-        # First ensure they exist and get UUID
-        rpc = client.rpc("sync_telegram_user", {
-            "p_telegram_id": telegram_id,
-            "p_default_language": config.default_language
-        }).execute()
-        
-        if rpc.data and rpc.data.get("user_id"):
-            client.table("user_settings").update(
-                {"preferred_language": language}
-            ).eq("user_id", rpc.data["user_id"]).execute()
-            
-    try:
-        await asyncio.to_thread(_set)
-    except Exception as e:
-        logger.error("Failed to set language for %s: %s", telegram_id, e)
-
-async def track_activity(telegram_id: int, action: str, **kwargs: Any) -> None:
-    """Track a user action and persist to Supabase."""
-    data = await sync_user(telegram_id)
-    user_id = data.get("user_id")
-    if not user_id:
-        return
-
-    def _track():
-        client = get_admin_client()
-        if action == "quiz_taken":
-            is_correct = kwargs.get("correct", False)
-            client.table("quiz_attempts").insert({
-                "user_id": user_id,
-                "term_id": kwargs.get("term_id", ""),
-                "is_correct": is_correct,
-                "quiz_type": "telegram_bot"
-            }).execute()
-            
-            client.rpc("log_daily_learning", {
-                "p_user_id": user_id,
-                "p_words_reviewed": 1,
-                "p_words_correct": 1 if is_correct else 0,
-                "p_words_incorrect": 0 if is_correct else 1,
-                "p_new_words_learned": 0
-            }).execute()
-            
-        elif action == "term_viewed":
-            client.rpc("log_daily_learning", {
-                "p_user_id": user_id,
-                "p_words_reviewed": 1,
-                "p_words_correct": 0,
-                "p_words_incorrect": 0,
-                "p_new_words_learned": 1
-            }).execute()
-            
-    try:
-        await asyncio.to_thread(_track)
-    except Exception as e:
-        logger.error("Failed to track %s for %s: %s", action, telegram_id, e)
-
-async def save_username(telegram_id: int, username: str | None) -> None:
-    """Save Telegram username for admin visibility."""
-    if username:
-        await sync_user(telegram_id, username)
-
-
-async def get_linked_profile_context(telegram_id: int, username: str | None = None) -> dict[str, Any]:
-    """
-    Resolve Telegram -> Web profile linkage using the single source of truth.
-    Linked state is driven by telegram_users.user_id mapping (source of truth).
-    Profile row is optional for display enrichment and must not break linked state.
-    """
-
-    def _resolve() -> dict[str, Any]:
-        client = get_admin_client()
-
-        mapping_res = (
-            client.table("telegram_users")
-            .select("user_id, telegram_username")
-            .eq("telegram_id", telegram_id)
-            .limit(1)
-            .execute()
-        )
-        mapping_rows = mapping_res.data or []
-        if not mapping_rows:
-            return {
-                "is_linked": False,
-                "user_id": None,
-                "full_name": None,
-                "language": _normalize_language(config.default_language),
-            }
-
-        mapping = mapping_rows[0]
-        user_id = mapping.get("user_id")
-        if not user_id:
-            return {
-                "is_linked": False,
-                "user_id": None,
-                "full_name": None,
-                "language": _normalize_language(config.default_language),
-            }
-
-        if username and username != mapping.get("telegram_username"):
-            (
-                client.table("telegram_users")
-                .update({"telegram_username": username})
-                .eq("telegram_id", telegram_id)
-                .execute()
-            )
-
-        settings_res = (
-            client.table("user_settings")
-            .select("preferred_language")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        settings_rows = settings_res.data or []
-        preferred_language = (
-            settings_rows[0].get("preferred_language")
-            if settings_rows
-            else config.default_language
-        )
-        language = _normalize_language(preferred_language)
-
-        profile_res = (
-            client.table("profiles")
-            .select("full_name")
-            .eq("id", user_id)
-            .limit(1)
-            .execute()
-        )
-        profile_rows = profile_res.data or []
-        full_name = None
-        if profile_rows:
-            full_name = (profile_rows[0].get("full_name") or "").strip() or None
-
-        return {
-            "is_linked": True,
-            "user_id": user_id,
-            "full_name": full_name,
-            "language": language,
-        }
-
-    try:
-        return await asyncio.to_thread(_resolve)
-    except Exception as e:
-        logger.exception("Failed to resolve linked profile for %s: %s", telegram_id, e)
-        return {
-            "is_linked": False,
-            "user_id": None,
-            "full_name": None,
-            "language": _normalize_language(config.default_language),
-        }
-
-async def generate_link_token(telegram_id: int) -> str | None:
-    """Generate a 6-digit OTP for linking the Telegram bot account to a Web account."""
-    def _generate():
-        return get_admin_client().rpc("generate_telegram_link_token", {
-            "p_telegram_id": telegram_id
-        }).execute()
-        
-    try:
-        response = await asyncio.to_thread(_generate)
-        return response.data if response.data else None
-    except Exception as e:
-        logger.error("Failed to generate link token for %s: %s", telegram_id, e)
-        return None
-
-async def get_user_report(telegram_id: int) -> dict[str, Any]:
-    """Get user activity summary for the report."""
-    data = await sync_user(telegram_id)
-    user_id = data.get("user_id")
-    if not user_id:
-        return {}
-
-    def _report():
-        client = get_admin_client()
-        attempts_res = client.table("quiz_attempts").select("is_correct").eq("user_id", user_id).execute()
-        attempts = attempts_res.data or []
-        tot_quiz = len(attempts)
-        tot_correct = sum(1 for a in attempts if a.get("is_correct"))
-        accuracy = round((tot_correct / tot_quiz) * 100) if tot_quiz > 0 else 0
-        
-        daily_logs = client.table("daily_learning_logs").select("words_reviewed", "new_words_learned").eq("user_id", user_id).execute()
-        words_reviewed = sum(row.get("words_reviewed", 0) for row in daily_logs.data or [])
-        new_words = sum(row.get("new_words_learned", 0) for row in daily_logs.data or [])
-        
-        return {
-            "searches": 0,
-            "quizzes_taken": tot_quiz,
-            "quizzes_correct": tot_correct,
-            "accuracy": accuracy,
-            "terms_viewed": words_reviewed,
-            "daily_used": 0,
-            "tts_used": 0,
-            "categories_explored": 0,
-            "session_start": "",
-        }
-    try:
-        return await asyncio.to_thread(_report)
-    except Exception as e:
-        logger.error("Failed to get report for %s: %s", telegram_id, e)
-        return {}
-
 # ── Stats ──────────────────────────────────────────────────
 async def get_term_count() -> int:
     """Return total number of terms in the database."""
@@ -533,130 +287,3 @@ async def get_category_counts() -> dict[str, int]:
     except Exception as e:
         logger.error("Failed to get category counts: %s", e)
         return {}
-
-async def get_bot_user_count() -> int:
-    """Return total number of bot users."""
-    def _count():
-        return get_admin_client().table("telegram_users").select("telegram_id", count="exact").execute()
-    try:
-        response = await asyncio.to_thread(_count)
-        return response.count or 0
-    except Exception as e:
-        logger.error("Failed to get bot user count: %s", e)
-        return 0
-
-
-async def get_user_favorites(telegram_id: int) -> list[dict[str, Any]]:
-    """
-    Fetch the linked user's favorite terms from the unified `user_favorites` table.
-    """
-    linked = await get_linked_profile_context(telegram_id)
-    user_id = linked.get("user_id")
-    if not linked.get("is_linked") or not user_id:
-        return []
-
-    return await get_favorites_by_user_id(str(user_id))
-
-
-async def get_favorites_by_user_id(user_id: str, limit: int = 25) -> list[dict[str, Any]]:
-    """Fetch favorites directly from `user_favorites` and hydrate term payload from `terms`."""
-
-    def _fetch_favorites() -> list[dict[str, Any]]:
-        client = get_admin_client()
-        favorites_res = (
-            client.table("user_favorites")
-            .select("term_id, created_at")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
-        favorite_rows = favorites_res.data or []
-        if not favorite_rows:
-            return []
-
-        term_ids: list[str] = [
-            row["term_id"]
-            for row in favorite_rows
-            if isinstance(row.get("term_id"), str) and row["term_id"]
-        ]
-        if not term_ids:
-            return []
-
-        terms_res = (
-            client.table("terms")
-            .select("id, term_ru, term_en, term_tr, category, regional_market, context_tags")
-            .in_("id", term_ids)
-            .execute()
-        )
-        terms_by_id = {
-            row.get("id"): normalize_term_payload(row)
-            for row in (terms_res.data or [])
-            if isinstance(row.get("id"), str)
-        }
-
-        ordered_terms: list[dict[str, Any]] = []
-        for favorite_row in favorite_rows:
-            term = terms_by_id.get(favorite_row.get("term_id"))
-            if term:
-                ordered_terms.append(term)
-        return ordered_terms
-
-    try:
-        return await asyncio.to_thread(_fetch_favorites)
-    except Exception as e:
-        logger.exception("Failed to fetch favorites for user_id %s: %s", user_id, e)
-        raise
-
-
-async def get_activity_stats_by_user_id(user_id: str) -> dict[str, Any]:
-    """Fetch user activity stats for the Telegram account dashboard."""
-
-    def _fetch_stats() -> dict[str, Any]:
-        client = get_admin_client()
-
-        attempts_res = (
-            client.table("quiz_attempts")
-            .select("is_correct")
-            .eq("user_id", user_id)
-            .execute()
-        )
-        attempts = attempts_res.data or []
-        quizzes_taken = len(attempts)
-        quizzes_correct = sum(1 for row in attempts if row.get("is_correct"))
-        accuracy = round((quizzes_correct / quizzes_taken) * 100) if quizzes_taken else 0
-
-        learning_res = (
-            client.table("daily_learning_logs")
-            .select("log_date, words_reviewed, new_words_learned")
-            .eq("user_id", user_id)
-            .execute()
-        )
-        learning_rows = learning_res.data or []
-        words_reviewed = sum(int(row.get("words_reviewed") or 0) for row in learning_rows)
-        words_added = sum(int(row.get("new_words_learned") or 0) for row in learning_rows)
-        active_days = len({row.get("log_date") for row in learning_rows if row.get("log_date")})
-
-        favorites_res = (
-            client.table("user_favorites")
-            .select("term_id", count="exact")
-            .eq("user_id", user_id)
-            .execute()
-        )
-        favorites_count = int(favorites_res.count or 0)
-
-        return {
-            "quizzes_taken": quizzes_taken,
-            "quizzes_correct": quizzes_correct,
-            "accuracy": accuracy,
-            "words_reviewed": words_reviewed,
-            "words_added": words_added,
-            "favorites_count": favorites_count,
-            "active_days": active_days,
-        }
-
-    try:
-        return await asyncio.to_thread(_fetch_stats)
-    except Exception as e:
-        logger.exception("Failed to fetch activity stats for user_id %s: %s", user_id, e)
-        raise

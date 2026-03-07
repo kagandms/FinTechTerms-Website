@@ -34,9 +34,6 @@ from bot.handlers import (
     lang_handler,
     stats_handler,
     help_handler,
-    report_handler,
-    link_handler,
-    favorites_handler,
     callback_handler,
     text_handler,
 )
@@ -58,41 +55,32 @@ async def post_init(application: Application) -> None:
     """Sync bot commands to Telegram Servers dynamically per language."""
     commands_en = [
         BotCommand("start", "Main menu"),
-        BotCommand("menu", "My dashboard"),
+        BotCommand("menu", "Menu"),
         BotCommand("search", "Search a term"),
         BotCommand("daily", "Term of the day"),
         BotCommand("quiz", "Quick quiz"),
-        BotCommand("link", "Sync with web app"),
-        BotCommand("report", "My Report"),
         BotCommand("lang", "Change language"),
         BotCommand("stats", "Statistics"),
-        BotCommand("favorites", "My Favorites"),
         BotCommand("help", "Help")
     ]
     commands_ru = [
         BotCommand("start", "Главное меню"),
-        BotCommand("menu", "Мой кабинет"),
+        BotCommand("menu", "Меню"),
         BotCommand("search", "Поиск термина"),
         BotCommand("daily", "Термин дня"),
         BotCommand("quiz", "Быстрый тест"),
-        BotCommand("link", "Синхронизация с сайтом"),
-        BotCommand("report", "Мой Отчёт"),
         BotCommand("lang", "Сменить язык"),
         BotCommand("stats", "Статистика"),
-        BotCommand("favorites", "Избранные"),
         BotCommand("help", "Помощь")
     ]
     commands_tr = [
         BotCommand("start", "Ana menü"),
-        BotCommand("menu", "Panelim"),
+        BotCommand("menu", "Menü"),
         BotCommand("search", "Terim ara"),
         BotCommand("daily", "Günün terimi"),
         BotCommand("quiz", "Hızlı test"),
-        BotCommand("bagla", "Web sitesiyle eşle"),
-        BotCommand("report", "Raporum"),
         BotCommand("lang", "Dil değiştir"),
         BotCommand("stats", "İstatistikler"),
-        BotCommand("favorites", "Favorilerim"),
         BotCommand("help", "Yardım")
     ]
     
@@ -139,11 +127,6 @@ def main() -> None:
     app.add_handler(CommandHandler("lang", lang_handler))
     app.add_handler(CommandHandler("stats", stats_handler))
     app.add_handler(CommandHandler("help", help_handler))
-    app.add_handler(CommandHandler("report", report_handler))
-    app.add_handler(CommandHandler("link", link_handler))
-    app.add_handler(CommandHandler("bagla", link_handler))
-    app.add_handler(CommandHandler("favorites", favorites_handler))
-    app.add_handler(CommandHandler("favoriler", favorites_handler))
 
     # ── Register callback query handler ──
     app.add_handler(CallbackQueryHandler(callback_handler))

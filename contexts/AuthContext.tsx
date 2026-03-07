@@ -7,7 +7,6 @@ import {
     getUserProgressFromSupabase,
 } from '@/lib/supabaseStorage';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
-import { safeGetSupabaseUser } from '@/lib/auth/session';
 
 interface User {
     id: string;
@@ -75,34 +74,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return false;
     });
 
-    const clearClientGhostSession = useCallback(async () => {
-        try {
-            if (typeof window !== 'undefined') {
-                await fetch('/api/auth/signout', { method: 'POST' });
-            }
-        } catch (error) {
-            console.warn('AUTH_GHOST_SESSION_SERVER_SIGNOUT_FAILED', error);
-        }
-
-        try {
-            await supabase.auth.signOut({ scope: 'local' });
-        } catch (error) {
-            console.warn('AUTH_GHOST_SESSION_CLIENT_SIGNOUT_FAILED', error);
-        }
-
-        if (typeof window !== 'undefined') {
-            Object.keys(localStorage).forEach((key) => {
-                if (key.startsWith('sb-')) {
-                    localStorage.removeItem(key);
-                }
-            });
-        }
-
-        setUser(null);
-        setPendingVerificationEmail(null);
-        setPendingVerificationPassword(null);
-    }, []);
-
     const waitForActiveSessionUser = useCallback(async (): Promise<SupabaseUser | null> => {
         for (let attempt = 0; attempt < 5; attempt += 1) {
             const {
@@ -148,15 +119,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     return;
                 }
 
-                const userState = await safeGetSupabaseUser(supabase);
-                if (!userState.user) {
-                    console.warn('AUTH_GHOST_SESSION_DETECTED', userState.message);
-                    await clearClientGhostSession();
-                    return;
-                }
-
-                if (userState.user.email_confirmed_at) {
-                    setUser(mapSupabaseUser(userState.user));
+                if (session.user.email_confirmed_at) {
+                    setUser(mapSupabaseUser(session.user));
                 } else {
                     setUser(null);
                 }
@@ -203,7 +167,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return () => {
             subscription.unsubscribe();
         };
-    }, [clearClientGhostSession]);
+    }, []);
 
     /**
      * Login with email and password

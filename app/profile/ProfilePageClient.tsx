@@ -16,7 +16,6 @@ import { StatsGrid } from '@/components/features/profile/StatsGrid';
 import { SettingsPanel } from '@/components/features/profile/SettingsPanel';
 import { AuthModal } from '@/components/features/auth/AuthModal';
 import { ResetConfirmModal } from '@/components/features/profile/ResetConfirmModal';
-import TelegramLinkCard from '@/components/TelegramLinkCard';
 import TelegramBanner from '@/components/TelegramBanner';
 import { ProfileEditForm } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
@@ -278,12 +277,9 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         </Link>
                     </section>
 
-                    {/* Telegram Integration */}
-                    <section className="space-y-6">
+                    {/* Telegram Bot */}
+                    <section>
                         <TelegramBanner variant="compact" />
-                        {isAuthenticated && (
-                            <TelegramLinkCard />
-                        )}
                     </section>
 
                     {/* Install App Button — Profile */}

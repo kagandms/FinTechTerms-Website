@@ -5,7 +5,6 @@ const sensitiveNetworkOnlyRoutes = [
         urlPattern: ({ url }) =>
             url.pathname === '/profile'
             || url.pathname.startsWith('/profile/')
-            || url.pathname.startsWith('/api/telegram/link')
             || url.pathname.startsWith('/api/auth/')
             || url.pathname.startsWith('/auth'),
         handler: 'NetworkOnly',
