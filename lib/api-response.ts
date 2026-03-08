@@ -51,6 +51,11 @@ export const getClientIp = (request: Request): string => {
         }
     }
 
+    const requestIp = (request as Request & { ip?: string | null }).ip?.trim();
+    if (requestIp) {
+        return requestIp;
+    }
+
     return request.headers.get('x-real-ip')?.trim() || 'unknown';
 };
 

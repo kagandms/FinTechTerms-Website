@@ -1,11 +1,19 @@
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
     createRequestId,
     errorResponse,
+    getClientIp,
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import {
+    completeEphemeralIdempotentRequest,
+    inspectEphemeralIdempotentRequest,
+    reserveEphemeralIdempotentRequest,
+} from '@/lib/ephemeral-idempotency';
+import { studySessionRouteRateLimiter } from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
 
 const SessionActionSchema = z.discriminatedUnion('action', [
@@ -15,7 +23,8 @@ const SessionActionSchema = z.discriminatedUnion('action', [
         deviceType: z.enum(['mobile', 'tablet', 'desktop', 'unknown']).default('unknown'),
         userAgent: z.string().nullable().optional(),
         consentGiven: z.literal(true),
-    }),
+        idempotency_key: z.string().uuid(),
+    }).strict(),
     z.object({
         action: z.literal('heartbeat'),
         sessionId: z.string().uuid(),
@@ -23,7 +32,8 @@ const SessionActionSchema = z.discriminatedUnion('action', [
         durationSeconds: z.number().int().min(0),
         pageViews: z.number().int().min(0),
         quizAttempts: z.number().int().min(0),
-    }),
+        idempotency_key: z.string().uuid(),
+    }).strict(),
     z.object({
         action: z.literal('end'),
         sessionId: z.string().uuid(),
@@ -31,10 +41,70 @@ const SessionActionSchema = z.discriminatedUnion('action', [
         durationSeconds: z.number().int().min(0),
         pageViews: z.number().int().min(0),
         quizAttempts: z.number().int().min(0),
-    }),
+        idempotency_key: z.string().uuid(),
+    }).strict(),
 ]);
 
+const STUDY_SESSION_RATE_LIMIT_HEADERS = {
+    'X-RateLimit-Limit': '30',
+    'X-RateLimit-Policy': '30;w=60',
+};
+
 type SessionAction = z.infer<typeof SessionActionSchema>;
+
+type CachedApiErrorBody = {
+    code: string;
+    message: string;
+    requestId: string;
+    retryable: boolean;
+};
+
+type SessionCacheableBody =
+    | { sessionId: string }
+    | { success: true }
+    | CachedApiErrorBody;
+
+const buildScopedIdempotencyKey = (
+    ip: string,
+    payload: SessionAction,
+    userId: string | null
+): string => {
+    if (userId) {
+        return `user:${userId}`;
+    }
+
+    if (payload.anonymousId) {
+        return `anonymous:${payload.anonymousId}`;
+    }
+
+    return `ip:${ip}`;
+};
+
+const replayCachedResponse = (
+    cachedBody: SessionCacheableBody,
+    statusCode: number,
+    requestId: string
+) => NextResponse.json(cachedBody, {
+    status: statusCode,
+    headers: {
+        'X-Request-Id': requestId,
+        'X-Idempotency-Replayed': 'true',
+    },
+});
+
+const cacheStudySessionResponse = (
+    scope: string,
+    idempotencyKey: string,
+    statusCode: number,
+    responseBody: SessionCacheableBody
+) => {
+    completeEphemeralIdempotentRequest({
+        scope,
+        idempotencyKey,
+        statusCode,
+        responseBody,
+    });
+};
 
 const validateSessionOwnership = async (
     supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
@@ -69,6 +139,7 @@ const validateSessionOwnership = async (
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
+    const ip = getClientIp(request);
     let body: unknown;
 
     try {
@@ -96,29 +167,89 @@ export async function POST(request: Request) {
         });
     }
 
+    const payload = validatedData.data;
+
     try {
         const { user, hadCredentials } = await resolveRequestAuthState(request);
-        const supabaseAdmin = createServiceRoleClient();
-        const payload = validatedData.data;
+        const idempotencyScope = buildScopedIdempotencyKey(ip, payload, user?.id ?? null);
+        const reservation = inspectEphemeralIdempotentRequest({
+            scope: idempotencyScope,
+            idempotencyKey: payload.idempotency_key,
+            payload,
+        });
 
-        if (hadCredentials && !user) {
+        if (reservation.kind === 'replay') {
+            return replayCachedResponse(
+                reservation.responseBody as SessionCacheableBody,
+                reservation.statusCode,
+                requestId
+            );
+        }
+
+        if (reservation.kind === 'conflict') {
             return errorResponse({
-                status: 401,
+                status: 409,
+                code: reservation.code,
+                message: reservation.message,
+                requestId,
+                retryable: reservation.code === 'REQUEST_IN_PROGRESS',
+            });
+        }
+
+        const limitCheck = studySessionRouteRateLimiter.check(ip);
+        if (!limitCheck.allowed) {
+            return errorResponse({
+                status: 429,
+                code: 'STUDY_SESSION_RATE_LIMITED',
+                message: 'Too many study session requests. Please slow down.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...STUDY_SESSION_RATE_LIMIT_HEADERS,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            });
+        }
+
+        reserveEphemeralIdempotentRequest({
+            scope: idempotencyScope,
+            idempotencyKey: payload.idempotency_key,
+            payload,
+        });
+
+        const supabaseAdmin = createServiceRoleClient();
+        if (hadCredentials && !user) {
+            const responseBody: CachedApiErrorBody = {
                 code: 'UNAUTHORIZED',
                 message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
+            };
+            cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 401, responseBody);
+            return errorResponse({
+                status: 401,
+                code: responseBody.code,
+                message: responseBody.message,
+                requestId,
+                retryable: responseBody.retryable,
             });
         }
 
         if (payload.action === 'start') {
             if (!user && !payload.anonymousId) {
-                return errorResponse({
-                    status: 401,
+                const responseBody: CachedApiErrorBody = {
                     code: 'UNAUTHORIZED',
                     message: AUTH_REQUIRED_MESSAGE,
                     requestId,
                     retryable: false,
+                };
+                cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 401, responseBody);
+                return errorResponse({
+                    status: 401,
+                    code: responseBody.code,
+                    message: responseBody.message,
+                    requestId,
+                    retryable: responseBody.retryable,
                 });
             }
 
@@ -138,19 +269,28 @@ export async function POST(request: Request) {
 
             if (response.error) {
                 console.error('POST_STUDY_SESSIONS_START_ERROR', response.error);
-                return errorResponse({
-                    status: 500,
+                const responseBody: CachedApiErrorBody = {
                     code: 'STUDY_SESSION_START_FAILED',
                     message: 'Unable to start study session.',
                     requestId,
                     retryable: true,
+                };
+                cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 500, responseBody);
+                return errorResponse({
+                    status: 500,
+                    code: responseBody.code,
+                    message: responseBody.message,
+                    requestId,
+                    retryable: responseBody.retryable,
                 });
             }
 
+            const responseBody = {
+                sessionId: response.data.id,
+            } as const;
+            cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 200, responseBody);
             return successResponse(
-                {
-                    sessionId: response.data.id,
-                },
+                responseBody,
                 requestId
             );
         }
@@ -163,22 +303,36 @@ export async function POST(request: Request) {
         );
 
         if (ownership === null) {
-            return errorResponse({
-                status: 404,
+            const responseBody: CachedApiErrorBody = {
                 code: 'STUDY_SESSION_NOT_FOUND',
                 message: 'Study session not found.',
                 requestId,
                 retryable: false,
+            };
+            cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 404, responseBody);
+            return errorResponse({
+                status: 404,
+                code: responseBody.code,
+                message: responseBody.message,
+                requestId,
+                retryable: responseBody.retryable,
             });
         }
 
         if (ownership === false) {
-            return errorResponse({
-                status: 403,
+            const responseBody: CachedApiErrorBody = {
                 code: 'STUDY_SESSION_FORBIDDEN',
                 message: 'Study session does not belong to this requester.',
                 requestId,
                 retryable: false,
+            };
+            cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 403, responseBody);
+            return errorResponse({
+                status: 403,
+                code: responseBody.code,
+                message: responseBody.message,
+                requestId,
+                retryable: responseBody.retryable,
             });
         }
 
@@ -196,8 +350,7 @@ export async function POST(request: Request) {
 
         if (response.error) {
             console.error('POST_STUDY_SESSIONS_UPDATE_ERROR', response.error);
-            return errorResponse({
-                status: 500,
+            const responseBody: CachedApiErrorBody = {
                 code: payload.action === 'end'
                     ? 'STUDY_SESSION_END_FAILED'
                     : 'STUDY_SESSION_UPDATE_FAILED',
@@ -206,13 +359,23 @@ export async function POST(request: Request) {
                     : 'Unable to update study session.',
                 requestId,
                 retryable: true,
+            };
+            cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 500, responseBody);
+            return errorResponse({
+                status: 500,
+                code: responseBody.code,
+                message: responseBody.message,
+                requestId,
+                retryable: responseBody.retryable,
             });
         }
 
+        const responseBody = {
+            success: true,
+        } as const;
+        cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 200, responseBody);
         return successResponse(
-            {
-                success: true,
-            },
+            responseBody,
             requestId
         );
     } catch (error) {

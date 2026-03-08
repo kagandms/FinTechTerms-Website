@@ -65,6 +65,11 @@ export class RateLimiter {
         };
     }
 
+    public reset(): void {
+        this.timestamps.clear();
+        this.lastCleanup = Date.now();
+    }
+
     private cleanup() {
         const now = Date.now();
         if (now - this.lastCleanup < this.cleanupInterval) return;
@@ -87,6 +92,7 @@ export class RateLimiter {
 export const apiRouteRateLimiter = new RateLimiter(100, 60000); // 100 req/min
 export const quizMutationRateLimiter = new RateLimiter(20, 10000); // 20 quiz writes / 10 sec
 export const favoritesMutationRateLimiter = new RateLimiter(10, 10000); // 10 favorite writes / 10 sec
+export const studySessionRouteRateLimiter = new RateLimiter(30, 60000); // 30 study session requests / 60 sec
 export const telegramLinkRateLimiter = new RateLimiter(5, 10 * 60 * 1000); // 5 attempts / 10 min
 
 // Backwards-compatible alias for existing imports.

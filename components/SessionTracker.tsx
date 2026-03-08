@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasResearchConsent } from './ConsentModal';
+import { createIdempotencyKey } from '@/lib/idempotency';
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
@@ -43,7 +44,10 @@ export default function SessionTracker() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                idempotency_key: createIdempotencyKey(),
+            }),
             keepalive: true,
         });
 
