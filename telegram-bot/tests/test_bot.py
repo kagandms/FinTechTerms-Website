@@ -8,7 +8,12 @@ Tests handler helper functions and i18n system.
 import pytest
 from bot.i18n import t, STRINGS
 from bot.config import CATEGORY_EMOJI, SRS_LEVEL_LABELS, SUPPORTED_LANGUAGES
-from bot.database import build_academic_search_filters, normalize_term_payload
+from bot.db_terms import (
+    build_academic_search_filters,
+    is_public_term,
+    normalize_public_terms,
+    normalize_term_payload,
+)
 
 
 # ── i18n Translation System ──────────────────────────────
@@ -137,6 +142,22 @@ class TestAcademicTaxonomy:
 
         assert normalized["regional_market"] == "GLOBAL"
         assert normalized["context_tags"] == {}
+
+    def test_is_public_term_matches_web_quarantine_logic(self):
+        assert is_public_term({"id": "term_001", "is_academic": True}) is True
+        assert is_public_term({"id": "term_002", "is_academic": None}) is True
+        assert is_public_term({"id": "term_003", "is_academic": False}) is False
+
+    def test_normalize_public_terms_filters_quarantined_rows(self):
+        normalized = normalize_public_terms([
+            {"id": "term_001", "is_academic": True, "regional_market": "moex"},
+            {"id": "term_002", "is_academic": False, "regional_market": "bist"},
+            {"id": "term_003", "regional_market": None},
+        ])
+
+        assert [row["id"] for row in normalized] == ["term_001", "term_003"]
+        assert normalized[0]["regional_market"] == "MOEX"
+        assert normalized[1]["regional_market"] == "GLOBAL"
 
 
 # ── Report Builder Helper ─────────────────────────────────

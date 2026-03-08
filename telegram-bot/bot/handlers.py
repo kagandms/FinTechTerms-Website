@@ -25,11 +25,13 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 from bot.config import CATEGORY_EMOJI, WEB_APP_URL, SUPPORTED_LANGUAGES, config
-from bot.database import (
-    search_terms,
-    get_random_term,
+from bot.db_stats import (
     get_term_count,
     get_category_counts,
+)
+from bot.db_terms import (
+    search_terms,
+    get_random_term,
     fetch_all_terms,
     fetch_term_by_id,
 )

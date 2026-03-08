@@ -14,7 +14,7 @@ from typing import Any
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.config import CATEGORY_EMOJI
-from bot.database import fetch_all_terms
+from bot.db_terms import fetch_all_terms
 from bot.i18n import t
 
 
