@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import SearchBar from '@/components/SearchBar';
 import SmartCard from '@/components/SmartCard';
+import { siteUrl } from '@/lib/site-url';
 import { Term, Language } from '@/types';
 import { Search as SearchIcon } from 'lucide-react';
 
@@ -52,7 +53,7 @@ export default function SearchPage() {
                         '@type': 'WebSite',
                         potentialAction: {
                             '@type': 'SearchAction',
-                            target: 'https://fintechterms.com/search?q={search_term_string}',
+                            target: `${siteUrl}/search?q={search_term_string}`,
                             'query-input': 'required name=search_term_string'
                         }
                     }),

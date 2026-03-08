@@ -12,10 +12,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Flame, BookMarked, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
+import { siteUrl } from '@/lib/site-url';
 
 import { Term } from '@/types';
 
-const siteUrl = 'https://fintechterms.com';
 
 interface HomeClientProps {
     initialTerms?: Term[];

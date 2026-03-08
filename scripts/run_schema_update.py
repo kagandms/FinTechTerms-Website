@@ -1,9 +1,16 @@
-
 import os
-from supabase import create_client, Client
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://hdhytostmmrvwuluogpq.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_fju53ntrI24ye_B00RX3CA_KBanYNHF")
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
+if not SUPABASE_SERVICE_KEY:
+    raise RuntimeError(
+        "Missing SUPABASE_SERVICE_KEY. Set it in your shell or add it to a local .env "
+        "before running scripts/run_schema_update.py."
+    )
 
 def run_sql():
     # Since we can't easily run raw SQL via the JS/Python client without a specific RPC function

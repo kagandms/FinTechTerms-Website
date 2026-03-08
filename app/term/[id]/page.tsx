@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getTermById, fetchTermsFromSupabase } from '@/lib/supabaseStorage';
 import { createSafeTerm } from '@/utils/termUtils';
 import SmartCard from '@/components/SmartCard';
+import { siteUrl } from '@/lib/site-url';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -143,7 +144,7 @@ export default async function TermPage({ params }: Props) {
                             inDefinedTermSet: {
                                 '@type': 'DefinedTermSet',
                                 name: 'Словарь FinTechTerms',
-                                url: 'https://fintechterms.com'
+                                url: siteUrl
                             },
                             termCode: fullTerm.id,
                             keywords: Array.from(new Set([

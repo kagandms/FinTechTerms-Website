@@ -10,6 +10,7 @@ import ConsentModal from '@/components/ConsentModal';
 import SessionTracker from '@/components/SessionTracker';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import BadgeRealtimeNotifier from '@/components/profile/BadgeRealtimeNotifier';
+import { siteUrl } from '@/lib/site-url';
 
 import { Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -27,7 +28,6 @@ const jetbrainsMono = JetBrains_Mono({
 
 type SeoLanguage = 'ru' | 'tr' | 'en';
 
-const siteUrl = 'https://fintechterms.com';
 const primaryLanguage: SeoLanguage = 'ru';
 
 const seoMeta: Record<SeoLanguage, {
