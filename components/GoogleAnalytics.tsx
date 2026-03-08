@@ -4,8 +4,25 @@ import Script from 'next/script';
 import { useCallback, useEffect, useState } from 'react';
 import { CONSENT_GRANTED_EVENT } from './ConsentModal';
 
-const GA_ID = 'G-9CK0M7NSGD';
 const CONSENT_KEY = 'fintechterms_research_consent';
+
+const readConsentState = (): boolean => {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        const stored = localStorage.getItem(CONSENT_KEY);
+        if (!stored) {
+            return false;
+        }
+
+        const data = JSON.parse(stored);
+        return data.given === true;
+    } catch {
+        return false;
+    }
+};
 
 /**
  * Google Analytics component that only loads AFTER user gives consent.
@@ -13,25 +30,13 @@ const CONSENT_KEY = 'fintechterms_research_consent';
  * Compliant with GDPR/KVKK regulations.
  */
 export default function GoogleAnalytics() {
-    const [hasConsent, setHasConsent] = useState(false);
+    const gaId = process.env.NEXT_PUBLIC_GA_ID;
+    const [hasConsent, setHasConsent] = useState(readConsentState);
     const syncConsentState = useCallback(() => {
-        try {
-            const stored = localStorage.getItem(CONSENT_KEY);
-            if (!stored) {
-                setHasConsent(false);
-                return;
-            }
-
-            const data = JSON.parse(stored);
-            setHasConsent(data.given === true);
-        } catch {
-            setHasConsent(false);
-        }
+        setHasConsent(readConsentState());
     }, []);
 
     useEffect(() => {
-        syncConsentState();
-
         // Listen for consent changes (in case user accepts while page is open)
         const handleStorage = (e: StorageEvent) => {
             if (e.key === CONSENT_KEY && e.newValue) {
@@ -51,12 +56,12 @@ export default function GoogleAnalytics() {
         };
     }, [syncConsentState]);
 
-    if (!hasConsent) return null;
+    if (!gaId || !hasConsent) return null;
 
     return (
         <>
             <Script
-                src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+                src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
                 strategy="afterInteractive"
             />
             <Script id="google-analytics" strategy="afterInteractive">
@@ -64,7 +69,7 @@ export default function GoogleAnalytics() {
                     window.dataLayer = window.dataLayer || [];
                     function gtag(){dataLayer.push(arguments);}
                     gtag('js', new Date());
-                    gtag('config', '${GA_ID}');
+                    gtag('config', '${gaId}');
                 `}
             </Script>
         </>

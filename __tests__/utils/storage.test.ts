@@ -36,6 +36,19 @@ import {
     resetAllData,
 } from '@/utils/storage';
 
+const createProgress = (overrides: Partial<UserProgress> = {}): UserProgress => ({
+    user_id: 'user_1',
+    favorites: [],
+    current_language: 'ru',
+    quiz_history: [],
+    total_words_learned: 0,
+    current_streak: 0,
+    last_study_date: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+});
+
 beforeEach(() => {
     localStorageMock.clear();
     jest.clearAllMocks();
@@ -82,6 +95,25 @@ describe('getUserProgress', () => {
         expect(progress).toHaveProperty('quiz_history');
         expect(Array.isArray(progress.favorites)).toBe(true);
     });
+
+    it('should clear corrupted progress and return a fresh default state', () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        localStorageMock.setItem('globalfinterm_user_progress', JSON.stringify({
+            favorites: 'not-an-array',
+        }));
+
+        const progress = getUserProgress();
+
+        expect(progress).toMatchObject({
+            favorites: [],
+            current_language: 'ru',
+            quiz_history: [],
+        });
+        expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
+        expect(warnSpy).toHaveBeenCalledWith('[storage] Corrupted progress data cleared');
+
+        warnSpy.mockRestore();
+    });
 });
 
 // ══════════════════════════════════════════════════════════
@@ -90,12 +122,7 @@ describe('getUserProgress', () => {
 describe('toggleFavorite', () => {
     beforeEach(() => {
         // Ensure clean user progress state before each toggle test
-        saveUserProgress({
-            favorites: [],
-            current_streak: 0,
-            quiz_history: [],
-            last_study_date: null,
-        } as any);
+        saveUserProgress(createProgress());
     });
 
     it('should add term to favorites when not yet favorited', () => {

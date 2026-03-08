@@ -1,107 +1,136 @@
 /**
- * Tests for the record-quiz API route's helper functions.
- * Since Next.js API routes are hard to unit test directly,
- * we test the validation and rate limiting logic patterns.
+ * @jest-environment node
  */
 
-describe('Quiz API - Input Validation Logic', () => {
-    const validIdempotencyKey = '550e8400-e29b-41d4-a716-446655440000';
+import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 
-    it('should reject missing term_id', () => {
-        const body: any = { is_correct: true, response_time_ms: 500 };
-        const hasTermId = !!body.term_id && typeof body.term_id === 'string';
-        expect(hasTermId).toBeFalsy();
-    });
+const mockResolveAuthenticatedUser = jest.fn();
+const mockCreateServiceRoleClient = jest.fn();
+const mockReserveIdempotentRequest = jest.fn();
+const mockCompleteIdempotentRequest = jest.fn();
+const mockFailIdempotentRequest = jest.fn();
 
-    it('should reject non-boolean is_correct', () => {
-        const body: any = { term_id: 'test_1', is_correct: 'yes', response_time_ms: 500 };
-        const isValidBoolean = typeof body.is_correct === 'boolean';
-        expect(isValidBoolean).toBe(false);
-    });
+jest.mock('@/lib/supabaseAdmin', () => ({
+    createServiceRoleClient: () => mockCreateServiceRoleClient(),
+    resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
+}));
 
-    it('should reject negative response_time_ms', () => {
-        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: -100 };
-        const isValidTime = typeof body.response_time_ms === 'number' && body.response_time_ms >= 0;
-        expect(isValidTime).toBe(false);
-    });
+jest.mock('@/lib/api-idempotency', () => ({
+    reserveIdempotentRequest: (...args: unknown[]) => mockReserveIdempotentRequest(...args),
+    completeIdempotentRequest: (...args: unknown[]) => mockCompleteIdempotentRequest(...args),
+    failIdempotentRequest: (...args: unknown[]) => mockFailIdempotentRequest(...args),
+}));
 
-    it('should reject missing idempotencyKey', () => {
-        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500 };
-        const hasIdempotencyKey = typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0;
-        expect(hasIdempotencyKey).toBe(false);
-    });
+const createRequest = (body: Record<string, unknown>) => new Request(
+    'http://localhost:3000/api/record-quiz',
+    {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-forwarded-for': '203.0.113.10',
+        },
+        body: JSON.stringify(body),
+    }
+);
 
-    it('should reject malformed idempotencyKey values', () => {
-        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500, idempotencyKey: 'not-a-uuid' };
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey);
-        expect(isUuid).toBe(false);
-    });
-
-    it('should accept valid quiz attempt body', () => {
-        const body = { term_id: 'test_1', is_correct: true, response_time_ms: 1500, idempotencyKey: validIdempotencyKey };
-        const isValid =
-            !!body.term_id && typeof body.term_id === 'string' &&
-            typeof body.is_correct === 'boolean' &&
-            typeof body.response_time_ms === 'number' && body.response_time_ms >= 0 &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey);
-        expect(isValid).toBeTruthy();
-    });
-
-    it('should default quiz_type to simulation when not provided', () => {
-        const body: any = { term_id: 'test_1', is_correct: true, response_time_ms: 500, idempotencyKey: validIdempotencyKey };
-        const quizType = body.quiz_type || 'simulation';
-        expect(quizType).toBe('simulation');
-    });
+const createValidPayload = (overrides: Record<string, unknown> = {}) => ({
+    term_id: 'term_123',
+    is_correct: true,
+    response_time_ms: 1200,
+    idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+    ...overrides,
 });
 
-describe('Quiz API - Rate Limiting Logic', () => {
-    it('should implement sliding window correctly', () => {
-        const RATE_LIMIT = 100;
-        const RATE_WINDOW = 60000;
-        const timestamps: number[] = [];
-        const now = Date.now();
+describe('record-quiz route', () => {
+    let consoleErrorSpy: jest.SpyInstance;
 
-        // Add requests within window
-        for (let i = 0; i < RATE_LIMIT; i++) {
-            timestamps.push(now - (RATE_WINDOW - 1000)); // All within window
-        }
-
-        // Filter to window
-        const cutoff = now - RATE_WINDOW;
-        const validTimestamps = timestamps.filter(t => t > cutoff);
-
-        expect(validTimestamps.length).toBe(RATE_LIMIT);
-        // Next request should be denied
-        expect(validTimestamps.length >= RATE_LIMIT).toBe(true);
+    beforeEach(() => {
+        jest.clearAllMocks();
+        apiRouteRateLimiter.reset();
+        quizMutationRateLimiter.reset();
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user_123' });
+        mockReserveIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
+        mockCompleteIdempotentRequest.mockResolvedValue(undefined);
+        mockFailIdempotentRequest.mockResolvedValue(undefined);
     });
 
-    it('should expire old timestamps outside the window', () => {
-        const RATE_WINDOW = 60000;
-        const now = Date.now();
-        const timestamps = [
-            now - 120000, // 2 minutes ago (expired)
-            now - 90000,  // 1.5 minutes ago (expired)
-            now - 30000,  // 30 seconds ago (valid)
-            now - 10000,  // 10 seconds ago (valid)
-        ];
-
-        const cutoff = now - RATE_WINDOW;
-        const validTimestamps = timestamps.filter(t => t > cutoff);
-
-        expect(validTimestamps.length).toBe(2);
+    afterEach(() => {
+        consoleErrorSpy.mockRestore();
     });
 
-    it('should calculate correct remaining requests', () => {
-        const RATE_LIMIT = 100;
-        const RATE_WINDOW = 60000;
-        const now = Date.now();
+    it('rejects invalid payloads via the real route handler', async () => {
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest({
+            ...createValidPayload(),
+            idempotencyKey: undefined,
+        }) as never);
+        const body = await response.json();
 
-        // 30 requests made
-        const timestamps = Array.from({ length: 30 }, (_, i) => now - i * 1000);
-        const cutoff = now - RATE_WINDOW;
-        const validCount = timestamps.filter(t => t > cutoff).length;
-        const remaining = RATE_LIMIT - validCount;
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'VALIDATION_ERROR',
+            message: 'Quiz attempt payload is invalid.',
+            retryable: false,
+        });
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
 
-        expect(remaining).toBe(70);
+    it('returns cached idempotent responses without calling the database RPC again', async () => {
+        const rpc = jest.fn();
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockReserveIdempotentRequest.mockResolvedValue({
+            kind: 'replay',
+            statusCode: 200,
+            responseBody: {
+                success: true,
+                state: { cached: true },
+                message: 'Recorded successfully',
+            },
+        });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            state: { cached: true },
+            message: 'Recorded successfully',
+        });
+        expect(rpc).not.toHaveBeenCalled();
+        expect(mockCompleteIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('defaults quiz_type to simulation and persists through the RPC payload', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: { ok: true },
+            error: null,
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            state: { ok: true },
+            message: 'Recorded successfully',
+        });
+        expect(mockReserveIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            payload: expect.objectContaining({
+                quiz_type: 'simulation',
+            }),
+        }));
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_quiz_type: 'simulation',
+        }));
+        expect(mockCompleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            responseBody: body,
+            statusCode: 200,
+        }));
     });
 });

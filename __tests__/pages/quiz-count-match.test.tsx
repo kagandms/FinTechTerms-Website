@@ -1,0 +1,136 @@
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+
+import QuizClient from '@/app/quiz/QuizClient';
+
+const mockUseLanguage = jest.fn();
+const mockUseSRS = jest.fn();
+
+jest.mock('@/contexts/LanguageContext', () => ({
+    useLanguage: () => mockUseLanguage(),
+}));
+
+jest.mock('@/contexts/SRSContext', () => ({
+    useSRS: () => mockUseSRS(),
+}));
+
+jest.mock('@/components/QuizCard', () => ({
+    __esModule: true,
+    default: function MockQuizCard() {
+        return <div data-testid="quiz-card">QuizCard</div>;
+    },
+}));
+
+jest.mock('@/components/SessionTracker', () => ({
+    incrementQuizAttempt: jest.fn(),
+}));
+
+jest.mock('next/link', () => {
+    return function MockNextLink({
+        children,
+        href,
+        ...props
+    }: {
+        children: React.ReactNode;
+        href: string;
+    }) {
+        return <a href={href} {...props}>{children}</a>;
+    };
+});
+
+const createTerm = (id: string, category: 'Fintech' | 'Finance' | 'Technology') => ({
+    id,
+    term_en: `Term ${id}`,
+    term_ru: `Терм ${id}`,
+    term_tr: `Terim ${id}`,
+    phonetic_en: '',
+    phonetic_ru: '',
+    phonetic_tr: '',
+    category,
+    definition_en: 'Definition',
+    definition_ru: 'Определение',
+    definition_tr: 'Tanim',
+    example_sentence_en: 'Example',
+    example_sentence_ru: 'Пример',
+    example_sentence_tr: 'Ornek',
+    context_tags: {},
+    regional_market: 'GLOBAL',
+    is_academic: true,
+    difficulty_level: 'intermediate',
+    srs_level: 1,
+    next_review_date: new Date().toISOString(),
+    last_reviewed: null,
+    difficulty_score: 2.5,
+    retention_rate: 0.5,
+    times_reviewed: 1,
+    times_correct: 1,
+});
+
+const favoriteTerms = Array.from({ length: 5 }, (_unused, index) => createTerm(`fav-${index + 1}`, 'Finance'));
+const otherTerms = [
+    createTerm('other-1', 'Finance'),
+    createTerm('other-2', 'Technology'),
+];
+
+describe('QuizClient quick quiz counts', () => {
+    beforeEach(() => {
+        mockUseLanguage.mockReturnValue({
+            language: 'en',
+            t: (key: string) => key,
+        });
+
+        mockUseSRS.mockReturnValue({
+            terms: [...favoriteTerms, ...otherTerms],
+            userProgress: {
+                user_id: 'user-1',
+                favorites: favoriteTerms.map((term) => term.id),
+                current_language: 'en',
+                quiz_history: [],
+                total_words_learned: 0,
+                current_streak: 0,
+                last_study_date: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            },
+            dueTerms: [],
+            toggleFavorite: jest.fn(),
+            isFavorite: jest.fn(),
+            isFavoriteUpdating: jest.fn(),
+            submitQuizAnswer: jest.fn(),
+            refreshData: jest.fn(),
+            canAddMoreFavorites: true,
+            favoritesRemaining: Infinity,
+            isSyncing: false,
+            isLoading: false,
+            termsStatus: 'ready',
+            progressStatus: 'ready',
+            termsError: null,
+            progressError: null,
+            stats: {
+                totalFavorites: favoriteTerms.length,
+                mastered: 0,
+                learning: favoriteTerms.length,
+                dueToday: 0,
+                averageRetention: 0,
+            },
+        });
+    });
+
+    it('shows the filtered favorites-only pool count and uses the same count when the quiz starts', () => {
+        render(<QuizClient />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'quiz.startQuickQuiz' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Favorites Only' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
+
+        expect(screen.getByText('Available questions: 5')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '5' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: '10' })).toBeDisabled();
+
+        fireEvent.click(screen.getByRole('button', { name: '5' }));
+
+        expect(screen.getByText('1 / 5')).toBeInTheDocument();
+        expect(screen.getByTestId('quiz-card')).toBeInTheDocument();
+    });
+});
