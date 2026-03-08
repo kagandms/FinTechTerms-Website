@@ -24,7 +24,11 @@ import {
     getAllTermSRSFromSupabase,
     fetchTermsFromSupabase,
 } from '@/lib/supabaseStorage';
+import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
+import { isUserProgress } from '@/lib/userProgress';
+
+type AsyncDataStatus = 'loading' | 'ready' | 'degraded' | 'error';
 
 interface FavoriteToggleResult {
     success: boolean;
@@ -45,6 +49,11 @@ interface SRSContextType {
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
     isSyncing: boolean;
+    isLoading: boolean;
+    termsStatus: AsyncDataStatus;
+    progressStatus: AsyncDataStatus;
+    termsError: string | null;
+    progressError: string | null;
     stats: {
         totalFavorites: number;
         mastered: number;
@@ -60,11 +69,44 @@ interface SRSProviderProps {
     children: ReactNode;
 }
 
+const createSafeProgress = (): UserProgress => ({
+    user_id: 'guest',
+    favorites: [],
+    current_language: 'ru',
+    quiz_history: [],
+    total_words_learned: 0,
+    current_streak: 0,
+    last_study_date: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+});
+
+const getErrorMessage = (error: unknown, fallbackMessage: string): string => {
+    if (error instanceof Error && error.message.trim().length > 0) {
+        return error.message;
+    }
+
+    return fallbackMessage;
+};
+
+const hasCachedStudyData = (progress: UserProgress): boolean => (
+    progress.favorites.length > 0
+    || progress.quiz_history.length > 0
+    || progress.total_words_learned > 0
+    || progress.current_streak > 0
+    || progress.last_study_date !== null
+);
+
 export function SRSProvider({ children }: SRSProviderProps) {
-    const { favoriteLimit, isAuthenticated, user } = useAuth();
+    const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [termsStatus, setTermsStatus] = useState<AsyncDataStatus>('loading');
+    const [progressStatus, setProgressStatus] = useState<AsyncDataStatus>('loading');
+    const [termsError, setTermsError] = useState<string | null>(null);
+    const [progressError, setProgressError] = useState<string | null>(null);
     const [favoriteOptimisticState, setFavoriteOptimisticState] = useState<Record<string, boolean>>({});
     const [favoritePendingState, setFavoritePendingState] = useState<Record<string, boolean>>({});
 
@@ -72,166 +114,184 @@ export function SRSProvider({ children }: SRSProviderProps) {
      * Load data from appropriate source
      */
     const loadData = useCallback(async () => {
+        setIsLoading(true);
         setIsSyncing(true);
-        // Default to local storage or mock data initially
-        let currentTerms = getTerms();
-
-        // If local storage returned empty (shouldn't happen due to getTerms logic, but safety first), use mockTerms
-        if (!currentTerms || currentTerms.length === 0) {
-            // We need to import mockTerms dynamically or assume getTerms() handles it.
-            // Actually getTerms() in utils/storage.ts ALREADY handles the mock fallback.
-            // But let's be double sure and check if we need to force reload.
-        }
-
-
-        // CLEANUP: Deduplicate local terms immediately (handle poisoned localStorage)
-        const uniqueLocalTerms = new Map<string, Term>();
-        currentTerms.forEach(term => {
-            // Create a normalized key: lowercase, alpha-numeric only to catch "51% Attack" vs "51% Attack"
-            const key = term.term_en.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-            // If we have a duplicate, we usually prefer the one with SRS data or just the first one.
-            // But if one is from our "static" file (sequential IDs) and one is random DB ID, it's hard to know.
-            // We'll just keep the first one we encounter, but prioritize "term_" IDs if possible? 
-            // Actually, simple first-win strategy is safest for now to reduce count.
-            if (!uniqueLocalTerms.has(key)) {
-                uniqueLocalTerms.set(key, term);
-            }
-        });
-
-        // Convert back to array
-        currentTerms = Array.from(uniqueLocalTerms.values());
-
-        // Authenticated streak state must come from the server, not from local heuristics.
-        const localProgress = getLocalUserProgress();
-        const optimisticProgress = isAuthenticated
-            ? {
-                ...localProgress,
-                current_streak: 0,
-                last_study_date: null,
-            }
-            : localProgress;
-        setUserProgress(optimisticProgress);
-
-        // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
-        if (currentTerms.length > 0) {
-            setTerms(currentTerms);
-        }
-
-        // 1. Fetch latest terms content from Supabase (if online)
+        setTermsStatus('loading');
+        setProgressStatus('loading');
+        setTermsError(null);
+        setProgressError(null);
         try {
-            const dbTerms = await fetchTermsFromSupabase();
+            // Default to local storage or mock data initially
+            let currentTerms = getTerms();
 
-            if (dbTerms && dbTerms.length > 0) {
-                // Merge DB content into local/mock list
-                const dbTermsMap = new Map(dbTerms.map(t => [t.id, t]));
+            // CLEANUP: Deduplicate local terms immediately (handle poisoned localStorage)
+            const uniqueLocalTerms = new Map<string, Term>();
+            currentTerms.forEach(term => {
+                const key = term.term_en.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-                // 1. Update existing terms
-                const mergedTerms: Term[] = currentTerms.map(localTerm => {
-                    const dbTerm = dbTermsMap.get(localTerm.id);
-                    if (dbTerm) {
-                        return {
-                            ...dbTerm,
-                            srs_level: localTerm.srs_level,
-                            next_review_date: localTerm.next_review_date,
-                            last_reviewed: localTerm.last_reviewed,
-                            difficulty_score: localTerm.difficulty_score,
-                            retention_rate: localTerm.retention_rate,
-                            times_reviewed: localTerm.times_reviewed,
-                            times_correct: localTerm.times_correct,
-                        } as Term;
-                    }
-                    return localTerm;
-                });
+                if (!uniqueLocalTerms.has(key)) {
+                    uniqueLocalTerms.set(key, term);
+                }
+            });
 
-                // 2. Add new terms from DB that weren't in local list
-                // 2. Add new terms from DB that weren't in local list
-                dbTerms.forEach(dbTerm => {
-                    const existingById = currentTerms.find(t => t.id === dbTerm.id);
-                    // Also check for duplicate English content to avoid double entries with different IDs
-                    const normalizeTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const dbTitleKey = normalizeTitle(dbTerm.term_en || '');
+            // Convert back to array
+            currentTerms = filterAcademicTerms(Array.from(uniqueLocalTerms.values()));
 
-                    const existingByTitle = currentTerms.find(t => normalizeTitle(t.term_en) === dbTitleKey);
+            // Authenticated streak state must come from the server, not from local heuristics.
+            const localProgress = getLocalUserProgress();
+            const optimisticProgress = isAuthenticated
+                ? {
+                    ...localProgress,
+                    current_streak: 0,
+                    last_study_date: null,
+                }
+                : localProgress;
+            setUserProgress(optimisticProgress);
 
-                    if (!existingById && !existingByTitle) {
-                        mergedTerms.push({
-                            ...dbTerm,
-                            srs_level: 1, // Default for new
-                            next_review_date: new Date().toISOString(),
-                            last_reviewed: null,
-                            difficulty_score: 2.5,
-                            retention_rate: 0,
-                            times_reviewed: 0,
-                            times_correct: 0
-                        } as Term);
-                    } else if (!existingById && existingByTitle) {
-                        console.warn(`[LoadData] Duplicate term detected (same title, different ID). DB: ${dbTerm.id}, Local: ${existingByTitle.id}. Title: ${dbTerm.term_en || 'Unknown'}`);
-                    }
-                });
-
-                currentTerms = mergedTerms;
-                // Update local storage cache
-                saveTerms(currentTerms);
-                // Update state with fresh data
+            // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
+            if (currentTerms.length > 0) {
                 setTerms(currentTerms);
             }
-        } catch (error) {
-            console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
-        }
 
-        // Final safety check: if we somehow definitely have 0 terms, force reload from utils
-        if (!currentTerms || currentTerms.length === 0) {
-            console.warn('[LoadData] Terms are still empty. FORCING mock data reload.');
-            const { mockTerms } = await import('@/data/mockData');
-            currentTerms = mockTerms;
-            saveTerms(currentTerms);
-        }
+            let nextTermsStatus: AsyncDataStatus = currentTerms.length > 0 ? 'ready' : 'error';
+            let nextProgressStatus: AsyncDataStatus = isAuthenticated ? 'loading' : 'ready';
+            let nextTermsError: string | null = null;
+            let nextProgressError: string | null = null;
 
-        setTerms(currentTerms);
-
-        if (isAuthenticated && user) {
-            // ... (rest of auth logic matches existing)
+            // 1. Fetch latest terms content from Supabase (if online)
             try {
-                const cloudProgress = await getUserProgressFromSupabase(user.id);
+                const dbTerms = await fetchTermsFromSupabase();
 
-                if (cloudProgress) {
-                    const srsData = await getAllTermSRSFromSupabase(user.id);
-                    const mergedTerms = currentTerms.map(term => {
-                        const override = srsData.get(term.id);
-                        if (override) {
-                            return { ...term, ...override };
+                if (dbTerms && dbTerms.length > 0) {
+                    // Merge DB content into local/mock list
+                    const dbTermsMap = new Map(dbTerms.map(t => [t.id, t]));
+
+                    // 1. Update existing terms
+                    const mergedTerms: Term[] = currentTerms.map(localTerm => {
+                        const dbTerm = dbTermsMap.get(localTerm.id);
+                        if (dbTerm) {
+                            return {
+                                ...dbTerm,
+                                srs_level: localTerm.srs_level,
+                                next_review_date: localTerm.next_review_date,
+                                last_reviewed: localTerm.last_reviewed,
+                                difficulty_score: localTerm.difficulty_score,
+                                retention_rate: localTerm.retention_rate,
+                                times_reviewed: localTerm.times_reviewed,
+                                times_correct: localTerm.times_correct,
+                            } as Term;
                         }
-                        return term;
+                        return localTerm;
                     });
 
-                    setTerms(mergedTerms);
-                    setUserProgress(cloudProgress);
-                    // Persist cloud truth to localStorage so the next optimistic load
-                    // on THIS device starts with the correct favorites (cross-device sync).
-                    saveLocalUserProgress(cloudProgress);
-                } else {
+                    // 2. Add new terms from DB that weren't in local list
+                    dbTerms.forEach(dbTerm => {
+                        const existingById = currentTerms.find(t => t.id === dbTerm.id);
+                        // Also check for duplicate English content to avoid double entries with different IDs
+                        const normalizeTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const dbTitleKey = normalizeTitle(dbTerm.term_en || '');
+
+                        const existingByTitle = currentTerms.find(t => normalizeTitle(t.term_en) === dbTitleKey);
+
+                        if (!existingById && !existingByTitle) {
+                            mergedTerms.push({
+                                ...dbTerm,
+                                srs_level: 1, // Default for new
+                                next_review_date: new Date().toISOString(),
+                                last_reviewed: null,
+                                difficulty_score: 2.5,
+                                retention_rate: 0,
+                                times_reviewed: 0,
+                                times_correct: 0,
+                            } as Term);
+                        } else if (!existingById && existingByTitle) {
+                            console.warn(`[LoadData] Duplicate term detected (same title, different ID). DB: ${dbTerm.id}, Local: ${existingByTitle.id}. Title: ${dbTerm.term_en || 'Unknown'}`);
+                        }
+                    });
+
+                    currentTerms = filterAcademicTerms(mergedTerms);
+                    saveTerms(currentTerms);
+                    setTerms(currentTerms);
+                }
+                nextTermsStatus = 'ready';
+            } catch (error) {
+                console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
+                nextTermsError = getErrorMessage(error, 'Failed to load terms from Supabase.');
+                nextTermsStatus = currentTerms.length > 0 ? 'degraded' : 'error';
+            }
+
+            // Final safety check: if we somehow definitely have 0 terms, force reload from utils
+            if (!currentTerms || currentTerms.length === 0) {
+                console.warn('[LoadData] Terms are still empty. FORCING mock data reload.');
+                const { mockTerms } = await import('@/data/mockData');
+                currentTerms = filterAcademicTerms(mockTerms);
+                saveTerms(currentTerms);
+                nextTermsStatus = nextTermsError ? 'degraded' : 'ready';
+            }
+
+            setTerms(currentTerms);
+
+            if (isAuthenticated && user) {
+                try {
+                    const cloudProgress = await getUserProgressFromSupabase(user.id);
+
+                    if (cloudProgress && isUserProgress(cloudProgress)) {
+                        const srsData = await getAllTermSRSFromSupabase(user.id);
+                        const mergedTerms = currentTerms.map(term => {
+                            const override = srsData.get(term.id);
+                            if (override) {
+                                return { ...term, ...override };
+                            }
+                            return term;
+                        });
+
+                        setTerms(mergedTerms);
+                        setUserProgress(cloudProgress);
+                        saveLocalUserProgress(cloudProgress);
+                        nextProgressStatus = 'ready';
+                    } else {
+                        setTerms(currentTerms);
+                        setUserProgress(optimisticProgress);
+                        nextProgressError = 'Failed to load study progress from Supabase.';
+                        nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
+                    }
+                } catch (error) {
+                    console.error('Failed to load user data from cloud:', error);
                     setTerms(currentTerms);
                     setUserProgress(optimisticProgress);
+                    nextProgressError = getErrorMessage(error, 'Failed to load study progress from Supabase.');
+                    nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
                 }
-            } catch (error) {
-                console.error('Failed to load user data from cloud:', error);
-                setTerms(currentTerms);
+            } else {
                 setUserProgress(optimisticProgress);
+                nextProgressStatus = 'ready';
             }
-        } else {
-            // Guest mode
-            // setTerms(currentTerms); (already set above)
-            setUserProgress(optimisticProgress);
-        }
 
-        setIsSyncing(false);
+            setTermsError(nextTermsError);
+            setProgressError(nextProgressError);
+            setTermsStatus(nextTermsStatus);
+            setProgressStatus(nextProgressStatus);
+        } catch (error) {
+            const fallbackMessage = getErrorMessage(error, 'Failed to load study data.');
+            console.error('Unexpected SRS load error:', error);
+            setTermsError(prev => prev ?? fallbackMessage);
+            setProgressError(prev => prev ?? fallbackMessage);
+            setTermsStatus(prev => (prev === 'ready' ? 'degraded' : 'error'));
+            setProgressStatus(prev => (prev === 'ready' ? 'degraded' : 'error'));
+        } finally {
+            setIsLoading(false);
+            setIsSyncing(false);
+        }
     }, [isAuthenticated, user]);
 
     // Load data on mount and when auth state changes
     useEffect(() => {
+        if (isAuthLoading) {
+            return;
+        }
+
         loadData();
-    }, [loadData]);
+    }, [isAuthLoading, loadData]);
 
     useEffect(() => {
         setFavoriteOptimisticState({});
@@ -431,7 +491,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 });
             } catch (error) {
                 console.error('Failed to sync quiz answer to cloud:', error);
-                loadData();
+                void loadData();
+                throw error;
             }
         }
     }, [terms, userProgress, isAuthenticated, user, loadData]);
@@ -440,21 +501,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
      * Manually refresh all data from storage
      */
     const refreshData = useCallback(() => {
-        loadData();
+        void loadData();
     }, [loadData]);
 
     // Use default progress if not yet hydrated
-    const safeProgress = userProgress ?? {
-        user_id: 'guest',
-        favorites: [],
-        current_language: 'ru' as const,
-        quiz_history: [],
-        total_words_learned: 0,
-        current_streak: 0,
-        last_study_date: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    };
+    const safeProgress = userProgress ?? createSafeProgress();
 
     return (
         <SRSContext.Provider
@@ -470,6 +521,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 canAddMoreFavorites,
                 favoritesRemaining,
                 isSyncing,
+                isLoading,
+                termsStatus,
+                progressStatus,
+                termsError,
+                progressError,
                 stats,
             }}
         >

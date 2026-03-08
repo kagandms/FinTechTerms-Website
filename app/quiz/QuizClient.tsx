@@ -4,15 +4,98 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import QuizCard from '@/components/QuizCard';
+import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
-import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X } from 'lucide-react';
+import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X, Loader2, RefreshCw } from 'lucide-react';
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 
+const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
+const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+
+const withQuizSubmissionTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        timeoutId = globalThis.setTimeout(() => {
+            reject(new Error(QUIZ_SUBMISSION_TIMEOUT_MESSAGE));
+        }, QUIZ_SUBMISSION_TIMEOUT_MS);
+    });
+
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timeoutId !== undefined) {
+            globalThis.clearTimeout(timeoutId);
+        }
+    }
+};
+
+const stateMessages = {
+    tr: {
+        loadingTitle: 'Quiz yukleniyor',
+        loadingDescription: 'Calisma verileri hazirlaniyor. Lutfen bekleyin.',
+        errorTitle: 'Veri yukleme hatasi',
+        errorDescription: 'Quiz verileri simdi yuklenemedi. Lutfen tekrar deneyin.',
+        degradedTitle: 'Kaydedilen verilerle devam ediliyor',
+        degradedDescription: 'Sunucuya ulasilamadi. Gosterilen tekrar ve istatistik verileri son kaydedilen durum olabilir.',
+        srsUnavailableTitle: 'SRS verileri gecici olarak kullanilamiyor',
+        srsUnavailableDescription: 'Hizli quiz kullanilabilir, ancak tekrar kartlari ve favori istatistikleri su anda yuklenemedi.',
+        slowLoadingTitle: 'Yukleme uzun suruyor',
+        slowLoadingDescription: 'Yukleme uzun suruyor. Lutfen tekrar deneyin.',
+        availableQuestions: 'Uygun soru',
+        noQuestionsAvailable: 'Bu filtre icin uygun soru yok.',
+        noQuestionsTooltip: 'Bu filtre icin soru bulunmadigi icin quiz baslatilamiyor.',
+        retry: 'Tekrar Dene',
+    },
+    en: {
+        loadingTitle: 'Loading quiz',
+        loadingDescription: 'Study data is being prepared. Please wait.',
+        errorTitle: 'Data loading error',
+        errorDescription: 'Quiz data could not be loaded right now. Please try again.',
+        degradedTitle: 'Continuing with saved data',
+        degradedDescription: 'The server is unavailable. Review data and statistics may be based on your latest saved session.',
+        srsUnavailableTitle: 'SRS data is temporarily unavailable',
+        srsUnavailableDescription: 'Quick Quiz is available, but review cards and favorites-based stats could not be loaded.',
+        slowLoadingTitle: 'Loading is taking too long',
+        slowLoadingDescription: 'Loading is taking too long — please try again.',
+        availableQuestions: 'Available questions',
+        noQuestionsAvailable: 'No questions match this filter.',
+        noQuestionsTooltip: 'Start Quiz is disabled because there are no matching questions.',
+        retry: 'Try Again',
+    },
+    ru: {
+        loadingTitle: 'Загружаем квиз',
+        loadingDescription: 'Подготавливаем учебные данные. Пожалуйста, подождите.',
+        errorTitle: 'Ошибка загрузки данных',
+        errorDescription: 'Сейчас не удалось загрузить данные для квиза. Попробуйте еще раз.',
+        degradedTitle: 'Показаны сохраненные данные',
+        degradedDescription: 'Сервер недоступен. Повторение и статистика могут отображаться по последнему сохраненному состоянию.',
+        srsUnavailableTitle: 'Данные SRS временно недоступны',
+        srsUnavailableDescription: 'Быстрый квиз доступен, но карточки повторения и статистика по избранному сейчас не загрузились.',
+        slowLoadingTitle: 'Загрузка занимает слишком много времени',
+        slowLoadingDescription: 'Загрузка занимает слишком много времени. Попробуйте еще раз.',
+        availableQuestions: 'Доступные вопросы',
+        noQuestionsAvailable: 'Для этого фильтра нет доступных вопросов.',
+        noQuestionsTooltip: 'Кнопка запуска отключена, потому что подходящих вопросов нет.',
+        retry: 'Повторить',
+    },
+} as const;
 
 export default function QuizPage() {
     const { t, language } = useLanguage();
-    const { dueTerms, submitQuizAnswer, stats, terms, userProgress } = useSRS();
+    const {
+        dueTerms,
+        submitQuizAnswer,
+        stats,
+        terms,
+        userProgress,
+        isLoading,
+        termsStatus,
+        progressStatus,
+        refreshData,
+    } = useSRS();
+    const stateCopy = stateMessages[language] ?? stateMessages.en;
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -24,11 +107,40 @@ export default function QuizPage() {
     const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
     const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
     const [isPending, setIsPending] = useState(false);
+    const [submissionError, setSubmissionError] = useState<string | null>(null);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
 
     const quizOptions = [5, 10, 20, 50];
+    const masteredCount = terms.filter(t => t.srs_level >= 4).length;
+    const learningCount = terms.filter(t => t.srs_level > 0 && t.srs_level < 4).length;
+    const hasBlockingTermsError = termsStatus === 'error' || (termsStatus === 'degraded' && terms.length === 0);
+    const hasCachedProgressData = dueTerms.length > 0
+        || userProgress.favorites.length > 0
+        || userProgress.quiz_history.length > 0
+        || userProgress.current_streak > 0;
+    const canUseProgressData = progressStatus === 'ready' || (progressStatus === 'degraded' && hasCachedProgressData);
+    const shouldShowProgressFallback = progressStatus === 'error' || (progressStatus === 'degraded' && !hasCachedProgressData);
+    const shouldShowDegradedNotice = (termsStatus === 'degraded' && terms.length > 0)
+        || (progressStatus === 'degraded' && hasCachedProgressData);
+
+    const getQuickQuizPool = (category: string | null) => {
+        let pool = [...terms];
+
+        if (useOnlyFavorites && canUseProgressData) {
+            pool = pool.filter((term) => userProgress.favorites.includes(term.id));
+        }
+
+        if (category && category !== 'all') {
+            pool = pool.filter((term) => term.category === category);
+        }
+
+        return pool;
+    };
+
+    const quickQuizPool = getQuickQuizPool(quickQuizCategory);
+    const quickQuizAvailableCount = quickQuizPool.length;
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
@@ -44,16 +156,7 @@ export default function QuizPage() {
 
     // Start quick quiz with selected word count and category
     const startQuickQuiz = (count: number) => {
-        let pool = [...terms];
-
-        // Apply Favorites filter if requested and available
-        if (useOnlyFavorites) {
-            pool = pool.filter(t => userProgress.favorites.includes(t.id));
-        }
-
-        if (quickQuizCategory && quickQuizCategory !== 'all') {
-            pool = pool.filter(t => t.category === quickQuizCategory);
-        }
+        const pool = getQuickQuizPool(quickQuizCategory);
         const shuffled = pool.sort(() => Math.random() - 0.5);
         const quizTerms = shuffled.slice(0, Math.min(count, pool.length));
         setSessionTerms(quizTerms);
@@ -63,12 +166,14 @@ export default function QuizPage() {
         setIsQuickQuiz(true);
         setShowQuizOptions(false);
         setQuickQuizCategory(null);
+        setSubmissionError(null);
     };
 
     const handleAnswer = async (isCorrect: boolean, responseTimeMs: number) => {
         if (!currentTerm || isPending) return;
 
         setIsPending(true);
+        setSubmissionError(null);
 
         try {
             // Increment session counter
@@ -76,7 +181,7 @@ export default function QuizPage() {
 
             // Submit to SRS system (only for actual favorites, not quick quiz)
             if (!isQuickQuiz) {
-                await submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs);
+                await withQuizSubmissionTimeout(submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs));
             }
 
             if (isCorrect) {
@@ -89,6 +194,8 @@ export default function QuizPage() {
             } else {
                 setCurrentIndex(i => i + 1);
             }
+        } catch (error) {
+            setSubmissionError(error instanceof Error ? error.message : stateCopy.slowLoadingDescription);
         } finally {
             setIsPending(false);
         }
@@ -103,6 +210,10 @@ export default function QuizPage() {
         setCurrentIndex(0);
         setCorrectCount(0);
         setIsComplete(false);
+        setShowQuizOptions(false);
+        setQuickQuizCategory(null);
+        setUseOnlyFavorites(false);
+        setSubmissionError(null);
     };
 
     // Start SRS review mode
@@ -111,10 +222,6 @@ export default function QuizPage() {
         setIsQuickQuiz(false);
     };
 
-    // Calculate stats
-    const masteredCount = terms.filter(t => t.srs_level >= 4).length;
-    const learningCount = terms.filter(t => t.srs_level > 0 && t.srs_level < 4).length;
-
     // Mode Selection Screen — show when user hasn't chosen a mode yet
     if (!hasChosenMode && !isQuickQuiz) {
         return (
@@ -122,180 +229,293 @@ export default function QuizPage() {
                 {/* Header */}
                 <header className="mb-6">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
-                    {dueTerms.length > 0 && (
+                    {!isLoading && canUseProgressData && dueTerms.length > 0 && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('quiz.chooseMode')}</p>
                     )}
                 </header>
 
-                {/* Daily Streak Card - Compact */}
-                <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3 text-white mb-4 shadow-md">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 bg-white/20 rounded-full">
-                                <Flame className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="text-white/80 text-xs">{t('quiz.dailyStreak')}</p>
-                                <p className="text-xl font-bold">{userProgress.current_streak || 0} {t('quiz.days')}</p>
-                            </div>
-                        </div>
-                        {(userProgress.current_streak || 0) > 0 && (
-                            <p className="text-lg">🔥</p>
+                {isLoading ? (
+                    <DataStateCard
+                        title={stateCopy.loadingTitle}
+                        description={stateCopy.loadingDescription}
+                        icon={<Loader2 className="w-10 h-10 animate-spin text-primary-500" />}
+                    />
+                ) : hasBlockingTermsError ? (
+                    <DataStateCard
+                        tone="error"
+                        title={stateCopy.errorTitle}
+                        description={stateCopy.errorDescription}
+                        action={(
+                            <button
+                                onClick={refreshData}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                {stateCopy.retry}
+                            </button>
                         )}
-                    </div>
-                </div>
-
-                {/* SRS Review Card — only when dueTerms exist */}
-                {dueTerms.length > 0 && (
-                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-white/20 rounded-full">
-                                <BookOpen className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="font-bold">{t('quiz.srsReview')}</p>
-                                <p className="text-white/80 text-xs">{t('quiz.srsReviewDesc')}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-white/90 text-sm font-medium">{dueTerms.length} {t('quiz.cardsDue')}</span>
-                        </div>
-                        <button
-                            onClick={startSrsReview}
-                            className="w-full mt-3 py-2.5 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                        >
-                            {t('quiz.startSrsReview')}
-                        </button>
-                    </div>
-                )}
-
-                {/* Quick Quiz Card */}
-                <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-white/20 rounded-full">
-                            <Zap className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-bold">{t('quiz.quickQuiz')}</p>
-                            <p className="text-white/80 text-xs">{t('quiz.quickQuizDesc')}</p>
-                        </div>
-                    </div>
-
-                    {!showQuizOptions ? (
-                        <button
-                            onClick={() => setShowQuizOptions(true)}
-                            className="w-full py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
-                        >
-                            {t('quiz.startQuickQuiz')}
-                        </button>
-                    ) : !quickQuizCategory ? (
-                        /* Category Selection Step */
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between mb-1">
-                                <p className="text-white/80 text-xs">
-                                    {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
-                                </p>
-                                {stats.totalFavorites > 0 && (
-                                    <button
-                                        onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
-                                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
-                                            ? 'bg-white text-red-500 border-white'
-                                            : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                                            }`}
-                                    >
-                                        <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
-                                        {language === 'tr' ? 'Sadece Favoriler' : language === 'ru' ? 'Только избранные' : 'Favorites Only'}
-                                    </button>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { key: 'all', label: language === 'tr' ? 'Hepsi' : language === 'ru' ? 'Все' : 'All' },
-                                    { key: 'Finance', label: language === 'tr' ? 'Finans' : language === 'ru' ? 'Финансы' : 'Finance' },
-                                    { key: 'Technology', label: language === 'tr' ? 'Yazılım' : language === 'ru' ? 'Программное обеспечение' : 'Software' },
-                                    { key: 'Fintech', label: language === 'tr' ? 'Fintek' : language === 'ru' ? 'Финтех' : 'FinTech' },
-                                ].map(cat => (
-                                    <button
-                                        key={cat.key}
-                                        onClick={() => setQuickQuizCategory(cat.key)}
-                                        className="py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors text-sm"
-                                    >
-                                        {cat.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        /* Question Count Selection Step */
-                        <div className="space-y-2">
-                            <p className="text-white/80 text-xs mb-1">
-                                {language === 'tr' ? 'Soru Sayısı:' : language === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
-                            </p>
-                            <div className="grid grid-cols-4 gap-2">
-                                {quizOptions.map(count => {
-                                    const pool = quickQuizCategory === 'all' ? terms : terms.filter(t => t.category === quickQuizCategory);
-                                    return (
+                    />
+                ) : (
+                    <>
+                        {shouldShowDegradedNotice ? (
+                            <div className="mb-4">
+                                <DataStateCard
+                                    tone="warning"
+                                    title={stateCopy.degradedTitle}
+                                    description={stateCopy.degradedDescription}
+                                    action={(
                                         <button
-                                            key={count}
-                                            onClick={() => startQuickQuiz(count)}
-                                            disabled={pool.length < count}
-                                            className={`py-2.5 font-bold rounded-xl transition-colors ${pool.length >= count
-                                                ? 'bg-white text-primary-600 hover:bg-gray-100'
-                                                : 'bg-white/30 text-white/50 cursor-not-allowed'
-                                                }`}
+                                            onClick={refreshData}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
                                         >
-                                            {count}
+                                            <RefreshCw className="w-4 h-4" />
+                                            {stateCopy.retry}
                                         </button>
-                                    );
-                                })}
+                                    )}
+                                />
                             </div>
-                        </div>
-                    )}
-                </div>
+                        ) : null}
 
-                {/* Statistics */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-card mb-6">
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <Target className="w-5 h-5 text-primary-500" />
-                        {t('quiz.yourStats')}
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                            <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{terms.length}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.totalWords')}</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                            <Star className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{masteredCount}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.mastered')}</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
-                            <Sparkles className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
-                        </div>
-                        <Link href="/favorites" className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group">
-                            <Heart className="w-6 h-6 text-red-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{stats.totalFavorites}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
-                        </Link>
-                    </div>
-                </div>
+                        {/* Daily Streak Card - Compact */}
+                        {canUseProgressData ? (
+                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3 text-white mb-4 shadow-md">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-white/20 rounded-full">
+                                            <Flame className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white/80 text-xs">{t('quiz.dailyStreak')}</p>
+                                            <p className="text-xl font-bold">{userProgress.current_streak || 0} {t('quiz.days')}</p>
+                                        </div>
+                                    </div>
+                                    {(userProgress.current_streak || 0) > 0 && (
+                                        <p className="text-lg">🔥</p>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4">
+                                <DataStateCard
+                                    tone="error"
+                                    title={stateCopy.srsUnavailableTitle}
+                                    description={stateCopy.srsUnavailableDescription}
+                                    action={(
+                                        <button
+                                            onClick={refreshData}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            {stateCopy.retry}
+                                        </button>
+                                    )}
+                                />
+                            </div>
+                        )}
 
-                {/* Add Favorites CTA (when no favorites at all) */}
-                {stats.totalFavorites === 0 && (
-                    <div className="text-center">
-                        <p className="text-gray-500 text-sm mb-3">{t('quiz.orAddFavorites')}</p>
-                        <Link
-                            href="/search"
-                            className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline"
-                        >
-                            <span>{t('quiz.exploreWords')}</span>
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
-                    </div>
+                        {/* SRS Review Card — only when dueTerms exist */}
+                        {canUseProgressData && dueTerms.length > 0 && (
+                            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-white/20 rounded-full">
+                                        <BookOpen className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">{t('quiz.srsReview')}</p>
+                                        <p className="text-white/80 text-xs">{t('quiz.srsReviewDesc')}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-white/90 text-sm font-medium">{dueTerms.length} {t('quiz.cardsDue')}</span>
+                                </div>
+                                <button
+                                    onClick={startSrsReview}
+                                    className="w-full mt-3 py-2.5 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    {t('quiz.startSrsReview')}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Quick Quiz Card */}
+                        <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 bg-white/20 rounded-full">
+                                    <Zap className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold">{t('quiz.quickQuiz')}</p>
+                                    <p className="text-white/80 text-xs">{t('quiz.quickQuizDesc')}</p>
+                                </div>
+                            </div>
+
+                            {!showQuizOptions ? (
+                                <button
+                                    onClick={() => setShowQuizOptions(true)}
+                                    className="w-full py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    {t('quiz.startQuickQuiz')}
+                                </button>
+                            ) : !quickQuizCategory ? (
+                                /* Category Selection Step */
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-white/80 text-xs">
+                                            {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
+                                        </p>
+                                        {canUseProgressData && stats.totalFavorites > 0 && (
+                                            <button
+                                                onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
+                                                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
+                                                    ? 'bg-white text-red-500 border-white'
+                                                    : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                                                    }`}
+                                            >
+                                                <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
+                                                {language === 'tr' ? 'Sadece Favoriler' : language === 'ru' ? 'Только избранные' : 'Favorites Only'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { key: 'all', label: language === 'tr' ? 'Hepsi' : language === 'ru' ? 'Все' : 'All' },
+                                            { key: 'Finance', label: language === 'tr' ? 'Finans' : language === 'ru' ? 'Финансы' : 'Finance' },
+                                            { key: 'Technology', label: language === 'tr' ? 'Yazılım' : language === 'ru' ? 'Программное обеспечение' : 'Software' },
+                                            { key: 'Fintech', label: language === 'tr' ? 'Fintek' : language === 'ru' ? 'Финтех' : 'FinTech' },
+                                        ].map(cat => (
+                                            <button
+                                                key={cat.key}
+                                                onClick={() => setQuickQuizCategory(cat.key)}
+                                                className="py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors text-sm"
+                                            >
+                                                {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Question Count Selection Step */
+                                <div className="space-y-2">
+                                    <p className="text-white/80 text-xs mb-1">
+                                        {language === 'tr' ? 'Soru Sayısı:' : language === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
+                                    </p>
+                                    <p className="text-white/70 text-[11px] mb-2">
+                                        {stateCopy.availableQuestions}: {quickQuizAvailableCount}
+                                    </p>
+                                    {quickQuizAvailableCount === 0 ? (
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={stateCopy.noQuestionsTooltip}
+                                            className="w-full py-2.5 bg-white/30 text-white/50 cursor-not-allowed font-semibold rounded-xl"
+                                        >
+                                            {t('quiz.startQuickQuiz')}
+                                        </button>
+                                    ) : (
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {quizOptions.map(count => (
+                                                <button
+                                                    key={count}
+                                                    onClick={() => startQuickQuiz(count)}
+                                                    disabled={quickQuizAvailableCount < count}
+                                                    className={`py-2.5 font-bold rounded-xl transition-colors ${quickQuizAvailableCount >= count
+                                                        ? 'bg-white text-primary-600 hover:bg-gray-100'
+                                                        : 'bg-white/30 text-white/50 cursor-not-allowed'
+                                                        }`}
+                                                >
+                                                    {count}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {quickQuizAvailableCount === 0 ? (
+                                        <p className="text-white/80 text-xs">
+                                            {stateCopy.noQuestionsAvailable}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Statistics */}
+                        {canUseProgressData ? (
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-card mb-6">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <Target className="w-5 h-5 text-primary-500" />
+                                    {t('quiz.yourStats')}
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                                        <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{terms.length}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.totalWords')}</p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                                        <Star className="w-6 h-6 text-amber-500 mx-auto mb-2" />
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{masteredCount}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.mastered')}</p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center">
+                                        <Sparkles className="w-6 h-6 text-purple-500 mx-auto mb-2" />
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
+                                    </div>
+                                    <Link href="/favorites" className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group">
+                                        <Heart className="w-6 h-6 text-red-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{stats.totalFavorites}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {/* Add Favorites CTA (when no favorites at all) */}
+                        {canUseProgressData && stats.totalFavorites === 0 && (
+                            <div className="text-center">
+                                <p className="text-gray-500 text-sm mb-3">{t('quiz.orAddFavorites')}</p>
+                                <Link
+                                    href="/search"
+                                    className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline"
+                                >
+                                    <span>{t('quiz.exploreWords')}</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        )}
+                    </>
                 )}
+            </div>
+        );
+    }
+
+    if (shouldShowProgressFallback && !isQuickQuiz) {
+        return (
+            <div className="page-content px-4 py-6">
+                <header className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
+                </header>
+                <DataStateCard
+                    tone="error"
+                    title={stateCopy.errorTitle}
+                    description={stateCopy.srsUnavailableDescription}
+                    action={(
+                        <>
+                            <button
+                                onClick={refreshData}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                {stateCopy.retry}
+                            </button>
+                            <button
+                                onClick={resetToNormal}
+                                className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-5 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                            >
+                                {t('quiz.chooseMode')}
+                            </button>
+                        </>
+                    )}
+                />
             </div>
         );
     }
@@ -456,6 +676,16 @@ export default function QuizPage() {
                     />
                 </div>
             </header>
+
+            {submissionError ? (
+                <div className="mb-4">
+                    <DataStateCard
+                        tone="error"
+                        title={stateCopy.slowLoadingTitle}
+                        description={submissionError}
+                    />
+                </div>
+            ) : null}
 
             {currentTerm && (
                 <QuizCard

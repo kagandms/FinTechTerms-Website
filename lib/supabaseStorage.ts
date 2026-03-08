@@ -6,6 +6,8 @@
 import { supabase } from './supabase';
 import { UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
+import { filterAcademicTerms } from '@/lib/academicQuarantine';
+import { userProgressSchema } from '@/lib/userProgress';
 
 interface FavoriteToggleResponse {
     favorites: string[];
@@ -30,6 +32,9 @@ interface StreakSummaryRow {
     current_streak: number;
     last_study_date: string | null;
 }
+
+const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
 
 const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
     try {
@@ -81,20 +86,48 @@ const getAuthenticatedRequestHeaders = async (): Promise<Record<string, string>>
     return headers;
 };
 
+const fetchWithTimeout = async (
+    input: RequestInfo | URL,
+    init: RequestInit,
+    timeoutMessage: string
+): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => {
+        controller.abort();
+    }, REQUEST_TIMEOUT_MS);
+
+    try {
+        return await fetch(input, {
+            ...init,
+            signal: controller.signal,
+        });
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(timeoutMessage);
+        }
+
+        throw error;
+    } finally {
+        if (timeoutId !== undefined) {
+            globalThis.clearTimeout(timeoutId);
+        }
+    }
+};
+
 const fetchWithAuthRetry = async (
     input: RequestInfo | URL,
     init: RequestInit,
     fallbackMessage: string
 ): Promise<Response> => {
     let headers = await getAuthenticatedRequestHeaders();
-    let response = await fetch(input, {
+    let response = await fetchWithTimeout(input, {
         ...init,
         credentials: 'same-origin',
         headers: {
             ...headers,
             ...(init.headers || {}),
         },
-    });
+    }, REQUEST_TIMEOUT_MESSAGE);
 
     if (response.status !== 401) {
         return response;
@@ -107,14 +140,14 @@ const fetchWithAuthRetry = async (
     }
 
     headers = await getAuthenticatedRequestHeaders();
-    response = await fetch(input, {
+    response = await fetchWithTimeout(input, {
         ...init,
         credentials: 'same-origin',
         headers: {
             ...headers,
             ...(init.headers || {}),
         },
-    });
+    }, REQUEST_TIMEOUT_MESSAGE);
 
     if (!response.ok && response.status === 401) {
         const message = await readApiError(response, fallbackMessage);
@@ -131,8 +164,8 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
     const [
         { data: progressData, error: progressError },
         { data: favoritesData, error: favoritesError },
-        { data: quizData },
-        { data: settingsData },
+        { data: quizData, error: quizError },
+        { data: settingsData, error: settingsError },
         { data: streakData, error: streakError },
     ] = await Promise.all([
         supabase
@@ -159,8 +192,8 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         supabase.rpc('get_user_streak_summary'),
     ]);
 
-    if (progressError || favoritesError || streakError) {
-        console.error('Failed to load user progress:', progressError || favoritesError || streakError);
+    if (progressError || favoritesError || quizError || settingsError || streakError) {
+        console.error('[supabaseStorage]', progressError || favoritesError || quizError || settingsError || streakError);
         return null;
     }
 
@@ -168,7 +201,7 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
     const updatedAt = progressData?.updated_at || createdAt;
     const streakSummary = (Array.isArray(streakData) ? streakData[0] : null) as StreakSummaryRow | null;
 
-    return {
+    const result = userProgressSchema.safeParse({
         user_id: userId,
         favorites: (favoritesData || []).map((row) => row.term_id),
         current_language: settingsData?.preferred_language || 'ru',
@@ -185,7 +218,14 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         last_study_date: streakSummary?.last_study_date ?? null,
         created_at: createdAt,
         updated_at: updatedAt,
-    };
+    });
+
+    if (!result.success) {
+        console.error('[supabaseStorage]', result.error.flatten());
+        return null;
+    }
+
+    return result.data;
 }
 
 /**
@@ -302,7 +342,8 @@ export async function getAllTermSRSFromSupabase(
 export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
     const { data, error } = await supabase
         .from('terms')
-        .select('*');
+        .select('*')
+        .eq('is_academic', true);
 
     if (error) {
         console.error('Failed to fetch terms:', error);
@@ -311,7 +352,7 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
 
     // Map DB columns to Term interface (partial, as SRS data is separate)
     // Note: The DB columns match the Term interface fields exactly for content
-    return data as unknown as Partial<Term>[];
+    return filterAcademicTerms(data as unknown as Partial<Term>[]);
 }
 
 /**

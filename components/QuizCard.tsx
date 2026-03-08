@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Term, Language } from '@/types';
 import { useTermTranslation } from '@/hooks/useTermTranslation';
+import { ContextTagList, MarketBadge } from '@/components/TermTaxonomy';
+import { getContextTagLabels } from '@/lib/termTaxonomy';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getIntervalDescription } from '@/utils/srsLogic';
 import { useResponseTimer } from '@/hooks/useResponseTimer';
@@ -10,7 +12,7 @@ import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 
 interface QuizCardProps {
     term: Term;
-    onAnswer: (isCorrect: boolean, responseTimeMs: number) => void;
+    onAnswer: (isCorrect: boolean, responseTimeMs: number) => Promise<void> | void;
     isPending?: boolean;
 }
 
@@ -31,17 +33,39 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
     // Timer hook for academic research
     const { startTimer, stopTimer } = useResponseTimer();
     const [recallTime, setRecallTime] = useState(0);
+    const [isAnswerLocked, setIsAnswerLocked] = useState(false);
+    const submittingRef = useRef(false);
 
     // Start timer on mount
     useEffect(() => {
         startTimer();
     }, [startTimer]);
 
+    useEffect(() => {
+        if (!isPending && submittingRef.current) {
+            submittingRef.current = false;
+            setIsAnswerLocked(false);
+        }
+    }, [isPending]);
+
     const handleFlip = () => {
-        if (isPending || isFlipped) return;
+        if (isPending || isAnswerLocked || isFlipped) return;
         const time = stopTimer();
         setRecallTime(time);
         setIsFlipped(true);
+    };
+
+    const handleAnswerClick = (isCorrect: boolean) => {
+        if (isPending || isAnswerLocked || submittingRef.current) {
+            return;
+        }
+
+        submittingRef.current = true;
+        setIsAnswerLocked(true);
+
+        void Promise.resolve(onAnswer(isCorrect, recallTime)).catch(() => {
+            // Parent state surfaces the failure and unlocks the card via isPending.
+        });
     };
 
     // Handle TTS
@@ -67,11 +91,13 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
 
     // All languages for display
     const allLanguages: Language[] = ['ru', 'en', 'tr'];
+    const taxonomyLabels = getContextTagLabels(term.context_tags);
     const pendingLabel = language === 'tr'
         ? 'Kaydediliyor...'
         : language === 'ru'
             ? 'Сохраняем...'
             : 'Saving...';
+    const controlsDisabled = isPending || isAnswerLocked;
 
     return (
         <div className="w-full max-w-md mx-auto">
@@ -83,10 +109,13 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                 {/* Question Side */}
                 <div className={`p-6 h-full flex flex-col ${isFlipped ? 'hidden' : ''}`}>
                     {/* Language Badge */}
-                    <div className="flex items-center justify-between mb-4">
-                        <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 uppercase">
-                            {language}
-                        </span>
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 uppercase">
+                                {language}
+                            </span>
+                            <MarketBadge market={term.regional_market} />
+                        </div>
 
                         <button
                             onClick={() => handleSpeak(currentTerm, language)}
@@ -116,13 +145,13 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                     <div className="mt-6">
                         <button
                             onClick={handleFlip}
-                            disabled={isPending}
-                            className={`w-full py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                            disabled={controlsDisabled}
+                            className={`w-full py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${controlsDisabled
                                 ? 'bg-primary-300 cursor-not-allowed'
                                 : 'bg-primary-500 hover:bg-primary-600'
                                 }`}
                         >
-                            {isPending ? pendingLabel : t('quiz.showAnswer')}
+                            {controlsDisabled ? pendingLabel : t('quiz.showAnswer')}
                         </button>
                     </div>
                 </div>
@@ -130,10 +159,13 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                 {/* Answer Side */}
                 <div className={`p-6 h-full flex flex-col ${!isFlipped ? 'hidden' : ''}`}>
                     {/* Language Badge - shows selected language */}
-                    <div className="flex items-center justify-between mb-4">
-                        <span className="px-3 py-1 bg-primary-100 rounded-full text-xs font-medium text-primary-600 uppercase">
-                            {selectedLang}
-                        </span>
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-3 py-1 bg-primary-100 rounded-full text-xs font-medium text-primary-600 uppercase">
+                                {selectedLang}
+                            </span>
+                            <MarketBadge market={term.regional_market} />
+                        </div>
 
                         <button
                             onClick={() => handleSpeak(getTermByLang(selectedLang), selectedLang)}
@@ -201,6 +233,15 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                                 </div>
                             ))}
                         </div>
+
+                        {taxonomyLabels.length > 0 ? (
+                            <div className="w-full mt-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                                    {language === 'tr' ? 'Akademik baglam' : language === 'ru' ? 'Академический контекст' : 'Academic context'}
+                                </p>
+                                <ContextTagList contextTags={term.context_tags} maxItems={4} />
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Next Review Info */}
@@ -211,9 +252,9 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                     {/* Answer Buttons */}
                     <div className="flex gap-3">
                         <button
-                            onClick={() => onAnswer(false, recallTime)}
-                            disabled={isPending}
-                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                            onClick={() => handleAnswerClick(false)}
+                            disabled={controlsDisabled}
+                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${controlsDisabled
                                 ? 'bg-red-300 cursor-not-allowed'
                                 : 'bg-red-500 hover:bg-red-600'
                                 }`}
@@ -223,9 +264,9 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                         </button>
 
                         <button
-                            onClick={() => onAnswer(true, recallTime)}
-                            disabled={isPending}
-                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${isPending
+                            onClick={() => handleAnswerClick(true)}
+                            disabled={controlsDisabled}
+                            className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${controlsDisabled
                                 ? 'bg-green-300 cursor-not-allowed'
                                 : 'bg-green-500 hover:bg-green-600'
                                 }`}
@@ -241,8 +282,8 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
             {isFlipped && (
                 <button
                     onClick={() => setIsFlipped(false)}
-                    disabled={isPending}
-                    className={`mt-4 mx-auto flex items-center gap-2 transition-colors ${isPending
+                    disabled={controlsDisabled}
+                    className={`mt-4 mx-auto flex items-center gap-2 transition-colors ${controlsDisabled
                         ? 'text-gray-300 cursor-not-allowed'
                         : 'text-gray-500 hover:text-gray-700'
                         }`}

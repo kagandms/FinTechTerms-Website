@@ -5,6 +5,8 @@
 
 import { Term, UserProgress, QuizAttempt } from '@/types';
 import { mockTerms, defaultUserProgress } from '@/data/mockData';
+import { filterAcademicTerms } from '@/lib/academicQuarantine';
+import { userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
 
 const STORAGE_KEYS = {
@@ -27,14 +29,40 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-03-06-v3'; // Force refresh after contest taxonomy fields were added
+const DATA_VERSION = '2026-03-08-v4'; // Force refresh after academic quarantine fields were added
+
+const createDefaultProgress = (): UserProgress => {
+    const now = new Date().toISOString();
+
+    return {
+        ...defaultUserProgress,
+        favorites: [...defaultUserProgress.favorites],
+        quiz_history: [...defaultUserProgress.quiz_history],
+        created_at: now,
+        updated_at: now,
+    };
+};
+
+const clearCorruptedProgress = (): UserProgress => {
+    console.warn('[storage] Corrupted progress data cleared');
+
+    try {
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
+    } catch {
+        // localStorage is unavailable or already cleared.
+    }
+
+    return createDefaultProgress();
+};
 
 /**
  * Get all terms from storage (or initialize with mock data)
- * Always sync with mockTerms if local data is outdated or version mismatch
+ * Refresh cached data only when the schema version changes
  */
 export function getTerms(): Term[] {
-    if (!isLocalStorageAvailable()) return mockTerms;
+    const fallbackTerms = filterAcademicTerms(mockTerms);
+
+    if (!isLocalStorageAvailable()) return fallbackTerms;
 
     try {
         const storedVersion = localStorage.getItem('globalfinterm_data_version');
@@ -42,27 +70,22 @@ export function getTerms(): Term[] {
 
         // Force update if version mismatch
         if (storedVersion !== DATA_VERSION) {
-            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
+            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(fallbackTerms));
             localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
-            return mockTerms;
+            return fallbackTerms;
         }
 
         if (stored) {
             const parsedTerms = (JSON.parse(stored) as Array<Partial<Term>>).map((term) => createSafeTerm(term));
-            // If mockTerms has more terms, update localStorage with new data
-            if (parsedTerms.length < mockTerms.length) {
-                localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
-                return mockTerms;
-            }
-            return parsedTerms;
+            return filterAcademicTerms(parsedTerms);
         }
 
         // Initialize with mock data
-        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(mockTerms));
+        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(fallbackTerms));
         localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
-        return mockTerms;
+        return fallbackTerms;
     } catch {
-        return mockTerms;
+        return fallbackTerms;
     }
 }
 
@@ -73,7 +96,7 @@ export function saveTerms(terms: Term[]): void {
     if (!isLocalStorageAvailable()) return;
 
     try {
-        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(terms));
+        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(filterAcademicTerms(terms)));
     } catch (error) {
         console.error('Failed to save terms:', error);
     }
@@ -98,18 +121,25 @@ export function updateTerm(updatedTerm: Term): Term[] {
  * Get user progress from storage
  */
 export function getUserProgress(): UserProgress {
-    if (!isLocalStorageAvailable()) return defaultUserProgress;
+    if (!isLocalStorageAvailable()) return createDefaultProgress();
 
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
         if (stored) {
-            return JSON.parse(stored) as UserProgress;
+            const parsed = JSON.parse(stored) as unknown;
+            const result = userProgressSchema.safeParse(parsed);
+
+            if (result.success) {
+                return result.data;
+            }
+
+            return clearCorruptedProgress();
         }
-        const newProgress = { ...defaultUserProgress, favorites: [...defaultUserProgress.favorites], quiz_history: [...defaultUserProgress.quiz_history] };
+        const newProgress = createDefaultProgress();
         localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(newProgress));
         return newProgress;
     } catch {
-        return { ...defaultUserProgress, favorites: [...defaultUserProgress.favorites], quiz_history: [...defaultUserProgress.quiz_history] };
+        return clearCorruptedProgress();
     }
 }
 
