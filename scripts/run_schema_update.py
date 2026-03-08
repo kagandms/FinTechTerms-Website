@@ -4,13 +4,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
-
-if not SUPABASE_SERVICE_KEY:
+if not os.environ.get("SUPABASE_SERVICE_KEY"):
     raise RuntimeError(
         "Missing SUPABASE_SERVICE_KEY. Set it in your shell or add it to a local .env "
         "before running scripts/run_schema_update.py."
     )
+
+SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
 def run_sql():
     # Since we can't easily run raw SQL via the JS/Python client without a specific RPC function
