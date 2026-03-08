@@ -1,68 +1,61 @@
 /**
  * @jest-environment jsdom
  */
-import React from 'react';
-import { render, screen } from '@testing-library/react';
 
-// Mock Next.js Script component
+import React from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
+import { CONSENT_GRANTED_EVENT } from '@/components/ConsentModal';
+
 jest.mock('next/script', () => {
-    return function MockScript({ children, ...props }: { children?: React.ReactNode;[key: string]: unknown }) {
-        return <script data-testid={props.id as string}>{children}</script>;
+    return function MockScript({
+        children,
+        id,
+        src,
+    }: {
+        children?: React.ReactNode;
+        id?: string;
+        src?: string;
+    }) {
+        return (
+            <script data-testid={id || src || 'script'}>
+                {children}
+            </script>
+        );
     };
 });
 
-// We need to test the consent logic, not the full component
-describe('Google Analytics Consent Logic', () => {
+const CONSENT_KEY = 'fintechterms_research_consent';
+
+const setConsent = (given: boolean) => {
+    localStorage.setItem(CONSENT_KEY, JSON.stringify({
+        given,
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+    }));
+};
+
+describe('GoogleAnalytics', () => {
     beforeEach(() => {
         localStorage.clear();
     });
 
-    it('should not have consent by default', () => {
-        const consent = localStorage.getItem('analytics_consent');
-        expect(consent).toBeNull();
+    it('does not render analytics scripts before consent is granted', () => {
+        render(<GoogleAnalytics />);
+
+        expect(screen.queryByTestId('google-analytics')).not.toBeInTheDocument();
     });
 
-    it('should store consent when user accepts', () => {
-        localStorage.setItem('analytics_consent', 'true');
-        const consent = localStorage.getItem('analytics_consent');
-        expect(consent).toBe('true');
-    });
+    it('renders analytics scripts immediately when consentGranted fires in the same tab', async () => {
+        render(<GoogleAnalytics />);
 
-    it('should detect consent withdrawal', () => {
-        localStorage.setItem('analytics_consent', 'true');
-        expect(localStorage.getItem('analytics_consent')).toBe('true');
+        setConsent(true);
+        await act(async () => {
+            window.dispatchEvent(new CustomEvent(CONSENT_GRANTED_EVENT));
+        });
 
-        localStorage.removeItem('analytics_consent');
-        expect(localStorage.getItem('analytics_consent')).toBeNull();
-    });
-
-    it('should not load GA scripts without consent', () => {
-        // Simulate the component logic
-        const hasConsent = localStorage.getItem('analytics_consent') === 'true';
-        expect(hasConsent).toBe(false);
-        // If no consent, component returns null (no scripts)
-    });
-
-    it('should load GA scripts after consent', () => {
-        localStorage.setItem('analytics_consent', 'true');
-        const hasConsent = localStorage.getItem('analytics_consent') === 'true';
-        expect(hasConsent).toBe(true);
-        // If consent given, component renders scripts
-    });
-});
-
-describe('Google Analytics GA_ID Configuration', () => {
-    it('should have a valid GA_ID format', () => {
-        // GA4 IDs follow pattern G-XXXXXXXXXX
-        const validPattern = /^G-[A-Z0-9]+$/;
-        const testId = 'G-XXXXXXXXXX';
-        expect(validPattern.test(testId)).toBe(true);
-    });
-
-    it('should reject invalid GA_ID', () => {
-        const validPattern = /^G-[A-Z0-9]+$/;
-        expect(validPattern.test('')).toBe(false);
-        expect(validPattern.test('UA-12345')).toBe(false);
-        expect(validPattern.test('invalid')).toBe(false);
+        await waitFor(() => {
+            expect(screen.getByTestId('google-analytics')).toBeInTheDocument();
+        });
     });
 });

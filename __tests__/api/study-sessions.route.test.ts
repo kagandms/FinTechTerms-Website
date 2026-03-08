@@ -45,15 +45,22 @@ const createStartPayload = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('study-sessions route', () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
     beforeEach(() => {
         jest.clearAllMocks();
         clearEphemeralIdempotencyReservations();
         studySessionRouteRateLimiter.reset();
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         mockResolveRequestAuthState.mockResolvedValue({
             user: null,
             hadCredentials: false,
             ghostSession: false,
         });
+    });
+
+    afterEach(() => {
+        consoleErrorSpy.mockRestore();
     });
 
     it('returns the cached response for duplicate idempotency keys', async () => {

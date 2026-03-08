@@ -23,6 +23,7 @@ const SessionActionSchema = z.discriminatedUnion('action', [
         deviceType: z.enum(['mobile', 'tablet', 'desktop', 'unknown']).default('unknown'),
         userAgent: z.string().nullable().optional(),
         consentGiven: z.literal(true),
+        previous_session_id: z.string().uuid().nullable().optional(),
         idempotency_key: z.string().uuid(),
     }).strict(),
     z.object({
@@ -251,6 +252,91 @@ export async function POST(request: Request) {
                     requestId,
                     retryable: responseBody.retryable,
                 });
+            }
+
+            if (user && payload.previous_session_id) {
+                if (!payload.anonymousId) {
+                    const responseBody: CachedApiErrorBody = {
+                        code: 'INVALID_STUDY_SESSION_PAYLOAD',
+                        message: 'anonymousId is required when previous_session_id is provided.',
+                        requestId,
+                        retryable: false,
+                    };
+                    cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 400, responseBody);
+                    return errorResponse({
+                        status: 400,
+                        code: responseBody.code,
+                        message: responseBody.message,
+                        requestId,
+                        retryable: responseBody.retryable,
+                    });
+                }
+
+                const previousOwnership = await validateSessionOwnership(
+                    supabaseAdmin,
+                    payload.previous_session_id,
+                    null,
+                    payload.anonymousId
+                );
+
+                if (previousOwnership === null) {
+                    const responseBody: CachedApiErrorBody = {
+                        code: 'STUDY_SESSION_NOT_FOUND',
+                        message: 'Previous study session not found.',
+                        requestId,
+                        retryable: false,
+                    };
+                    cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 404, responseBody);
+                    return errorResponse({
+                        status: 404,
+                        code: responseBody.code,
+                        message: responseBody.message,
+                        requestId,
+                        retryable: responseBody.retryable,
+                    });
+                }
+
+                if (previousOwnership === false) {
+                    const responseBody: CachedApiErrorBody = {
+                        code: 'STUDY_SESSION_FORBIDDEN',
+                        message: 'Previous study session does not belong to this requester.',
+                        requestId,
+                        retryable: false,
+                    };
+                    cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 403, responseBody);
+                    return errorResponse({
+                        status: 403,
+                        code: responseBody.code,
+                        message: responseBody.message,
+                        requestId,
+                        retryable: responseBody.retryable,
+                    });
+                }
+
+                const previousSessionUpdate = await supabaseAdmin
+                    .from('study_sessions')
+                    .update({
+                        user_id: user.id,
+                    })
+                    .eq('id', payload.previous_session_id);
+
+                if (previousSessionUpdate.error) {
+                    console.error('POST_STUDY_SESSIONS_HANDOFF_ERROR', previousSessionUpdate.error);
+                    const responseBody: CachedApiErrorBody = {
+                        code: 'STUDY_SESSION_START_FAILED',
+                        message: 'Unable to transfer the previous anonymous session.',
+                        requestId,
+                        retryable: true,
+                    };
+                    cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 500, responseBody);
+                    return errorResponse({
+                        status: 500,
+                        code: responseBody.code,
+                        message: responseBody.message,
+                        requestId,
+                        retryable: responseBody.retryable,
+                    });
+                }
             }
 
             const response = await supabaseAdmin

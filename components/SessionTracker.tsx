@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { hasResearchConsent } from './ConsentModal';
+import { CONSENT_GRANTED_EVENT, hasResearchConsent } from './ConsentModal';
 import { createIdempotencyKey } from '@/lib/idempotency';
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
+type SessionMode = 'anonymous' | 'authenticated';
 
 interface SessionData {
     id: string | null;
     startTime: number;
     pageViews: number;
     quizAttempts: number;
+    authMode: SessionMode;
+    anonymousId: string | null;
 }
 
 interface PersistSessionResult {
@@ -20,14 +24,11 @@ interface PersistSessionResult {
     data: { sessionId?: string } | null;
 }
 
-const readApiMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
-    try {
-        const payload = await response.json();
-        return payload?.message || payload?.error || fallbackMessage;
-    } catch {
-        return fallbackMessage;
-    }
-};
+interface StartSessionOptions {
+    mode?: SessionMode;
+    previousSessionId?: string | null;
+    previousAnonymousId?: string | null;
+}
 
 /**
  * SessionTracker - Invisible component that tracks user sessions
@@ -35,8 +36,49 @@ const readApiMessage = async (response: Response, fallbackMessage: string): Prom
  */
 export default function SessionTracker() {
     const { isAuthenticated } = useAuth();
+    const pathname = usePathname();
     const sessionRef = useRef<SessionData | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const authStateRef = useRef(isAuthenticated);
+    const previousAuthStateRef = useRef(isAuthenticated);
+    const lastTrackedPathnameRef = useRef<string | null>(null);
+    const pathnameRef = useRef(pathname);
+
+    const saveSessionToStorage = useCallback((session: SessionData | null) => {
+        try {
+            if (session) {
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+                return;
+            }
+
+            localStorage.removeItem(SESSION_KEY);
+        } catch {
+            // Silently fail
+        }
+    }, []);
+
+    const hydrateSessionFromStorage = useCallback((session: SessionData): SessionData => {
+        try {
+            const stored = localStorage.getItem(SESSION_KEY);
+            if (!stored) {
+                return session;
+            }
+
+            const persisted = JSON.parse(stored) as Partial<SessionData>;
+            return {
+                ...session,
+                id: typeof persisted.id === 'string' ? persisted.id : session.id,
+                pageViews: typeof persisted.pageViews === 'number' ? persisted.pageViews : session.pageViews,
+                quizAttempts: typeof persisted.quizAttempts === 'number' ? persisted.quizAttempts : session.quizAttempts,
+                authMode: persisted.authMode === 'anonymous' || persisted.authMode === 'authenticated'
+                    ? persisted.authMode
+                    : session.authMode,
+                anonymousId: typeof persisted.anonymousId === 'string' ? persisted.anonymousId : session.anonymousId,
+            };
+        } catch {
+            return session;
+        }
+    }, []);
 
     const persistSessionMutation = useCallback(async (payload: Record<string, unknown>): Promise<PersistSessionResult> => {
         const response = await fetch('/api/study-sessions', {
@@ -92,30 +134,49 @@ export default function SessionTracker() {
     }, []);
 
     // Start a new session
-    const startSession = useCallback(async () => {
+    const trackPageView = useCallback((currentPathname: string | null) => {
+        if (!currentPathname || !sessionRef.current || !hasResearchConsent()) {
+            return;
+        }
+
+        if (lastTrackedPathnameRef.current === currentPathname) {
+            return;
+        }
+
+        sessionRef.current.pageViews += 1;
+        lastTrackedPathnameRef.current = currentPathname;
+        saveSessionToStorage(sessionRef.current);
+    }, [saveSessionToStorage]);
+
+    const startSession = useCallback(async ({
+        mode = authStateRef.current ? 'authenticated' : 'anonymous',
+        previousSessionId = null,
+        previousAnonymousId = null,
+    }: StartSessionOptions = {}) => {
         if (!hasResearchConsent()) return;
 
+        const requestAnonymousId = mode === 'anonymous'
+            ? (previousAnonymousId ?? getAnonymousId())
+            : previousAnonymousId;
         const session: SessionData = {
             id: null,
             startTime: Date.now(),
-            pageViews: 1,
+            pageViews: 0,
             quizAttempts: 0,
+            authMode: mode,
+            anonymousId: mode === 'anonymous' ? requestAnonymousId : null,
         };
 
         sessionRef.current = session;
-
-        // Store in localStorage for persistence
-        try {
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        } catch {
-            // Silently fail
-        }
+        lastTrackedPathnameRef.current = null;
+        saveSessionToStorage(session);
 
         // Record session start through the trusted backend.
         try {
             const response = await persistSessionMutation({
                 action: 'start',
-                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                anonymousId: requestAnonymousId,
+                previous_session_id: previousSessionId,
                 deviceType: getDeviceType(),
                 userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
                 consentGiven: true,
@@ -127,43 +188,21 @@ export default function SessionTracker() {
 
             session.id = response.data?.sessionId || null;
             sessionRef.current = session;
-
-            try {
-                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-            } catch {
-                // Silently fail
-            }
+            saveSessionToStorage(session);
         } catch {
             // Session analytics must never interrupt the UI.
         }
-    }, [isAuthenticated, getAnonymousId, getDeviceType, persistSessionMutation]);
+    }, [getAnonymousId, getDeviceType, persistSessionMutation, saveSessionToStorage]);
 
     // Update session (called periodically)
     const updateSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
 
-        const session = sessionRef.current;
-
-        try {
-            const stored = localStorage.getItem(SESSION_KEY);
-            if (stored) {
-                const persisted = JSON.parse(stored) as SessionData;
-                session.pageViews = persisted.pageViews;
-                session.quizAttempts = persisted.quizAttempts;
-                session.id = persisted.id || session.id;
-            }
-        } catch {
-            // Silently fail
-        }
+        const session = hydrateSessionFromStorage(sessionRef.current);
+        sessionRef.current = session;
 
         const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
-
-        // Update in localStorage
-        try {
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        } catch {
-            // Silently fail
-        }
+        saveSessionToStorage(session);
 
         if (!session.id) {
             return;
@@ -173,7 +212,7 @@ export default function SessionTracker() {
             const response = await persistSessionMutation({
                 action: 'heartbeat',
                 sessionId: session.id,
-                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
                 durationSeconds,
                 pageViews: session.pageViews,
                 quizAttempts: session.quizAttempts,
@@ -185,34 +224,21 @@ export default function SessionTracker() {
         } catch {
             // Session analytics must never interrupt the UI.
         }
-    }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
+    }, [hydrateSessionFromStorage, persistSessionMutation, saveSessionToStorage]);
 
     // End session (called on unmount or page close)
     const endSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
 
-        const session = sessionRef.current;
-
-        try {
-            const stored = localStorage.getItem(SESSION_KEY);
-            if (stored) {
-                const persisted = JSON.parse(stored) as SessionData;
-                session.pageViews = persisted.pageViews;
-                session.quizAttempts = persisted.quizAttempts;
-                session.id = persisted.id || session.id;
-            }
-        } catch {
-            // Silently fail
-        }
+        const session = hydrateSessionFromStorage(sessionRef.current);
+        sessionRef.current = session;
 
         const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
 
         if (!session.id) {
-            try {
-                localStorage.removeItem(SESSION_KEY);
-            } catch {
-                // Silently fail
-            }
+            sessionRef.current = null;
+            lastTrackedPathnameRef.current = null;
+            saveSessionToStorage(null);
             return;
         }
 
@@ -220,7 +246,7 @@ export default function SessionTracker() {
             const response = await persistSessionMutation({
                 action: 'end',
                 sessionId: session.id,
-                anonymousId: !isAuthenticated ? getAnonymousId() : null,
+                anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
                 durationSeconds,
                 pageViews: session.pageViews,
                 quizAttempts: session.quizAttempts,
@@ -229,18 +255,27 @@ export default function SessionTracker() {
             if (!response.ok) {
                 return;
             }
-
-            // Clear localStorage
-            localStorage.removeItem(SESSION_KEY);
         } catch {
             // Session analytics must never interrupt the UI.
+        } finally {
+            sessionRef.current = null;
+            lastTrackedPathnameRef.current = null;
+            saveSessionToStorage(null);
         }
-    }, [isAuthenticated, getAnonymousId, persistSessionMutation]);
+    }, [hydrateSessionFromStorage, persistSessionMutation, saveSessionToStorage]);
+
+    useEffect(() => {
+        authStateRef.current = isAuthenticated;
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        pathnameRef.current = pathname;
+    }, [pathname]);
 
     // Initialize session tracking
     useEffect(() => {
         // Start session on mount
-        startSession();
+        void startSession();
 
         // Set up periodic updates
         intervalRef.current = setInterval(updateSession, SESSION_UPDATE_INTERVAL);
@@ -248,17 +283,27 @@ export default function SessionTracker() {
         // Handle page visibility changes
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                updateSession();
+                void updateSession();
             }
         };
 
         // Handle page unload
         const handleBeforeUnload = () => {
-            endSession();
+            void endSession();
+        };
+
+        const handleConsentGranted = () => {
+            if (sessionRef.current || !hasResearchConsent()) {
+                return;
+            }
+
+            void startSession();
+            trackPageView(pathnameRef.current);
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener(CONSENT_GRANTED_EVENT, handleConsentGranted);
 
         return () => {
             if (intervalRef.current) {
@@ -266,16 +311,39 @@ export default function SessionTracker() {
             }
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            endSession();
+            window.removeEventListener(CONSENT_GRANTED_EVENT, handleConsentGranted);
+            void endSession();
         };
-    }, [startSession, updateSession, endSession]);
+    }, [endSession, startSession, trackPageView, updateSession]);
 
-    // Track page views
     useEffect(() => {
-        if (sessionRef.current && hasResearchConsent()) {
-            sessionRef.current.pageViews += 1;
+        trackPageView(pathname);
+    }, [pathname, trackPageView]);
+
+    useEffect(() => {
+        const previousAuthState = previousAuthStateRef.current;
+        previousAuthStateRef.current = isAuthenticated;
+
+        if (previousAuthState === isAuthenticated || !sessionRef.current || !hasResearchConsent()) {
+            return;
         }
-    }, []);
+
+        const currentSession = hydrateSessionFromStorage(sessionRef.current);
+        const previousSessionId = currentSession.id;
+        const previousAnonymousId = currentSession.authMode === 'anonymous'
+            ? currentSession.anonymousId
+            : null;
+
+        void (async () => {
+            await endSession();
+            await startSession({
+                mode: isAuthenticated ? 'authenticated' : 'anonymous',
+                previousSessionId: !previousAuthState && isAuthenticated ? previousSessionId : null,
+                previousAnonymousId,
+            });
+            trackPageView(pathname);
+        })();
+    }, [endSession, hydrateSessionFromStorage, isAuthenticated, pathname, startSession, trackPageView]);
 
     // This component doesn't render anything
     return null;

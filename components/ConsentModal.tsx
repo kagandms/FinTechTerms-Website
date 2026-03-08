@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Shield, X, Check } from 'lucide-react';
 
 const CONSENT_KEY = 'fintechterms_research_consent';
+export const CONSENT_GRANTED_EVENT = 'consentGranted';
 
 interface ConsentData {
     given: boolean;
@@ -56,6 +57,7 @@ export default function ConsentModal() {
         };
         try {
             localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
+            window.dispatchEvent(new CustomEvent(CONSENT_GRANTED_EVENT));
         } catch {
             // Silently fail if localStorage not available
         }
