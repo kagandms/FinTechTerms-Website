@@ -1,31 +1,3 @@
-const { default: withPWA } = require("@ducanh2912/next-pwa");
-
-const sensitiveNetworkOnlyRoutes = [
-    {
-        urlPattern: ({ url }) =>
-            url.pathname === '/profile'
-            || url.pathname.startsWith('/profile/')
-            || url.pathname.startsWith('/api/auth/')
-            || url.pathname.startsWith('/auth'),
-        handler: 'NetworkOnly',
-        method: 'GET',
-    },
-];
-
-const withPWAConfig = withPWA({
-    dest: "public",
-    cacheOnFrontEndNav: true,
-    aggressiveFrontEndNavCaching: true,
-    extendDefaultRuntimeCaching: true,
-    reloadOnOnline: true,
-    swcMinify: true,
-    disable: process.env.NODE_ENV === "development",
-    workboxOptions: {
-        disableDevLogs: true,
-        runtimeCaching: sensitiveNetworkOnlyRoutes,
-    },
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
@@ -72,4 +44,4 @@ const nextConfig = {
     },
 };
 
-module.exports = withPWAConfig(nextConfig);
+module.exports = nextConfig;
