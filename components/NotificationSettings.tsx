@@ -11,7 +11,7 @@ interface NotificationSettingsProps {
 const translations = {
     tr: {
         title: 'Günlük Hatırlatma',
-        description: 'Her gün seçtiğin saatte tekrar hatırlatması al.',
+        description: 'Uygulama tarayıcıda açık kaldığı sürece seçtiğin saatte hatırlatma al.',
         enable: 'Bildirimleri Aç',
         disable: 'Bildirimleri Kapat',
         selectTime: 'Hatırlatma Saati',
@@ -22,12 +22,12 @@ const translations = {
         active: 'Aktif',
         inactive: 'Pasif',
         storageError: 'Kayıtlı veri bozuk olduğu için bildirim ayarları sıfırlandı.',
-        serviceWorkerError: 'Bildirimler açıldı ancak service worker kaydedilemedi.',
         savingError: 'Bildirim ayarları kaydedilemedi.',
+        openAppOnly: 'Bu hatırlatma yalnızca uygulama açıkken çalışır. Sekme kapalıysa, tarayıcı arka plandaysa veya cihaz uykuya geçerse bildirim gönderilmez.',
     },
     en: {
         title: 'Daily Reminder',
-        description: 'Get a review reminder at your chosen time every day.',
+        description: 'Get a reminder at your chosen time while this app stays open in your browser.',
         enable: 'Enable Notifications',
         disable: 'Disable Notifications',
         selectTime: 'Reminder Time',
@@ -38,12 +38,12 @@ const translations = {
         active: 'Active',
         inactive: 'Inactive',
         storageError: 'Notification settings were reset because saved data was invalid.',
-        serviceWorkerError: 'Notifications were enabled, but the service worker could not be registered.',
         savingError: 'Notification settings could not be saved.',
+        openAppOnly: 'This reminder only works while the app is open. If the tab is closed, the browser is backgrounded, or the device sleeps, no reminder will be sent.',
     },
     ru: {
         title: 'Ежедневное напоминание',
-        description: 'Получайте напоминание о повторении в выбранное время.',
+        description: 'Получайте напоминание в выбранное время, пока приложение открыто в браузере.',
         enable: 'Включить уведомления',
         disable: 'Отключить уведомления',
         selectTime: 'Время напоминания',
@@ -54,8 +54,8 @@ const translations = {
         active: 'Активно',
         inactive: 'Неактивно',
         storageError: 'Настройки уведомлений были сброшены из-за повреждённых данных.',
-        serviceWorkerError: 'Уведомления включены, но service worker не удалось зарегистрировать.',
         savingError: 'Не удалось сохранить настройки уведомлений.',
+        openAppOnly: 'Это напоминание работает только пока приложение открыто. Если вкладка закрыта, браузер в фоне или устройство спит, уведомление не придет.',
     },
 };
 
@@ -159,20 +159,12 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             };
             const msg = messages[language];
 
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'SHOW_NOTIFICATION',
-                    title: msg.title,
-                    body: msg.body,
-                });
-            } else {
-                new Notification(msg.title, {
-                    body: msg.body,
-                    icon: '/icons/icon-192.png',
-                    badge: '/icons/icon-72.png',
-                    tag: 'daily-reminder',
-                });
-            }
+            new Notification(msg.title, {
+                body: msg.body,
+                icon: '/icons/icon-192.png',
+                badge: '/icons/icon-72.png',
+                tag: 'daily-reminder',
+            });
         }
     }, [config.enabled, config.hour, config.minute, permission, language]);
 
@@ -213,15 +205,6 @@ export default function NotificationSettings({ language }: NotificationSettingsP
                 setConfig(newConfig);
                 if (!saveConfig(newConfig)) {
                     showToast(t.savingError, 'error');
-                }
-
-                if ('serviceWorker' in navigator) {
-                    try {
-                        await navigator.serviceWorker.register('/notification-sw.js');
-                    } catch (error) {
-                        console.error('NOTIFICATION_SERVICE_WORKER_REGISTER_ERROR', error);
-                        showToast(t.serviceWorkerError, 'warning');
-                    }
                 }
 
                 return;
@@ -323,6 +306,10 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             {permission === 'denied' && (
                 <p className="mt-2 text-xs text-red-500">{t.denied}</p>
             )}
+
+            <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
+                {t.openAppOnly}
+            </p>
         </div>
     );
 }

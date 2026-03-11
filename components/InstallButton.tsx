@@ -4,44 +4,47 @@ import React, { useEffect, useState } from 'react';
 import { Download, Share, PlusSquare, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 export default function InstallButton() {
-    const { language, t } = useLanguage();
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [isInstallable, setIsInstallable] = useState(false);
+    const { language } = useLanguage();
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOS, setIsIOS] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
 
     useEffect(() => {
-        // Check if device is iOS
         const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        // Check if already in standalone mode (installed)
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
 
-        if (isIOSDevice && !isStandalone) {
-            setIsIOS(true);
-            setIsInstallable(true); // BUG 2 FIXED: Was missing, causing invisible button on iOS
-        } else {
-            // For other devices, we assume installable unless running standalone
-            // but we only get deferredPrompt if browser supports it.
-            // If not standalone, we show button anyway.
-            setIsInstallable(!isStandalone);
-        }
+        setIsIOS(isIOSDevice && !isStandalone);
 
-        const handleBeforeInstallPrompt = (e: any) => {
-            // Prevent the mini-infobar from appearing on mobile
+        const handleBeforeInstallPrompt = (e: Event) => {
+            const promptEvent = e as BeforeInstallPromptEvent;
             e.preventDefault();
-            // Stash the event so it can be triggered later.
-            setDeferredPrompt(e);
-            setIsInstallable(true);
+            setDeferredPrompt(promptEvent);
+        };
+
+        const handleAppInstalled = () => {
+            setDeferredPrompt(null);
+            setIsIOS(false);
+            setShowIOSInstructions(false);
+            setShowManualInstructions(false);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
         };
     }, []);
+
+    const isInstallable = isIOS || deferredPrompt !== null;
 
     const handleInstallClick = async () => {
         if (isIOS) {
@@ -50,26 +53,20 @@ export default function InstallButton() {
         }
 
         if (deferredPrompt) {
-            // Show the install prompt
-            deferredPrompt.prompt();
-
-            // Wait for the user to respond to the prompt
+            await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
 
-            // We've used the prompt, and can't use it again, throw it away
             setDeferredPrompt(null);
-            // Don't hide button immediately, maybe they cancelled
-            if (outcome === 'accepted') {
-                setIsInstallable(false);
+            if (outcome === 'dismissed') {
+                setShowManualInstructions(true);
             }
-        } else {
-            // Fallback: Show manual instructions
-            setShowManualInstructions(true);
         }
     };
 
-    // DOM hiyerarşisinde kesin olarak yer alması için isInstallable check'i kaldırıldı.
-    // if (!isInstallable) return null;
+    if (!isInstallable) {
+        return null;
+    }
+
     return (
         <>
             <button

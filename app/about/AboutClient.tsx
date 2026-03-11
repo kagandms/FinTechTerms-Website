@@ -1,341 +1,207 @@
 'use client';
 
-import React from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 import {
-    BookOpen,
-    Globe,
-    Brain,
-    Target,
-    Sparkles,
-    Users,
-    GraduationCap,
-    Database,
-    Server,
-    Smartphone,
-    Code,
-    Cpu,
-    Mail,
-    Send,
     ArrowLeft,
+    BookOpen,
+    Brain,
+    Database,
+    GraduationCap,
+    Landmark,
+    Send,
+    Server,
 } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
 
+const architectureLayers = [
+    {
+        title: 'Интерфейс Next.js 16 App Router',
+        description: 'Основной интерфейс платформы, серверные компоненты и исследовательские сценарии доступа к академической терминологии.',
+        icon: Server,
+    },
+    {
+        title: 'Supabase PostgreSQL и SSR-аутентификация',
+        description: 'Единый контур данных, защищённые сессии, профиль исследователя и синхронизация пользовательского прогресса.',
+        icon: Database,
+    },
+    {
+        title: 'Слой SRS-уведомлений Эббингауза',
+        description: 'Алгоритмический расчёт следующих окон повторения вместо потребительской механики серий и streak-геймификации.',
+        icon: Brain,
+    },
+    {
+        title: 'Интеграция API Telegram',
+        description: 'Профессиональный канал уведомлений, удалённого доступа к терминам и распределённых академических сценариев.',
+        icon: Send,
+    },
+];
 
-export default function AboutPage() {
-    const { language, t: globalT } = useLanguage();
+const researchPillars = [
+    {
+        title: 'Постдипломный финансовый инструмент',
+        description: 'FinTechTerms спроектирован как академический инструмент для магистерских и постдипломных программ, где финансовая терминология рассматривается как часть исследовательской инфраструктуры, а не как развлекательная практика.',
+        icon: GraduationCap,
+    },
+    {
+        title: 'Региональная таксономия рынков',
+        description: 'Платформа развивает классификацию MOEX, BIST и GLOBAL, чтобы связать термины с конкретными институциональными и рыночными контекстами.',
+        icon: Landmark,
+    },
+    {
+        title: 'Русскоязычный академический контур',
+        description: 'Интерфейс, уведомления и исследовательская логика ориентированы на русскоязычное академическое использование и профессиональную финансовую коммуникацию.',
+        icon: BookOpen,
+    },
+];
 
-    const content = {
-        tr: {
-            title: 'Hakkında',
-            subtitle: 'FinTechTerms: İki Ülke Arasında Bir Dijital Ekonomi Köprüsü',
-            metaDesc: 'FinTechTerms, Rusça sözünün diplomatları konseptiyle kodların ve finansın evrensel dilini birleştiriyor.',
-            sections: {
-                vision: {
-                    title: 'Vizyonumuz',
-                    text: 'Küresel piyasalarda, özellikle Türkiye ve Rusya arasındaki giderek derinleşen ekonomik ilişkiler, ticaret hacmi ve artan sınır ötesi finansal işlemler, hem profesyoneller hem de iki ülke halkları için yeni bir gereksinim doğurdu: Ortak ve doğru bir terminoloji. FinTechTerms; finans, ödeme sistemleri (FinTech) ve yazılım dünyasının karmaşık dilini Rusça, İngilizce ve Türkçe olarak tek bir merkezde birleştiren interaktif bir öğrenme ekosistemidir.'
-                },
-                story: {
-                    title: 'Hikayemiz ve Çıkış Noktası',
-                    text: 'Bu proje, Yönetim Bilişim Sistemleri (YBS) ve Ekonomi disiplinlerinin kesiştiği noktada, sahada yaşanan gerçek bir iletişimsizliği çözmek üzere hayata geçirildi. St. Petersburg ve Moskova gibi ülkenin kalbi olan şehirlerdeki köklü kurumlarda akademik kariyerini derinleştirmeyi hedefleyen ve iki ülke halkları arasındaki ticari bağları güçlendirmek isteyen vizyoner bir altyapının eseridir. Bizim için Rusça sadece edebi bir araç değil; iki halkın dijital ekonomilerini, girişimcilerini ve günlük finansal etkileşimlerini birbirine bağlayan stratejik bir anahtardır.'
-                },
-                tech: {
-                    title: 'Teknoloji ve Kesintisiz Deneyim',
-                    text: 'Geleneksel sözlüklerin aksine FinTechTerms; kullanıcılarını Telegram botu, PWA web mimarisi ve merkezi veritabanı senkronizasyonu ile bulundukları her platformda destekler. Sadece çeviri sunmakla kalmaz; sesli telaffuzlar, akıllı testler ve kişisel istatistik takibi ile kalıcı bir mesleki gelişim sağlar.'
-                },
-                mission: {
-                    title: 'Misyonumuz',
-                    text: '"Rus Sözünün Diplomatları" projesiyle tam uyumlu olarak amacımız; Rus dilinin modern finans, teknoloji ve sınır ötesi ticaretteki birleştirici gücünü kurumsal standartlarda bir dijital ürünle kanıtlamaktır.'
-                }
-            },
-            methodology: 'Metodoloji',
-            methodologyDesc: 'SRS algoritması ve Leitner sistemi hakkında detaylı bilgi için:',
-            viewMethodology: 'Öğrenme Motorunu İncele',
-            contact: {
-                title: 'İletişim',
-                text: 'Proje hakkında sorularınız veya iş birliği önerileriniz için:',
-            },
-            footer: {
-                version: 'Versiyon',
-                terms: 'terim',
-                languages: 'dil'
-            },
-            back: 'Geri',
-        },
-        en: {
-            title: 'About',
-            subtitle: 'FinTechTerms: A Digital Economy Bridge Between Two Countries',
-            metaDesc: 'FinTechTerms unites the universal language of finance and code under the concept of diplomats of the Russian word.',
-            sections: {
-                vision: {
-                    title: 'Our Vision',
-                    text: 'In global markets, especially given the deepening economic relations, trade volume, and increasing cross-border financial transactions between Turkey and Russia, a new necessity has emerged for both professionals and the peoples of both countries: A common and accurate terminology. FinTechTerms is an interactive learning ecosystem that unites the complex language of finance, payment systems (FinTech), and the software world in Russian, English, and Turkish within a single hub.'
-                },
-                story: {
-                    title: 'Our Story & Starting Point',
-                    text: 'This project was brought to life at the intersection of Management Information Systems (MIS) and Economics disciplines to solve a real-world communication gap experienced in the field. It is the work of a visionary foundation aiming to deepen its academic career in well-established institutions in heartland cities like St. Petersburg and Moscow, and to strengthen commercial ties between the peoples of the two countries. For us, Russian is not merely a literary tool; it is a strategic key that connects the digital economies, entrepreneurs, and daily financial interactions of the two nations.'
-                },
-                tech: {
-                    title: 'Technology & Seamless Experience',
-                    text: 'Unlike traditional dictionaries, FinTechTerms supports its users on every platform they reside through its Telegram bot, PWA web architecture, and centralized database synchronization. It does not just offer translations; it ensures lasting professional development with voice pronunciations, smart quizzes, and personal statistics tracking.'
-                },
-                mission: {
-                    title: 'Our Mission',
-                    text: 'In full alignment with the "Diplomats of the Russian Word" project, our goal is to prove the unifying power of the Russian language in modern finance, technology, and cross-border trade through an enterprise-standard digital product.'
-                }
-            },
-            methodology: 'Methodology',
-            methodologyDesc: 'For detailed information about the SRS algorithm and Leitner system:',
-            viewMethodology: 'Explore Learning Engine',
-            contact: {
-                title: 'Contact',
-                text: 'For questions about the project or collaboration proposals:',
-            },
-            footer: {
-                version: 'Version',
-                terms: 'terms',
-                languages: 'languages'
-            },
-            back: 'Back',
-        },
-        ru: {
-            title: 'О проекте',
-            subtitle: 'FinTechTerms: Цифровой экономический мост между двумя странами',
-            metaDesc: 'FinTechTerms объединяет язык финансов и кода в рамках концепции дипломатов русского слова.',
-            sections: {
-                vision: {
-                    title: 'Наше видение',
-                    text: 'На глобальных рынках, особенно с учетом углубляющихся экономических отношений, объемов торговли и растущих трансграничных финансовых операций между Турцией и Россией, возникла новая потребность как для профессионалов, так и для народов обеих стран: общая и точная терминология. FinTechTerms — это интерактивная экосистема обучения, которая объединяет сложный язык финансов, платежных систем (FinTech) и мира программного обеспечения на русском, английском и турецком языках в едином центре.'
-                },
-                story: {
-                    title: 'Наша история и отправная точка',
-                    text: 'Этот проект был создан на стыке дисциплин информационных систем управления (ИСУ/MIS) и экономики для решения реальных проблем коммуникации, возникающих на практике. Это результат прорывного видения, направленного на углубление академической карьеры в ведущих учреждениях таких ключевых городов, как Санкт-Петербург и Москва, а также на укрепление деловых связей между народами двух стран. Для нас русский язык — это не просто литературный инструмент; это стратегический ключ, связывающий цифровые экономики, предпринимателей и повседневные финансовые взаимодействия двух наций.'
-                },
-                tech: {
-                    title: 'Технологии и бесперебойный опыт',
-                    text: 'В отличие от традиционных словарей, FinTechTerms поддерживает пользователей на любой платформе благодаря боту в Telegram, веб-архитектуре PWA и централизованной синхронизации баз данных. Платформа предлагает не просто переводы — она обеспечивает устойчивое профессиональное развитие с помощью голосового произношения, умных тестов и отслеживания личной статистики.'
-                },
-                mission: {
-                    title: 'Наша миссия',
-                    text: 'В полном соответствии с проектом «Дипломаты Русского Слова», наша цель — доказать объединяющую силу русского языка в современных финансах, технологиях и трансграничной торговле с помощью цифрового продукта корпоративного стандарта.'
-                }
-            },
-            methodology: 'Методология',
-            methodologyDesc: 'Подробная информация об алгоритме SRS и системе Лейтнера:',
-            viewMethodology: 'Изучить движок обучения',
-            contact: {
-                title: 'Контакты',
-                text: 'Для вопросов о проекте или предложений о сотрудничестве:',
-            },
-            footer: {
-                version: 'Версия',
-                terms: 'терминов',
-                languages: 'языков'
-            },
-            back: 'Назад',
-        },
-    };
-
-    const t = content[language];
-
+export default function AboutClient() {
     return (
-        <div className="page-content px-4 py-8 max-w-2xl mx-auto">
+        <div className="page-content mx-auto max-w-5xl px-4 py-8">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
                         '@context': 'https://schema.org',
                         '@type': 'AboutPage',
-                        name: 'About FinTechTerms',
-                        description: t.metaDesc,
+                        name: 'FinTechTerms',
+                        description: 'FinTechTerms — постдипломный финансовый инструмент для академического освоения терминологии, интервального повторения и региональной таксономии рынков.',
                         mainEntity: {
-                            '@type': 'Organization',
+                            '@type': 'SoftwareApplication',
                             name: 'FinTechTerms',
-                            foundingDate: '2024',
-                            description: t.sections.mission.text
-                        }
+                            applicationCategory: 'EducationalApplication',
+                            operatingSystem: 'Web',
+                        },
                     }),
                 }}
             />
 
             <div className="mb-6">
                 <Link
-                    href="/profile"
-                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                    href="/"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                 >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t.back}
+                    <ArrowLeft className="h-4 w-4" />
+                    Вернуться на главную
                 </Link>
             </div>
 
-            {/* Header */}
-            <header className="text-center mb-10">
-                <div className="inline-flex items-center justify-center p-4 bg-primary-100 dark:bg-primary-900/40 rounded-3xl mb-5 shadow-inner">
-                    <Globe className="w-12 h-12 text-primary-600 dark:text-primary-400" />
+            <header className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50 p-8 shadow-sm dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+                <div className="absolute inset-y-0 right-0 w-56 bg-[radial-gradient(circle_at_center,rgba(14,116,144,0.12),transparent_72%)]" />
+                <div className="relative max-w-3xl">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-400">
+                        Постдипломный финансовый инструмент
+                    </span>
+                    <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
+                        FinTechTerms
+                    </h1>
+                    <p className="mt-4 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+                        Платформа развёрнута как постдипломный финансовый инструмент для системного освоения русскоязычной терминологии, академической классификации рынков и алгоритмического интервального повторения.
+                    </p>
+                    <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                        Вместо промо-подачи и потребительских механик интерфейс концентрируется на профессиональной навигации, точной таксономии и исследовательской дисциплине работы с терминологическим материалом.
+                    </p>
                 </div>
-                <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">{t.title}</h1>
-                <p className="text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-blue-600 dark:from-primary-400 dark:to-blue-400 leading-snug max-w-lg mx-auto">
-                    {t.subtitle}
-                </p>
             </header>
 
-            {/* Mission (Manifesto Highlight) */}
-            <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-primary-600 to-blue-700 rounded-3xl p-6 md:p-8 text-white mb-8 shadow-xl shadow-primary-500/20 transform transition-transform hover:scale-[1.01]">
-                {/* Decorative background elements */}
-                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl">
-                            <Target className="w-6 h-6 text-white" />
+            <section className="mt-8 grid gap-4 lg:grid-cols-3">
+                {researchPillars.map(({ title, description, icon: Icon }) => (
+                    <article
+                        key={title}
+                        className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                    >
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
+                            <Icon className="h-6 w-6" />
                         </div>
-                        <h2 className="text-xl md:text-2xl font-bold tracking-wide">{t.sections.mission.title}</h2>
-                    </div>
-                    <p className="text-white/95 text-base md:text-lg leading-relaxed font-medium">
-                        &quot;{t.sections.mission.text.replace(/^"|"$/g, '')}&quot;
+                        <h2 className="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-50">
+                            {title}
+                        </h2>
+                        <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                            {description}
+                        </p>
+                    </article>
+                ))}
+            </section>
+
+            <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="max-w-3xl">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                        Архитектурный контур
+                    </p>
+                    <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                        Технологическая система выстроена вокруг академической устойчивости, а не витринного маркетинга.
+                    </h2>
+                    <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                        Архитектура объединяет Next.js 16, SSR-защиту сессий, централизованную базу Supabase и профессиональную интеграцию Telegram для уведомлений и распределённого доступа к материалам.
                     </p>
                 </div>
-            </section>
 
-            {/* Vision */}
-            <section className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
-                        <Sparkles className="w-5 h-5" />
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.sections.vision.title}</h2>
-                </div>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {t.sections.vision.text}
-                </p>
-            </section>
-
-            {/* Story */}
-            <section className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 dark:bg-amber-900/10 rounded-bl-full -z-0"></div>
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400">
-                            <BookOpen className="w-5 h-5" />
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.sections.story.title}</h2>
-                    </div>
-                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-                        {t.sections.story.text}
-                    </p>
-                </div>
-            </section>
-
-            {/* Tech */}
-            <section className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
-                        <Brain className="w-5 h-5" />
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.sections.tech.title}</h2>
-                </div>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
-                    {t.sections.tech.text}
-                </p>
-
-                {/* Technical Architecture */}
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 ml-1 flex items-center gap-2 mt-8">
-                    <Server className="w-5 h-5 text-blue-600" />
-                    {globalT('aboutProject.architectureTitle') || "Platform Mimarisini İncele"}
-                </h3>
-
-                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col gap-4 text-sm relative overflow-hidden mb-8">
-
-                    {/* Client Layer */}
-                    <div className="border border-blue-100 dark:border-blue-900/50 bg-white dark:bg-blue-900/20 p-4 rounded-xl relative">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="bg-blue-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
-                                <Smartphone className="w-6 h-6 text-blue-600" />
+                <div className="mt-8 grid gap-4 md:grid-cols-2">
+                    {architectureLayers.map(({ title, description, icon: Icon }) => (
+                        <article
+                            key={title}
+                            className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70"
+                        >
+                            <div className="flex items-start gap-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100">
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-50">
+                                        {title}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                                        {description}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <div className="font-semibold text-gray-800 dark:text-white">Next.js 14 App Router</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">PWA Destekli Kullanıcı Arayüzü</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Server Layer */}
-                    <div className="border border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-emerald-900/20 p-4 rounded-xl relative">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="bg-emerald-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
-                                <Database className="w-6 h-6 text-emerald-600" />
-                            </div>
-                            <div>
-                                <div className="font-semibold text-gray-800 dark:text-white">Supabase PostgreSQL</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Merkezi Veritabanı ve Auth Servisi</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Telegram Layer */}
-                    <div className="border border-amber-100 dark:border-amber-900/50 bg-white dark:bg-amber-900/20 p-4 rounded-xl relative">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-amber-50 dark:bg-gray-700 p-2 rounded-lg shadow-sm">
-                                <Cpu className="w-6 h-6 text-amber-600" />
-                            </div>
-                            <div>
-                                <div className="font-semibold text-gray-800 dark:text-white">Python Telegram Bot</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Çeviri ve Entegrasyon Motoru</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tech Stack Grid */}
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 ml-1 flex items-center gap-2">
-                    <Code className="w-5 h-5 text-purple-600" />
-                    {globalT('aboutProject.techStackTitle') || "Teknoloji Yığını"}
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                        { name: 'TypeScript', desc: 'Type Safety', color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800' },
-                        { name: 'Next.js 14', desc: 'App Router', color: 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600' },
-                        { name: 'TailwindCSS', desc: 'Utility First', color: 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 border-cyan-100 dark:border-cyan-800' },
-                        { name: 'Supabase', desc: 'PostgreSQL', color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800' },
-                        { name: 'Python', desc: 'Data Bot', color: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-100 dark:border-yellow-800' },
-                        { name: 'Redis', desc: 'Rate Limiting', color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800' },
-                    ].map((tech) => (
-                        <div key={tech.name} className={`${tech.color} border p-3 rounded-xl transition-all hover:scale-[1.02]`}>
-                            <div className="font-bold text-sm">{tech.name}</div>
-                            <div className="text-xs opacity-75">{tech.desc}</div>
-                        </div>
+                        </article>
                     ))}
                 </div>
+
+                <div className="mt-6">
+                    <TelegramBanner variant="compact" />
+                </div>
             </section>
 
-            {/* Contact */}
-            <section className="text-center mb-10">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">{t.contact.title}</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{t.contact.text}</p>
-                <div className="flex flex-wrap justify-center gap-3">
+            <section className="mt-8 grid gap-4 lg:grid-cols-[1.5fr,1fr]">
+                <article className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                        Методологическая логика
+                    </p>
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                        Интервальное повторение встроено как учебный протокол, а не как механика удержания.
+                    </h2>
+                    <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                        Система SRS опирается на модели забывания Эббингауза и пересчитывает следующий обзор после каждого ответа. Это позволяет формировать академическую траекторию повторения для терминов, определений и рыночных категорий.
+                    </p>
+                    <Link
+                        href="/methodology"
+                        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-sky-200"
+                    >
+                        <BookOpen className="h-4 w-4" />
+                        Открыть методологию платформы
+                    </Link>
+                </article>
+
+                <article className="rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-slate-900 to-sky-900 p-7 text-white shadow-sm dark:border-slate-700">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">
+                        Контакты
+                    </p>
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight">
+                        Для исследовательских запросов и академических партнёрств
+                    </h2>
+                    <p className="mt-4 text-sm leading-relaxed text-white/75">
+                        Команда проекта рассматривает предложения по развитию таксономии, исследовательским сценариям и профессиональной интеграции платформы.
+                    </p>
                     <a
                         href="mailto:fintechterms@mail.ru"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-primary-400 text-gray-700 dark:text-white font-semibold rounded-xl hover:border-primary-500 dark:hover:bg-gray-800 transition-colors break-all"
+                        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-sky-100"
                     >
-                        <Mail className="w-4 h-4 text-primary-500 dark:text-primary-300" />
-                        Email
+                        <Send className="h-4 w-4" />
+                        fintechterms@mail.ru
                     </a>
-                </div>
+                </article>
             </section>
-
-            {/* Footer */}
-            <footer className="text-center pt-6 border-t border-gray-200 dark:border-gray-800">
-                <div className="flex items-center justify-center gap-3 text-xs md:text-sm font-medium text-gray-400 dark:text-gray-500 mb-3">
-                    <span>v1.0.0</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>
-                    <span>100+ {t.footer.terms}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>
-                    <span>3 {t.footer.languages}</span>
-                </div>
-                <p className="text-xs text-gray-400 dark:text-gray-600">© {new Date().getFullYear()} FinTechTerms.</p>
-            </footer>
         </div>
     );
 }

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getTermById, fetchTermsFromSupabase } from '@/lib/supabaseStorage';
 import { createSafeTerm } from '@/utils/termUtils';
 import SmartCard from '@/components/SmartCard';
+import { TaxonomySummary } from '@/components/TermTaxonomy';
 import { siteUrl } from '@/lib/site-url';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -48,6 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : `${primaryTerm} | FinTechTerms`;
     const description = `${primaryTerm}: ${descriptionSource.slice(0, 140)}${descriptionSource.length > 140 ? '…' : ''}`;
     const taxonomyKeywords = extractContextKeywords(term);
+    const termOgImageUrl = `${siteUrl}/term/${id}/opengraph-image`;
 
     // Filter out undefined tags
     const tags = [
@@ -79,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             tags: tags,
             images: [
                 {
-                    url: '/og-image.png',
+                    url: termOgImageUrl,
                     width: 1200,
                     height: 630,
                     alt: `${primaryTerm} | FinTechTerms`,
@@ -90,7 +92,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             card: 'summary_large_image',
             title: title,
             description: description,
-            images: ['/og-image.png'],
+            images: [termOgImageUrl],
         },
     };
 }
@@ -131,6 +133,13 @@ export default async function TermPage({ params }: Props) {
                 <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8">
                     <SmartCard term={fullTerm} showFullDetails={true} />
                 </div>
+
+                <TaxonomySummary
+                    market={fullTerm.regional_market}
+                    contextTags={fullTerm.context_tags}
+                    locale="ru"
+                    className="mt-4"
+                />
 
                 <script
                     type="application/ld+json"

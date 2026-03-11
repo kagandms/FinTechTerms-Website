@@ -1,47 +1,105 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import SearchBar from '@/components/SearchBar';
 import SmartCard from '@/components/SmartCard';
+import DataStateCard from '@/components/DataStateCard';
 import { siteUrl } from '@/lib/site-url';
-import { Term, Language } from '@/types';
-import { Search as SearchIcon } from 'lucide-react';
+import { RegionalMarket } from '@/types';
+import { Search as SearchIcon, Loader2, RefreshCw } from 'lucide-react';
+import {
+    applySearchParams,
+    defaultSearchFilterState,
+    filterTermsForSearch,
+    parseSearchFilterState,
+    sortTermsForSearch,
+    type SearchFilterState,
+} from '@/lib/search-state';
 
 export default function SearchPage() {
-    const { t, language } = useLanguage();
-    const { terms } = useSRS();
-    const [results, setResults] = useState<Term[]>(terms);
-    const [hasSearched, setHasSearched] = useState(false);
+    const { language, t } = useLanguage();
+    const { terms, isLoading, termsStatus, refreshData } = useSRS();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const filterState = useMemo(
+        () => parseSearchFilterState(searchParams),
+        [searchParams]
+    );
+    const visibleResults = useMemo(
+        () => (filterState.hasActiveSearch ? filterTermsForSearch(terms, filterState) : terms),
+        [filterState, terms]
+    );
 
-    // Sort terms alphabetically based on current language
     const sortedTerms = useMemo(() => {
-        const getTermByLang = (term: Term, lang: Language): string => {
-            const termMap: Record<Language, string> = {
-                tr: term.term_tr,
-                en: term.term_en,
-                ru: term.term_ru,
-            };
-            return termMap[lang];
+        return sortTermsForSearch(visibleResults, language, filterState.sortOrder);
+    }, [visibleResults, language, filterState.sortOrder]);
+
+    const navigateWithState = useCallback((
+        updates: Partial<Pick<SearchFilterState, 'query' | 'selectedCategory' | 'selectedMarket' | 'sortOrder'>>,
+        mode: 'push' | 'replace' = 'replace'
+    ) => {
+        const nextSearchParams = new URLSearchParams(searchParams.toString());
+        const nextState = {
+            ...defaultSearchFilterState,
+            ...filterState,
+            ...updates,
         };
 
-        return [...results].sort((a, b) => {
-            const termA = getTermByLang(a, language).toLowerCase();
-            const termB = getTermByLang(b, language).toLowerCase();
-            return termA.localeCompare(termB, language);
-        });
-    }, [results, language]);
+        applySearchParams(nextSearchParams, nextState);
 
-    const handleResults = useCallback((searchResults: Term[]) => {
-        setResults(searchResults);
-        setHasSearched(true);
-    }, []);
+        const nextQueryString = nextSearchParams.toString();
+        const nextHref = nextQueryString ? `${pathname}?${nextQueryString}` : pathname;
+        const currentQueryString = searchParams.toString();
+        const currentHref = currentQueryString ? `${pathname}?${currentQueryString}` : pathname;
+
+        if (nextHref === currentHref) {
+            return;
+        }
+
+        if (mode === 'push') {
+            router.push(nextHref, { scroll: false });
+            return;
+        }
+
+        router.replace(nextHref, { scroll: false });
+    }, [filterState, pathname, router, searchParams]);
+
+    const handleQueryChange = useCallback((query: string) => {
+        navigateWithState({ query }, 'replace');
+    }, [navigateWithState]);
 
     const handleClear = useCallback(() => {
-        setResults(terms);
-        setHasSearched(false);
-    }, [terms]);
+        if (!searchParams.toString()) {
+            return;
+        }
+
+        router.push(pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const handleCategoryChange = useCallback((selectedCategory: SearchFilterState['selectedCategory']) => {
+        navigateWithState({ selectedCategory }, 'push');
+    }, [navigateWithState]);
+
+    const handleMarketChange = useCallback((selectedMarket: SearchFilterState['selectedMarket']) => {
+        navigateWithState({ selectedMarket }, 'push');
+    }, [navigateWithState]);
+
+    const handleSortChange = useCallback((sortOrder: SearchFilterState['sortOrder']) => {
+        navigateWithState({ sortOrder }, 'push');
+    }, [navigateWithState]);
+
+    const hasBlockingError = termsStatus === 'error' || (termsStatus === 'degraded' && terms.length === 0);
+    const shouldShowDegradedNotice = !hasBlockingError && termsStatus === 'degraded';
+    const showNoResults = filterState.hasActiveSearch && sortedTerms.length === 0;
+    const showCatalogEmptyState = !filterState.hasActiveSearch && visibleResults.length === 0;
+    const showMarketEmptyState = showNoResults && filterState.selectedMarket !== null;
+    const activeMarketLabel = filterState.selectedMarket
+        ? t(`search.markets.${filterState.selectedMarket as RegionalMarket}`)
+        : null;
 
     return (
         <div className="page-content px-4 py-6">
@@ -62,37 +120,105 @@ export default function SearchPage() {
             {/* Header */}
             <header className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                    {t('common.search')}
+                    {t('search.title')}
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-300">
-                    {t('search.placeholder')}
+                    {t('search.description')}
                 </p>
             </header>
 
-            {/* Search Bar */}
-            <div className="mb-6">
-                <SearchBar onResults={handleResults} onClear={handleClear} />
-            </div>
-
-            {/* Results Count */}
-            <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
-                <span className="font-semibold text-primary-500 dark:text-primary-300">{sortedTerms.length}</span> {t('search.results')}
-            </p>
-
-            {/* Results */}
-            {sortedTerms.length > 0 ? (
-                <div className="space-y-4">
-                    {sortedTerms.map((term) => (
-                        <SmartCard key={term.id} term={term} />
-                    ))}
-                </div>
+            {isLoading ? (
+                <DataStateCard
+                    title={t('search.loadingTitle')}
+                    description={t('search.loadingDescription')}
+                    icon={<Loader2 className="w-10 h-10 animate-spin text-primary-500" />}
+                />
+            ) : hasBlockingError ? (
+                <DataStateCard
+                    tone="error"
+                    title={t('search.errorTitle')}
+                    description={t('search.errorDescription')}
+                    action={(
+                        <button
+                            onClick={refreshData}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            {t('search.retry')}
+                        </button>
+                    )}
+                />
             ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
-                        <SearchIcon className="w-8 h-8 text-gray-400 dark:text-gray-300" />
+                <>
+                    {/* Search Bar */}
+                    <div className="mb-6">
+                        <SearchBar
+                            filterState={filterState}
+                            onQueryChange={handleQueryChange}
+                            onCategoryChange={handleCategoryChange}
+                            onMarketChange={handleMarketChange}
+                            onSortChange={handleSortChange}
+                            onClear={handleClear}
+                        />
                     </div>
-                    <p className="text-gray-500 dark:text-gray-300">{t('search.noResults')}</p>
-                </div>
+
+                    {shouldShowDegradedNotice ? (
+                        <div className="mb-6">
+                            <DataStateCard
+                                tone="warning"
+                                title={t('search.degradedTitle')}
+                                description={t('search.degradedDescription')}
+                                action={(
+                                    <button
+                                        onClick={refreshData}
+                                        className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-amber-600"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        {t('search.retry')}
+                                    </button>
+                                )}
+                            />
+                        </div>
+                    ) : null}
+
+                    {!showCatalogEmptyState ? (
+                        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-300">
+                            <p>
+                                <span className="font-semibold text-primary-500 dark:text-primary-300">{sortedTerms.length}</span> {t('search.results')}
+                            </p>
+                            {activeMarketLabel ? (
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                    {activeMarketLabel}
+                                </span>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {sortedTerms.length > 0 ? (
+                        <div className="space-y-4">
+                            {sortedTerms.map((term) => (
+                                <SmartCard key={term.id} term={term} />
+                            ))}
+                        </div>
+                    ) : showNoResults ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+                                <SearchIcon className="w-8 h-8 text-gray-400 dark:text-gray-300" />
+                            </div>
+                            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                {showMarketEmptyState ? t('search.filteredMarketTitle') : t('search.noResultsTitle')}
+                            </p>
+                            <p className="mt-2 max-w-md text-sm text-gray-500 dark:text-gray-300">
+                                {showMarketEmptyState ? t('search.filteredMarketDescription') : t('search.noResultsDescription')}
+                            </p>
+                        </div>
+                    ) : (
+                        <DataStateCard
+                            title={t('search.emptyTitle')}
+                            description={t('search.emptyDescription')}
+                        />
+                    )}
+                </>
             )}
         </div>
     );

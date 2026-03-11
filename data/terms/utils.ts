@@ -41,7 +41,7 @@ export const createTerm = (
     exEn: string, exRu: string, exTr: string,
     phonEn?: string, phonRu?: string, phonTr?: string,
     difficulty: number = 2.5,
-    taxonomyOverrides?: Partial<Pick<Term, 'context_tags' | 'regional_market'>>
+    taxonomyOverrides?: Partial<Pick<Term, 'context_tags' | 'regional_market' | 'is_academic' | 'difficulty_level'>>
 ): Term => ({
     id,
     term_en: en,
@@ -62,6 +62,8 @@ export const createTerm = (
         ...(taxonomyOverrides?.context_tags ?? {}),
     },
     regional_market: taxonomyOverrides?.regional_market ?? 'GLOBAL',
+    is_academic: taxonomyOverrides?.is_academic ?? true,
+    difficulty_level: taxonomyOverrides?.difficulty_level ?? 'intermediate',
     srs_level: 1,
     next_review_date: new Date().toISOString(),
     last_reviewed: null,

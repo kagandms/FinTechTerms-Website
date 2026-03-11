@@ -24,20 +24,6 @@ from telegram.ext import (
 )
 from telegram import BotCommand, BotCommandScopeDefault
 
-from bot.config import config
-from bot.handlers import (
-    start_handler,
-    menu_handler,
-    search_handler,
-    daily_handler,
-    quiz_handler,
-    lang_handler,
-    stats_handler,
-    help_handler,
-    callback_handler,
-    text_handler,
-)
-
 # ── Logging ────────────────────────────────────────────────
 logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -94,8 +80,22 @@ def main() -> None:
 
     # Validate configuration
     try:
+        from bot.config import config
+        from bot.handlers import (
+            start_handler,
+            menu_handler,
+            search_handler,
+            daily_handler,
+            quiz_handler,
+            lang_handler,
+            stats_handler,
+            help_handler,
+            callback_handler,
+            text_handler,
+        )
+
         config.validate()
-    except ValueError as e:
+    except EnvironmentError as e:
         logger.critical("Configuration error: %s", e)
         sys.exit(1)
 

@@ -1,11 +1,15 @@
 'use client';
 
 import React, { startTransition, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
 import { supabase } from '@/lib/supabase';
+import {
+    getSupabaseUserNameSeed,
+    supportsPasswordSignIn,
+} from '@/lib/auth/user';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 
@@ -18,7 +22,7 @@ export interface ProfileFormInitialData {
     userId: string;
     name: string;
     surname: string;
-    email: string;
+    email: string | null;
     birthDate: string;
 }
 
@@ -47,12 +51,56 @@ const toDateInputValue = (value: unknown): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
+const PROFILE_SUBMIT_TIMEOUT_MS = 12_000;
+
+const createAbortError = (message: string): Error => {
+    const error = new Error(message);
+    error.name = 'AbortError';
+    return error;
+};
+
+const runWithAbortSignal = async <T,>(
+    signal: AbortSignal,
+    operation: () => Promise<T>,
+    timeoutMessage: string
+): Promise<T> => {
+    if (signal.aborted) {
+        throw createAbortError(timeoutMessage);
+    }
+
+    return await new Promise<T>((resolve, reject) => {
+        const handleAbort = () => {
+            reject(createAbortError(timeoutMessage));
+        };
+
+        signal.addEventListener('abort', handleAbort, { once: true });
+
+        void operation().then(
+            (value) => {
+                signal.removeEventListener('abort', handleAbort);
+
+                if (signal.aborted) {
+                    reject(createAbortError(timeoutMessage));
+                    return;
+                }
+
+                resolve(value);
+            },
+            (error) => {
+                signal.removeEventListener('abort', handleAbort);
+                reject(error);
+            }
+        );
+    });
+};
+
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
     const { showToast, showToastAfterRefresh } = useToast();
     const router = useRouter();
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
     const [isPending, setIsPending] = useState(false);
+    const [canChangePassword, setCanChangePassword] = useState(false);
 
     // UI Alerts
     const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -79,9 +127,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
         authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
         profileLoadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить данные профиля.' : 'Unable to load profile data.',
+        emailUnavailable: language === 'tr' ? 'Bu giris yontemi bir e-posta adresi paylasmiyor.' : language === 'ru' ? 'Этот способ входа не передает адрес электронной почты.' : 'This sign-in method does not provide an email address.',
+        passwordManagedByProvider: language === 'tr' ? 'Bu hesapta sifre Supabase e-posta girisi ile yonetilmiyor. Sifreyi bagli saglayicida degistirin.' : language === 'ru' ? 'Для этого аккаунта пароль не управляется через вход Supabase по e-mail. Измените его у подключенного провайдера.' : 'This account does not use a Supabase email-password credential. Change the password with the linked identity provider.',
+        requestTimeout: language === 'tr' ? 'Profil guncelleme istegi zaman asimina ugradi. Lutfen tekrar deneyin.' : language === 'ru' ? 'Запрос на обновление профиля превысил лимит ожидания. Повторите попытку.' : 'Profile update timed out. Please try again.',
     };
 
     const {
+        control,
         register,
         handleSubmit,
         reset,
@@ -91,7 +143,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         values: {
             name: initialData?.name || '',
             surname: initialData?.surname || '',
-            email: initialData?.email || '',
+            email: initialData?.email ?? null,
             birthDate: initialData?.birthDate || '',
             currentPassword: '',
             newPassword: '',
@@ -102,27 +154,37 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     useEffect(() => {
         let isMounted = true;
 
+        const resetWithInitialData = () => {
+            if (!initialData || !isMounted) {
+                return;
+            }
+
+            reset({
+                name: initialData.name || '',
+                surname: initialData.surname || '',
+                email: initialData.email ?? null,
+                birthDate: initialData.birthDate || '',
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+            });
+        };
+
         const loadProfileData = async () => {
             if (initialData) {
-                if (isMounted) {
-                    reset({
-                        name: initialData.name || '',
-                        surname: initialData.surname || '',
-                        email: initialData.email || '',
-                        birthDate: initialData.birthDate || '',
-                        currentPassword: '',
-                        newPassword: '',
-                        confirmPassword: '',
-                    });
-                }
-                return;
+                resetWithInitialData();
             }
 
             try {
                 const { data, error } = await supabase.auth.getUser();
                 if (error || !data.user) {
                     console.warn('PROFILE_FORM_SESSION_UNAVAILABLE', error);
+                    if (initialData) {
+                        resetWithInitialData();
+                        return;
+                    }
                     if (isMounted) {
+                        setCanChangePassword(false);
                         setFormError(dict.authRequired);
                     }
                     showToast(dict.authRequired, 'warning');
@@ -130,7 +192,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 }
 
                 const supabaseUser = data.user;
-                let fullName = (supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || '').trim();
+                if (isMounted) {
+                    setCanChangePassword(supportsPasswordSignIn(supabaseUser));
+                }
+
+                if (initialData) {
+                    resetWithInitialData();
+                    return;
+                }
+
+                let fullName = getSupabaseUserNameSeed(supabaseUser);
                 let birthDate = toDateInputValue(supabaseUser.user_metadata?.birth_date || '');
 
                 const { data: profile } = await supabase
@@ -142,8 +213,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 if (profile?.full_name) fullName = profile.full_name.trim();
                 if (profile?.birth_date) birthDate = toDateInputValue(profile.birth_date);
 
-                if (!fullName) fullName = (supabaseUser.email?.split('@')[0] || '').trim();
-
                 const nameParts = fullName ? fullName.split(' ') : [''];
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -152,7 +221,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     reset({
                         name: firstName,
                         surname: lastName,
-                        email: supabaseUser.email || '',
+                        email: supabaseUser.email ?? null,
                         birthDate,
                         currentPassword: '',
                         newPassword: '',
@@ -162,6 +231,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             } catch (err) {
                 console.error('PROFILE_FORM_LOAD_ERROR', err);
                 if (isMounted) {
+                    setCanChangePassword(false);
                     setFormError(dict.profileLoadError);
                 }
                 showToast(dict.profileLoadError, 'error');
@@ -175,13 +245,29 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         };
     }, [dict.authRequired, dict.profileLoadError, initialData, reset, showToast]);
 
+    useEffect(() => {
+        if (!canChangePassword) {
+            setShowPasswordSection(false);
+        }
+    }, [canChangePassword]);
+
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);
         setFormSuccess(null);
         setFormError(null);
+        const timeoutController = new AbortController();
+        const timeoutId = globalThis.setTimeout(() => {
+            timeoutController.abort();
+        }, PROFILE_SUBMIT_TIMEOUT_MS);
 
         try {
-            const { data: userResultData, error: userError } = await supabase.auth.getUser();
+            const withTimeout = <T,>(operation: () => Promise<T>) => runWithAbortSignal(
+                timeoutController.signal,
+                operation,
+                dict.requestTimeout
+            );
+
+            const { data: userResultData, error: userError } = await withTimeout(() => supabase.auth.getUser());
 
             if (userError || !userResultData?.user) {
                 throw userError || new Error(dict.authRequired);
@@ -192,32 +278,42 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const normalizedBirthDate = toDateInputValue(data.birthDate);
 
             // 1. Update Profile Table (Optional sync, do not throw on RLS failure)
-            const { error: profileError } = await supabase
+            const { error: profileError } = await withTimeout(async () => await supabase
                 .from('profiles')
                 .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
-                .eq('id', authUser.id);
+                .eq('id', authUser.id)
+                .abortSignal(timeoutController.signal));
 
             if (profileError) {
                 console.warn('Profile table sync warning (RLS restricted):', profileError);
             }
 
             // 2. Update Auth Metadata (Source of truth)
-            const { error: metadataError } = await supabase.auth.updateUser({
+            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
                 data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
-            });
+            }));
 
             if (metadataError) throw metadataError;
 
             // 3. Optional Password Update
             if (showPasswordSection && data.newPassword) {
-                const { error: reauthError } = await supabase.auth.signInWithPassword({
-                    email: authUser.email || data.email,
+                if (!supportsPasswordSignIn(authUser)) {
+                    throw new Error(dict.passwordManagedByProvider);
+                }
+
+                const passwordAccountEmail = authUser.email ?? data.email;
+                if (!passwordAccountEmail) {
+                    throw new Error(dict.emailUnavailable);
+                }
+
+                const { error: reauthError } = await withTimeout(() => supabase.auth.signInWithPassword({
+                    email: passwordAccountEmail,
                     password: data.currentPassword || '',
-                });
+                }));
 
                 if (reauthError) throw new Error(dict.currentPasswordError);
 
-                const { error: passwordError } = await supabase.auth.updateUser({ password: data.newPassword });
+                const { error: passwordError } = await withTimeout(() => supabase.auth.updateUser({ password: data.newPassword }));
                 if (passwordError) throw passwordError;
 
                 setShowPasswordSection(false);
@@ -242,10 +338,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
         } catch (error: any) {
             console.error('Profile update failed:', error);
-            const detailedMessage = error?.message || error?.details || error?.hint || dict.unknownError;
+            const timedOut = error instanceof Error && error.name === 'AbortError';
+            const detailedMessage = timedOut
+                ? dict.requestTimeout
+                : error?.message || error?.details || error?.hint || dict.unknownError;
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
+            globalThis.clearTimeout(timeoutId);
             setIsPending(false);
         }
     };
@@ -302,11 +402,25 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{dict.email}</label>
-                    <input
-                        {...register('email')}
-                        type="email"
-                        disabled
-                        className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 cursor-not-allowed"
+                    <Controller
+                        name="email"
+                        control={control}
+                        render={({ field: { value } }) => (
+                            <>
+                                <input
+                                    type="email"
+                                    value={value ?? ''}
+                                    disabled
+                                    readOnly
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 cursor-not-allowed"
+                                />
+                                {!value && (
+                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        {dict.emailUnavailable}
+                                    </p>
+                                )}
+                            </>
+                        )}
                     />
                 </div>
             </div>
@@ -314,13 +428,19 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             <hr className="border-gray-100 dark:border-gray-700 my-6" />
 
             <div>
-                <button
-                    type="button"
-                    onClick={() => setShowPasswordSection(!showPasswordSection)}
-                    className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 hover:underline transition-colors focus:outline-none"
-                >
-                    {showPasswordSection ? (language === 'tr' ? 'Şifre Değiştirmeyi İptal Et' : language === 'ru' ? 'Отменить изменение пароля' : 'Cancel Password Change') : dict.pwdTitle}
-                </button>
+                {canChangePassword ? (
+                    <button
+                        type="button"
+                        onClick={() => setShowPasswordSection(!showPasswordSection)}
+                        className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 hover:underline transition-colors focus:outline-none"
+                    >
+                        {showPasswordSection ? (language === 'tr' ? 'Şifre Değiştirmeyi İptal Et' : language === 'ru' ? 'Отменить изменение пароля' : 'Cancel Password Change') : dict.pwdTitle}
+                    </button>
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {dict.passwordManagedByProvider}
+                    </p>
+                )}
             </div>
 
             {showPasswordSection && (

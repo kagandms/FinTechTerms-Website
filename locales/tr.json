@@ -24,11 +24,42 @@
         "noTerms": "Henüz terim bulunamadı."
     },
     "search": {
+        "title": "Ara",
+        "description": "Finans, fintek ve BT terimlerini MOEX, BIST ve GLOBAL piyasa filtreleriyle arayın.",
         "placeholder": "Türkçe, İngilizce veya Rusça ara...",
+        "containerLabel": "Terim ara",
+        "clearSearch": "Aramayı temizle",
+        "showFilters": "Kategori filtrelerini göster",
+        "hideFilters": "Kategori filtrelerini gizle",
         "noResults": "Sonuç bulunamadı",
+        "noResultsTitle": "Eşleşen terim bulunamadı",
+        "noResultsDescription": "Sonuçları genişletmek için sorguyu değiştirin veya etkin filtreleri kaldırın.",
+        "filteredMarketTitle": "Seçilen piyasa için terim bulunamadı",
+        "filteredMarketDescription": "Seçili piyasa filtresi hiçbir terim döndürmedi. Başka bir piyasa deneyin veya filtreyi temizleyin.",
+        "loadingTitle": "Sözlük yükleniyor",
+        "loadingDescription": "Terimler aranabilir hale getiriliyor. Lütfen bekleyin.",
+        "errorTitle": "Veri yükleme hatası",
+        "errorDescription": "Arama verileri şimdi yüklenemedi. Lütfen tekrar deneyin.",
+        "degradedTitle": "Kaydedilen terimler gösteriliyor",
+        "degradedDescription": "Sunucuya ulaşılamadı. Arama en son kaydedilen terimler ile çalışıyor.",
+        "emptyTitle": "Terim bulunamadı",
+        "emptyDescription": "Şu anda gösterilecek bir terim yok.",
+        "retry": "Tekrar Dene",
         "categories": "Kategoriler",
         "allTerms": "Tüm Terimler",
-        "results": "sonuç bulundu"
+        "allMarkets": "Tüm Piyasalar",
+        "marketLabel": "Piyasa taksonomisi",
+        "sortLabel": "Sıralama düzeni",
+        "sort": {
+            "alphaAsc": "Alfabetik (A-Z)",
+            "alphaDesc": "Alfabetik (Z-A)"
+        },
+        "results": "sonuç bulundu",
+        "markets": {
+            "MOEX": "Piyasa: MOEX",
+            "BIST": "Piyasa: BIST",
+            "GLOBAL": "Piyasa: GLOBAL"
+        }
     },
     "quiz": {
         "title": "Pratik",
@@ -80,6 +111,8 @@
         "favoriteCount": "Favori Kelime",
         "masteredWords": "Ustalaşılan",
         "learningWords": "Öğreniliyor",
+        "srsQueue": "SRS Sırası",
+        "dueForReview": "bekliyor",
         "resetData": "Verileri Sıfırla",
         "language": "Dil",
         "days": "gün",

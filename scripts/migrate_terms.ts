@@ -38,6 +38,8 @@ async function migrate() {
         example_sentence_en: term.example_sentence_en,
         example_sentence_ru: term.example_sentence_ru,
         example_sentence_tr: term.example_sentence_tr,
+        // Preserve DB-side quarantine curation on re-import.
+        // New rows still inherit defaults from the migration.
     }));
 
     const { error } = await supabase

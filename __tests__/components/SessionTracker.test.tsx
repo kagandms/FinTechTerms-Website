@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import SessionTracker from '@/components/SessionTracker';
 import { CONSENT_GRANTED_EVENT } from '@/components/ConsentModal';
 
@@ -48,6 +48,10 @@ describe('SessionTracker', () => {
         mockUseAuth.mockReturnValue({ isAuthenticated: false });
         mockUsePathname.mockReturnValue('/search');
         global.fetch = jest.fn().mockResolvedValue(createFetchResponse({ sessionId: 'session_1' }));
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     it('starts tracking immediately when consent is granted in the same tab', async () => {
@@ -112,5 +116,44 @@ describe('SessionTracker', () => {
         expect(authenticatedStartPayload.action).toBe('start');
         expect(authenticatedStartPayload.previous_session_id).toBe('anonymous_session');
         expect(authenticatedStartPayload.anonymousId).toBe(initialAnonymousId);
+    });
+
+    it('queues retryable session mutations and flushes them when the browser comes back online', async () => {
+        jest.useFakeTimers();
+        grantConsent();
+
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({ sessionId: 'session_1' }))
+            .mockRejectedValueOnce(new TypeError('network unavailable'))
+            .mockResolvedValueOnce(createFetchResponse({ success: true }));
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        await act(async () => {
+            jest.advanceTimersByTime(30000);
+        });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        const failedHeartbeatPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+        expect(failedHeartbeatPayload.action).toBe('heartbeat');
+
+        await act(async () => {
+            window.dispatchEvent(new Event('online'));
+        });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+        });
+
+        const retriedHeartbeatPayload = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+        expect(retriedHeartbeatPayload.action).toBe('heartbeat');
     });
 });

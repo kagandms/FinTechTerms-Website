@@ -1,23 +1,20 @@
 import React from 'react';
-import { Flame, BookMarked, Trophy, BookOpen, RotateCcw, Target } from 'lucide-react';
+import { BrainCircuit, BookMarked, Trophy, BookOpen, RotateCcw, Target } from 'lucide-react';
 
 interface StatsGridProps {
-    userProgress: {
-        current_streak: number;
-    };
     stats: {
         totalFavorites: number;
         mastered: number;
         learning: number;
+        dueToday: number;
     };
-    totalReviews: number;
+    totalReviews: number | null;
     accuracy: number;
     isAuthenticated: boolean;
     t: (key: string) => string;
 }
 
 export const StatsGrid: React.FC<StatsGridProps> = ({
-    userProgress,
     stats,
     totalReviews,
     accuracy,
@@ -31,16 +28,16 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
             </h2>
 
             <div className="grid grid-cols-2 gap-4">
-                {/* Streak — Dark mode optimized */}
+                {/* SRS Queue */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
-                            <Flame className="w-5 h-5 text-orange-500" />
+                        <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
+                            <BrainCircuit className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                         </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.currentStreak')}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.srsQueue')}</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {userProgress.current_streak} <span className="text-sm font-normal text-gray-400 dark:text-gray-500">{t('profile.days')}</span>
+                        {stats.dueToday} <span className="text-sm font-normal text-gray-400 dark:text-gray-500">{t('profile.dueForReview')}</span>
                     </p>
                 </div>
 
@@ -90,7 +87,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                         </div>
                         <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.totalReviews')}</span>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalReviews}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalReviews ?? '—'}</p>
                 </div>
 
                 {/* Accuracy */}

@@ -40,6 +40,8 @@ function createMockTerm(overrides: Partial<Term> = {}): Term {
             target_universities: ['SPbU', 'HSE'],
         },
         regional_market: 'GLOBAL',
+        is_academic: true,
+        difficulty_level: 'intermediate',
         srs_level: 1,
         next_review_date: new Date().toISOString(),
         last_reviewed: null,

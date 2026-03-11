@@ -1,5 +1,5 @@
 // FinTechTerms Notification Service Worker
-// Handles local reminder events and push-style achievement notifications.
+// Handles explicit in-app notifications and push notifications.
 
 function normalizeNotificationPayload(payload) {
     var safePayload = payload || {};

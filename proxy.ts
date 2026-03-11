@@ -1,34 +1,62 @@
-// ============================================
-// Supabase Auth Session Refresh Proxy (Middleware Helper)
-//
-// PURPOSE: This is a middleware helper that refreshes Supabase auth
-// cookies on every request. It ensures Server Components and API routes
-// always have a valid session by calling `getUser()` (not `getSession()`)
-// which triggers token refresh on Supabase's side.
-//
-// USAGE: Import `proxy` in middleware.ts and call it in the middleware chain.
-// This file is NOT a Next.js middleware itself — it's a reusable function.
-//
-// SEE ALSO: ADR-002 in docs/ADR.md for Supabase architecture decision.
-// ============================================
+import { createServerClient } from '@supabase/ssr';
+import { type NextRequest, NextResponse } from 'next/server';
+import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
 
-import { type NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+const PROTECTED_PATHS = ['/profile', '/quiz', '/favorites'];
 
-export async function proxy(request: NextRequest) {
-    let supabaseResponse = NextResponse.next({
+const isProtectedPath = (pathname: string): boolean => (
+    PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+);
+
+const createPassThroughResponse = (request: NextRequest): NextResponse => (
+    NextResponse.next({
         request: {
             headers: request.headers,
         },
     })
+);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const buildRedirectResponse = (
+    request: NextRequest,
+    supabaseResponse: NextResponse,
+    clearAuthCookies: boolean
+): NextResponse => {
+    const redirectResponse = NextResponse.redirect(new URL('/', request.url));
 
-    // Skip middleware if Supabase is not configured
-    if (!supabaseUrl || !supabaseAnonKey) {
-        return supabaseResponse
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
     }
+
+    if (clearAuthCookies) {
+        for (const cookie of request.cookies.getAll()) {
+            if (!cookie.name.startsWith('sb-')) {
+                continue;
+            }
+
+            redirectResponse.cookies.set(cookie.name, '', {
+                ...cookie,
+                maxAge: 0,
+                expires: new Date(0),
+                path: '/',
+            });
+        }
+    }
+
+    return redirectResponse;
+};
+
+export async function proxy(request: NextRequest) {
+    const requiresAuth = isProtectedPath(request.nextUrl.pathname);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        return requiresAuth
+            ? NextResponse.redirect(new URL('/', request.url))
+            : NextResponse.next();
+    }
+
+    let supabaseResponse = createPassThroughResponse(request);
 
     const supabase = createServerClient(
         supabaseUrl,
@@ -36,46 +64,50 @@ export async function proxy(request: NextRequest) {
         {
             cookies: {
                 getAll() {
-                    return request.cookies.getAll()
+                    return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    // Set cookies on the request (for downstream server components)
                     cookiesToSet.forEach(({ name, value }) => {
-                        request.cookies.set(name, value)
-                    })
+                        request.cookies.set(name, value);
+                    });
 
-                    // Create a new response with updated cookies
-                    supabaseResponse = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
+                    supabaseResponse = createPassThroughResponse(request);
 
-                    // Set cookies on the response (for the browser)
                     cookiesToSet.forEach(({ name, value, options }) => {
-                        supabaseResponse.cookies.set(name, value, options)
-                    })
+                        supabaseResponse.cookies.set(name, value, options);
+                    });
                 },
             },
         }
-    )
+    );
 
-    // Refresh the auth token on every request
-    // IMPORTANT: Do NOT use getSession() here, it does not refresh the token
-    await supabase.auth.getUser()
+    const {
+        data: { user },
+        error,
+    } = await supabase.auth.getUser();
 
-    return supabaseResponse
+    if (!requiresAuth) {
+        return supabaseResponse;
+    }
+
+    if (error || !user) {
+        const shouldClearAuthCookies = (
+            (error ? isAuthSessionError(error) : false)
+            || (!user && hasRequestAuthCookies(request))
+        );
+
+        return buildRedirectResponse(
+            request,
+            supabaseResponse,
+            shouldClearAuthCookies
+        );
+    }
+
+    return supabaseResponse;
 }
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - Static assets (svg, png, jpg, etc.)
-         */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
     ],
-}
+};

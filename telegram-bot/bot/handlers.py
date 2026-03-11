@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
-import random
 import time
 
 from typing import Any
@@ -32,10 +31,10 @@ from bot.db_stats import (
 from bot.db_terms import (
     search_terms,
     get_random_term,
-    fetch_all_terms,
     fetch_term_by_id,
 )
 from bot.i18n import t
+from bot.quiz import build_quiz
 from bot.tts import generate_tts_audio
 from bot.rate_limiter import is_rate_limited
 
@@ -657,7 +656,7 @@ async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     try:
-        text, keyboard = await _build_quiz(lang)
+        text, keyboard = await build_quiz(lang)
     except ConnectionError:
         await _reply_paginated(update.message, context, _busy_message(lang), lang, scope="quiz-busy")
         return
@@ -674,46 +673,6 @@ async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
     else:
         await _reply_paginated(update.message, context, t("quiz_no_terms", lang), lang, parse_mode=ParseMode.HTML, scope="quiz-empty")
-
-
-async def _build_quiz(lang: str) -> tuple[str | None, InlineKeyboardMarkup | None]:
-    """Build quiz question text and keyboard. Returns (text, keyboard) or (None, None)."""
-    all_terms = await fetch_all_terms()
-    if len(all_terms) < 4:
-        return None, None
-
-    correct_term = random.choice(all_terms)
-    term_key = f"term_{lang}"
-    def_key = f"definition_{lang}"
-
-    correct_def = correct_term.get(def_key) or correct_term.get("definition_en", "—")
-
-    wrong_terms = random.sample(
-        [ti for ti in all_terms if ti["id"] != correct_term["id"]],
-        min(3, len(all_terms) - 1),
-    )
-    wrong_defs = [wt.get(def_key) or wt.get("definition_en", "—") for wt in wrong_terms]
-
-    options = [(correct_def, True)] + [(wd, False) for wd in wrong_defs]
-    random.shuffle(options)
-
-    buttons = []
-    for i, (opt, is_correct) in enumerate(options):
-        short = opt[:80] + "…" if len(opt) > 80 else opt
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    f"{chr(65 + i)}) {short}",
-                    callback_data=f"quiz:{'1' if is_correct else '0'}:{correct_term['id']}",
-                )
-            ]
-        )
-    buttons.append([_back_button(lang)])
-
-    term_display = correct_term.get(term_key) or correct_term.get("term_en", "—")
-    text = t("quiz_question", lang, term=term_display)
-
-    return text, InlineKeyboardMarkup(buttons)
 
 
 # ── /lang ──────────────────────────────────────────────────
@@ -851,7 +810,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 )
 
         elif data == "menu:quiz":
-            text, keyboard = await _build_quiz(lang)
+            text, keyboard = await build_quiz(lang)
             if text and keyboard:
                 await _edit_paginated(
                     query,

@@ -23,6 +23,7 @@ import {
     saveQuizAttemptToSupabase,
     getAllTermSRSFromSupabase,
     fetchTermsFromSupabase,
+    type RecordQuizResult,
 } from '@/lib/supabaseStorage';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
@@ -96,6 +97,42 @@ const hasCachedStudyData = (progress: UserProgress): boolean => (
     || progress.current_streak > 0
     || progress.last_study_date !== null
 );
+
+const isRecordQuizResultPayload = (value: unknown): value is RecordQuizResult => {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    const candidate = value as Record<string, unknown>;
+    const userProgress = candidate.userProgress;
+    const termSrs = candidate.termSrs;
+
+    if (typeof userProgress !== 'object' || userProgress === null) {
+        return false;
+    }
+
+    if (typeof termSrs !== 'object' || termSrs === null) {
+        return false;
+    }
+
+    const progressCandidate = userProgress as Record<string, unknown>;
+    const termCandidate = termSrs as Record<string, unknown>;
+
+    return (
+        typeof progressCandidate.current_streak === 'number'
+        && typeof progressCandidate.total_words_learned === 'number'
+        && typeof progressCandidate.updated_at === 'string'
+        && (typeof progressCandidate.last_study_date === 'string' || progressCandidate.last_study_date === null)
+        && typeof termCandidate.term_id === 'string'
+        && typeof termCandidate.srs_level === 'number'
+        && typeof termCandidate.next_review_date === 'string'
+        && typeof termCandidate.difficulty_score === 'number'
+        && typeof termCandidate.retention_rate === 'number'
+        && typeof termCandidate.times_reviewed === 'number'
+        && typeof termCandidate.times_correct === 'number'
+        && (typeof termCandidate.last_reviewed === 'string' || termCandidate.last_reviewed === null)
+    );
+};
 
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
@@ -457,6 +494,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
         if (isAuthenticated && user) {
             try {
                 const result = await saveQuizAttemptToSupabase(user.id, attempt);
+
+                if (!isRecordQuizResultPayload(result)) {
+                    throw new Error('Quiz submission returned malformed data.');
+                }
+
                 const { term_id: _termId, ...serverTermSrs } = result.termSrs;
 
                 setTerms(prev => {

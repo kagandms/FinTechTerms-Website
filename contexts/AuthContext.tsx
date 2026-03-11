@@ -4,19 +4,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
+    type AuthenticatedUser,
+    mapSupabaseUser,
+} from '@/lib/auth/user';
+import {
     getUserProgressFromSupabase,
 } from '@/lib/supabaseStorage';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 
-interface User {
-    id: string;
-    email: string;
-    name: string;
-    createdAt: string;
-}
-
 interface AuthContextType {
-    user: User | null;
+    user: AuthenticatedUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     pendingVerificationEmail: string | null;
@@ -41,20 +38,8 @@ interface AuthProviderProps {
     children: ReactNode;
 }
 
-/**
- * Convert Supabase user to our User type
- */
-function mapSupabaseUser(supabaseUser: SupabaseUser): User {
-    return {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-        createdAt: supabaseUser.created_at,
-    };
-}
-
 export function AuthProvider({ children }: AuthProviderProps) {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AuthenticatedUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
     const [pendingVerificationPassword, setPendingVerificationPassword] = useState<string | null>(null);
@@ -119,11 +104,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     return;
                 }
 
-                if (session.user.email_confirmed_at) {
-                    setUser(mapSupabaseUser(session.user));
-                } else {
-                    setUser(null);
-                }
+                setUser(mapSupabaseUser(session.user));
             } catch (error) {
                 console.error('AUTH_INIT_EXCEPTION', error);
                 setUser(null);
@@ -143,11 +124,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (!session?.user) {
-                setUser(null);
-                return;
-            }
-
-            if (!session.user.email_confirmed_at) {
                 setUser(null);
                 return;
             }

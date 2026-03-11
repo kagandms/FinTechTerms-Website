@@ -1,0 +1,211 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import FavoritesClient from '@/app/favorites/FavoritesClient';
+import SearchClient from '@/app/search/SearchClient';
+import QuizClient from '@/app/quiz/QuizClient';
+
+const mockUseLanguage = jest.fn();
+const mockUseSRS = jest.fn();
+const mockUseSearchParams = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+
+jest.mock('@/contexts/LanguageContext', () => ({
+    useLanguage: () => mockUseLanguage(),
+}));
+
+jest.mock('@/contexts/SRSContext', () => ({
+    useSRS: () => mockUseSRS(),
+}));
+
+jest.mock('@/components/SmartCard', () => ({
+    __esModule: true,
+    default: ({ term }: { term: { term_en?: string } }) => <div data-testid="smart-card">{term.term_en}</div>,
+}));
+
+jest.mock('next/navigation', () => ({
+    usePathname: () => '/search',
+    useRouter: () => ({
+        push: mockPush,
+        replace: mockReplace,
+    }),
+    useSearchParams: () => mockUseSearchParams(),
+}));
+
+jest.mock('@/components/QuizCard', () => ({
+    __esModule: true,
+    default: () => <div data-testid="quiz-card">QuizCard</div>,
+}));
+
+jest.mock('@/components/SessionTracker', () => ({
+    incrementQuizAttempt: jest.fn(),
+}));
+
+jest.mock('next/link', () => {
+    return ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+        <a href={href} {...props}>{children}</a>
+    );
+});
+
+const baseTerm = {
+    id: 'term-1',
+    term_en: 'API',
+    term_ru: 'API',
+    term_tr: 'API',
+    phonetic_en: '',
+    phonetic_ru: '',
+    phonetic_tr: '',
+    category: 'Fintech',
+    definition_en: 'Definition',
+    definition_ru: 'Определение',
+    definition_tr: 'Tanim',
+    example_sentence_en: 'Example',
+    example_sentence_ru: 'Пример',
+    example_sentence_tr: 'Ornek',
+    context_tags: {},
+    regional_market: 'GLOBAL',
+    is_academic: true,
+    difficulty_level: 'intermediate',
+    srs_level: 1,
+    next_review_date: new Date().toISOString(),
+    last_reviewed: null,
+    difficulty_score: 2.5,
+    retention_rate: 0.5,
+    times_reviewed: 1,
+    times_correct: 1,
+} as const;
+
+const baseProgress = {
+    user_id: 'user-1',
+    favorites: [],
+    current_language: 'ru',
+    quiz_history: [],
+    total_words_learned: 0,
+    current_streak: 0,
+    last_study_date: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+} as const;
+
+const createSrsState = (overrides: Partial<ReturnType<typeof mockUseSRS>> = {}) => ({
+    terms: [baseTerm],
+    userProgress: baseProgress,
+    dueTerms: [],
+    toggleFavorite: jest.fn(),
+    isFavorite: jest.fn(),
+    isFavoriteUpdating: jest.fn(),
+    submitQuizAnswer: jest.fn(),
+    refreshData: jest.fn(),
+    canAddMoreFavorites: true,
+    favoritesRemaining: 50,
+    isSyncing: false,
+    isLoading: false,
+    termsStatus: 'ready',
+    progressStatus: 'ready',
+    termsError: null,
+    progressError: null,
+    stats: {
+        totalFavorites: 0,
+        mastered: 0,
+        learning: 1,
+        dueToday: 0,
+        averageRetention: 0,
+    },
+    ...overrides,
+});
+
+describe('Route state separation', () => {
+    beforeEach(() => {
+        mockPush.mockReset();
+        mockReplace.mockReset();
+        mockUseSearchParams.mockReturnValue(new URLSearchParams());
+
+        const translationMap: Record<string, string> = {
+            'search.title': 'Поиск',
+            'search.description': 'Описание',
+            'search.loadingTitle': 'Загружаем словарь',
+            'search.loadingDescription': 'Подготавливаем термины для поиска. Пожалуйста, подождите.',
+            'search.errorTitle': 'Ошибка загрузки данных',
+            'search.errorDescription': 'Сейчас не удалось загрузить данные для поиска. Попробуйте еще раз.',
+            'search.degradedTitle': 'Показаны сохраненные термины',
+            'search.degradedDescription': 'Сервер недоступен. Поиск работает по последним сохраненным терминам.',
+            'search.emptyTitle': 'Термины недоступны',
+            'search.emptyDescription': 'Сейчас нет терминов для отображения.',
+            'search.retry': 'Повторить',
+            'search.results': 'результатов найдено',
+            'search.noResultsTitle': 'Ничего не найдено',
+            'search.noResultsDescription': 'Измените запрос или снимите активные фильтры, чтобы расширить выборку.',
+            'search.filteredMarketTitle': 'Термины не найдены для выбранного рынка',
+            'search.filteredMarketDescription': 'Выбранный рыночный фильтр не вернул терминов. Попробуйте другой рынок или сбросьте фильтр.',
+            'search.containerLabel': 'Поиск терминов',
+            'search.placeholder': 'Поиск',
+            'search.clearSearch': 'Очистить поиск',
+            'search.showFilters': 'Показать фильтры категорий',
+            'search.hideFilters': 'Скрыть фильтры категорий',
+            'search.allTerms': 'Все термины',
+            'search.allMarkets': 'Все рынки',
+            'search.marketLabel': 'Рыночная таксономия',
+            'search.sortLabel': 'Порядок сортировки',
+            'search.sort.alphaAsc': 'По алфавиту (А-Я)',
+            'search.sort.alphaDesc': 'По алфавиту (Я-А)',
+            'search.markets.MOEX': 'Рынок: MOEX',
+            'search.markets.BIST': 'Рынок: BIST',
+            'search.markets.GLOBAL': 'Рынок: GLOBAL',
+            'categories.Fintech': 'Финтех',
+            'categories.Finance': 'Финансы',
+            'categories.Technology': 'Технологии',
+        };
+
+        mockUseLanguage.mockReturnValue({
+            language: 'ru',
+            t: (key: string) => translationMap[key] ?? key,
+        });
+        mockUseSRS.mockReturnValue(createSrsState());
+    });
+
+    it('keeps Search in loading state instead of rendering an empty fallback', () => {
+        mockUseSRS.mockReturnValue(createSrsState({
+            terms: [],
+            isLoading: true,
+            termsStatus: 'loading',
+        }));
+
+        render(<SearchClient />);
+
+        expect(screen.getByText('Загружаем словарь')).toBeInTheDocument();
+        expect(screen.queryByText('Термины недоступны')).not.toBeInTheDocument();
+        expect(screen.queryByText('search.noResults')).not.toBeInTheDocument();
+    });
+
+    it('shows an error state for Favorites when progress loading fails instead of the empty state', () => {
+        mockUseSRS.mockReturnValue(createSrsState({
+            terms: [baseTerm],
+            progressStatus: 'error',
+        }));
+
+        render(<FavoritesClient />);
+
+        expect(screen.getByText('Ошибка загрузки данных')).toBeInTheDocument();
+        expect(screen.queryByText('Пока нет избранных слов')).not.toBeInTheDocument();
+    });
+
+    it('shows the quiz SRS error fallback instead of zero-state messaging when progress fails', () => {
+        mockUseSRS.mockReturnValue(createSrsState({
+            progressStatus: 'error',
+            stats: {
+                totalFavorites: 0,
+                mastered: 0,
+                learning: 1,
+                dueToday: 0,
+                averageRetention: 0,
+            },
+        }));
+
+        render(<QuizClient />);
+
+        expect(screen.getByText('Данные SRS временно недоступны')).toBeInTheDocument();
+        expect(screen.queryByText('quiz.orAddFavorites')).not.toBeInTheDocument();
+        expect(screen.queryByText('quiz.noCards')).not.toBeInTheDocument();
+    });
+});

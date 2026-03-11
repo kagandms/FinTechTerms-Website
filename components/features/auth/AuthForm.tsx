@@ -5,16 +5,31 @@ import { AuthFormProps, AuthFormState } from './types';
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
     authLoading, handleAuth, authError, setAuthError,
-    showPassword, setShowPassword, resetPassword, showToast, t
+    showPassword, setShowPassword, resetPassword, showToast, language
 }) => {
-    const uiLang = typeof window !== 'undefined' ? localStorage.getItem('language') : 'en';
-    const nameLabel = uiLang === 'tr' ? 'Ad' : uiLang === 'ru' ? 'Имя' : 'Name';
-    const surnameLabel = uiLang === 'tr' ? 'Soyad' : uiLang === 'ru' ? 'Фамилия' : 'Surname';
-    const birthDateLabel = uiLang === 'tr' ? 'Doğum Tarihi' : uiLang === 'ru' ? 'Дата рождения' : 'Date of Birth';
-    const loginLoadingLabel = uiLang === 'tr' ? 'Giriş Yapılıyor...' : uiLang === 'ru' ? 'Выполняется вход...' : 'Signing in...';
-    const registerLoadingLabel = uiLang === 'tr' ? 'Kayıt Yapılıyor...' : uiLang === 'ru' ? 'Регистрация...' : 'Registering...';
-    const resetLoadingLabel = uiLang === 'tr' ? 'Gönderiliyor...' : uiLang === 'ru' ? 'Отправка...' : 'Sending...';
+    const copy = {
+        login: 'Войти',
+        register: 'Регистрация',
+        resetPassword: 'Восстановление доступа',
+        email: 'Эл. почта',
+        password: 'Пароль',
+        name: 'Имя',
+        surname: 'Фамилия',
+        birthDate: 'Дата рождения',
+        loginLoading: 'Выполняется вход...',
+        registerLoading: 'Создаём профиль...',
+        resetLoading: 'Отправка...',
+        sendResetLink: 'Отправить ссылку',
+        forgotPassword: 'Забыли пароль?',
+        noAccount: 'Нет аккаунта?',
+        alreadyHaveAccount: 'Уже есть аккаунт?',
+        checkEmail: '✅ Проверьте почту и папку «Спам»',
+        genericError: 'Ошибка',
+        showPassword: 'Показать пароль',
+        hidePassword: 'Скрыть пароль',
+    };
     const [isResetting, setIsResetting] = useState(false);
+
     const updateAuthField = (field: keyof AuthFormState, value: string) => {
         setAuthForm({ ...authForm, [field]: value });
 
@@ -31,17 +46,23 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 value={authForm.email}
                 onChange={(e) => updateAuthField('email', e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
-                placeholder={t('auth.email') || 'Email'}
+                placeholder={copy.email}
+                aria-label={copy.email}
             />
         </div>
     );
+
+    const title = authMode === 'login'
+        ? copy.login
+        : authMode === 'register'
+            ? copy.register
+            : copy.resetPassword;
 
     return (
         <>
             <div className="flex items-center gap-3 mb-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    {authMode === 'login' ? t('auth.login') : authMode === 'register' ? t('auth.register') :
-                        (t('auth.resetPassword') || t('auth.forgotPassword') || 'Reset Password')}
+                    {title}
                 </h3>
             </div>
 
@@ -54,27 +75,29 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {nameLabel}
+                                    {copy.name}
                                 </label>
                                 <input
                                     type="text"
                                     value={authForm.name}
                                     onChange={(e) => updateAuthField('name', e.target.value)}
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                                    placeholder={nameLabel}
+                                    placeholder={copy.name}
+                                    aria-label={copy.name}
                                 />
                             </div>
 
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {surnameLabel}
+                                    {copy.surname}
                                 </label>
                                 <input
                                     type="text"
                                     value={authForm.surname}
                                     onChange={(e) => updateAuthField('surname', e.target.value)}
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                                    placeholder={surnameLabel}
+                                    placeholder={copy.surname}
+                                    aria-label={copy.surname}
                                 />
                             </div>
                         </div>
@@ -83,14 +106,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
                         <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {birthDateLabel}
+                                {copy.birthDate}
                             </label>
                             <input
                                 type="date"
                                 value={authForm.birthDate || ''}
                                 onChange={(e) => updateAuthField('birthDate', e.target.value)}
                                 className="auth-date-input w-full min-h-[48px] px-4 py-3 border rounded-xl bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
-                                aria-label={birthDateLabel}
+                                aria-label={copy.birthDate}
                             />
                         </div>
                     </>
@@ -105,11 +128,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             value={authForm.password}
                             onChange={(e) => updateAuthField('password', e.target.value)}
                             className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
-                            placeholder={t('auth.password')}
+                            placeholder={copy.password}
+                            aria-label={copy.password}
                         />
                         <button
+                            type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                            aria-label={showPassword ? copy.hidePassword : copy.showPassword}
                         >
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
@@ -128,23 +154,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             try {
                                 const res = await resetPassword(authForm.email);
                                 if (res.success) {
-                                    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'en' : 'en';
-                                    const successMessage = lang === 'tr'
-                                        ? '✅ Lütfen e-posta (ve spam) kutunuzu kontrol edin'
-                                        : lang === 'ru'
-                                            ? '✅ Проверьте почту (и папку спам)'
-                                            : '✅ Check email (and spam folder)';
+                                    const successMessage = copy.checkEmail;
 
                                     setAuthError(successMessage);
                                     showToast(successMessage, 'success');
                                 } else {
-                                    const errorMessage = res.error || 'Error';
+                                    const errorMessage = res.error || copy.genericError;
                                     setAuthError(errorMessage);
                                     showToast(errorMessage, 'error');
                                 }
                             } catch (error) {
                                 console.error('AUTH_RESET_PASSWORD_UI_ERROR', error);
-                                const errorMessage = error instanceof Error ? error.message : 'Error';
+                                const errorMessage = error instanceof Error ? error.message : copy.genericError;
                                 setAuthError(errorMessage);
                                 showToast(errorMessage, 'error');
                             } finally {
@@ -154,32 +175,34 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         disabled={isResetting}
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors"
                     >
-                        {isResetting ? resetLoadingLabel : (t('auth.sendResetLink') || 'Send Reset Link')}
+                        {isResetting ? copy.resetLoading : copy.sendResetLink}
                     </button>
                 ) : (
                     <button
+                        type="button"
                         onClick={handleAuth}
                         disabled={authLoading}
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {authLoading
-                            ? (authMode === 'login' ? loginLoadingLabel : registerLoadingLabel)
-                            : authMode === 'login' ? t('auth.login') : t('auth.register')}
+                            ? (authMode === 'login' ? copy.loginLoading : copy.registerLoading)
+                            : authMode === 'login' ? copy.login : copy.register}
                     </button>
                 )}
 
                 {/* Mode Switchers */}
                 <div className="text-center space-y-2 mt-4">
                     {authMode === 'login' && (
-                        <button onClick={() => setAuthMode('forgot-password')} className="text-xs text-primary-400 dark:text-primary-300 hover:text-primary-600 dark:hover:text-primary-200 hover:underline transition-colors">
-                            {t('auth.forgotPassword') || 'Forgot Password?'}
+                        <button type="button" onClick={() => setAuthMode('forgot-password')} className="text-xs text-primary-400 dark:text-primary-300 hover:text-primary-600 dark:hover:text-primary-200 hover:underline transition-colors">
+                            {copy.forgotPassword}
                         </button>
                     )}
                     <button
+                        type="button"
                         onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
                         className="block w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
                     >
-                        {authMode === 'login' ? t('auth.noAccount') : t('auth.alreadyHaveAccount')}
+                        {authMode === 'login' ? copy.noAccount : copy.alreadyHaveAccount}
                     </button>
                 </div>
             </div>

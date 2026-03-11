@@ -9,6 +9,7 @@
  *   const { data, hasMore } = await fetchTermsPaginated({ page: 1, pageSize: 50 });
  */
 
+import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { supabase } from '@/lib/supabase';
 import { Term } from '@/types';
 
@@ -52,26 +53,38 @@ export async function fetchTermsPaginated(
     const from = (Math.max(1, page) - 1) * clampedPageSize;
     const to = from + clampedPageSize - 1;
 
-    let query = supabase.from('terms').select('*', { count: 'exact' });
+    const buildQuery = (filterAcademicOnly: boolean) => {
+        let query = supabase
+            .from('terms')
+            .select('*', { count: 'exact' });
 
-    // Apply filters
-    if (category) {
-        query = query.eq('category', category);
-    }
+        if (filterAcademicOnly) {
+            query = query.eq('is_academic', true);
+        }
 
-    if (search) {
-        // Search across all three language term fields
-        query = query.or(
-            `term_en.ilike.%${search}%,term_tr.ilike.%${search}%,term_ru.ilike.%${search}%`
+        if (category) {
+            query = query.eq('category', category);
+        }
+
+        if (search) {
+            query = query.or(
+                `term_en.ilike.%${search}%,term_tr.ilike.%${search}%,term_ru.ilike.%${search}%`
+            );
+        }
+
+        return query
+            .order('term_en', { ascending: true })
+            .range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(true);
+
+    if (isMissingAcademicColumnError(error)) {
+        console.warn(
+            '[Pagination] terms.is_academic column is missing; retrying without the academic filter.'
         );
+        ({ data, error, count } = await buildQuery(false));
     }
-
-    // Apply pagination
-    query = query
-        .order('term_en', { ascending: true })
-        .range(from, to);
-
-    const { data, error, count } = await query;
 
     if (error) {
         console.error('[Pagination] Supabase query failed:', error.message);
@@ -87,7 +100,7 @@ export async function fetchTermsPaginated(
     const totalCount = count ?? 0;
 
     return {
-        data: (data ?? []) as Partial<Term>[],
+        data: filterAcademicTerms((data ?? []) as Partial<Term>[]),
         page,
         pageSize: clampedPageSize,
         totalCount,

@@ -3,6 +3,7 @@ import { getLearningStats } from '@/app/actions/getLearningStats';
 import { createClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileWarningCode } from './ProfilePageClient';
+import { getSupabaseUserNameSeed } from '@/lib/auth/user';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
@@ -84,12 +85,7 @@ const loadInitialProfileData = async (): Promise<{
 
     const user = authState.user;
 
-    let fullName = (
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split('@')[0] ||
-        ''
-    ).trim();
+    let fullName = getSupabaseUserNameSeed(user);
     let birthDate = toDateInputValue(user.user_metadata?.birth_date || '');
 
     const { data: profileData, error: profileError } = await supabase
@@ -115,7 +111,7 @@ const loadInitialProfileData = async (): Promise<{
     return {
         data: {
             userId: user.id,
-            email: user.email || '',
+            email: user.email ?? null,
             name,
             surname,
             birthDate,

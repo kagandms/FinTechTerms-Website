@@ -22,8 +22,8 @@ import type { ProfileFormInitialData } from '@/components/features/profile/Profi
 import type { LearningStatsActionResult } from '@/types/gamification';
 import InstallButton from '@/components/InstallButton';
 import Heatmap from '@/components/profile/Heatmap';
-import StreakCard from '@/components/profile/StreakCard';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
+import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 
 interface ProfilePageClientProps {
     initialProfileData: ProfileFormInitialData | null;
@@ -33,10 +33,10 @@ interface ProfilePageClientProps {
 
 export type ProfileWarningCode = 'PROFILE_DATA_PARTIAL' | 'PROFILE_DATA_LOAD_FAILED';
 
-const gamificationUnavailableCopy = {
-    tr: 'Öğrenme istatistikleri şu anda yüklenemiyor.',
-    en: 'Learning stats are temporarily unavailable.',
-    ru: 'Статистика обучения временно недоступна.',
+const learningAnalyticsUnavailableCopy = {
+    tr: 'Аналитика интервального повторения временно недоступна.',
+    en: 'Аналитика интервального повторения временно недоступна.',
+    ru: 'Аналитика интервального повторения временно недоступна.',
 };
 
 const profileWarningCopy: Record<ProfileWarningCode, Record<'tr' | 'en' | 'ru', string>> = {
@@ -83,22 +83,27 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     const [isEditingProfile, setIsEditingProfile] = useState(false);
 
     // Calculated fields
-    const totalReviews = (stats?.mastered || 0) + (stats?.learning || 0) + (userProgress?.total_words_learned || 0);
+    const learningStatsData = learningStats.ok ? learningStats.data : null;
+    const totalReviews = learningStatsData?.totalReviews ?? (isAuthenticated ? null : 0);
     const accuracy = userProgress?.quiz_history?.length
         ? Math.round((userProgress?.quiz_history?.filter((q: any) => q.is_correct)?.length || 0) / (userProgress?.quiz_history?.length || 1) * 100)
         : 0;
-    const learningStatsData = learningStats.ok ? learningStats.data : null;
-    const showGamificationFallback = isAuthenticated
+    const showLearningAnalyticsFallback = isAuthenticated
         && !learningStats.ok
         && learningStats.error.code !== 'UNAUTHORIZED';
 
-    const getInitials = (name: string, email: string) => {
-        if (!name) return email?.charAt(0).toUpperCase() || 'U';
-        const parts = name.trim().split(' ');
+    const getInitials = (name: string, fallbackId?: string | null) => {
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            const safeFallback = (fallbackId || '').replace(/-/g, '').slice(0, 2).toUpperCase();
+            return safeFallback || 'U';
+        }
+
+        const parts = trimmedName.split(' ');
         if (parts.length > 1 && parts[0] && parts[parts.length - 1]) {
             return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
         }
-        return name.charAt(0).toUpperCase();
+        return trimmedName.charAt(0).toUpperCase();
     };
 
     return (
@@ -120,7 +125,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                 <div onClick={() => !isAuthenticated && setShowAuthModal(true)} className="cursor-pointer">
                     {isAuthenticated ? (
                         <div className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
-                            {getInitials(user?.name || '', user?.email || '')}
+                            {getInitials(user?.name || '', user?.id)}
                         </div>
                     ) : (
                         <div className="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
@@ -166,7 +171,6 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     {/* Stats Grid - Always at top */}
                     <section className="order-1">
                         <StatsGrid
-                            userProgress={userProgress}
                             stats={stats}
                             totalReviews={totalReviews}
                             accuracy={accuracy}
@@ -175,22 +179,21 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         />
                     </section>
 
-                    {isAuthenticated && learningStatsData && (
+                    {isAuthenticated && (
                         <section className="order-2 space-y-6">
-                            <StreakCard
-                                currentStreak={learningStatsData.currentStreak}
-                                badges={learningStatsData.badges}
-                                activeDays={learningStatsData.activeDays}
-                                lastStudyDate={learningStatsData.lastStudyDate}
-                                language={language}
+                            <SRSNotificationCard
+                                dueCount={stats.dueToday}
+                                lastReviewDate={learningStatsData?.lastStudyDate ?? userProgress?.last_study_date}
                             />
-                            <Heatmap entries={learningStatsData.heatmap} language={language} />
+                            {learningStatsData ? (
+                                <Heatmap entries={learningStatsData.heatmap} language={language} />
+                            ) : null}
                         </section>
                     )}
 
-                    {showGamificationFallback && (
+                    {showLearningAnalyticsFallback && (
                         <section className="order-2 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)] shadow-card">
-                            {gamificationUnavailableCopy[language]}
+                            {learningAnalyticsUnavailableCopy[language]}
                         </section>
                     )}
 
@@ -387,8 +390,8 @@ export default function ProfilePageClient({
             return;
         }
 
-        console.error('PROFILE_PAGE_GAMIFICATION_FALLBACK', learningStats.error);
-        showToast(gamificationUnavailableCopy[language], 'warning');
+        console.error('PROFILE_PAGE_LEARNING_ANALYTICS_FALLBACK', learningStats.error);
+        showToast(learningAnalyticsUnavailableCopy[language], 'warning');
         lastLearningStatsErrorRef.current = learningStats.error.code;
     }, [isAuthenticated, language, learningStats, showToast]);
 

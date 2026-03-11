@@ -1,9 +1,26 @@
 import os
 from supabase import create_client
 
+
+def _require_env(name: str, fallback_name: str | None = None) -> str:
+    value = os.environ.get(name, "").strip()
+    if value:
+        return value
+
+    if fallback_name:
+        fallback_value = os.environ.get(fallback_name, "").strip()
+        if fallback_value:
+            return fallback_value
+
+    expected_names = f"{name} or {fallback_name}" if fallback_name else name
+    raise EnvironmentError(
+        f"Missing required environment variable {expected_names} for scripts/clean_data.py."
+    )
+
+
 # Configuration
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://hdhytostmmrvwuluogpq.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "your_supabase_service_role_key_here")
+SUPABASE_URL = _require_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = _require_env("SUPABASE_KEY", "SUPABASE_SERVICE_ROLE_KEY")
 
 def clean_data():
     print("🧹 Starting cleanup of synthetic data...")

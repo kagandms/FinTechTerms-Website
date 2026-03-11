@@ -1,35 +1,39 @@
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 
 export default function NotFound() {
     return (
-        <div className="min-h-[60vh] flex items-center justify-center px-4">
-            <div className="text-center max-w-md">
-                {/* 404 visual */}
-                <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-blue-600 mb-4">
+        <div className="flex min-h-[72vh] items-center justify-center px-4 py-10">
+            <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-sky-50 p-8 text-center shadow-sm dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-400">
+                    Академический каталог
+                </span>
+
+                <div className="mt-5 text-8xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-sky-700 to-slate-500 dark:from-white dark:via-sky-300 dark:to-slate-400">
                     404
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                    Sayfa Bulunamadı
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                    Aradığınız sayfa mevcut değil veya taşınmış olabilir.
+                <h1 className="mt-4 text-3xl font-semibold text-slate-950 dark:text-slate-50">
+                    Страница не найдена
+                </h1>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    Запрошенный раздел отсутствует в текущей структуре каталога или был перенесён в другой исследовательский контур.
                 </p>
 
-                <div className="flex gap-3 justify-center">
+                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-md"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 font-semibold text-white transition-colors hover:bg-sky-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-sky-200"
                     >
-                        Ana Sayfa
+                        <ArrowLeft className="h-4 w-4" />
+                        Вернуться на главную
                     </Link>
                     <Link
                         href="/search"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                         <Search className="w-4 h-4" />
-                        Arama
+                        Перейти к поиску
                     </Link>
                 </div>
             </div>

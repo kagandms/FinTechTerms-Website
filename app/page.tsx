@@ -1,5 +1,5 @@
 import HomeClient from './HomeClient';
-import { supabase } from '@/lib/supabase';
+import { fetchTermsFromSupabase } from '@/lib/supabaseStorage';
 import { Term, Category } from '@/types';
 import { createSafeTerm } from '@/utils/termUtils';
 
@@ -7,19 +7,16 @@ export const revalidate = 3600; // Revalidate every hour
 
 async function getRecentTerms(): Promise<Term[]> {
     try {
-        const { data, error } = await supabase
-            .from('terms')
-            .select('*')
-            //.order('created_at', { ascending: false }) // Assuming created_at exists, if not use id
-            .limit(3);
+        const data = await fetchTermsFromSupabase();
+        const recentTerms = data.slice(0, 3);
 
-        if (error || !data) {
-            console.warn('Error fetching terms for SSR:', error);
+        if (recentTerms.length === 0) {
+            console.warn('Error fetching terms for SSR: no terms returned');
             return [];
         }
 
         // Map DB result to Term interface by adding default SRS fields
-        return data.map((t) => createSafeTerm({
+        return recentTerms.map((t) => createSafeTerm({
             ...t,
             // Default SRS fields
             srs_level: 0,

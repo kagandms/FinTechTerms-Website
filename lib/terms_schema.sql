@@ -18,6 +18,21 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n
+            ON n.oid = t.typnamespace
+        WHERE t.typname = 'difficulty_level'
+          AND n.nspname = 'public'
+    ) THEN
+        CREATE TYPE public.difficulty_level AS ENUM ('basic', 'intermediate', 'advanced');
+    END IF;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS terms (
     id TEXT PRIMARY KEY, -- 'term_001', etc.
     
@@ -42,6 +57,8 @@ CREATE TABLE IF NOT EXISTS terms (
 
     context_tags JSONB NOT NULL DEFAULT '{}'::jsonb,
     regional_market public.regional_market NOT NULL DEFAULT 'GLOBAL',
+    is_academic BOOLEAN NOT NULL DEFAULT true,
+    difficulty_level public.difficulty_level NOT NULL DEFAULT 'intermediate',
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -57,6 +74,12 @@ CREATE INDEX IF NOT EXISTS idx_terms_context_tags
     ON terms
     USING GIN (context_tags jsonb_path_ops);
 
+CREATE INDEX IF NOT EXISTS idx_terms_is_academic
+    ON terms (is_academic);
+
+CREATE INDEX IF NOT EXISTS idx_terms_difficulty_level
+    ON terms (difficulty_level);
+
 -- Enable RLS
 ALTER TABLE terms ENABLE ROW LEVEL SECURITY;
 
@@ -68,6 +91,7 @@ CREATE POLICY "Public read access"
     USING (true);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT USAGE ON TYPE public.difficulty_level TO anon, authenticated, service_role;
 GRANT USAGE ON TYPE public.regional_market TO anon, authenticated, service_role;
 GRANT SELECT ON public.terms TO anon, authenticated;
 GRANT ALL PRIVILEGES ON public.terms TO service_role;

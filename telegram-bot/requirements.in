@@ -1,0 +1,9 @@
+# Install intent for the Telegram bot runtime.
+python-telegram-bot[ext]
+supabase
+python-dotenv
+edge-tts
+aiofiles
+flask
+gunicorn
+redis

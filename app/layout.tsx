@@ -15,13 +15,13 @@ import { siteUrl } from '@/lib/site-url';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 
 const inter = Inter({
-    subsets: ['latin'],
+    subsets: ['latin', 'cyrillic'],
     variable: '--font-inter',
     display: 'swap',
 });
 
 const jetbrainsMono = JetBrains_Mono({
-    subsets: ['latin'],
+    subsets: ['latin', 'cyrillic'],
     variable: '--font-jetbrains-mono',
     display: 'swap',
 });

@@ -7,6 +7,7 @@ export type Language = 'tr' | 'en' | 'ru';
 
 export type Category = 'Fintech' | 'Finance' | 'Technology';
 export type RegionalMarket = 'MOEX' | 'BIST' | 'GLOBAL';
+export type DifficultyLevel = 'basic' | 'intermediate' | 'advanced';
 export type TermContextTagValue =
     | string
     | number
@@ -15,6 +16,16 @@ export type TermContextTagValue =
     | number[]
     | boolean[];
 export type TermContextTags = Record<string, TermContextTagValue | undefined>;
+
+/**
+ * Canonical profile row mirrored from public.profiles.
+ * Authentication identity remains keyed by auth.users.id.
+ */
+export interface Profile {
+    id: string;
+    full_name: string | null;
+    birth_date: string | null;
+}
 
 /**
  * Main Term interface - represents a trilingual dictionary entry
@@ -49,6 +60,8 @@ export interface Term {
     // Contest-ready academic taxonomy
     context_tags: TermContextTags;
     regional_market: RegionalMarket;
+    is_academic: boolean;
+    difficulty_level: DifficultyLevel;
 
     // ============================================
     // SRS (Spaced Repetition System) Data

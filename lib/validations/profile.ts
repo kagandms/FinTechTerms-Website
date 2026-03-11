@@ -16,6 +16,12 @@ export function createProfileSchema(language: 'tr' | 'en' | 'ru') {
         passwordsNotMatch: language === 'tr' ? 'Şifreler eşleşmiyor' : language === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match',
     };
 
+    const nullableEmailSchema = z.union([
+        z.string().trim().email(msg.emailInvalid),
+        z.literal('').transform(() => null),
+        z.null(),
+    ]);
+
     return z.object({
         name: z.string().min(2, msg.nameMin),
         surname: z.string().min(2, msg.surnameMin),
@@ -33,7 +39,7 @@ export function createProfileSchema(language: 'tr' | 'en' | 'ru') {
             }
             return age >= 13 && age <= 120;
         }, msg.birthDateInvalid),
-        email: z.string().email(msg.emailInvalid),
+        email: nullableEmailSchema,
         // Password fields are optional unless the user wants to change them
         currentPassword: z.string().optional(),
         newPassword: z.string().optional(),

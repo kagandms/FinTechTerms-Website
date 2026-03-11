@@ -14,19 +14,16 @@ export interface Database {
                     id: string
                     full_name: string | null
                     birth_date: string | null
-                    telegram_id: string | null
                 }
                 Insert: {
                     id: string
                     full_name?: string | null
                     birth_date?: string | null
-                    telegram_id?: string | null
                 }
                 Update: {
                     id?: string
                     full_name?: string | null
                     birth_date?: string | null
-                    telegram_id?: string | null
                 }
                 Relationships: []
             }
@@ -48,6 +45,8 @@ export interface Database {
                     example_sentence_tr: string
                     context_tags: Json
                     regional_market: "MOEX" | "BIST" | "GLOBAL"
+                    is_academic: boolean
+                    difficulty_level: "basic" | "intermediate" | "advanced"
                     created_at: string | null
                     updated_at: string | null
                 }
@@ -68,6 +67,8 @@ export interface Database {
                     example_sentence_tr: string
                     context_tags?: Json
                     regional_market?: "MOEX" | "BIST" | "GLOBAL"
+                    is_academic?: boolean
+                    difficulty_level?: "basic" | "intermediate" | "advanced"
                     created_at?: string | null
                     updated_at?: string | null
                 }
@@ -88,6 +89,8 @@ export interface Database {
                     example_sentence_tr?: string
                     context_tags?: Json
                     regional_market?: "MOEX" | "BIST" | "GLOBAL"
+                    is_academic?: boolean
+                    difficulty_level?: "basic" | "intermediate" | "advanced"
                     created_at?: string | null
                     updated_at?: string | null
                 }
@@ -578,6 +581,7 @@ export interface Database {
             }
         }
         Enums: {
+            difficulty_level: "basic" | "intermediate" | "advanced"
             regional_market: "MOEX" | "BIST" | "GLOBAL"
         }
         CompositeTypes: {

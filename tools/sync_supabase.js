@@ -145,6 +145,7 @@ async function sync() {
     const BATCH_SIZE = 50;
     for (let i = 0; i < allTerms.length; i += BATCH_SIZE) {
         const batch = allTerms.slice(i, i + BATCH_SIZE);
+        // Intentionally omit quarantine columns so curated DB flags survive resyncs.
         const { error } = await supabase.from('terms').upsert(batch, { onConflict: 'id' });
 
         if (error) {

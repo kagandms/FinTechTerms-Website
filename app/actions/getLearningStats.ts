@@ -30,7 +30,7 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
 
         const userId = authState.user.id;
 
-        const [heatmapResult, streakResult, badgesResult] = await Promise.all([
+        const [heatmapResult, streakResult, badgesResult, reviewCountResult] = await Promise.all([
             supabase.rpc('get_user_learning_heatmap'),
             supabase.rpc('get_user_streak_summary', {
                 p_user_id: userId,
@@ -40,6 +40,10 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
                 .select('id, badge_key, badge_type, streak_days, unlocked_at, source_log_date')
                 .eq('user_id', userId)
                 .order('unlocked_at', { ascending: false }),
+            supabase
+                .from('quiz_attempts')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId),
         ]);
 
         if (heatmapResult.error) {
@@ -57,6 +61,10 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
             return sanitizeError('LEARNING_STATS_UNAVAILABLE', 'Unable to load learning stats.', 500);
         }
 
+        if (reviewCountResult.error) {
+            console.error('GET_LEARNING_STATS_REVIEW_COUNT_ERROR', reviewCountResult.error);
+        }
+
         const heatmap = (heatmapResult.data ?? []) as LearningHeatmapEntry[];
         const streakSummary = Array.isArray(streakResult.data)
             ? streakResult.data[0]
@@ -65,6 +73,9 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
         const activeDays = heatmap.filter((entry) => entry.activity_count > 0).length;
         const totalActivity = heatmap.reduce((sum, entry) => sum + entry.activity_count, 0);
         const todayActivity = heatmap[heatmap.length - 1]?.activity_count ?? 0;
+        const totalReviews = reviewCountResult.error
+            ? null
+            : (reviewCountResult.count ?? 0);
 
         return {
             ok: true,
@@ -76,6 +87,7 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
                 activeDays,
                 totalActivity,
                 todayActivity,
+                totalReviews,
             },
         };
     } catch (error) {

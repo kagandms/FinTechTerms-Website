@@ -10,28 +10,57 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Flame, BookMarked, TrendingUp, Sun, Moon, Send } from 'lucide-react';
+import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
+import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 import { siteUrl } from '@/lib/site-url';
 
 import { Term } from '@/types';
-
 
 interface HomeClientProps {
     initialTerms?: Term[];
 }
 
+const pickInitialTerms = (terms: Term[]): Term[] => terms.slice(0, 3);
+
+const shuffleTerms = (terms: Term[]): Term[] => {
+    const nextTerms = [...terms];
+
+    for (let index = nextTerms.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        const currentTerm = nextTerms[index];
+        const swapTerm = nextTerms[swapIndex];
+
+        if (!currentTerm || !swapTerm) {
+            continue;
+        }
+
+        nextTerms[index] = swapTerm;
+        nextTerms[swapIndex] = currentTerm;
+    }
+
+    return nextTerms;
+};
+
 export default function HomePage({ initialTerms = [] }: HomeClientProps) {
     const { t } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
-    const { theme, resolvedTheme, setTheme } = useTheme();
+    const { resolvedTheme, setTheme } = useTheme();
 
-    // Get 3 random terms to display — shuffled on each mount for variety
     const displayTerms = terms.length > 0 ? terms : initialTerms;
-    const recentTerms = React.useMemo(() => {
-        const shuffled = [...displayTerms].sort(() => Math.random() - 0.5);
-        return shuffled.slice(0, 3);
-    }, [displayTerms.length]);
+    const displayTermsKey = React.useMemo(
+        () => displayTerms.map((term) => term.id).join('|'),
+        [displayTerms]
+    );
+    const [recentTerms, setRecentTerms] = React.useState<Term[]>(() => pickInitialTerms(displayTerms));
+
+    React.useEffect(() => {
+        const nextTerms = displayTerms.length <= 3
+            ? pickInitialTerms(displayTerms)
+            : pickInitialTerms(shuffleTerms(displayTerms));
+
+        setRecentTerms(nextTerms);
+    }, [displayTermsKey]);
 
     // Toggle theme quickly
     const toggleTheme = () => {
@@ -85,8 +114,8 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         href="https://t.me/FinTechTermsBot"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 rounded-xl bg-sky-500 hover:bg-sky-600 transition-colors shadow-sm text-white flex items-center justify-center"
-                        aria-label="Telegram Bot"
+                        className="p-2 rounded-xl border border-sky-100 bg-white text-sky-600 transition-colors hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800 flex items-center justify-center"
+                        aria-label="Интеграция API Telegram"
                     >
                         <Send className="w-5 h-5" />
                     </a>
@@ -96,7 +125,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     <button
                         onClick={toggleTheme}
                         className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
-                        aria-label="Toggle theme"
+                        aria-label="Переключить тему"
                     >
                         {resolvedTheme === 'dark' ? (
                             <Sun className="w-5 h-5 text-yellow-500" />
@@ -133,26 +162,14 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-6 h-40 justify-center">
-                    {/* Streak Badge */}
-                    <div className="px-6 py-3 bg-white dark:bg-white/10 rounded-2xl shadow-sm border border-gray-100 dark:border-white/20 flex items-center gap-3 backdrop-blur-sm">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{t('profile.days')}</span>
-                            <span className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <Flame className="w-6 h-6 text-orange-500 fill-orange-500 animate-pulse" />
-                                {userProgress.current_streak}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
+                <div className="flex flex-col items-end gap-4 h-40 justify-center">
                     <div className="flex items-center gap-3">
                         <a
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white transition-all border border-sky-400 shadow-sm hover:shadow-md"
-                            aria-label="Telegram Bot"
+                            className="p-3 rounded-xl border border-sky-100 bg-white text-sky-600 transition-all shadow-sm hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
+                            aria-label="Интеграция API Telegram"
                         >
                             <Send className="w-5 h-5" />
                         </a>
@@ -163,7 +180,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <button
                             onClick={toggleTheme}
                             className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
-                            aria-label="Toggle theme"
+                            aria-label="Переключить тему"
                         >
                             {resolvedTheme === 'dark' ? (
                                 <Sun className="w-5 h-5" />
@@ -181,17 +198,24 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                 <DailyReview />
             </section>
 
+            <section className="mb-6">
+                <SRSNotificationCard
+                    dueCount={stats.dueToday}
+                    lastReviewDate={userProgress.last_study_date}
+                />
+            </section>
+
             {/* Quick Stats */}
             {userProgress.quiz_history.length > 0 && (
                 <section className="grid grid-cols-3 gap-3 mb-6">
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">
-                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                                <Flame className="w-5 h-5 text-orange-500" />
+                            <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
+                                <BrainCircuit className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{userProgress.current_streak}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.days')}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.dueToday}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">К повтору</p>
                     </div>
 
                     <Link href="/favorites" className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block">
@@ -234,7 +258,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     ) : (
                         <div className="p-8 text-center rounded-xl bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700">
                             <p className="text-gray-500 dark:text-gray-400">
-                                {t('home.noTerms') || 'Term data loading...'}
+                                {t('home.noTerms') || 'Загрузка терминов...'}
                             </p>
                         </div>
                     )}

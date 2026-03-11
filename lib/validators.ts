@@ -36,6 +36,8 @@ export const TermSchema = z.object({
 
     context_tags: ContextTagsSchema.default({}),
     regional_market: z.enum(['MOEX', 'BIST', 'GLOBAL']).default('GLOBAL'),
+    is_academic: z.boolean().default(true),
+    difficulty_level: z.enum(['basic', 'intermediate', 'advanced']).default('intermediate'),
 
     // SRS Data (with safe defaults)
     srs_level: z.number().default(0),

@@ -64,10 +64,18 @@ describe('SmartCard Component', () => {
         definition_en: 'This is a test definition.',
         definition_tr: 'Bu bir test tanımıdır.',
         definition_ru: 'Это тестовое определение.',
+        example_sentence_en: 'This is a test example.',
+        example_sentence_tr: 'Bu bir test örneğidir.',
+        example_sentence_ru: 'Это тестовый пример.',
         example_en: 'This is a test example.',
         example_tr: 'Bu bir test örneğidir.',
         example_ru: 'Это тестовый пример.',
         category: 'Fintech',
+        context_tags: {
+            disciplines: ['economics', 'mis'],
+            target_universities: ['SPbU'],
+        },
+        regional_market: 'MOEX',
         srs_level: 0,
         next_review_date: new Date().toISOString(),
         last_reviewed: null,
@@ -86,6 +94,9 @@ describe('SmartCard Component', () => {
         expect(screen.getByText('Это тестовое определение.')).toBeInTheDocument();
         // check category
         expect(screen.getByText('categories.Fintech')).toBeInTheDocument(); // Mocked t returns key
+        expect(screen.getByText('MOEX')).toBeInTheDocument();
+        expect(screen.getByText('Economics')).toBeInTheDocument();
+        expect(screen.getByText('MIS')).toBeInTheDocument();
     });
 
     it('toggles example visibility when button is clicked', () => {

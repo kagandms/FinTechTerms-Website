@@ -8,6 +8,7 @@ import { createIdempotencyKey } from '@/lib/idempotency';
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
+const MAX_RETRY_QUEUE_SIZE = 50;
 type SessionMode = 'anonymous' | 'authenticated';
 
 interface SessionData {
@@ -22,12 +23,36 @@ interface SessionData {
 interface PersistSessionResult {
     ok: boolean;
     data: { sessionId?: string } | null;
+    retryable: boolean;
 }
 
 interface StartSessionOptions {
     mode?: SessionMode;
     previousSessionId?: string | null;
     previousAnonymousId?: string | null;
+}
+
+type SessionMutationPayload =
+    | {
+        action: 'start';
+        anonymousId: string | null;
+        deviceType: string;
+        userAgent: string | null;
+        consentGiven: true;
+        previous_session_id: string | null;
+    }
+    | {
+        action: 'heartbeat' | 'end';
+        sessionId: string;
+        anonymousId: string | null;
+        durationSeconds: number;
+        pageViews: number;
+        quizAttempts: number;
+    };
+
+interface QueuedSessionMutation {
+    payload: SessionMutationPayload;
+    sessionStartTime: number | null;
 }
 
 /**
@@ -43,6 +68,12 @@ export default function SessionTracker() {
     const previousAuthStateRef = useRef(isAuthenticated);
     const lastTrackedPathnameRef = useRef<string | null>(null);
     const pathnameRef = useRef(pathname);
+    const retryQueueRef = useRef<QueuedSessionMutation[]>([]);
+    const isFlushingQueueRef = useRef(false);
+
+    const queueRetryableMutation = useCallback((entry: QueuedSessionMutation) => {
+        retryQueueRef.current = [...retryQueueRef.current, entry].slice(-MAX_RETRY_QUEUE_SIZE);
+    }, []);
 
     const saveSessionToStorage = useCallback((session: SessionData | null) => {
         try {
@@ -80,35 +111,149 @@ export default function SessionTracker() {
         }
     }, []);
 
-    const persistSessionMutation = useCallback(async (payload: Record<string, unknown>): Promise<PersistSessionResult> => {
-        const response = await fetch('/api/study-sessions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ...payload,
-                idempotency_key: createIdempotencyKey(),
-            }),
-            keepalive: true,
-        });
-
-        if (response.status === 401) {
-            return { ok: false, data: null };
+    const applySessionIdToCurrentSession = useCallback((sessionStartTime: number | null, sessionId: string) => {
+        if (sessionStartTime === null) {
+            return;
         }
 
-        if (!response.ok) {
+        const currentSession = sessionRef.current;
+        if (!currentSession || currentSession.startTime !== sessionStartTime || currentSession.id === sessionId) {
+            return;
+        }
+
+        const updatedSession = {
+            ...currentSession,
+            id: sessionId,
+        };
+
+        sessionRef.current = updatedSession;
+        saveSessionToStorage(updatedSession);
+    }, [saveSessionToStorage]);
+
+    const persistSessionMutation = useCallback(async (payload: SessionMutationPayload): Promise<PersistSessionResult> => {
+        try {
+            const response = await fetch('/api/study-sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...payload,
+                    idempotency_key: createIdempotencyKey(),
+                }),
+                keepalive: true,
+            });
+
+            let responseBody: unknown = null;
+
+            try {
+                responseBody = await response.json();
+            } catch {
+                responseBody = null;
+            }
+
+            if (response.status === 401) {
+                return { ok: false, data: null, retryable: false };
+            }
+
+            if (!response.ok) {
+                const retryable = (
+                    typeof responseBody === 'object'
+                    && responseBody !== null
+                    && 'retryable' in responseBody
+                    && typeof responseBody.retryable === 'boolean'
+                )
+                    ? responseBody.retryable
+                    : response.status >= 500 || response.status === 429;
+
+                return {
+                    ok: false,
+                    data: null,
+                    retryable,
+                };
+            }
+
+            if (typeof responseBody !== 'object' || responseBody === null) {
+                return {
+                    ok: false,
+                    data: null,
+                    retryable: true,
+                };
+            }
+
+            if (payload.action === 'start') {
+                const sessionId = 'sessionId' in responseBody && typeof responseBody.sessionId === 'string'
+                    ? responseBody.sessionId
+                    : null;
+
+                if (!sessionId) {
+                    return {
+                        ok: false,
+                        data: null,
+                        retryable: true,
+                    };
+                }
+
+                return {
+                    ok: true,
+                    data: { sessionId },
+                    retryable: false,
+                };
+            }
+
+            return {
+                ok: true,
+                data: responseBody as { sessionId?: string },
+                retryable: false,
+            };
+        } catch {
             return {
                 ok: false,
                 data: null,
+                retryable: true,
             };
         }
-
-        return {
-            ok: true,
-            data: await response.json(),
-        };
     }, []);
+
+    const flushRetryQueue = useCallback(async () => {
+        if (isFlushingQueueRef.current || retryQueueRef.current.length === 0) {
+            return;
+        }
+
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return;
+        }
+
+        isFlushingQueueRef.current = true;
+
+        try {
+            const pending = [...retryQueueRef.current];
+            retryQueueRef.current = [];
+
+            for (let index = 0; index < pending.length; index += 1) {
+                const entry = pending[index];
+                if (!entry) {
+                    continue;
+                }
+
+                const response = await persistSessionMutation(entry.payload);
+
+                if (!response.ok) {
+                    const remainingEntries = response.retryable
+                        ? pending.slice(index)
+                        : pending.slice(index + 1);
+                    retryQueueRef.current = [...remainingEntries, ...retryQueueRef.current].slice(-MAX_RETRY_QUEUE_SIZE);
+                    break;
+                }
+
+                if (entry.payload.action === 'start' && response.data?.sessionId) {
+                    applySessionIdToCurrentSession(entry.sessionStartTime, response.data.sessionId);
+                }
+            }
+        } finally {
+            isFlushingQueueRef.current = false;
+        }
+    }, [applySessionIdToCurrentSession, persistSessionMutation]);
 
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
@@ -172,27 +317,38 @@ export default function SessionTracker() {
         saveSessionToStorage(session);
 
         // Record session start through the trusted backend.
+        const startPayload: SessionMutationPayload = {
+            action: 'start',
+            anonymousId: requestAnonymousId,
+            previous_session_id: previousSessionId,
+            deviceType: getDeviceType(),
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            consentGiven: true,
+        };
+
         try {
-            const response = await persistSessionMutation({
-                action: 'start',
-                anonymousId: requestAnonymousId,
-                previous_session_id: previousSessionId,
-                deviceType: getDeviceType(),
-                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-                consentGiven: true,
-            });
+            const response = await persistSessionMutation(startPayload);
 
             if (!response.ok) {
+                if (response.retryable) {
+                    queueRetryableMutation({
+                        payload: startPayload,
+                        sessionStartTime: session.startTime,
+                    });
+                }
                 return;
             }
 
             session.id = response.data?.sessionId || null;
             sessionRef.current = session;
             saveSessionToStorage(session);
+            if (retryQueueRef.current.length > 0) {
+                void flushRetryQueue();
+            }
         } catch {
             // Session analytics must never interrupt the UI.
         }
-    }, [getAnonymousId, getDeviceType, persistSessionMutation, saveSessionToStorage]);
+    }, [flushRetryQueue, getAnonymousId, getDeviceType, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
 
     // Update session (called periodically)
     const updateSession = useCallback(async () => {
@@ -208,23 +364,34 @@ export default function SessionTracker() {
             return;
         }
 
+        const heartbeatPayload: SessionMutationPayload = {
+            action: 'heartbeat',
+            sessionId: session.id,
+            anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
+            durationSeconds,
+            pageViews: session.pageViews,
+            quizAttempts: session.quizAttempts,
+        };
+
         try {
-            const response = await persistSessionMutation({
-                action: 'heartbeat',
-                sessionId: session.id,
-                anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
-                durationSeconds,
-                pageViews: session.pageViews,
-                quizAttempts: session.quizAttempts,
-            });
+            const response = await persistSessionMutation(heartbeatPayload);
 
             if (!response.ok) {
+                if (response.retryable) {
+                    queueRetryableMutation({
+                        payload: heartbeatPayload,
+                        sessionStartTime: session.startTime,
+                    });
+                }
                 return;
+            }
+            if (retryQueueRef.current.length > 0) {
+                void flushRetryQueue();
             }
         } catch {
             // Session analytics must never interrupt the UI.
         }
-    }, [hydrateSessionFromStorage, persistSessionMutation, saveSessionToStorage]);
+    }, [flushRetryQueue, hydrateSessionFromStorage, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
 
     // End session (called on unmount or page close)
     const endSession = useCallback(async () => {
@@ -242,18 +409,29 @@ export default function SessionTracker() {
             return;
         }
 
+        const endPayload: SessionMutationPayload = {
+            action: 'end',
+            sessionId: session.id,
+            anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
+            durationSeconds,
+            pageViews: session.pageViews,
+            quizAttempts: session.quizAttempts,
+        };
+
         try {
-            const response = await persistSessionMutation({
-                action: 'end',
-                sessionId: session.id,
-                anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
-                durationSeconds,
-                pageViews: session.pageViews,
-                quizAttempts: session.quizAttempts,
-            });
+            const response = await persistSessionMutation(endPayload);
 
             if (!response.ok) {
+                if (response.retryable) {
+                    queueRetryableMutation({
+                        payload: endPayload,
+                        sessionStartTime: session.startTime,
+                    });
+                }
                 return;
+            }
+            if (retryQueueRef.current.length > 0) {
+                void flushRetryQueue();
             }
         } catch {
             // Session analytics must never interrupt the UI.
@@ -262,7 +440,7 @@ export default function SessionTracker() {
             lastTrackedPathnameRef.current = null;
             saveSessionToStorage(null);
         }
-    }, [hydrateSessionFromStorage, persistSessionMutation, saveSessionToStorage]);
+    }, [flushRetryQueue, hydrateSessionFromStorage, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
 
     useEffect(() => {
         authStateRef.current = isAuthenticated;
@@ -301,9 +479,14 @@ export default function SessionTracker() {
             trackPageView(pathnameRef.current);
         };
 
+        const handleOnline = () => {
+            void flushRetryQueue();
+        };
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('beforeunload', handleBeforeUnload);
         window.addEventListener(CONSENT_GRANTED_EVENT, handleConsentGranted);
+        window.addEventListener('online', handleOnline);
 
         return () => {
             if (intervalRef.current) {
@@ -312,9 +495,10 @@ export default function SessionTracker() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('beforeunload', handleBeforeUnload);
             window.removeEventListener(CONSENT_GRANTED_EVENT, handleConsentGranted);
+            window.removeEventListener('online', handleOnline);
             void endSession();
         };
-    }, [endSession, startSession, trackPageView, updateSession]);
+    }, [endSession, flushRetryQueue, startSession, trackPageView, updateSession]);
 
     useEffect(() => {
         trackPageView(pathname);

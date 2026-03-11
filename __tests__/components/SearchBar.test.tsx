@@ -1,73 +1,85 @@
-/**
- * SearchBar Component Test (M10)
- * Skill: tdd-workflow, unit-testing-test-generate, react-best-practices
- *
- * Tests the SearchBar component render and behavior.
- */
-
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import SearchBar, { type SearchFilterState } from '@/components/SearchBar';
+import { defaultSearchFilterState } from '@/lib/search-state';
 
-// Mock the contexts
+const translationMap: Record<string, string> = {
+    'search.containerLabel': 'Search terms',
+    'search.placeholder': 'Search in Turkish, English or Russian...',
+    'search.clearSearch': 'Clear search',
+    'search.showFilters': 'Show category filters',
+    'search.hideFilters': 'Hide category filters',
+    'search.allTerms': 'All Terms',
+    'search.allMarkets': 'All Markets',
+    'search.marketLabel': 'Market taxonomy',
+    'search.sortLabel': 'Sort order',
+    'search.sort.alphaAsc': 'Alphabetical (A-Z)',
+    'search.sort.alphaDesc': 'Alphabetical (Z-A)',
+    'search.markets.MOEX': 'Market: MOEX',
+    'search.markets.BIST': 'Market: BIST',
+    'search.markets.GLOBAL': 'Market: GLOBAL',
+    'categories.Fintech': 'Fintech',
+    'categories.Finance': 'Finance',
+    'categories.Technology': 'Technology',
+};
+
 jest.mock('@/contexts/LanguageContext', () => ({
-    useLanguage: () => ({ t: (key: string) => key, language: 'en' }),
-}));
-
-jest.mock('@/contexts/SRSContext', () => ({
-    useSRS: () => ({
-        terms: [
-            { id: '1', term_en: 'Blockchain', term_tr: 'Blokzincir', category: 'Fintech', definition_en: 'A distributed ledger' },
-            { id: '2', term_en: 'Bitcoin', term_tr: 'Bitcoin', category: 'Fintech', definition_en: 'A cryptocurrency' },
-        ],
-        userProgress: { favorites: [] },
+    useLanguage: () => ({
+        language: 'en',
+        t: (key: string) => translationMap[key] ?? key,
     }),
 }));
 
-jest.mock('@/contexts/ThemeContext', () => ({
-    useTheme: () => ({ theme: 'light', resolvedTheme: 'light', setTheme: jest.fn() }),
-}));
+describe('SearchBar', () => {
+    const renderSearchBar = (overrides: Partial<SearchFilterState> = {}) => {
+        const onQueryChange = jest.fn();
+        const onCategoryChange = jest.fn();
+        const onMarketChange = jest.fn();
+        const onSortChange = jest.fn();
+        const onClear = jest.fn();
 
-describe('Search Functionality', () => {
-    it('should render a search input', () => {
-        const SearchInput = () => (
-            <input type="text" placeholder="Search terms..." data-testid="search-input" aria-label="Search" />
+        render(
+            <SearchBar
+                filterState={{ ...defaultSearchFilterState, ...overrides }}
+                onQueryChange={onQueryChange}
+                onCategoryChange={onCategoryChange}
+                onMarketChange={onMarketChange}
+                onSortChange={onSortChange}
+                onClear={onClear}
+            />
         );
-        render(<SearchInput />);
-        const input = screen.getByTestId('search-input');
-        expect(input).toBeInTheDocument();
-        expect(input).toHaveAttribute('aria-label', 'Search');
-    });
 
-    it('should accept user input', () => {
-        const SearchInput = () => {
-            const [value, setValue] = React.useState('');
-            return (
-                <input type="text" value={value} onChange={(e) => setValue(e.target.value)} data-testid="search-input" />
-            );
+        return {
+            onQueryChange,
+            onCategoryChange,
+            onMarketChange,
+            onSortChange,
+            onClear,
         };
-        render(<SearchInput />);
-        const input = screen.getByTestId('search-input');
-        fireEvent.change(input, { target: { value: 'bitcoin' } });
-        expect(input).toHaveValue('bitcoin');
+    };
+
+    it('renders regional market chips in the active language', () => {
+        renderSearchBar();
+
+        expect(screen.getByRole('button', { name: 'Market: MOEX' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Market: BIST' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Market: GLOBAL' })).toBeInTheDocument();
     });
 
-    it('should filter terms based on search query', () => {
-        const terms = [
-            { id: '1', term_en: 'Blockchain' },
-            { id: '2', term_en: 'Bitcoin' },
-            { id: '3', term_en: 'API' },
-        ];
-        const query = 'bit';
-        const filtered = terms.filter(t => t.term_en.toLowerCase().includes(query.toLowerCase()));
-        expect(filtered).toHaveLength(1);
-        expect(filtered[0]?.term_en).toBe('Bitcoin');
-    });
+    it('forwards query and filter changes to the URL state controller', () => {
+        const { onQueryChange, onMarketChange, onSortChange } = renderSearchBar();
 
-    it('should handle empty search query', () => {
-        const terms = [{ id: '1', term_en: 'Test' }];
-        const query = '';
-        const filtered = query ? terms.filter(t => t.term_en.toLowerCase().includes(query)) : terms;
-        expect(filtered).toEqual(terms);
+        fireEvent.change(screen.getByLabelText('Search in Turkish, English or Russian...'), {
+            target: { value: 'bond' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Market: MOEX' }));
+        fireEvent.change(screen.getByLabelText('Sort order'), {
+            target: { value: 'alpha-desc' },
+        });
+
+        expect(onQueryChange).toHaveBeenCalledWith('bond');
+        expect(onMarketChange).toHaveBeenCalledWith('MOEX');
+        expect(onSortChange).toHaveBeenCalledWith('alpha-desc');
     });
 });

@@ -3,10 +3,11 @@
 // Cloud-based data persistence for authenticated users
 // ============================================
 
+import { z } from 'zod';
 import { supabase } from './supabase';
 import { UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
-import { filterAcademicTerms } from '@/lib/academicQuarantine';
+import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 
 interface FavoriteToggleResponse {
@@ -20,7 +21,7 @@ export interface RecordQuizResult {
         term_id: string;
         srs_level: number;
         next_review_date: string;
-        last_reviewed: string;
+        last_reviewed: string | null;
         difficulty_score: number;
         retention_rate: number;
         times_reviewed: number;
@@ -33,8 +34,90 @@ interface StreakSummaryRow {
     last_study_date: string | null;
 }
 
+const favoriteToggleResponseSchema = z.object({
+    favorites: z.array(z.string().min(1)),
+    isFavorite: z.boolean(),
+}).passthrough();
+
+const recordQuizResultSchema = z.object({
+    userProgress: z.object({
+        current_streak: z.number().int().nonnegative(),
+        last_study_date: z.string().min(1).nullable(),
+        total_words_learned: z.number().finite().nonnegative(),
+        updated_at: z.string().min(1),
+    }).passthrough(),
+    termSrs: z.object({
+        term_id: z.string().min(1),
+        srs_level: z.number().int().nonnegative(),
+        next_review_date: z.string().min(1),
+        last_reviewed: z.string().min(1).nullable(),
+        difficulty_score: z.number().finite(),
+        retention_rate: z.number().finite(),
+        times_reviewed: z.number().int().nonnegative(),
+        times_correct: z.number().int().nonnegative(),
+    }).passthrough(),
+}).passthrough();
+
+const recordQuizPayloadSchema = z.object({
+    state: recordQuizResultSchema,
+}).passthrough();
+
+const userProgressRowSchema = z.object({
+    total_words_learned: z.number().finite().nonnegative().nullable().optional(),
+    created_at: z.string().min(1).nullable().optional(),
+    updated_at: z.string().min(1).nullable().optional(),
+}).passthrough();
+
+const favoriteRowSchema = z.object({
+    term_id: z.string().min(1),
+}).passthrough();
+
+const quizHistoryRowSchema = z.object({
+    id: z.string().min(1),
+    term_id: z.string().min(1),
+    is_correct: z.boolean(),
+    response_time_ms: z.number().finite().nonnegative(),
+    created_at: z.string().min(1),
+    quiz_type: z.enum(['daily', 'practice', 'review']),
+}).passthrough();
+
+const userSettingsRowSchema = z.object({
+    preferred_language: z.enum(['tr', 'en', 'ru']).nullable().optional(),
+}).passthrough();
+
+const streakSummaryRowSchema = z.object({
+    current_streak: z.number().int().nonnegative(),
+    last_study_date: z.string().min(1).nullable(),
+}).passthrough();
+
+const termSrsRowSchema = z.object({
+    term_id: z.string().min(1),
+    srs_level: z.number().int().nonnegative(),
+    next_review_date: z.string().min(1),
+    last_reviewed: z.string().min(1).nullable(),
+    difficulty_score: z.number().finite(),
+    retention_rate: z.number().finite(),
+    times_reviewed: z.number().int().nonnegative(),
+    times_correct: z.number().int().nonnegative(),
+}).passthrough();
+
 const REQUEST_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+
+const parseResponseOrThrow = <T>(
+    schema: z.ZodType<T>,
+    payload: unknown,
+    errorMessage: string
+): T => {
+    const result = schema.safeParse(payload);
+
+    if (!result.success) {
+        console.error('[supabaseStorage]', result.error.flatten());
+        throw new Error(errorMessage);
+    }
+
+    return result.data;
+};
 
 const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
     try {
@@ -197,15 +280,45 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         return null;
     }
 
-    const createdAt = progressData?.created_at || new Date().toISOString();
-    const updatedAt = progressData?.updated_at || createdAt;
-    const streakSummary = (Array.isArray(streakData) ? streakData[0] : null) as StreakSummaryRow | null;
+    const parsedProgressData = progressData
+        ? parseResponseOrThrow(
+            userProgressRowSchema,
+            progressData,
+            'Supabase returned malformed study progress data.'
+        )
+        : null;
+    const parsedFavoritesData = parseResponseOrThrow(
+        z.array(favoriteRowSchema),
+        favoritesData || [],
+        'Supabase returned malformed favorites data.'
+    );
+    const parsedQuizData = parseResponseOrThrow(
+        z.array(quizHistoryRowSchema),
+        quizData || [],
+        'Supabase returned malformed quiz history data.'
+    );
+    const parsedSettingsData = settingsData
+        ? parseResponseOrThrow(
+            userSettingsRowSchema,
+            settingsData,
+            'Supabase returned malformed user settings data.'
+        )
+        : null;
+    const parsedStreakData = parseResponseOrThrow(
+        z.array(streakSummaryRowSchema),
+        Array.isArray(streakData) ? streakData : [],
+        'Supabase returned malformed streak data.'
+    );
+
+    const createdAt = parsedProgressData?.created_at || new Date().toISOString();
+    const updatedAt = parsedProgressData?.updated_at || createdAt;
+    const streakSummary = (parsedStreakData[0] || null) as StreakSummaryRow | null;
 
     const result = userProgressSchema.safeParse({
         user_id: userId,
-        favorites: (favoritesData || []).map((row) => row.term_id),
-        current_language: settingsData?.preferred_language || 'ru',
-        quiz_history: (quizData || []).map((q) => ({
+        favorites: parsedFavoritesData.map((row) => row.term_id),
+        current_language: parsedSettingsData?.preferred_language || 'ru',
+        quiz_history: parsedQuizData.map((q) => ({
             id: q.id,
             term_id: q.term_id,
             is_correct: q.is_correct,
@@ -213,7 +326,7 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
             timestamp: q.created_at,
             quiz_type: q.quiz_type as 'daily' | 'practice' | 'review',
         })),
-        total_words_learned: progressData?.total_words_learned ?? 0,
+        total_words_learned: parsedProgressData?.total_words_learned ?? 0,
         current_streak: streakSummary?.current_streak ?? 0,
         last_study_date: streakSummary?.last_study_date ?? null,
         created_at: createdAt,
@@ -250,7 +363,11 @@ export async function toggleFavoriteInSupabase(
         throw new Error(message);
     }
 
-    return await response.json() as FavoriteToggleResponse;
+    return parseResponseOrThrow(
+        favoriteToggleResponseSchema,
+        await response.json(),
+        'Favorites service returned malformed data.'
+    );
 }
 
 /**
@@ -276,7 +393,11 @@ export async function saveQuizAttemptToSupabase(
         throw new Error(message);
     }
 
-    const payload = await response.json() as { state: RecordQuizResult };
+    const payload = parseResponseOrThrow(
+        recordQuizPayloadSchema,
+        await response.json(),
+        'Quiz service returned malformed data.'
+    );
     return payload.state;
 }
 
@@ -320,8 +441,14 @@ export async function getAllTermSRSFromSupabase(
 
     if (error || !data) return new Map();
 
+    const parsedData = parseResponseOrThrow(
+        z.array(termSrsRowSchema),
+        data,
+        'Supabase returned malformed SRS review data.'
+    );
+
     const srsMap = new Map<string, Partial<Term>>();
-    data.forEach((row) => {
+    parsedData.forEach((row) => {
         srsMap.set(row.term_id, {
             srs_level: row.srs_level,
             next_review_date: row.next_review_date,
@@ -340,10 +467,26 @@ export async function getAllTermSRSFromSupabase(
  * Returns just the content, not user SRS data
  */
 export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
-    const { data, error } = await supabase
-        .from('terms')
-        .select('*')
-        .eq('is_academic', true);
+    const runTermsQuery = async (filterAcademicOnly: boolean) => {
+        let query = supabase
+            .from('terms')
+            .select('*');
+
+        if (filterAcademicOnly) {
+            query = query.eq('is_academic', true);
+        }
+
+        return await query;
+    };
+
+    let { data, error } = await runTermsQuery(true);
+
+    if (isMissingAcademicColumnError(error)) {
+        console.warn(
+            '[supabaseStorage] terms.is_academic column is missing; retrying without the academic filter.'
+        );
+        ({ data, error } = await runTermsQuery(false));
+    }
 
     if (error) {
         console.error('Failed to fetch terms:', error);

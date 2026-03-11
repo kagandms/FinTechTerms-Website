@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getMasteryLevel } from '@/utils/srsLogic';
 import Link from 'next/link';
+import { ContextTagList, MarketBadge } from '@/components/TermTaxonomy';
 import {
     Volume2,
     Heart,
@@ -136,11 +137,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             {/* Header */}
             <div className="p-4 pb-2">
                 {/* Category Badge */}
-                <div className="flex items-center justify-between mb-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${categoryColors[term.category]}`}>
-                        {categoryIcons[term.category]}
-                        {t(`categories.${term.category}`)}
-                    </span>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${categoryColors[term.category]}`}>
+                            {categoryIcons[term.category]}
+                            {t(`categories.${term.category}`)}
+                        </span>
+                        <MarketBadge market={term.regional_market} />
+                    </div>
 
                     {/* Mastery Level or Favorites Remaining */}
                     {term.times_reviewed > 0 ? (
@@ -220,6 +224,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                     {currentDefinition}
                 </p>
+                <ContextTagList
+                    contextTags={term.context_tags}
+                    maxItems={showFullDetails ? 8 : 4}
+                    className="mt-3"
+                />
             </div>
 
             {/* Expandable Section */}

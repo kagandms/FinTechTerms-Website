@@ -1,10 +1,4 @@
-"""
-FinTechTerms Bot — Quiz Handler Module (M50)
-Skill: code-refactoring-refactor-clean, python-pro
-
-Extracted quiz logic from the monolithic handlers.py file
-for better maintainability and testability.
-"""
+"""Quiz builders and quiz-related helpers for the Telegram bot."""
 
 from __future__ import annotations
 
@@ -17,11 +11,59 @@ from bot.config import CATEGORY_EMOJI
 from bot.db_terms import fetch_all_terms
 from bot.i18n import t
 
+MAX_QUIZ_OPTIONS = 4
+QUIZ_OPTION_PREVIEW_LENGTH = 80
+
 
 def _back_button(lang: str) -> InlineKeyboardButton:
     """Create a standardised back-to-menu button."""
     label = "🔙 Меню" if lang == "ru" else "🔙 Menü" if lang == "tr" else "🔙 Menu"
     return InlineKeyboardButton(label, callback_data="menu:main")
+
+
+def _clean_text(value: Any) -> str:
+    return " ".join(str(value or "").split()).strip()
+
+
+def _localized_term(term: dict[str, Any], lang: str) -> str:
+    return _clean_text(term.get(f"term_{lang}") or term.get("term_en") or "—")
+
+
+def _localized_definition(term: dict[str, Any], lang: str) -> str:
+    return _clean_text(term.get(f"definition_{lang}") or term.get("definition_en") or "—")
+
+
+def _unique_quiz_candidates(
+    all_terms: list[dict[str, Any]],
+    lang: str,
+) -> list[tuple[dict[str, Any], str]]:
+    candidates: list[tuple[dict[str, Any], str]] = []
+    seen_definitions: set[str] = set()
+
+    for term in all_terms:
+        if not isinstance(term, dict):
+            continue
+
+        term_id = _clean_text(term.get("id"))
+        definition = _localized_definition(term, lang)
+        if not term_id or not definition or definition == "—":
+            continue
+
+        signature = definition.casefold()
+        if signature in seen_definitions:
+            continue
+
+        seen_definitions.add(signature)
+        candidates.append((term, definition))
+
+    return candidates
+
+
+def _short_option_text(option: str) -> str:
+    if len(option) <= QUIZ_OPTION_PREVIEW_LENGTH:
+        return option
+
+    return option[:QUIZ_OPTION_PREVIEW_LENGTH] + "…"
 
 
 async def build_quiz(
@@ -40,42 +82,45 @@ async def build_quiz(
         4. Build shuffled multiple-choice keyboard
     """
     all_terms = await fetch_all_terms()
-    if len(all_terms) < 4:
+    candidates = _unique_quiz_candidates(all_terms, lang)
+
+    if len(candidates) < MAX_QUIZ_OPTIONS:
         return None, None
 
-    correct_term = random.choice(all_terms)
-    term_key = f"term_{lang}"
-    def_key = f"definition_{lang}"
-
-    correct_def = correct_term.get(def_key) or correct_term.get("definition_en", "—")
-
-    wrong_terms = random.sample(
-        [ti for ti in all_terms if ti["id"] != correct_term["id"]],
-        min(3, len(all_terms) - 1),
-    )
-    wrong_defs = [
-        wt.get(def_key) or wt.get("definition_en", "—") for wt in wrong_terms
+    correct_term, correct_def = random.choice(candidates)
+    correct_id = str(correct_term["id"])
+    wrong_candidates = [
+        (term, definition)
+        for term, definition in candidates
+        if str(term.get("id")) != correct_id and definition.casefold() != correct_def.casefold()
     ]
 
+    if len(wrong_candidates) < MAX_QUIZ_OPTIONS - 1:
+        return None, None
+
+    wrong_terms = random.sample(
+        wrong_candidates,
+        MAX_QUIZ_OPTIONS - 1,
+    )
+
     options: list[tuple[str, bool]] = [(correct_def, True)] + [
-        (wd, False) for wd in wrong_defs
+        (wrong_definition, False) for _, wrong_definition in wrong_terms
     ]
     random.shuffle(options)
 
     buttons: list[list[InlineKeyboardButton]] = []
     for i, (opt, is_correct) in enumerate(options):
-        short = opt[:80] + "…" if len(opt) > 80 else opt
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"{chr(65 + i)}) {short}",
-                    callback_data=f"quiz:{'1' if is_correct else '0'}:{correct_term['id']}",
+                    f"{chr(65 + i)}) {_short_option_text(opt)}",
+                    callback_data=f"quiz:{'1' if is_correct else '0'}:{correct_id}",
                 )
             ]
         )
     buttons.append([_back_button(lang)])
 
-    term_display = correct_term.get(term_key) or correct_term.get("term_en", "—")
+    term_display = _localized_term(correct_term, lang)
     text = t("quiz_question", lang, term=term_display)
 
     return text, InlineKeyboardMarkup(buttons)

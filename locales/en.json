@@ -24,11 +24,42 @@
         "noTerms": "No terms found yet."
     },
     "search": {
+        "title": "Search",
+        "description": "Search financial, fintech, and IT terms with MOEX, BIST, and GLOBAL market filters.",
         "placeholder": "Search in Turkish, English or Russian...",
+        "containerLabel": "Search terms",
+        "clearSearch": "Clear search",
+        "showFilters": "Show category filters",
+        "hideFilters": "Hide category filters",
         "noResults": "No results found",
+        "noResultsTitle": "No matches found",
+        "noResultsDescription": "Adjust your query or remove active filters to broaden the results.",
+        "filteredMarketTitle": "No terms found for the selected market",
+        "filteredMarketDescription": "The current market filter returned no terms. Try another market or clear the filter.",
+        "loadingTitle": "Loading dictionary",
+        "loadingDescription": "Terms are being prepared for search. Please wait.",
+        "errorTitle": "Data loading error",
+        "errorDescription": "Search data could not be loaded right now. Please try again.",
+        "degradedTitle": "Showing saved terms",
+        "degradedDescription": "The server is unavailable. Search is currently using the latest saved terms.",
+        "emptyTitle": "No terms available",
+        "emptyDescription": "There are no terms to display right now.",
+        "retry": "Try Again",
         "categories": "Categories",
         "allTerms": "All Terms",
-        "results": "results found"
+        "allMarkets": "All Markets",
+        "marketLabel": "Market taxonomy",
+        "sortLabel": "Sort order",
+        "sort": {
+            "alphaAsc": "Alphabetical (A-Z)",
+            "alphaDesc": "Alphabetical (Z-A)"
+        },
+        "results": "results found",
+        "markets": {
+            "MOEX": "Market: MOEX",
+            "BIST": "Market: BIST",
+            "GLOBAL": "Market: GLOBAL"
+        }
     },
     "quiz": {
         "title": "Practice",
@@ -80,6 +111,8 @@
         "favoriteCount": "Favorite Words",
         "masteredWords": "Mastered",
         "learningWords": "Learning",
+        "srsQueue": "SRS Queue",
+        "dueForReview": "due",
         "resetData": "Reset Data",
         "language": "Language",
         "days": "days",
