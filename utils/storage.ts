@@ -4,6 +4,7 @@
 // ============================================
 
 import { Term, UserProgress, QuizAttempt } from '@/types';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME, normalizeLanguage } from '@/lib/language';
 import { mockTerms, defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
@@ -226,16 +227,28 @@ export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
  * Get current language preference
  */
 export function getCurrentLanguage(): 'tr' | 'en' | 'ru' {
-    if (!isLocalStorageAvailable()) return 'ru';
+    const cookieLanguage = typeof document !== 'undefined'
+        ? document.cookie
+            .split(';')
+            .map(cookie => cookie.trim())
+            .find(cookie => cookie.startsWith(`${LANGUAGE_COOKIE_NAME}=`))
+        : null;
+    const normalizedCookieLanguage = normalizeLanguage(cookieLanguage?.split('=')[1] ?? null);
+
+    if (!isLocalStorageAvailable()) {
+        return normalizedCookieLanguage ?? DEFAULT_LANGUAGE;
+    }
 
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
-        if (stored && ['tr', 'en', 'ru'].includes(stored)) {
-            return stored as 'tr' | 'en' | 'ru';
+        const normalizedStoredLanguage = normalizeLanguage(stored);
+        if (normalizedStoredLanguage) {
+            return normalizedStoredLanguage;
         }
-        return 'ru';
+
+        return normalizedCookieLanguage ?? DEFAULT_LANGUAGE;
     } catch {
-        return 'ru';
+        return normalizedCookieLanguage ?? DEFAULT_LANGUAGE;
     }
 }
 
@@ -243,10 +256,16 @@ export function getCurrentLanguage(): 'tr' | 'en' | 'ru' {
  * Set language preference
  */
 export function setCurrentLanguage(language: 'tr' | 'en' | 'ru'): void {
+    const normalizedLanguage = normalizeLanguage(language) ?? DEFAULT_LANGUAGE;
+
+    if (typeof document !== 'undefined') {
+        document.cookie = `${LANGUAGE_COOKIE_NAME}=${normalizedLanguage}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    }
+
     if (!isLocalStorageAvailable()) return;
 
     try {
-        localStorage.setItem(STORAGE_KEYS.LANGUAGE, language);
+        localStorage.setItem(STORAGE_KEYS.LANGUAGE, normalizedLanguage);
     } catch (error) {
         console.error('Failed to save language preference:', error);
     }
@@ -262,6 +281,9 @@ export function resetAllData(): void {
         localStorage.removeItem(STORAGE_KEYS.TERMS);
         localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
         localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
+        if (typeof document !== 'undefined') {
+            document.cookie = `${LANGUAGE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
+        }
     } catch (error) {
         console.error('Failed to reset data:', error);
     }

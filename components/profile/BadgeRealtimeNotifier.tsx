@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { NOTIFICATION_SETTINGS_STORAGE_KEY } from '@/components/NotificationSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import type { Language } from '@/types';
 
 interface BadgeRealtimePayload {
@@ -127,6 +127,7 @@ const showBadgeNotification = async (
 };
 
 export default function BadgeRealtimeNotifier() {
+    const supabase = getSupabaseClient();
     const { user } = useAuth();
     const { language } = useLanguage();
     const router = useRouter();
@@ -171,7 +172,7 @@ export default function BadgeRealtimeNotifier() {
         return () => {
             void supabase.removeChannel(channel);
         };
-    }, [language, router, userId]);
+    }, [language, router, supabase, userId]);
 
     return null;
 }

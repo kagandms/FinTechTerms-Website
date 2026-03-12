@@ -1,10 +1,11 @@
 import ProfilePageClient from './ProfilePageClient';
 import { getLearningStats } from '@/app/actions/getLearningStats';
-import { createClient } from '@/utils/supabase/server';
+import { createOptionalClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileWarningCode } from './ProfilePageClient';
 import { getSupabaseUserNameSeed } from '@/lib/auth/user';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -52,22 +53,12 @@ const loadInitialProfileData = async (): Promise<{
     warningCode: ProfileWarningCode | null;
 }> => {
     let warningCode: ProfileWarningCode | null = null;
-    let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
-
-    try {
-        supabase = await createClient();
-    } catch (error) {
-        console.error('PROFILE_RSC_CLIENT_ERROR', error);
-        return {
-            data: null,
-            warningCode: 'PROFILE_DATA_LOAD_FAILED',
-        };
-    }
+    let supabase = await createOptionalClient();
 
     if (!supabase) {
         return {
             data: null,
-            warningCode: 'PROFILE_DATA_LOAD_FAILED',
+            warningCode: null,
         };
     }
 
@@ -95,7 +86,11 @@ const loadInitialProfileData = async (): Promise<{
         .maybeSingle();
 
     if (profileError) {
-        console.error('PROFILE_RSC_FETCH_ERROR:', profileError);
+        logger.warn('PROFILE_RSC_FETCH_ERROR', {
+            route: '/profile',
+            userId: user.id,
+            error: new Error(profileError.message),
+        });
         warningCode = 'PROFILE_DATA_PARTIAL';
     } else if (profileData) {
         if (profileData.full_name) {

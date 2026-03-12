@@ -1,3 +1,19 @@
+create table if not exists public.telegram_users (
+    telegram_id bigint primary key,
+    user_id uuid not null references auth.users(id) on delete cascade,
+    telegram_username text,
+    linked_at timestamptz not null default timezone('utc', now()),
+    constraint telegram_users_user_id_key unique (user_id)
+);
+
+create table if not exists public.account_link_tokens (
+    id uuid primary key default gen_random_uuid(),
+    telegram_id bigint not null,
+    token text not null unique,
+    expires_at timestamptz not null default timezone('utc', now()) + interval '15 minutes',
+    created_at timestamptz not null default timezone('utc', now())
+);
+
 alter table public.telegram_users enable row level security;
 
 drop policy if exists "Service Role can manage telegram_users" on public.telegram_users;

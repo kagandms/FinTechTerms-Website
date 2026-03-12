@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useCallback, useEffect, useState } from 'react';
 import { CONSENT_GRANTED_EVENT } from './ConsentModal';
+import { getPublicEnv } from '@/lib/env';
 
 const CONSENT_KEY = 'fintechterms_research_consent';
 
@@ -30,7 +31,7 @@ const readConsentState = (): boolean => {
  * Compliant with GDPR/KVKK regulations.
  */
 export default function GoogleAnalytics() {
-    const gaId = process.env.NEXT_PUBLIC_GA_ID;
+    const gaId = getPublicEnv().gaId;
     const [hasConsent, setHasConsent] = useState(readConsentState);
     const syncConsentState = useCallback(() => {
         setHasConsent(readConsentState());

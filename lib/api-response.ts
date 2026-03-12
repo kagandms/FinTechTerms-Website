@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export interface ApiErrorResponseBody {
     code: string;
@@ -162,7 +163,12 @@ export const handleRouteError = (
     }: HandleRouteErrorOptions
 ) => {
     if (isUpstreamTimeoutError(error)) {
-        console.error(`${logLabel}_TIMEOUT`, error);
+        logger.error(`${logLabel}_TIMEOUT`, {
+            requestId,
+            route: logLabel,
+            error,
+            retryable: true,
+        });
         return errorResponse({
             status: 504,
             code: timeoutCode,
@@ -173,7 +179,12 @@ export const handleRouteError = (
         });
     }
 
-    console.error(logLabel, error);
+    logger.error(logLabel, {
+        requestId,
+        route: logLabel,
+        error: error instanceof Error ? error : undefined,
+        retryable,
+    });
     return errorResponse({
         status,
         code,

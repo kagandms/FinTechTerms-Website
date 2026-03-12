@@ -45,9 +45,9 @@ load_env_local()
 # ==========================================
 # Try standard names first, then Next.js specific names
 SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("❌ ERROR: Missing Supabase Credentials.")
     print("Please ensure .env.local exists in the project root with NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
     exit(1)
@@ -65,7 +65,7 @@ total_sessions = 0
 total_attempts = 0
 
 def init_supabase() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 class SRSState:
     def __init__(self):

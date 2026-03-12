@@ -23,7 +23,7 @@ from bot.db_terms import (
     normalize_term_payload,
 )
 from bot.i18n import STRINGS, t
-from bot.quiz import build_accuracy_bar, build_quiz, choose_smart_tip
+from bot.quiz import build_accuracy_bar, build_quiz, build_quiz_result, choose_smart_tip
 
 
 def make_term(
@@ -328,6 +328,46 @@ class TestQuizModule:
         assert text is None
         assert keyboard is None
 
+    def test_build_quiz_returns_none_when_fewer_than_four_terms_are_available(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+            return sample_terms()[:3]
+
+        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+
+        text, keyboard = asyncio.run(build_quiz("en"))
+
+        assert text is None
+        assert keyboard is None
+
+    def test_build_quiz_result_shows_correct_answer_definition_for_wrong_responses(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_fetch_term_by_id(term_id: str) -> dict[str, Any]:
+            assert term_id == "term_4"
+            return make_term(
+                "term_4",
+                "Yield",
+                "Income generated from an investment over time.",
+            )
+
+        monkeypatch.setattr(quiz, "fetch_term_by_id", fake_fetch_term_by_id)
+
+        text, keyboard = asyncio.run(build_quiz_result("en", False, "term_4"))
+
+        assert "Income generated from an investment over time." in text
+        assert keyboard.inline_keyboard[0][0].callback_data == "menu:quiz"
+        assert keyboard.inline_keyboard[0][1].callback_data == "menu:main"
+
+    def test_build_quiz_result_uses_localized_success_copy_for_correct_answers(self) -> None:
+        text, keyboard = asyncio.run(build_quiz_result("ru", True, "term_1"))
+
+        assert text == t("quiz_correct", "ru")
+        assert keyboard.inline_keyboard[0][0].callback_data == "menu:quiz"
+
 
 class TestCommandHandlers:
     def test_start_handler_sends_welcome_and_menu(self) -> None:
@@ -441,6 +481,33 @@ class TestCommandHandlers:
         assert sent.reply_markup is not None
         assert sent.reply_markup.inline_keyboard[0][0].callback_data == "quiz:1:term_1"
 
+    def test_quiz_handler_runs_the_real_quiz_builder(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_is_rate_limited(user_id: int) -> bool:
+            return False
+
+        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+            return sample_terms()
+
+        monkeypatch.setattr(handlers, "is_rate_limited", fake_is_rate_limited)
+        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+        monkeypatch.setattr(quiz.random, "choice", lambda seq: seq[0])
+        monkeypatch.setattr(quiz.random, "sample", lambda seq, count: list(seq)[:count])
+        monkeypatch.setattr(quiz.random, "shuffle", lambda seq: None)
+
+        message = DummyMessage()
+        update = make_update(message=message)
+        context = make_context()
+
+        asyncio.run(handlers.quiz_handler(update, context))
+
+        sent = message.replies[0]
+        assert "Liquidity" in sent.text
+        assert sent.reply_markup is not None
+        assert len(option_rows(sent.reply_markup)) == 4
+
     def test_lang_handler_shows_language_picker(self) -> None:
         message = DummyMessage()
         update = make_update(message=message)
@@ -532,6 +599,32 @@ class TestCommandHandlers:
         assert len(query.edits) == 1
         assert query.edits[0].text == "Quiz from callback"
         assert query.edits[0].reply_markup is not None
+        assert query.answer_calls[-1] == {"text": None, "show_alert": False}
+
+    def test_callback_handler_quiz_wrong_answer_uses_real_quiz_result_builder(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_fetch_term_by_id(term_id: str) -> dict[str, Any]:
+            assert term_id == "term_4"
+            return make_term(
+                "term_4",
+                "Yield",
+                "Income generated from an investment over time.",
+            )
+
+        monkeypatch.setattr(quiz, "fetch_term_by_id", fake_fetch_term_by_id)
+
+        query = DummyQuery("quiz:0:term_4")
+        update = make_update(query=query)
+        context = make_context()
+
+        asyncio.run(handlers.callback_handler(update, context))
+
+        assert len(query.edits) == 1
+        assert "Income generated from an investment over time." in query.edits[0].text
+        assert query.edits[0].reply_markup is not None
+        assert query.edits[0].reply_markup.inline_keyboard[0][0].callback_data == "menu:quiz"
         assert query.answer_calls[-1] == {"text": None, "show_alert": False}
 
 

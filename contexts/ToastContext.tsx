@@ -42,6 +42,14 @@ interface ToastProviderProps {
 
 export function ToastProvider({ children }: ToastProviderProps) {
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const timeoutMapRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+    React.useEffect(() => () => {
+        Object.values(timeoutMapRef.current).forEach((timeoutId) => {
+            clearTimeout(timeoutId);
+        });
+        timeoutMapRef.current = {};
+    }, []);
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
         const id = `toast_${Date.now()}`;
@@ -49,12 +57,18 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
         setToasts(prev => [...prev, newToast]);
 
-        setTimeout(() => {
+        timeoutMapRef.current[id] = setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
+            delete timeoutMapRef.current[id];
         }, TOAST_DURATION);
     }, []);
 
     const removeToast = useCallback((id: string) => {
+        const timeoutId = timeoutMapRef.current[id];
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            delete timeoutMapRef.current[id];
+        }
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 

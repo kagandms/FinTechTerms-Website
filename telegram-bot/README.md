@@ -36,9 +36,11 @@ python -m bot.main
 |---|---|
 | `BOT_TOKEN` | Telegram Bot API token from @BotFather |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_KEY` | Supabase key (anon or server key) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional, recommended for server bot account features (link/favorites/stats) |
+| `SUPABASE_ANON_KEY` | Supabase anon key used by the bot for term lookups |
+| `WEB_APP_URL` | Public FinTechTerms web app URL used for deep links |
 | `ADMIN_USER_ID` | Your Telegram user ID for admin commands |
+
+The Telegram bot must use `SUPABASE_ANON_KEY`. Admin scripts and server-side maintenance flows must use `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Tech Stack
 

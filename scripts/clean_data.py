@@ -20,11 +20,11 @@ def _require_env(name: str, fallback_name: str | None = None) -> str:
 
 # Configuration
 SUPABASE_URL = _require_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = _require_env("SUPABASE_KEY", "SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_KEY = _require_env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY")
 
 def clean_data():
     print("🧹 Starting cleanup of synthetic data...")
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     
     # 1. Delete Quiz Attempts (Simulation type)
     print("   Deleting 'simulation' quiz attempts...")

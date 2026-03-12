@@ -1,10 +1,8 @@
-# Pinned from the local working environment on 2026-03-11.
+# Pinned from an isolated verification environment on 2026-03-11.
 # Update requirements.in first, then refresh this file from installed versions.
 python-telegram-bot[ext]==21.10
 supabase==2.27.0
 python-dotenv==1.1.0
 edge-tts==7.2.7
-aiofiles==25.1.0
-flask==3.1.2
-gunicorn==24.1.1
-redis==7.3.0
+flask==3.1.3
+redis==7.0.1

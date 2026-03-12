@@ -6,7 +6,7 @@ FROM python:3.11-slim AS base
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for TTS (gTTS)
+# Install system dependencies for edge-tts audio generation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
@@ -23,7 +23,7 @@ RUN mkdir -p audio_cache
 
 # Health check for container orchestrators
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import socket; s=socket.create_connection(('localhost', 8080), timeout=2); s.close()" || exit 1
+    CMD python -c "import os, socket; s=socket.create_connection(('localhost', int(os.environ.get('PORT', '8080'))), timeout=2); s.close()" || exit 1
 
 # Run the bot
 CMD ["python", "-m", "bot"]

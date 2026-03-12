@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000';
+const shouldUseExternalBaseUrl = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+
 export default defineConfig({
     testDir: './e2e',
     fullyParallel: true,
@@ -8,7 +11,7 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://127.0.0.1:3000',
+        baseURL,
         trace: 'on-first-retry',
     },
     projects: [
@@ -30,10 +33,12 @@ export default defineConfig({
         //   use: { ...devices['Pixel 5'] },
         // },
     ],
-    webServer: {
-        command: 'HOSTNAME=127.0.0.1 npm run build && HOSTNAME=127.0.0.1 npm run start',
-        url: 'http://127.0.0.1:3000',
-        reuseExistingServer: !process.env.CI,
-        timeout: 180 * 1000,
-    },
+    webServer: shouldUseExternalBaseUrl
+        ? undefined
+        : {
+            command: 'NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://127.0.0.1:3000} HOSTNAME=127.0.0.1 npm run build && NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://127.0.0.1:3000} HOSTNAME=127.0.0.1 npm run start',
+            url: 'http://127.0.0.1:3000',
+            reuseExistingServer: !process.env.CI,
+            timeout: 180 * 1000,
+        },
 });

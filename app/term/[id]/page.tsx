@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
-import { getTermById, fetchTermsFromSupabase } from '@/lib/supabaseStorage';
+import { getPublicTermById } from '@/lib/public-term-catalog';
 import { createSafeTerm } from '@/utils/termUtils';
 import SmartCard from '@/components/SmartCard';
 import { TaxonomySummary } from '@/components/TermTaxonomy';
-import { siteUrl } from '@/lib/site-url';
+import { getSiteUrl } from '@/lib/site-url';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -33,7 +33,8 @@ const extractContextKeywords = (term: Partial<Term>): string[] => {
 // Generate metadata for each term
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
-    const term = await getTermById(id);
+    const siteUrl = getSiteUrl();
+    const term = await getPublicTermById(id);
 
     if (!term) {
         return {
@@ -50,6 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = `${primaryTerm}: ${descriptionSource.slice(0, 140)}${descriptionSource.length > 140 ? '…' : ''}`;
     const taxonomyKeywords = extractContextKeywords(term);
     const termOgImageUrl = `${siteUrl}/term/${id}/opengraph-image`;
+    const fallbackPublishedTime = '2026-03-11T00:00:00.000Z';
 
     // Filter out undefined tags
     const tags = [
@@ -77,7 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             title: title,
             description: description,
             type: 'article',
-            publishedTime: (term as any).created_at || new Date().toISOString(),
+            publishedTime: fallbackPublishedTime,
             tags: tags,
             images: [
                 {
@@ -97,17 +99,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
 }
 
-// Generate static params for all known terms (for faster loading)
-export async function generateStaticParams() {
-    const terms = await fetchTermsFromSupabase();
-    return terms.map((term) => ({
-        id: term.id,
-    }));
-}
+export const revalidate = 3600;
 
 export default async function TermPage({ params }: Props) {
     const { id } = await params;
-    const termData = await getTermById(id);
+    const siteUrl = getSiteUrl();
+    const termData = await getPublicTermById(id);
 
     if (!termData) {
         notFound();

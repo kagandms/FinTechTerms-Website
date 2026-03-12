@@ -9,6 +9,7 @@ interface EphemeralReservationEntry {
     status: EphemeralReservationStatus;
     statusCode: number | null;
     responseBody: unknown;
+    isError: boolean;
     expiresAt: number;
 }
 
@@ -29,7 +30,7 @@ interface FinalizeReservation {
 
 export type EphemeralIdempotencyCheck =
     | { kind: 'proceed' }
-    | { kind: 'replay'; responseBody: unknown; statusCode: number }
+    | { kind: 'replay'; responseBody: unknown; statusCode: number; isError: boolean }
     | { kind: 'conflict'; code: 'IDEMPOTENCY_KEY_REUSED' | 'REQUEST_IN_PROGRESS'; message: string };
 
 const DEFAULT_TTL_MS = 60_000;
@@ -78,6 +79,7 @@ export const inspectEphemeralIdempotentRequest = ({
             kind: 'replay',
             responseBody: existingReservation.responseBody,
             statusCode: existingReservation.statusCode,
+            isError: existingReservation.isError,
         };
     }
 
@@ -102,6 +104,7 @@ export const reserveEphemeralIdempotentRequest = ({
         status: 'in_progress',
         statusCode: null,
         responseBody: null,
+        isError: false,
         expiresAt: now + ttlMs,
     });
 };
@@ -125,8 +128,16 @@ export const completeEphemeralIdempotentRequest = ({
         status: 'completed',
         statusCode,
         responseBody,
+        isError: statusCode >= 500,
         expiresAt: Date.now() + ttlMs,
     });
+};
+
+export const deleteEphemeralIdempotentRequest = (
+    scope: string,
+    idempotencyKey: string
+): void => {
+    reservations.delete(getScopedKey(scope, idempotencyKey));
 };
 
 export const clearEphemeralIdempotencyReservations = (): void => {

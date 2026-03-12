@@ -13,5 +13,5 @@ if str(BOT_ROOT) not in sys.path:
 
 os.environ.setdefault("BOT_TOKEN", "test-bot-token")
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_KEY", "test-supabase-key")
+os.environ.setdefault("SUPABASE_ANON_KEY", "test-supabase-key")
 os.environ.setdefault("WEB_APP_URL", "https://fintechterms.example.com")

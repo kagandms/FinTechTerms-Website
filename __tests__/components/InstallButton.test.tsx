@@ -66,4 +66,17 @@ describe('InstallButton', () => {
             expect(prompt).toHaveBeenCalledTimes(1);
         });
     });
+
+    it('shows iOS manual install instructions when the platform supports add-to-home-screen only', async () => {
+        Object.defineProperty(window.navigator, 'userAgent', {
+            configurable: true,
+            value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+        });
+
+        render(<InstallButton />);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Install' }));
+
+        expect(await screen.findByText('How to Install on iOS?')).toBeInTheDocument();
+    });
 });

@@ -45,6 +45,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 type="email"
                 value={authForm.email}
                 onChange={(e) => updateAuthField('email', e.target.value)}
+                data-testid="auth-email"
                 className="w-full pl-10 pr-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
                 placeholder={copy.email}
                 aria-label={copy.email}
@@ -81,6 +82,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                     type="text"
                                     value={authForm.name}
                                     onChange={(e) => updateAuthField('name', e.target.value)}
+                                    data-testid="auth-name"
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                     placeholder={copy.name}
                                     aria-label={copy.name}
@@ -95,6 +97,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                     type="text"
                                     value={authForm.surname}
                                     onChange={(e) => updateAuthField('surname', e.target.value)}
+                                    data-testid="auth-surname"
                                     className="w-full px-4 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                     placeholder={copy.surname}
                                     aria-label={copy.surname}
@@ -112,6 +115,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                 type="date"
                                 value={authForm.birthDate || ''}
                                 onChange={(e) => updateAuthField('birthDate', e.target.value)}
+                                data-testid="auth-birth-date"
                                 className="auth-date-input w-full min-h-[48px] px-4 py-3 border rounded-xl bg-white text-gray-900 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500"
                                 aria-label={copy.birthDate}
                             />
@@ -127,6 +131,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                             type={showPassword ? "text" : "password"}
                             value={authForm.password}
                             onChange={(e) => updateAuthField('password', e.target.value)}
+                            data-testid="auth-password"
                             className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
                             placeholder={copy.password}
                             aria-label={copy.password}
@@ -182,6 +187,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                         type="button"
                         onClick={handleAuth}
                         disabled={authLoading}
+                        data-testid="auth-submit"
                         className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {authLoading

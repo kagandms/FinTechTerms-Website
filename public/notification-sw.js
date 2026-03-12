@@ -1,5 +1,7 @@
 // FinTechTerms Notification Service Worker
-// Handles explicit in-app notifications and push notifications.
+// Handles immediate badge notifications and real push events only.
+// It does not schedule daily reminders; those remain foreground-only and the UI
+// explicitly communicates that limitation.
 
 function normalizeNotificationPayload(payload) {
     var safePayload = payload || {};

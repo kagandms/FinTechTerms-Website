@@ -1,16 +1,25 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-if not os.environ.get("SUPABASE_SERVICE_KEY"):
+for env_file in (PROJECT_ROOT / ".env.local", PROJECT_ROOT / ".env"):
+    if env_file.exists():
+        load_dotenv(env_file, override=False)
+
+SUPABASE_SERVICE_KEY = (
+    os.environ.get("SUPABASE_SERVICE_KEY")
+    or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+)
+
+if not SUPABASE_SERVICE_KEY:
     raise RuntimeError(
-        "Missing SUPABASE_SERVICE_KEY. Set it in your shell or add it to a local .env "
+        "Missing SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY. Set one of them "
+        "in your shell or add it to .env.local (preferred) or .env "
         "before running scripts/run_schema_update.py."
     )
-
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 
 def run_sql():
     # Since we can't easily run raw SQL via the JS/Python client without a specific RPC function

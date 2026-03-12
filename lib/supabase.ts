@@ -1,37 +1,76 @@
-// ============================================
-// Supabase Client Configuration
-// ============================================
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
+import { getPublicEnv } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
-import { createClient } from '@supabase/supabase-js';
+const SUPABASE_PLACEHOLDERS = new Set([
+    '',
+    'your_anon_key_here',
+    'https://your-project.supabase.co',
+]);
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+type AppSupabaseClient = SupabaseClient;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase environment variables are not set. Using fallback mode.');
-}
+let client: AppSupabaseClient | null = null;
+let nullClient: AppSupabaseClient | null = null;
+let hasWarnedAboutMissingEnv = false;
 
-/**
- * Supabase client for all operations
- * Using standard createClient with proper configuration to avoid SSR client AbortError issues
- */
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+const createClientOptions = () => ({
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    }
+    },
 });
 
-// Alias for backward compatibility
-export const supabaseAuth = supabase;
+const isConfiguredValue = (value: string | null | undefined): value is string => (
+    typeof value === 'string'
+    && value.trim().length > 0
+    && !SUPABASE_PLACEHOLDERS.has(value.trim())
+);
 
-/**
- * Database Types (generated from schema)
- * These match our database tables
- */
-import { Database } from '@/types/supabase';
+const createNullClient = (): AppSupabaseClient => {
+    if (!nullClient) {
+        nullClient = createClient(
+            'http://127.0.0.1:54321',
+            'anon',
+            createClientOptions()
+        );
+    }
+
+    return nullClient;
+};
+
+export function getSupabaseClient(): AppSupabaseClient {
+    if (client) {
+        return client;
+    }
+
+    const env = getPublicEnv();
+    const url = env.supabaseUrl;
+    const key = env.supabaseAnonKey;
+
+    if (!isConfiguredValue(url) || !isConfiguredValue(key)) {
+        if (process.env.NODE_ENV === 'development') {
+            throw new Error(
+                '[FinTechTerms] NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set. ' +
+                'Copy .env.example to .env.local and fill in the values.'
+            );
+        }
+
+        if (!hasWarnedAboutMissingEnv) {
+            logger.warn('[FinTechTerms] Supabase env vars missing or placeholders detected - running in guest mode.', {
+                route: 'getSupabaseClient',
+            });
+            hasWarnedAboutMissingEnv = true;
+        }
+
+        return createNullClient();
+    }
+
+    client = createClient(url, key, createClientOptions());
+    return client;
+}
 
 export type { Database };
-

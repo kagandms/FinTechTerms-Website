@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/contexts/ToastContext';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
@@ -38,6 +38,7 @@ const translateAuthError = (errorMsg: string, lang: string): string => {
 };
 
 export function useAuthLogic() {
+    const supabase = getSupabaseClient();
     const {
         user, isAuthenticated, login, register, logout,
         verifyOTP, resendOTP, pendingVerificationEmail,
@@ -71,6 +72,8 @@ export function useAuthLogic() {
     const [authError, setAuthError] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
+    const recoveryModalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const resendCooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Password Recovery Detection
     useEffect(() => {
@@ -83,7 +86,7 @@ export function useAuthLogic() {
             if (isPasswordRecovery || isResetUrl || isRecoveryType || isRecoveryInHash) {
                 // Determine if we need to force modal open
                 // Give Supabase a moment to process hash
-                setTimeout(() => {
+                recoveryModalTimeoutRef.current = setTimeout(() => {
                     supabase.auth.getSession().then(({ data: { session } }) => {
                         if (session || isPasswordRecovery) {
                             setAuthMode('update-password');
@@ -93,7 +96,20 @@ export function useAuthLogic() {
                 }, 500);
             }
         }
-    }, [isPasswordRecovery, searchParams, isAuthenticated]);
+
+        return () => {
+            if (recoveryModalTimeoutRef.current) {
+                clearTimeout(recoveryModalTimeoutRef.current);
+                recoveryModalTimeoutRef.current = null;
+            }
+        };
+    }, [isAuthenticated, isPasswordRecovery, searchParams, supabase]);
+
+    useEffect(() => () => {
+        if (resendCooldownIntervalRef.current) {
+            clearInterval(resendCooldownIntervalRef.current);
+        }
+    }, []);
 
     useEffect(() => {
         if (!showAuthModal) {
@@ -250,11 +266,18 @@ export function useAuthLogic() {
     };
 
     const startCooldown = () => {
+        if (resendCooldownIntervalRef.current) {
+            clearInterval(resendCooldownIntervalRef.current);
+        }
+
         setResendCooldown(60);
-        const interval = setInterval(() => {
+        resendCooldownIntervalRef.current = setInterval(() => {
             setResendCooldown(prev => {
                 if (prev <= 1) {
-                    clearInterval(interval);
+                    if (resendCooldownIntervalRef.current) {
+                        clearInterval(resendCooldownIntervalRef.current);
+                        resendCooldownIntervalRef.current = null;
+                    }
                     return 0;
                 }
                 return prev - 1;

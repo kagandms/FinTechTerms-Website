@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import DashboardQueryError from '@/components/DashboardQueryError';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     BarChart, Bar, AreaChart, Area, ComposedChart
@@ -9,11 +10,17 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { LogOut } from 'lucide-react';
 
+export interface DashboardQueryState<T> {
+    queryName: string;
+    status: 'ready' | 'error';
+    data: T[];
+}
+
 interface Props {
-    learningData: any[];
-    latencyData: any[];
-    fatigueRaw: any[];
-    distributionRaw: any[];
+    learningData: DashboardQueryState<any>;
+    latencyData: DashboardQueryState<any>;
+    fatigueRaw: DashboardQueryState<any>;
+    distributionRaw: DashboardQueryState<any>;
 }
 
 export default function DashboardClient({ learningData, latencyData, fatigueRaw, distributionRaw }: Props) {
@@ -22,7 +29,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     // 1. Process Learning Curve (Group by Date)
     const learningCurve = useMemo(() => {
         const grouped: any = {};
-        learningData.forEach(item => {
+        learningData.data.forEach(item => {
             // item.created_at is ISO string. Take YYYY-MM-DD
             const date = item.created_at.split('T')[0];
             if (!grouped[date]) grouped[date] = { date, total: 0, correct: 0 };
@@ -39,14 +46,14 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                 date: g.date,
                 accuracy: (g.correct / g.total) * 100
             }));
-    }, [learningData]);
+    }, [learningData.data]);
 
     // 2. Process Latency (Correct vs Incorrect)
     const latencyChart = useMemo(() => {
         let corrSum = 0, corrCount = 0;
         let incSum = 0, incCount = 0;
 
-        latencyData.forEach(item => {
+        latencyData.data.forEach(item => {
             if (item.is_correct) {
                 corrSum += item.response_time_ms;
                 corrCount++;
@@ -60,16 +67,16 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             { name: 'Correct', ms: corrCount ? Math.round(corrSum / corrCount) : 0 },
             { name: 'Incorrect', ms: incCount ? Math.round(incSum / incCount) : 0 },
         ];
-    }, [latencyData]);
+    }, [latencyData.data]);
 
     // 3. Process Fatigue (Group by order in session)
     const fatigueChart = useMemo(() => {
         // We need session_id to group. If missing, we can't do it accurately.
         // If not present, we return empty.
-        if (!fatigueRaw.length || !fatigueRaw[0].session_id) return [];
+        if (!fatigueRaw.data.length || !fatigueRaw.data[0].session_id) return [];
 
         const sessions: any = {};
-        fatigueRaw.forEach(item => {
+        fatigueRaw.data.forEach(item => {
             if (!sessions[item.session_id]) sessions[item.session_id] = [];
             sessions[item.session_id].push(item);
         });
@@ -96,13 +103,13 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             errorRate: (s.incorrect / s.total) * 100
         }));
 
-    }, [fatigueRaw]);
+    }, [fatigueRaw.data]);
 
     // 4. Process Class Distribution (Accuracy per student)
     const distributionChart = useMemo(() => {
-        if (!distributionRaw.length) return [];
+        if (!distributionRaw.data.length) return [];
 
-        const studentAccuracies: number[] = distributionRaw.map((session: any) => {
+        const studentAccuracies: number[] = distributionRaw.data.map((session: any) => {
             // Each row is a session with nested quiz_attempts
             const attempts = session.quiz_attempts || [];
             if (!attempts.length) return 0;
@@ -132,7 +139,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                 count: bins[bin]
             };
         });
-    }, [distributionRaw]);
+    }, [distributionRaw.data]);
 
     return (
         <div className="flex flex-col gap-12">
@@ -153,7 +160,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">The Learning Curve (Average Accuracy)</h2>
                 <div className="h-96">
-                    {learningCurve.length > 0 ? (
+                    {learningData.status === 'error' ? (
+                        <DashboardQueryError query={learningData.queryName} />
+                    ) : learningCurve.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={learningCurve}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -166,7 +175,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
                             <p>No data available yet.</p>
-                            <p className="text-sm mt-2">Check &apos;SUPABASE_SERVICE_ROLE_KEY&apos; in Vercel.</p>
+                            <p className="text-sm mt-2">Run quiz sessions to populate this chart.</p>
                         </div>
                     )}
                 </div>
@@ -177,7 +186,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Cognitive Fatigue (Error Rate by Question Order)</h2>
                 <div className="h-96">
-                    {fatigueChart.length > 0 ? (
+                    {fatigueRaw.status === 'error' ? (
+                        <DashboardQueryError query={fatigueRaw.queryName} />
+                    ) : fatigueChart.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={fatigueChart}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -189,10 +200,10 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                         </ResponsiveContainer>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-red-500 border border-dashed border-red-300 rounded bg-red-50 p-4 text-center">
-                            {fatigueRaw.length === 0 ? (
+                            {fatigueRaw.data.length === 0 ? (
                                 <>
                                     <p className="font-bold">No Data Found</p>
-                                    <p className="text-sm mt-1 text-red-400">Please check Vercel Environment Variables.</p>
+                                    <p className="text-sm mt-1 text-red-400">Run more simulation quizzes to populate this chart.</p>
                                 </>
                             ) : (
                                 <>
@@ -211,7 +222,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Response Latency (Hesitation Analysis)</h2>
                 <div className="h-96">
-                    {latencyChart.some(x => x.ms > 0) ? (
+                    {latencyData.status === 'error' ? (
+                        <DashboardQueryError query={latencyData.queryName} />
+                    ) : latencyChart.some(x => x.ms > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={latencyChart}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -235,7 +248,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             <div className="bg-white p-4 rounded shadow">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Class Performance Distribution (Bell Curve)</h2>
                 <div className="h-96">
-                    {distributionChart.length > 0 ? (
+                    {distributionRaw.status === 'error' ? (
+                        <DashboardQueryError query={distributionRaw.queryName} />
+                    ) : distributionChart.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={distributionChart}>
                                 <CartesianGrid strokeDasharray="3 3" />

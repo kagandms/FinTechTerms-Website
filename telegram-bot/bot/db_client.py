@@ -15,11 +15,10 @@ ACADEMIC_QUARANTINE_FILTER = "is_academic.is.null,is_academic.neq.false"
 
 
 def get_public_client() -> Client:
-    """Lazy-initialise public Supabase client (anon key preferred, service-role fallback)."""
+    """Lazy-initialise the bot's public Supabase client with the required anon key."""
     global _public_client
     if _public_client is None:
-        public_key = config.supabase_key or config.supabase_service_role_key
-        _public_client = create_client(config.supabase_url, public_key)
+        _public_client = create_client(config.supabase_url, config.supabase_anon_key)
     return _public_client
 
 

@@ -26,15 +26,24 @@ __pycache__/
 # Environment
 .env
 .env.local
+telegram-bot/.env
 .env.development.local
 .env.test.local
 .env.production.local
 
 # Root scratch files
 /check_data.js
+/check_*.js
+/scratch-*.js
 /ChatGPT Image *.png
 /Gemini_Generated_Image*.png
 /Screenshot *.png
+/debug-*.png
+/debug-*.jpg
+/scratch-*.png
+/scratch-*.jpg
+/tmp-*.png
+/tmp-*.jpg
 
 # Logs
 npm-debug.log*

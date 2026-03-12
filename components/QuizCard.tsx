@@ -254,6 +254,7 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                         <button
                             onClick={() => handleAnswerClick(false)}
                             disabled={controlsDisabled}
+                            data-testid="quiz-answer-btn"
                             className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${controlsDisabled
                                 ? 'bg-red-300 cursor-not-allowed'
                                 : 'bg-red-500 hover:bg-red-600'
@@ -266,6 +267,7 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                         <button
                             onClick={() => handleAnswerClick(true)}
                             disabled={controlsDisabled}
+                            data-testid="quiz-answer-btn"
                             className={`flex-1 flex items-center justify-center gap-2 py-4 text-white font-semibold rounded-2xl transition-colors shadow-md ${controlsDisabled
                                 ? 'bg-green-300 cursor-not-allowed'
                                 : 'bg-green-500 hover:bg-green-600'

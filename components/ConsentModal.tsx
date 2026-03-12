@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Shield, X, Check } from 'lucide-react';
 
@@ -17,6 +17,7 @@ export default function ConsentModal() {
     const { language } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
+    const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Check if consent was already given
     useEffect(() => {
@@ -47,6 +48,12 @@ export default function ConsentModal() {
         return () => {
             if (timer) clearTimeout(timer);
         };
+    }, []);
+
+    useEffect(() => () => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+        }
     }, []);
 
     const handleAccept = () => {
@@ -80,9 +87,13 @@ export default function ConsentModal() {
 
     const handleClose = () => {
         setIsClosing(true);
-        setTimeout(() => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+        }
+        closeTimeoutRef.current = setTimeout(() => {
             setIsOpen(false);
             setIsClosing(false);
+            closeTimeoutRef.current = null;
         }, 200);
     };
 

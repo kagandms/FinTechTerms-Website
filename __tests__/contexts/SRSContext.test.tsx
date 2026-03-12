@@ -1,0 +1,333 @@
+/**
+ * @jest-environment jsdom
+ */
+
+import React from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { SRSProvider, useSRS } from '@/contexts/SRSContext';
+
+const mockUseAuth = jest.fn();
+const mockShowToast = jest.fn();
+const mockGetTerms = jest.fn();
+const mockSaveTerms = jest.fn();
+const mockUpdateTermInStorage = jest.fn();
+const mockGetUserProgress = jest.fn();
+const mockToggleFavoriteInStorage = jest.fn();
+const mockAddQuizAttemptToStorage = jest.fn();
+const mockSaveUserProgress = jest.fn();
+const mockGetTermsDueForReview = jest.fn();
+const mockUpdateTermAfterReview = jest.fn();
+const mockCalculateProgressStats = jest.fn();
+const mockGetUserProgressFromSupabase = jest.fn();
+const mockToggleFavoriteInSupabase = jest.fn();
+const mockSaveQuizAttemptToSupabase = jest.fn();
+const mockGetAllTermSRSFromSupabase = jest.fn();
+const mockFetchTermsFromSupabase = jest.fn();
+const mockCreateIdempotencyKey = jest.fn();
+
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuth: () => mockUseAuth(),
+}));
+
+jest.mock('@/contexts/ToastContext', () => ({
+    useToast: () => ({
+        showToast: mockShowToast,
+    }),
+}));
+
+jest.mock('@/utils/storage', () => ({
+    getTerms: () => mockGetTerms(),
+    saveTerms: (...args: unknown[]) => mockSaveTerms(...args),
+    updateTerm: (...args: unknown[]) => mockUpdateTermInStorage(...args),
+    getUserProgress: () => mockGetUserProgress(),
+    toggleFavorite: (...args: unknown[]) => mockToggleFavoriteInStorage(...args),
+    addQuizAttempt: (...args: unknown[]) => mockAddQuizAttemptToStorage(...args),
+    saveUserProgress: (...args: unknown[]) => mockSaveUserProgress(...args),
+}));
+
+jest.mock('@/utils/srsLogic', () => ({
+    getTermsDueForReview: (...args: unknown[]) => mockGetTermsDueForReview(...args),
+    updateTermAfterReview: (...args: unknown[]) => mockUpdateTermAfterReview(...args),
+    calculateProgressStats: (...args: unknown[]) => mockCalculateProgressStats(...args),
+}));
+
+jest.mock('@/lib/supabaseStorage', () => ({
+    getUserProgressFromSupabase: (...args: unknown[]) => mockGetUserProgressFromSupabase(...args),
+    toggleFavoriteInSupabase: (...args: unknown[]) => mockToggleFavoriteInSupabase(...args),
+    saveQuizAttemptToSupabase: (...args: unknown[]) => mockSaveQuizAttemptToSupabase(...args),
+    getAllTermSRSFromSupabase: (...args: unknown[]) => mockGetAllTermSRSFromSupabase(...args),
+    fetchTermsFromSupabase: (...args: unknown[]) => mockFetchTermsFromSupabase(...args),
+}));
+
+jest.mock('@/lib/idempotency', () => ({
+    createIdempotencyKey: () => mockCreateIdempotencyKey(),
+}));
+
+const baseTerm = {
+    id: 'term-1',
+    term_en: 'Bitcoin',
+    term_ru: 'Биткоин',
+    term_tr: 'Bitcoin',
+    phonetic_en: '',
+    phonetic_ru: '',
+    phonetic_tr: '',
+    category: 'Fintech' as const,
+    definition_en: 'Definition',
+    definition_ru: 'Определение',
+    definition_tr: 'Tanim',
+    example_sentence_en: 'Example',
+    example_sentence_ru: 'Пример',
+    example_sentence_tr: 'Ornek',
+    context_tags: {},
+    regional_market: 'GLOBAL' as const,
+    is_academic: true,
+    difficulty_level: 'intermediate' as const,
+    srs_level: 1,
+    next_review_date: '2026-03-11T00:00:00.000Z',
+    last_reviewed: null,
+    difficulty_score: 2.5,
+    retention_rate: 0.2,
+    times_reviewed: 0,
+    times_correct: 0,
+};
+
+const baseProgress = {
+    user_id: 'user-1',
+    favorites: ['term-1'],
+    current_language: 'ru' as const,
+    quiz_history: [],
+    total_words_learned: 0,
+    current_streak: 0,
+    last_study_date: null,
+    created_at: '2026-03-11T00:00:00.000Z',
+    updated_at: '2026-03-11T00:00:00.000Z',
+};
+
+const recordQuizResult = {
+    userProgress: {
+        current_streak: 1,
+        last_study_date: '2026-03-11T12:00:00.000Z',
+        total_words_learned: 0,
+        updated_at: '2026-03-11T12:00:00.000Z',
+    },
+    termSrs: {
+        term_id: 'term-1',
+        srs_level: 2,
+        next_review_date: '2099-01-01T00:00:00.000Z',
+        last_reviewed: '2026-03-11T12:00:00.000Z',
+        difficulty_score: 2.3,
+        retention_rate: 0.5,
+        times_reviewed: 1,
+        times_correct: 1,
+    },
+};
+
+const computeDueTerms = (terms: typeof baseTerm[], favorites: string[]) => terms.filter((term) => (
+    favorites.includes(term.id) && new Date(term.next_review_date).getTime() <= Date.now()
+));
+
+function TestConsumer() {
+    const { dueTerms, submitQuizAnswer } = useSRS();
+    const [error, setError] = React.useState<string | null>(null);
+
+    return (
+        <div>
+            <div data-testid="due-count">{dueTerms.length}</div>
+            <button
+                type="button"
+                onClick={() => {
+                    void submitQuizAnswer('term-1', true, 1200, 'review-1').catch((err) => {
+                        setError(err instanceof Error ? err.message : String(err));
+                    });
+                }}
+            >
+                answer
+            </button>
+            {error ? <div data-testid="submit-error">{error}</div> : null}
+        </div>
+    );
+}
+
+describe('SRSContext', () => {
+    let authState: {
+        favoriteLimit: number;
+        isAuthenticated: boolean;
+        isLoading: boolean;
+        user: { id: string } | null;
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        localStorage.clear();
+        sessionStorage.clear();
+
+        authState = {
+            favoriteLimit: Number.POSITIVE_INFINITY,
+            isAuthenticated: true,
+            isLoading: false,
+            user: { id: 'user-1' },
+        };
+
+        mockUseAuth.mockImplementation(() => authState);
+        mockGetTerms.mockReturnValue([baseTerm]);
+        mockGetUserProgress.mockReturnValue(baseProgress);
+        mockFetchTermsFromSupabase.mockResolvedValue([baseTerm]);
+        mockGetUserProgressFromSupabase.mockResolvedValue(baseProgress);
+        mockGetAllTermSRSFromSupabase.mockResolvedValue(new Map());
+        mockCalculateProgressStats.mockImplementation((terms: typeof baseTerm[], favorites: string[]) => ({
+            totalFavorites: favorites.length,
+            mastered: terms.filter((term) => term.srs_level >= 4).length,
+            learning: terms.filter((term) => term.srs_level > 0 && term.srs_level < 4).length,
+            dueToday: computeDueTerms(terms, favorites).length,
+            averageRetention: 0,
+        }));
+        mockGetTermsDueForReview.mockImplementation(computeDueTerms);
+        mockUpdateTermAfterReview.mockImplementation((term: typeof baseTerm) => ({
+            ...term,
+            srs_level: 2,
+            next_review_date: '2099-01-01T00:00:00.000Z',
+        }));
+        mockCreateIdempotencyKey.mockReturnValue('review-key-1');
+        mockToggleFavoriteInSupabase.mockResolvedValue({ favorites: ['term-1'], isFavorite: true });
+        mockToggleFavoriteInStorage.mockReturnValue(baseProgress);
+        mockAddQuizAttemptToStorage.mockReturnValue(baseProgress);
+        mockUpdateTermInStorage.mockReturnValue([baseTerm]);
+    });
+
+    it('does not optimistically commit an expired-auth review and replays it with the same idempotency key after login returns', async () => {
+        mockGetUserProgressFromSupabase
+            .mockResolvedValueOnce(baseProgress)
+            .mockResolvedValue({
+                ...baseProgress,
+                current_streak: 1,
+                last_study_date: recordQuizResult.userProgress.last_study_date,
+                updated_at: recordQuizResult.userProgress.updated_at,
+            });
+        mockGetAllTermSRSFromSupabase
+            .mockResolvedValueOnce(new Map())
+            .mockResolvedValue(new Map([
+                ['term-1', {
+                    srs_level: recordQuizResult.termSrs.srs_level,
+                    next_review_date: recordQuizResult.termSrs.next_review_date,
+                    last_reviewed: recordQuizResult.termSrs.last_reviewed,
+                    difficulty_score: recordQuizResult.termSrs.difficulty_score,
+                    retention_rate: recordQuizResult.termSrs.retention_rate,
+                    times_reviewed: recordQuizResult.termSrs.times_reviewed,
+                    times_correct: recordQuizResult.termSrs.times_correct,
+                }],
+            ]));
+        mockSaveQuizAttemptToSupabase
+            .mockResolvedValueOnce({
+                status: 'auth_expired',
+                message: 'Session expired. Please sign in again to save this answer.',
+            })
+            .mockResolvedValueOnce({
+                status: 'ok',
+                data: recordQuizResult,
+            });
+
+        const { rerender } = render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'answer' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('submit-error')).toHaveTextContent('Session expired. Please sign in again to save this answer.');
+        });
+
+        expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(1);
+        expect(mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]).toMatchObject({
+            id: 'review-key-1',
+            term_id: 'term-1',
+        });
+        expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+
+        authState = {
+            ...authState,
+            isAuthenticated: false,
+            user: null,
+        };
+        rerender(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        authState = {
+            ...authState,
+            isAuthenticated: true,
+            user: { id: 'user-1' },
+        };
+        rerender(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
+        });
+
+        expect(mockSaveQuizAttemptToSupabase.mock.calls[1]?.[1]).toMatchObject({
+            id: 'review-key-1',
+            term_id: 'term-1',
+        });
+        expect(mockShowToast).toHaveBeenCalledWith('Session refreshed — saving your answer…', 'info');
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+    });
+
+    it('drops a due card when another tab broadcasts a committed review through storage sync', async () => {
+        authState = {
+            favoriteLimit: 50,
+            isAuthenticated: false,
+            isLoading: false,
+            user: null,
+        };
+        mockUseAuth.mockImplementation(() => authState);
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        const syncPayload = JSON.stringify({
+            type: 'REVIEW_COMMITTED',
+            reviewId: 'review-2',
+            termId: 'term-1',
+            termSrs: recordQuizResult.termSrs,
+            userProgress: recordQuizResult.userProgress,
+            emittedAt: Date.now(),
+        });
+
+        act(() => {
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'fintechterms_srs_sync',
+                newValue: syncPayload,
+            }));
+        });
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+    });
+});

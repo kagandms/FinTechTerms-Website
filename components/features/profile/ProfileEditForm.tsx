@@ -5,13 +5,14 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import {
     getSupabaseUserNameSeed,
     supportsPasswordSignIn,
 } from '@/lib/auth/user';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
+import { toSafeUserError } from '@/lib/errors';
 
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
@@ -51,15 +52,15 @@ const toDateInputValue = (value: unknown): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-const PROFILE_SUBMIT_TIMEOUT_MS = 12_000;
+export const PROFILE_SUBMIT_TIMEOUT_MS = 12_000;
 
-const createAbortError = (message: string): Error => {
+export const createAbortError = (message: string): Error => {
     const error = new Error(message);
     error.name = 'AbortError';
     return error;
 };
 
-const runWithAbortSignal = async <T,>(
+export const runWithAbortSignal = async <T,>(
     signal: AbortSignal,
     operation: () => Promise<T>,
     timeoutMessage: string
@@ -95,6 +96,7 @@ const runWithAbortSignal = async <T,>(
 };
 
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
+    const supabase = getSupabaseClient();
     const { showToast, showToastAfterRefresh } = useToast();
     const router = useRouter();
 
@@ -243,7 +245,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         return () => {
             isMounted = false;
         };
-    }, [dict.authRequired, dict.profileLoadError, initialData, reset, showToast]);
+    }, [dict.authRequired, dict.profileLoadError, initialData, reset, showToast, supabase]);
 
     useEffect(() => {
         if (!canChangePassword) {
@@ -339,9 +341,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         } catch (error: any) {
             console.error('Profile update failed:', error);
             const timedOut = error instanceof Error && error.name === 'AbortError';
+            const safeError = toSafeUserError(error);
             const detailedMessage = timedOut
                 ? dict.requestTimeout
-                : error?.message || error?.details || error?.hint || dict.unknownError;
+                : safeError.message || dict.unknownError;
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
@@ -375,6 +378,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     <input
                         {...register('name')}
                         type="text"
+                        data-testid="profile-name"
                         className={`w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.name ? 'border-red-500' : 'border-gray-200'}`}
                     />
                     {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>}
@@ -385,6 +389,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     <input
                         {...register('surname')}
                         type="text"
+                        data-testid="profile-surname"
                         className={`w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.surname ? 'border-red-500' : 'border-gray-200'}`}
                     />
                     {errors.surname && <p className="text-sm text-red-500 mt-1">{errors.surname.message}</p>}
@@ -395,6 +400,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     <input
                         {...register('birthDate')}
                         type="date"
+                        data-testid="profile-birth-date"
                         className={`w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.birthDate ? 'border-red-500' : 'border-gray-200'}`}
                     />
                     {errors.birthDate && <p className="text-sm text-red-500 mt-1">{errors.birthDate.message}</p>}
@@ -496,6 +502,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 <button
                     type="submit"
                     disabled={isSubmitting || isPending}
+                    data-testid="profile-save"
                     className="flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-primary-500/20"
                 >
                     {(isSubmitting || isPending) ? (

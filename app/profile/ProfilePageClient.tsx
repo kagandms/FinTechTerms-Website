@@ -124,7 +124,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
 
                 <div onClick={() => !isAuthenticated && setShowAuthModal(true)} className="cursor-pointer">
                     {isAuthenticated ? (
-                        <div className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
+                        <div data-testid="user-avatar" className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
                             {getInitials(user?.name || '', user?.id)}
                         </div>
                     ) : (
@@ -149,12 +149,14 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     <div className="flex gap-3 w-full sm:w-auto">
                         <button
                             onClick={() => { setAuthMode('register'); setShowAuthModal(true); }}
+                            data-testid="open-auth-register"
                             className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-gray-700 text-primary-600 dark:text-white font-semibold rounded-xl border border-primary-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all active:scale-95 whitespace-nowrap"
                         >
                             {language === 'tr' ? 'Kayıt Ol' : language === 'ru' ? 'Регистрация' : 'Sign Up'}
                         </button>
                         <button
                             onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
+                            data-testid="open-auth-login"
                             className="flex-1 sm:flex-none px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl shadow-md shadow-primary-500/20 hover:bg-primary-600 transition-transform active:scale-95 whitespace-nowrap"
                         >
                             {t('auth.login')}
@@ -229,6 +231,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                                 </div>
                                 <button
                                     onClick={() => setIsEditingProfile(!isEditingProfile)}
+                                    data-testid="profile-edit-toggle"
                                     className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
                                 >
                                     <Settings className="w-4 h-4" />

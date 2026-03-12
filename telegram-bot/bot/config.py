@@ -26,10 +26,6 @@ def _require_env(name: str, description: str) -> str:
     )
 
 
-def _get_optional_env(name: str) -> str:
-    return os.environ.get(name, "").strip()
-
-
 def _get_int_env(name: str, default: int) -> int:
     raw_value = os.environ.get(name)
     if raw_value is None or not raw_value.strip():
@@ -60,15 +56,11 @@ class Config:
             "SUPABASE_URL", "set the Supabase project URL for the shared FinTechTerms database"
         )
     )
-    supabase_key: str = field(
+    supabase_anon_key: str = field(
         default_factory=lambda: _require_env(
-            "SUPABASE_KEY", "set the Supabase anon key used for bot term lookups"
+            "SUPABASE_ANON_KEY", "set the Supabase anon key used for bot term lookups"
         )
     )
-    supabase_service_role_key: str = field(
-        default_factory=lambda: _get_optional_env("SUPABASE_SERVICE_ROLE_KEY")
-    )
-
     # Web app deep links shown in bot messages
     web_app_url: str = field(
         default_factory=lambda: _require_env(
@@ -78,7 +70,7 @@ class Config:
 
     # Redis (Rate Limiting)
     redis_url: str = field(
-        default_factory=lambda: _get_optional_env("REDIS_URL")
+        default_factory=lambda: os.environ.get("REDIS_URL", "").strip()
     )
 
     # Admin

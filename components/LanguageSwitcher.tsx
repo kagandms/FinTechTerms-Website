@@ -3,15 +3,17 @@
 import React from 'react';
 import { useLanguage, languageNames, languageFlags } from '@/contexts/LanguageContext';
 import { Language } from '@/types';
-import { ChevronDown, Globe } from 'lucide-react';
+import { DEFAULT_LANGUAGE } from '@/lib/language';
+import { ChevronDown } from 'lucide-react';
 
 export default function LanguageSwitcher() {
     const { language, setLanguage } = useLanguage();
     const [isOpen, setIsOpen] = React.useState(false);
-    const defaultLanguage: Language = 'ru';
+    const defaultLanguage: Language = DEFAULT_LANGUAGE;
     const activeLanguage = language || defaultLanguage;
-
-    const languages: Language[] = [defaultLanguage, 'en', 'tr'];
+    const languages = [defaultLanguage, 'en', 'tr', 'ru'].filter(
+        (lang, index, allLanguages): lang is Language => allLanguages.indexOf(lang) === index
+    );
 
     return (
         <div className="relative">

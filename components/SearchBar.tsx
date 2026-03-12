@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search, X, Filter } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Category, RegionalMarket } from '@/types';
@@ -33,13 +33,8 @@ export default function SearchBar({
     onClear,
 }: SearchBarProps) {
     const { t } = useLanguage();
-    const [showFilters, setShowFilters] = useState(filterState.selectedCategory !== null);
-
-    useEffect(() => {
-        if (filterState.selectedCategory !== null) {
-            setShowFilters(true);
-        }
-    }, [filterState.selectedCategory]);
+    const [showOptionalFilters, setShowOptionalFilters] = useState(filterState.selectedCategory !== null);
+    const showFilters = showOptionalFilters || filterState.selectedCategory !== null;
 
     const hasActiveFilters = (
         filterState.query.length > 0
@@ -49,7 +44,7 @@ export default function SearchBar({
     );
 
     const handleClear = () => {
-        setShowFilters(false);
+        setShowOptionalFilters(false);
         onClear();
     };
 
@@ -65,6 +60,7 @@ export default function SearchBar({
                     type="text"
                     value={filterState.query}
                     onChange={(e) => onQueryChange(e.target.value)}
+                    data-testid="search-input"
                     placeholder={t('search.placeholder')}
                     aria-label={t('search.placeholder')}
                     className="w-full pl-12 pr-20 py-3.5 bg-white border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
@@ -82,12 +78,13 @@ export default function SearchBar({
                         </button>
                     )}
 
-                    <button
-                        type="button"
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`p-2 rounded-xl transition-all duration-200 ${showFilters || filterState.selectedCategory
-                            ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
-                            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                        <button
+                            type="button"
+                            onClick={() => setShowOptionalFilters((current) => !current)}
+                            data-testid="search-filter-toggle"
+                            className={`p-2 rounded-xl transition-all duration-200 ${showFilters || filterState.selectedCategory
+                                ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300'
+                                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                             }`}
                         aria-label={showFilters ? t('search.hideFilters') : t('search.showFilters')}
                         aria-expanded={showFilters}

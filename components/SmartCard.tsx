@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Term, Language } from '@/types';
 import { useTermTranslation } from '@/hooks/useTermTranslation';
 import { useSRS } from '@/contexts/SRSContext';
@@ -50,14 +50,22 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         currentExample
     } = useTermTranslation(term);
     const { toggleFavorite, isFavorite, isFavoriteUpdating, favoritesRemaining } = useSRS();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const { showToast } = useToast();
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [showLimitWarning, setShowLimitWarning] = useState(false);
+    const limitWarningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const favorite = isFavorite(term.id);
     const isPending = isFavoriteUpdating(term.id);
+    const isFavoriteActionDisabled = isPending || isAuthLoading;
+
+    useEffect(() => () => {
+        if (limitWarningTimeoutRef.current) {
+            clearTimeout(limitWarningTimeoutRef.current);
+        }
+    }, []);
 
     // Handle TTS
     const handleSpeak = async (text: string, lang: Language) => {
@@ -75,7 +83,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
     // Handle favorite toggle with limit check and toast
     const handleToggleFavorite = async () => {
-        if (isPending) {
+        if (isFavoriteActionDisabled) {
             return;
         }
 
@@ -83,7 +91,13 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
         if (result.limitReached) {
             setShowLimitWarning(true);
-            setTimeout(() => setShowLimitWarning(false), 5000);
+            if (limitWarningTimeoutRef.current) {
+                clearTimeout(limitWarningTimeoutRef.current);
+            }
+            limitWarningTimeoutRef.current = setTimeout(() => {
+                setShowLimitWarning(false);
+                limitWarningTimeoutRef.current = null;
+            }, 5000);
             showToast(
                 language === 'tr'
                     ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
@@ -188,8 +202,9 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                         <button
                             onClick={handleToggleFavorite}
-                            disabled={isPending}
-                            className={`p-2 rounded-full transition-all duration-200 ${isPending
+                            disabled={isFavoriteActionDisabled}
+                            data-testid="favorite-button"
+                            className={`p-2 rounded-full transition-all duration-200 ${isFavoriteActionDisabled
                                 ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
                                 : favorite
                                     ? 'bg-red-100 text-red-500'

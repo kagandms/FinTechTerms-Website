@@ -8,6 +8,7 @@ import { useState, useRef, useCallback } from 'react';
  */
 export function useResponseTimer() {
     const [responseTime, setResponseTime] = useState<number>(0);
+    const [isRunning, setIsRunning] = useState(false);
     const startTimeRef = useRef<number | null>(null);
 
     /**
@@ -16,6 +17,7 @@ export function useResponseTimer() {
     const startTimer = useCallback(() => {
         startTimeRef.current = performance.now();
         setResponseTime(0);
+        setIsRunning(true);
     }, []);
 
     /**
@@ -28,6 +30,7 @@ export function useResponseTimer() {
         const elapsed = Math.round(performance.now() - startTimeRef.current);
         setResponseTime(elapsed);
         startTimeRef.current = null;
+        setIsRunning(false);
         return elapsed;
     }, []);
 
@@ -37,6 +40,7 @@ export function useResponseTimer() {
     const resetTimer = useCallback(() => {
         startTimeRef.current = null;
         setResponseTime(0);
+        setIsRunning(false);
     }, []);
 
     /**
@@ -53,6 +57,6 @@ export function useResponseTimer() {
         stopTimer,
         resetTimer,
         getElapsedTime,
-        isRunning: startTimeRef.current !== null,
+        isRunning,
     };
 }

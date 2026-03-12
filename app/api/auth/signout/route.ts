@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { createClient } from '@/utils/supabase/server';
+import { createOptionalClient } from '@/utils/supabase/server';
 import {
     createRequestId,
     errorResponse,
@@ -7,17 +7,25 @@ import {
     successResponse,
 } from '@/lib/api-response';
 import { isAuthSessionError } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
 
     try {
         try {
-            const supabase = await createClient();
-            const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+            const supabase = await createOptionalClient();
+            const { error: signOutError } = supabase
+                ? await supabase.auth.signOut({ scope: 'local' })
+                : { error: null };
 
             if (signOutError && !isAuthSessionError(signOutError)) {
-                console.error('SIGN_OUT_ERROR', signOutError);
+                logger.error('SIGN_OUT_ERROR', {
+                    requestId,
+                    route: '/api/auth/signout',
+                    error: signOutError,
+                    retryable: true,
+                });
                 return errorResponse({
                     status: 500,
                     code: 'SIGNOUT_FAILED',
@@ -28,14 +36,22 @@ export async function POST(request: Request) {
             }
 
             if (signOutError) {
-                console.warn('SIGN_OUT_GHOST_SESSION_RECOVERED', signOutError);
+                logger.warn('SIGN_OUT_GHOST_SESSION_RECOVERED', {
+                    requestId,
+                    route: '/api/auth/signout',
+                    error: signOutError,
+                });
             }
         } catch (error) {
             if (!isAuthSessionError(error)) {
                 throw error;
             }
 
-            console.warn('SIGN_OUT_GHOST_SESSION_EXCEPTION_RECOVERED', error);
+            logger.warn('SIGN_OUT_GHOST_SESSION_EXCEPTION_RECOVERED', {
+                requestId,
+                route: '/api/auth/signout',
+                error: error instanceof Error ? error : undefined,
+            });
         }
 
         const cookieStore = await cookies();

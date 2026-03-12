@@ -10,7 +10,10 @@ import ConsentModal from '@/components/ConsentModal';
 import SessionTracker from '@/components/SessionTracker';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import BadgeRealtimeNotifier from '@/components/profile/BadgeRealtimeNotifier';
-import { siteUrl } from '@/lib/site-url';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import HydrationMarker from '@/components/HydrationMarker';
+import { DEFAULT_LANGUAGE } from '@/lib/language';
+import { getSiteUrl } from '@/lib/site-url';
 
 import { Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -28,7 +31,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 type SeoLanguage = 'ru' | 'tr' | 'en';
 
-const primaryLanguage: SeoLanguage = 'ru';
+const primaryLanguage: SeoLanguage = DEFAULT_LANGUAGE;
 
 const seoMeta: Record<SeoLanguage, {
     title: string;
@@ -56,6 +59,7 @@ const seoMeta: Record<SeoLanguage, {
     },
 };
 const primarySeo = seoMeta[primaryLanguage];
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
@@ -154,8 +158,8 @@ export default function RootLayout({
                 <ThemeProvider>
                     <AuthProvider>
                         <LanguageProvider>
-                            <SRSProvider>
-                                <ToastProvider>
+                            <ToastProvider>
+                                <SRSProvider>
                                     <div className="page-wrapper">
                                         <main className="w-full max-w-lg md:max-w-5xl mx-auto transition-all duration-300">
                                             {children}
@@ -164,9 +168,11 @@ export default function RootLayout({
                                         <ConsentModal />
                                         <SessionTracker />
                                         <BadgeRealtimeNotifier />
+                                        <ServiceWorkerRegistrar />
+                                        <HydrationMarker />
                                     </div>
-                                </ToastProvider>
-                            </SRSProvider>
+                                </SRSProvider>
+                            </ToastProvider>
                         </LanguageProvider>
                     </AuthProvider>
                 </ThemeProvider>

@@ -1,17 +1,16 @@
 import { MetadataRoute } from 'next';
-import { fetchTermsFromSupabase } from '@/lib/supabaseStorage';
-import { siteUrl } from '@/lib/site-url';
+import { getSiteUrl } from '@/lib/site-url';
+import { listSitemapTerms } from '@/lib/public-term-catalog';
+
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    // Fetch all terms
-    const terms = await fetchTermsFromSupabase();
+    const siteUrl = getSiteUrl();
+    const terms = await listSitemapTerms();
 
-    // Generate term URLs — use updated_at from DB when available
     const termEntries: MetadataRoute.Sitemap = terms.map((term) => ({
         url: `${siteUrl}/term/${term.id}`,
-        lastModified: (term as Record<string, unknown>).updated_at
-            ? new Date((term as Record<string, unknown>).updated_at as string)
-            : new Date('2026-02-01'),
+        lastModified: new Date(term.lastModified),
         changeFrequency: 'monthly',
         priority: 0.7,
     }));

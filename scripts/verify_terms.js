@@ -23,17 +23,17 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function check() {
-    console.log('Fetching terms with ANON key...');
+    console.warn('Fetching terms with ANON key...');
     const { data, error } = await supabase.from('terms').select('*').limit(5);
 
     if (error) {
         console.error('Error fetching terms:', error);
     } else {
-        console.log(`Success! Fetched ${data.length} terms.`);
+        console.warn(`Success! Fetched ${data.length} terms.`);
         if (data.length > 0) {
-            console.log('Sample:', data[0].term_en);
+            console.warn('Sample:', data[0].term_en);
         } else {
-            console.log('Warning: No terms found in table.');
+            console.warn('Warning: No terms found in table.');
         }
     }
 }

@@ -2,9 +2,10 @@
 
 import { createApiError } from '@/lib/supabaseUtils';
 import type { LearningStatsActionResult } from '@/types/gamification';
-import { createClient } from '@/utils/supabase/server';
+import { createOptionalClient } from '@/utils/supabase/server';
 import type { LearningHeatmapEntry, UserBadgeSummary } from '@/types/gamification';
 import { AUTH_REQUIRED_MESSAGE, safeGetSupabaseUser } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 
 const sanitizeError = (
     code: string,
@@ -17,12 +18,20 @@ const sanitizeError = (
 
 export async function getLearningStats(): Promise<LearningStatsActionResult> {
     try {
-        const supabase = await createClient();
+        const supabase = await createOptionalClient();
+
+        if (!supabase) {
+            return sanitizeError('UNAUTHORIZED', AUTH_REQUIRED_MESSAGE, 401);
+        }
+
         const authState = await safeGetSupabaseUser(supabase);
 
         if (!authState.user) {
             if (!authState.ghostSession && authState.message && authState.message !== AUTH_REQUIRED_MESSAGE) {
-                console.error('GET_LEARNING_STATS_AUTH_ERROR', authState.message);
+                logger.warn('GET_LEARNING_STATS_AUTH_ERROR', {
+                    route: 'getLearningStats',
+                    message: authState.message,
+                });
             }
 
             return sanitizeError('UNAUTHORIZED', AUTH_REQUIRED_MESSAGE, 401);
@@ -47,22 +56,38 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
         ]);
 
         if (heatmapResult.error) {
-            console.error('GET_LEARNING_STATS_HEATMAP_ERROR', heatmapResult.error);
+            logger.error('GET_LEARNING_STATS_HEATMAP_ERROR', {
+                route: 'getLearningStats',
+                userId,
+                error: new Error(heatmapResult.error.message),
+            });
             return sanitizeError('LEARNING_STATS_UNAVAILABLE', 'Unable to load learning stats.', 500);
         }
 
         if (streakResult.error) {
-            console.error('GET_LEARNING_STATS_STREAK_ERROR', streakResult.error);
+            logger.error('GET_LEARNING_STATS_STREAK_ERROR', {
+                route: 'getLearningStats',
+                userId,
+                error: new Error(streakResult.error.message),
+            });
             return sanitizeError('LEARNING_STATS_UNAVAILABLE', 'Unable to load learning stats.', 500);
         }
 
         if (badgesResult.error) {
-            console.error('GET_LEARNING_STATS_BADGES_ERROR', badgesResult.error);
+            logger.error('GET_LEARNING_STATS_BADGES_ERROR', {
+                route: 'getLearningStats',
+                userId,
+                error: new Error(badgesResult.error.message),
+            });
             return sanitizeError('LEARNING_STATS_UNAVAILABLE', 'Unable to load learning stats.', 500);
         }
 
         if (reviewCountResult.error) {
-            console.error('GET_LEARNING_STATS_REVIEW_COUNT_ERROR', reviewCountResult.error);
+            logger.warn('GET_LEARNING_STATS_REVIEW_COUNT_ERROR', {
+                route: 'getLearningStats',
+                userId,
+                error: new Error(reviewCountResult.error.message),
+            });
         }
 
         const heatmap = (heatmapResult.data ?? []) as LearningHeatmapEntry[];
@@ -91,7 +116,10 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
             },
         };
     } catch (error) {
-        console.error('GET_LEARNING_STATS_UNEXPECTED_ERROR', error);
+        logger.error('GET_LEARNING_STATS_UNEXPECTED_ERROR', {
+            route: 'getLearningStats',
+            error: error instanceof Error ? error : undefined,
+        });
         return sanitizeError('INTERNAL_ERROR', 'Unable to load learning stats.', 500);
     }
 }

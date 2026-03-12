@@ -10,7 +10,7 @@
  */
 
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { Term } from '@/types';
 
 export interface PaginationOptions {
@@ -41,6 +41,7 @@ export interface PaginatedResult<T> {
 export async function fetchTermsPaginated(
     options: PaginationOptions
 ): Promise<PaginatedResult<Partial<Term>>> {
+    const supabase = getSupabaseClient();
     const {
         page,
         pageSize = 50,

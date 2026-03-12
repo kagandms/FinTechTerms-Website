@@ -1,0 +1,208 @@
+name: Preview Release Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  preflight:
+    name: Preview Gate Preflight
+    runs-on: ubuntu-latest
+    outputs:
+      core_ready: ${{ steps.check.outputs.core_ready }}
+      auth_ready: ${{ steps.check.outputs.auth_ready }}
+      sentry_ready: ${{ steps.check.outputs.sentry_ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ secrets.STAGING_BASE_URL }}" ] && \
+             [ -n "${{ secrets.SUPABASE_DB_URL }}" ] && \
+             [ -n "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] && \
+             [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ] && \
+             [ -n "${{ secrets.ADMIN_EMAIL }}" ]; then
+            echo "core_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "core_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ secrets.E2E_AUTH_EMAIL }}" ] && \
+             [ -n "${{ secrets.E2E_AUTH_PASSWORD }}" ]; then
+            echo "auth_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "auth_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ secrets.SENTRY_SMOKE_EMAIL }}" ] && \
+             [ -n "${{ secrets.SENTRY_SMOKE_PASSWORD }}" ]; then
+            echo "sentry_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sentry_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' }}
+        run: echo "Preview release gate skipped on PR because staging preview secrets are missing."
+
+      - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name != 'pull_request' }}
+        run: |
+          echo "Missing required preview release gate secrets on a protected branch run."
+          exit 1
+
+      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.auth_ready != 'true' && github.event_name != 'pull_request' }}
+        run: |
+          echo "Missing required authenticated Playwright secrets on a protected branch run."
+          exit 1
+
+      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.sentry_ready != 'true' && github.event_name != 'pull_request' }}
+        run: |
+          echo "Missing required Sentry smoke credentials on a protected branch run."
+          exit 1
+
+  migrate-and-verify:
+    name: Apply Migrations And Verify DB
+    needs: preflight
+    if: ${{ needs.preflight.outputs.core_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm pkg delete scripts.prepare
+
+      - name: Apply migrations to staging
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
+
+      - name: Verify release DB readiness
+        run: npm run verify:release-db
+
+  playwright-guest:
+    name: Playwright Guest Suite
+    needs: [preflight, migrate-and-verify]
+    if: ${{ needs.preflight.outputs.core_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm pkg delete scripts.prepare
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run guest-safe Playwright suite
+        run: npm run test:e2e:guest
+
+      - name: Upload Playwright guest report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-guest-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+  playwright-auth:
+    name: Playwright Auth Suite
+    needs: [preflight, migrate-and-verify]
+    if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.auth_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+      E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm pkg delete scripts.prepare
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run authenticated Playwright suite
+        run: npm run test:e2e:auth
+
+      - name: Upload Playwright auth report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-auth-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+  sentry-smoke:
+    name: Preview Sentry Smoke
+    needs: [preflight, migrate-and-verify, playwright-guest]
+    if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.sentry_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+      SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm pkg delete scripts.prepare
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging smoke script
+        run: npm run smoke:staging

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Term, UserProgress, QuizAttempt } from '@/types';
 import {
     getTerms,
@@ -22,12 +22,12 @@ import {
     toggleFavoriteInSupabase,
     saveQuizAttemptToSupabase,
     getAllTermSRSFromSupabase,
-    fetchTermsFromSupabase,
     type RecordQuizResult,
 } from '@/lib/supabaseStorage';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { isUserProgress } from '@/lib/userProgress';
+import { useToast } from '@/contexts/ToastContext';
 
 type AsyncDataStatus = 'loading' | 'ready' | 'degraded' | 'error';
 
@@ -45,7 +45,7 @@ interface SRSContextType {
     toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
     isFavoriteUpdating: (termId: string) => boolean;
-    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs?: number) => Promise<void>;
+    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string) => Promise<void>;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
@@ -65,6 +65,24 @@ interface SRSContextType {
 }
 
 const SRSContext = createContext<SRSContextType | undefined>(undefined);
+
+const SRS_SYNC_CHANNEL = 'srs_sync';
+const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
+
+interface PendingReview {
+    reviewId: string;
+    termId: string;
+    isCorrect: boolean;
+    responseTimeMs: number;
+}
+
+interface SrsSyncMessage {
+    type: 'REVIEW_COMMITTED';
+    reviewId: string;
+    termId: string;
+    termSrs: RecordQuizResult['termSrs'];
+    userProgress: Pick<RecordQuizResult['userProgress'], 'current_streak' | 'last_study_date' | 'total_words_learned' | 'updated_at'>;
+}
 
 interface SRSProviderProps {
     children: ReactNode;
@@ -98,44 +116,10 @@ const hasCachedStudyData = (progress: UserProgress): boolean => (
     || progress.last_study_date !== null
 );
 
-const isRecordQuizResultPayload = (value: unknown): value is RecordQuizResult => {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
-
-    const candidate = value as Record<string, unknown>;
-    const userProgress = candidate.userProgress;
-    const termSrs = candidate.termSrs;
-
-    if (typeof userProgress !== 'object' || userProgress === null) {
-        return false;
-    }
-
-    if (typeof termSrs !== 'object' || termSrs === null) {
-        return false;
-    }
-
-    const progressCandidate = userProgress as Record<string, unknown>;
-    const termCandidate = termSrs as Record<string, unknown>;
-
-    return (
-        typeof progressCandidate.current_streak === 'number'
-        && typeof progressCandidate.total_words_learned === 'number'
-        && typeof progressCandidate.updated_at === 'string'
-        && (typeof progressCandidate.last_study_date === 'string' || progressCandidate.last_study_date === null)
-        && typeof termCandidate.term_id === 'string'
-        && typeof termCandidate.srs_level === 'number'
-        && typeof termCandidate.next_review_date === 'string'
-        && typeof termCandidate.difficulty_score === 'number'
-        && typeof termCandidate.retention_rate === 'number'
-        && typeof termCandidate.times_reviewed === 'number'
-        && typeof termCandidate.times_correct === 'number'
-        && (typeof termCandidate.last_reviewed === 'string' || termCandidate.last_reviewed === null)
-    );
-};
-
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
+    const { showToast } = useToast();
+    const userId = user?.id ?? null;
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -146,6 +130,112 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const [progressError, setProgressError] = useState<string | null>(null);
     const [favoriteOptimisticState, setFavoriteOptimisticState] = useState<Record<string, boolean>>({});
     const [favoritePendingState, setFavoritePendingState] = useState<Record<string, boolean>>({});
+    const reviewIdempotencyKeysRef = useRef<Record<string, string>>({});
+    const pendingReviewRef = useRef<PendingReview | null>(null);
+    const isReplayingPendingReviewRef = useRef(false);
+    const syncChannelRef = useRef<BroadcastChannel | null>(null);
+    const previousAuthStateRef = useRef(isAuthenticated);
+
+    const getOrCreateReviewKey = useCallback((reviewId: string): string => {
+        const existingKey = reviewIdempotencyKeysRef.current[reviewId];
+        if (existingKey) {
+            return existingKey;
+        }
+
+        const nextKey = createIdempotencyKey();
+        reviewIdempotencyKeysRef.current[reviewId] = nextKey;
+        return nextKey;
+    }, []);
+
+    const clearReviewKey = useCallback((reviewId: string) => {
+        delete reviewIdempotencyKeysRef.current[reviewId];
+    }, []);
+
+    const applyCommittedReview = useCallback((
+        termId: string,
+        attempt: QuizAttempt,
+        result: RecordQuizResult
+    ) => {
+        const { term_id: _termId, ...serverTermSrs } = result.termSrs;
+
+        setTerms(prev => {
+            const reconciledTerms = prev.map(existingTerm => (
+                existingTerm.id === termId
+                    ? { ...existingTerm, ...serverTermSrs }
+                    : existingTerm
+            ));
+
+            saveTerms(reconciledTerms);
+            return reconciledTerms;
+        });
+
+        setUserProgress(prev => {
+            const baseProgress = prev ?? getLocalUserProgress();
+            const reconciledProgress = {
+                ...baseProgress,
+                quiz_history: baseProgress.quiz_history.some((existingAttempt) => existingAttempt.id === attempt.id)
+                    ? baseProgress.quiz_history
+                    : [...baseProgress.quiz_history, attempt],
+                current_streak: result.userProgress.current_streak,
+                last_study_date: result.userProgress.last_study_date,
+                total_words_learned: result.userProgress.total_words_learned,
+                updated_at: result.userProgress.updated_at,
+            };
+
+            saveLocalUserProgress(reconciledProgress);
+            return reconciledProgress;
+        });
+    }, []);
+
+    const broadcastCommittedReview = useCallback((message: SrsSyncMessage) => {
+        syncChannelRef.current?.postMessage(message);
+
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(SRS_SYNC_STORAGE_KEY, JSON.stringify({
+                ...message,
+                emittedAt: Date.now(),
+            }));
+        } catch {
+            // Best-effort cross-tab fallback only.
+        }
+    }, []);
+
+    const applySyncedReview = useCallback((message: SrsSyncMessage) => {
+        const { termId, termSrs, userProgress: syncedProgress } = message;
+        const { term_id: _termId, ...serverTermSrs } = termSrs;
+
+        setTerms(prev => {
+            const reconciledTerms = prev.map(existingTerm => (
+                existingTerm.id === termId
+                    ? { ...existingTerm, ...serverTermSrs }
+                    : existingTerm
+            ));
+
+            saveTerms(reconciledTerms);
+            return reconciledTerms;
+        });
+
+        setUserProgress(prev => {
+            if (!prev) {
+                return prev;
+            }
+
+            const reconciledProgress = {
+                ...prev,
+                current_streak: syncedProgress.current_streak,
+                last_study_date: syncedProgress.last_study_date,
+                total_words_learned: syncedProgress.total_words_learned,
+                updated_at: syncedProgress.updated_at,
+            };
+
+            saveLocalUserProgress(reconciledProgress);
+            return reconciledProgress;
+        });
+    }, []);
 
     /**
      * Load data from appropriate source
@@ -195,85 +285,23 @@ export function SRSProvider({ children }: SRSProviderProps) {
             let nextTermsError: string | null = null;
             let nextProgressError: string | null = null;
 
-            // 1. Fetch latest terms content from Supabase (if online)
-            try {
-                const dbTerms = await fetchTermsFromSupabase();
-
-                if (dbTerms && dbTerms.length > 0) {
-                    // Merge DB content into local/mock list
-                    const dbTermsMap = new Map(dbTerms.map(t => [t.id, t]));
-
-                    // 1. Update existing terms
-                    const mergedTerms: Term[] = currentTerms.map(localTerm => {
-                        const dbTerm = dbTermsMap.get(localTerm.id);
-                        if (dbTerm) {
-                            return {
-                                ...dbTerm,
-                                srs_level: localTerm.srs_level,
-                                next_review_date: localTerm.next_review_date,
-                                last_reviewed: localTerm.last_reviewed,
-                                difficulty_score: localTerm.difficulty_score,
-                                retention_rate: localTerm.retention_rate,
-                                times_reviewed: localTerm.times_reviewed,
-                                times_correct: localTerm.times_correct,
-                            } as Term;
-                        }
-                        return localTerm;
-                    });
-
-                    // 2. Add new terms from DB that weren't in local list
-                    dbTerms.forEach(dbTerm => {
-                        const existingById = currentTerms.find(t => t.id === dbTerm.id);
-                        // Also check for duplicate English content to avoid double entries with different IDs
-                        const normalizeTitle = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const dbTitleKey = normalizeTitle(dbTerm.term_en || '');
-
-                        const existingByTitle = currentTerms.find(t => normalizeTitle(t.term_en) === dbTitleKey);
-
-                        if (!existingById && !existingByTitle) {
-                            mergedTerms.push({
-                                ...dbTerm,
-                                srs_level: 1, // Default for new
-                                next_review_date: new Date().toISOString(),
-                                last_reviewed: null,
-                                difficulty_score: 2.5,
-                                retention_rate: 0,
-                                times_reviewed: 0,
-                                times_correct: 0,
-                            } as Term);
-                        } else if (!existingById && existingByTitle) {
-                            console.warn(`[LoadData] Duplicate term detected (same title, different ID). DB: ${dbTerm.id}, Local: ${existingByTitle.id}. Title: ${dbTerm.term_en || 'Unknown'}`);
-                        }
-                    });
-
-                    currentTerms = filterAcademicTerms(mergedTerms);
-                    saveTerms(currentTerms);
-                    setTerms(currentTerms);
-                }
-                nextTermsStatus = 'ready';
-            } catch (error) {
-                console.warn('[LoadData] Could not fetch terms from Supabase, using local.', error);
-                nextTermsError = getErrorMessage(error, 'Failed to load terms from Supabase.');
-                nextTermsStatus = currentTerms.length > 0 ? 'degraded' : 'error';
-            }
-
             // Final safety check: if we somehow definitely have 0 terms, force reload from utils
             if (!currentTerms || currentTerms.length === 0) {
                 console.warn('[LoadData] Terms are still empty. FORCING mock data reload.');
                 const { mockTerms } = await import('@/data/mockData');
                 currentTerms = filterAcademicTerms(mockTerms);
                 saveTerms(currentTerms);
-                nextTermsStatus = nextTermsError ? 'degraded' : 'ready';
+                nextTermsStatus = 'ready';
             }
 
             setTerms(currentTerms);
 
-            if (isAuthenticated && user) {
+            if (isAuthenticated && userId) {
                 try {
-                    const cloudProgress = await getUserProgressFromSupabase(user.id);
+                    const cloudProgress = await getUserProgressFromSupabase(userId);
 
                     if (cloudProgress && isUserProgress(cloudProgress)) {
-                        const srsData = await getAllTermSRSFromSupabase(user.id);
+                        const srsData = await getAllTermSRSFromSupabase(userId);
                         const mergedTerms = currentTerms.map(term => {
                             const override = srsData.get(term.id);
                             if (override) {
@@ -319,7 +347,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             setIsLoading(false);
             setIsSyncing(false);
         }
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, userId]);
 
     // Load data on mount and when auth state changes
     useEffect(() => {
@@ -333,7 +361,56 @@ export function SRSProvider({ children }: SRSProviderProps) {
     useEffect(() => {
         setFavoriteOptimisticState({});
         setFavoritePendingState({});
-    }, [isAuthenticated, user?.id]);
+    }, [isAuthenticated, userId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const handleSyncMessage = (payload: unknown) => {
+            if (
+                !payload
+                || typeof payload !== 'object'
+                || (payload as { type?: string }).type !== 'REVIEW_COMMITTED'
+            ) {
+                return;
+            }
+
+            applySyncedReview(payload as SrsSyncMessage);
+        };
+
+        const channel = typeof BroadcastChannel !== 'undefined'
+            ? new BroadcastChannel(SRS_SYNC_CHANNEL)
+            : null;
+        syncChannelRef.current = channel;
+
+        const handleChannelMessage = (event: MessageEvent) => {
+            handleSyncMessage(event.data);
+        };
+
+        const handleStorageEvent = (event: StorageEvent) => {
+            if (event.key !== SRS_SYNC_STORAGE_KEY || !event.newValue) {
+                return;
+            }
+
+            try {
+                handleSyncMessage(JSON.parse(event.newValue));
+            } catch {
+                // Ignore malformed sync events from storage.
+            }
+        };
+
+        channel?.addEventListener('message', handleChannelMessage);
+        window.addEventListener('storage', handleStorageEvent);
+
+        return () => {
+            channel?.removeEventListener('message', handleChannelMessage);
+            channel?.close();
+            syncChannelRef.current = null;
+            window.removeEventListener('storage', handleStorageEvent);
+        };
+    }, [applySyncedReview]);
 
     // Calculate due terms
     const dueTerms = userProgress
@@ -369,17 +446,26 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 };
             }
 
+            if (isAuthLoading) {
+                return {
+                    success: false,
+                    limitReached: false,
+                    isFavorite: isCurrentlyFavorite,
+                    error: 'Authentication is still loading.',
+                };
+            }
+
             // If trying to add and limit reached
             if (!isCurrentlyFavorite && !isAuthenticated && currentFavorites.length >= favoriteLimit) {
                 return { success: false, limitReached: true };
             }
 
-            if (isAuthenticated && user) {
+            if (isAuthenticated && userId) {
                 setFavoritePendingState(prev => ({ ...prev, [termId]: true }));
                 setFavoriteOptimisticState(prev => ({ ...prev, [termId]: shouldFavorite }));
 
                 try {
-                    const response = await toggleFavoriteInSupabase(user.id, termId, shouldFavorite);
+                    const response = await toggleFavoriteInSupabase(userId, termId, shouldFavorite);
                     setUserProgress(prev => {
                         const baseProgress = prev ?? getLocalUserProgress();
                         const reconciled = {
@@ -437,7 +523,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 error: error instanceof Error ? error.message : 'Failed to update favorite.',
             };
         }
-    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, isAuthenticated, user, userProgress]);
+    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, isAuthLoading, isAuthenticated, userId, userProgress]);
 
     /**
      * Check if a term is favorited
@@ -457,87 +543,110 @@ export function SRSProvider({ children }: SRSProviderProps) {
     /**
      * Submit a quiz answer and update SRS data
      */
-    const submitQuizAnswer = useCallback(async (termId: string, isCorrect: boolean, responseTimeMs: number = 0): Promise<void> => {
+    const submitQuizAnswer = useCallback(async (
+        termId: string,
+        isCorrect: boolean,
+        responseTimeMs: number = 0,
+        reviewId: string
+    ): Promise<void> => {
         const term = terms.find(t => t.id === termId);
         if (!term) return;
 
-        // Update term with new SRS values
-        const updatedTerm = updateTermAfterReview(term, isCorrect);
-        const updatedTerms = updateTermInStorage(updatedTerm);
-        setTerms(updatedTerms);
-
-        // Record the quiz attempt
+        const idempotencyKey = getOrCreateReviewKey(reviewId);
         const attempt: QuizAttempt = {
-            id: createIdempotencyKey(),
+            id: idempotencyKey,
             term_id: termId,
             is_correct: isCorrect,
             response_time_ms: responseTimeMs,
             timestamp: new Date().toISOString(),
             quiz_type: 'daily',
         };
-        const baseProgress = userProgress ?? getLocalUserProgress();
 
-        if (isAuthenticated && user) {
-            const optimisticProgress = {
-                ...baseProgress,
-                quiz_history: [...baseProgress.quiz_history, attempt],
-                updated_at: new Date().toISOString(),
-            };
-            setUserProgress(optimisticProgress);
-            saveLocalUserProgress(optimisticProgress);
-        } else {
+        if (!isAuthenticated || !userId) {
+            const updatedTerm = updateTermAfterReview(term, isCorrect);
+            const updatedTerms = updateTermInStorage(updatedTerm);
+            setTerms(updatedTerms);
+
             const updatedProgress = addQuizAttemptToStorage(attempt);
             setUserProgress(updatedProgress);
+            clearReviewKey(reviewId);
+            pendingReviewRef.current = null;
+            return;
         }
 
-        // Sync to Supabase if authenticated
-        if (isAuthenticated && user) {
-            try {
-                const result = await saveQuizAttemptToSupabase(user.id, attempt);
+        const result = await saveQuizAttemptToSupabase(userId, attempt);
 
-                if (!isRecordQuizResultPayload(result)) {
-                    throw new Error('Quiz submission returned malformed data.');
-                }
-
-                const { term_id: _termId, ...serverTermSrs } = result.termSrs;
-
-                setTerms(prev => {
-                    const reconciledTerms = prev.map(existingTerm => (
-                        existingTerm.id === termId
-                            ? { ...existingTerm, ...serverTermSrs }
-                            : existingTerm
-                    ));
-
-                    saveTerms(reconciledTerms);
-                    return reconciledTerms;
-                });
-
-                setUserProgress(prev => {
-                    if (!prev) {
-                        return prev;
-                    }
-
-                    const reconciledProgress = {
-                        ...prev,
-                        quiz_history: prev.quiz_history.some((existingAttempt) => existingAttempt.id === attempt.id)
-                            ? prev.quiz_history
-                            : [...prev.quiz_history, attempt],
-                        current_streak: result.userProgress.current_streak,
-                        last_study_date: result.userProgress.last_study_date,
-                        total_words_learned: result.userProgress.total_words_learned,
-                        updated_at: result.userProgress.updated_at,
-                    };
-
-                    saveLocalUserProgress(reconciledProgress);
-                    return reconciledProgress;
-                });
-            } catch (error) {
-                console.error('Failed to sync quiz answer to cloud:', error);
-                void loadData();
-                throw error;
-            }
+        if (result.status === 'ok') {
+            applyCommittedReview(termId, attempt, result.data);
+            broadcastCommittedReview({
+                type: 'REVIEW_COMMITTED',
+                reviewId,
+                termId,
+                termSrs: result.data.termSrs,
+                userProgress: result.data.userProgress,
+            });
+            pendingReviewRef.current = null;
+            clearReviewKey(reviewId);
+            return;
         }
-    }, [terms, userProgress, isAuthenticated, user, loadData]);
+
+        if (result.status === 'auth_expired') {
+            pendingReviewRef.current = {
+                reviewId,
+                termId,
+                isCorrect,
+                responseTimeMs,
+            };
+            throw new Error(result.message);
+        }
+
+        if (result.status === 'retryable') {
+            throw new Error(result.message);
+        }
+
+        pendingReviewRef.current = null;
+        clearReviewKey(reviewId);
+        showToast('Progress could not be saved. Please try again.', 'error');
+        throw new Error(result.message);
+    }, [
+        applyCommittedReview,
+        broadcastCommittedReview,
+        clearReviewKey,
+        getOrCreateReviewKey,
+        isAuthenticated,
+        showToast,
+        terms,
+        userId,
+    ]);
+
+    useEffect(() => {
+        const becameAuthenticated = !previousAuthStateRef.current && isAuthenticated;
+        previousAuthStateRef.current = isAuthenticated;
+
+        if (
+            !becameAuthenticated
+            || !pendingReviewRef.current
+            || !userId
+            || isReplayingPendingReviewRef.current
+        ) {
+            return;
+        }
+
+        const pendingReview = pendingReviewRef.current;
+        isReplayingPendingReviewRef.current = true;
+        showToast('Session refreshed — saving your answer…', 'info');
+
+        void submitQuizAnswer(
+            pendingReview.termId,
+            pendingReview.isCorrect,
+            pendingReview.responseTimeMs,
+            pendingReview.reviewId
+        ).catch((error) => {
+            console.error('Failed to replay pending quiz review:', error);
+        }).finally(() => {
+            isReplayingPendingReviewRef.current = false;
+        });
+    }, [isAuthenticated, showToast, submitQuizAnswer, userId]);
 
     /**
      * Manually refresh all data from storage

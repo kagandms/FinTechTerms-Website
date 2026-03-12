@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { getTermById } from '@/lib/supabaseStorage';
+import { getPublicTermById } from '@/lib/public-term-catalog';
 
 export const runtime = 'nodejs';
 export const contentType = 'image/png';
@@ -13,7 +13,7 @@ type OpenGraphImageProps = {
 };
 
 const getTermCopy = async (id: string) => {
-    const term = await getTermById(id);
+    const term = await getPublicTermById(id);
 
     const title = term?.term_ru || term?.term_en || term?.term_tr || 'FinTechTerms';
     const subtitle = term?.term_en || term?.term_tr || 'Dictionary Term';

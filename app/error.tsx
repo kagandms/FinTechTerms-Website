@@ -1,6 +1,8 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -36,8 +38,7 @@ export default function GlobalError({
     const t = errorMessages[language] || errorMessages.en;
 
     useEffect(() => {
-        // Log error to monitoring service in production
-        console.error('Application error:', error);
+        Sentry.captureException(error);
     }, [error]);
 
     return (
@@ -60,12 +61,12 @@ export default function GlobalError({
                         <RefreshCw className="w-4 h-4" />
                         {t.retry}
                     </button>
-                    <a
+                    <Link
                         href="/"
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                         {t.home}
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>

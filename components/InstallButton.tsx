@@ -9,18 +9,34 @@ interface BeforeInstallPromptEvent extends Event {
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+const isStandaloneDisplayMode = (): boolean => {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+};
+
+const canShowIOSInstallInstructions = (): boolean => {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    return isIOSDevice && !isStandaloneDisplayMode();
+};
+
 export default function InstallButton() {
     const { language } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-    const [isIOS, setIsIOS] = useState(false);
+    const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
 
     useEffect(() => {
-        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-
-        setIsIOS(isIOSDevice && !isStandalone);
+        const syncInstallability = () => {
+            setIsIOSInstallAvailable(canShowIOSInstallInstructions());
+        };
 
         const handleBeforeInstallPrompt = (e: Event) => {
             const promptEvent = e as BeforeInstallPromptEvent;
@@ -30,11 +46,12 @@ export default function InstallButton() {
 
         const handleAppInstalled = () => {
             setDeferredPrompt(null);
-            setIsIOS(false);
+            setIsIOSInstallAvailable(false);
             setShowIOSInstructions(false);
             setShowManualInstructions(false);
         };
 
+        syncInstallability();
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.addEventListener('appinstalled', handleAppInstalled);
 
@@ -44,22 +61,24 @@ export default function InstallButton() {
         };
     }, []);
 
-    const isInstallable = isIOS || deferredPrompt !== null;
+    const isInstallable = isIOSInstallAvailable || deferredPrompt !== null;
 
     const handleInstallClick = async () => {
-        if (isIOS) {
+        if (isIOSInstallAvailable) {
             setShowIOSInstructions(true);
             return;
         }
 
-        if (deferredPrompt) {
-            await deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
+        if (!deferredPrompt) {
+            return;
+        }
 
-            setDeferredPrompt(null);
-            if (outcome === 'dismissed') {
-                setShowManualInstructions(true);
-            }
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+
+        setDeferredPrompt(null);
+        if (outcome === 'dismissed') {
+            setShowManualInstructions(true);
         }
     };
 

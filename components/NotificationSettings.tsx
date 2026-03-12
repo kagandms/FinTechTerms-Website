@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, BellOff, Clock, Check } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -10,52 +10,55 @@ interface NotificationSettingsProps {
 
 const translations = {
     tr: {
-        title: 'Günlük Hatırlatma',
-        description: 'Uygulama tarayıcıda açık kaldığı sürece seçtiğin saatte hatırlatma al.',
-        enable: 'Bildirimleri Aç',
-        disable: 'Bildirimleri Kapat',
+        title: 'Açık Uygulama Hatırlatması',
+        description: 'Seçtiğin saatte yalnızca uygulama tarayıcıda açıkken çalışan bir hatırlatma planla.',
+        enable: 'Açık Uygulama Hatırlatmasını Aç',
+        disable: 'Açık Uygulama Hatırlatmasını Kapat',
         selectTime: 'Hatırlatma Saati',
         saved: 'Kaydedildi!',
         denied: 'Bildirim izni reddedildi. Tarayıcı ayarlarından izin verin.',
         notSupported: 'Bu tarayıcı bildirimleri desteklemiyor.',
         permissionNeeded: 'Bildirim izni gerekli',
-        active: 'Aktif',
+        active: 'Açık Sekmede Aktif',
         inactive: 'Pasif',
         storageError: 'Kayıtlı veri bozuk olduğu için bildirim ayarları sıfırlandı.',
         savingError: 'Bildirim ayarları kaydedilemedi.',
-        openAppOnly: 'Bu hatırlatma yalnızca uygulama açıkken çalışır. Sekme kapalıysa, tarayıcı arka plandaysa veya cihaz uykuya geçerse bildirim gönderilmez.',
+        limitationTitle: 'Arka plan bildirimi değil',
+        openAppOnly: 'Bu özellik push tabanlı bir arka plan bildirimi değildir. Yalnızca bu uygulama açıkken çalışır. Sekme kapalıysa, tarayıcı arka plandaysa veya cihaz uykuya geçerse hatırlatma gönderilmez.',
     },
     en: {
-        title: 'Daily Reminder',
-        description: 'Get a reminder at your chosen time while this app stays open in your browser.',
-        enable: 'Enable Notifications',
-        disable: 'Disable Notifications',
+        title: 'Open-App Reminder',
+        description: 'Schedule a reminder that works only while this app stays open in your browser.',
+        enable: 'Enable Open-App Reminder',
+        disable: 'Disable Open-App Reminder',
         selectTime: 'Reminder Time',
         saved: 'Saved!',
         denied: 'Notification permission denied. Please enable it in browser settings.',
         notSupported: 'This browser does not support notifications.',
         permissionNeeded: 'Notification permission required',
-        active: 'Active',
+        active: 'Active In Open Tab',
         inactive: 'Inactive',
         storageError: 'Notification settings were reset because saved data was invalid.',
         savingError: 'Notification settings could not be saved.',
-        openAppOnly: 'This reminder only works while the app is open. If the tab is closed, the browser is backgrounded, or the device sleeps, no reminder will be sent.',
+        limitationTitle: 'Not a background push notification',
+        openAppOnly: 'This feature is not a background push notification. It only works while the app is open. If the tab is closed, the browser is backgrounded, or the device sleeps, no reminder will be sent.',
     },
     ru: {
-        title: 'Ежедневное напоминание',
-        description: 'Получайте напоминание в выбранное время, пока приложение открыто в браузере.',
-        enable: 'Включить уведомления',
-        disable: 'Отключить уведомления',
+        title: 'Напоминание в открытом приложении',
+        description: 'Запланируйте напоминание, которое работает только пока приложение открыто в браузере.',
+        enable: 'Включить напоминание в открытом приложении',
+        disable: 'Отключить напоминание в открытом приложении',
         selectTime: 'Время напоминания',
         saved: 'Сохранено!',
         denied: 'Разрешение на уведомления отклонено. Включите в настройках браузера.',
         notSupported: 'Этот браузер не поддерживает уведомления.',
         permissionNeeded: 'Требуется разрешение на уведомления',
-        active: 'Активно',
+        active: 'Активно в открытой вкладке',
         inactive: 'Неактивно',
         storageError: 'Настройки уведомлений были сброшены из-за повреждённых данных.',
         savingError: 'Не удалось сохранить настройки уведомлений.',
-        openAppOnly: 'Это напоминание работает только пока приложение открыто. Если вкладка закрыта, браузер в фоне или устройство спит, уведомление не придет.',
+        limitationTitle: 'Это не фоновый push',
+        openAppOnly: 'Эта функция не является фоновым push-уведомлением. Она работает только пока приложение открыто. Если вкладка закрыта, браузер в фоне или устройство спит, напоминание не придет.',
     },
 };
 
@@ -122,6 +125,7 @@ export default function NotificationSettings({ language }: NotificationSettingsP
     const [showSaved, setShowSaved] = useState(false);
     const [isSupported, setIsSupported] = useState(true);
     const [isUpdating, setIsUpdating] = useState(false);
+    const savedIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -129,6 +133,12 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             return;
         }
         setPermission(Notification.permission);
+    }, []);
+
+    useEffect(() => () => {
+        if (savedIndicatorTimeoutRef.current) {
+            clearTimeout(savedIndicatorTimeoutRef.current);
+        }
     }, []);
 
     useEffect(() => {
@@ -231,7 +241,13 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             showToast(t.savingError, 'error');
         }
         setShowSaved(true);
-        setTimeout(() => setShowSaved(false), 2000);
+        if (savedIndicatorTimeoutRef.current) {
+            clearTimeout(savedIndicatorTimeoutRef.current);
+        }
+        savedIndicatorTimeoutRef.current = setTimeout(() => {
+            setShowSaved(false);
+            savedIndicatorTimeoutRef.current = null;
+        }, 2000);
     };
 
     const timeValue = `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`;
@@ -307,9 +323,10 @@ export default function NotificationSettings({ language }: NotificationSettingsP
                 <p className="mt-2 text-xs text-red-500">{t.denied}</p>
             )}
 
-            <p className="mt-3 text-xs text-amber-600 dark:text-amber-300">
-                {t.openAppOnly}
-            </p>
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+                <p className="font-semibold">{t.limitationTitle}</p>
+                <p className="mt-1">{t.openAppOnly}</p>
+            </div>
         </div>
     );
 }

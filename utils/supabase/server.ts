@@ -1,15 +1,25 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createTimeoutFetch } from '@/lib/api-response'
+import { getPublicEnv } from '@/lib/env'
+import { logger } from '@/lib/logger'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const timeoutFetch = createTimeoutFetch()
 
-export async function createClient() {
+type ServerSupabaseClient = SupabaseClient
+
+export async function createOptionalClient(): Promise<ServerSupabaseClient | null> {
     const cookieStore = await cookies()
+    const env = getPublicEnv()
+
+    if (!env.supabaseUrl || !env.supabaseAnonKey) {
+        return null
+    }
 
     return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        env.supabaseUrl,
+        env.supabaseAnonKey,
         {
             cookies: {
                 getAll() {
@@ -22,10 +32,10 @@ export async function createClient() {
                         })
                     } catch (error) {
                         // The `set` method was called from a Server Component.
-                        console.warn(
-                            'SUPABASE_SERVER_COOKIE_SET_SKIPPED',
-                            error
-                        )
+                        logger.warn('SUPABASE_SERVER_COOKIE_SET_SKIPPED', {
+                            route: 'createServerSupabaseClient',
+                            error: error instanceof Error ? error : undefined,
+                        })
                     }
                 },
             },
@@ -34,4 +44,14 @@ export async function createClient() {
             },
         }
     )
+}
+
+export async function createClient(): Promise<ServerSupabaseClient> {
+    const supabaseClient = await createOptionalClient()
+
+    if (!supabaseClient) {
+        throw new Error('Supabase server client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+    }
+
+    return supabaseClient
 }

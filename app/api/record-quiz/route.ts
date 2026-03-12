@@ -8,6 +8,7 @@ import {
     getClientIp,
 } from '@/lib/api-response';
 import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
+import { logger } from '@/lib/logger';
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
@@ -45,7 +46,11 @@ const markQuizFailure = async (
             responseBody,
         });
     } catch (error) {
-        console.error('QUIZ_ROUTE_IDEMPOTENCY_FAIL_ERROR', error);
+        logger.error('QUIZ_ROUTE_IDEMPOTENCY_FAIL_ERROR', {
+            route: '/api/record-quiz',
+            userId,
+            error: error instanceof Error ? error : undefined,
+        });
     }
 };
 
@@ -109,7 +114,12 @@ export async function POST(request: NextRequest) {
     try {
         body = await request.json();
     } catch (error) {
-        console.error('QUIZ_ROUTE_INVALID_JSON', error);
+        logger.error('QUIZ_ROUTE_INVALID_JSON', {
+            requestId,
+            route: '/api/record-quiz',
+            error: error instanceof Error ? error : undefined,
+            retryable: false,
+        });
         return errorResponse({
             status: 400,
             code: 'INVALID_JSON',
@@ -122,7 +132,12 @@ export async function POST(request: NextRequest) {
 
     const validatedData = RecordQuizRequestSchema.safeParse(body);
     if (!validatedData.success) {
-        console.error('QUIZ_ROUTE_VALIDATION_ERROR', validatedData.error.flatten());
+        logger.error('QUIZ_ROUTE_VALIDATION_ERROR', {
+            requestId,
+            route: '/api/record-quiz',
+            retryable: false,
+            issues: validatedData.error.flatten(),
+        });
         return errorResponse({
             status: 400,
             code: 'VALIDATION_ERROR',
@@ -189,7 +204,13 @@ export async function POST(request: NextRequest) {
             });
 
         if (error) {
-            console.error('QUIZ_ROUTE_DB_ERROR', error);
+            logger.error('QUIZ_ROUTE_DB_ERROR', {
+                requestId,
+                route: '/api/record-quiz',
+                userId: user.id,
+                error,
+                retryable: true,
+            });
 
             if ((error.message || '').toLowerCase().includes('favorited')) {
                 await markQuizFailure(routeSupabase, user.id, idempotencyKey, 409, {
@@ -236,7 +257,12 @@ export async function POST(request: NextRequest) {
                 responseBody,
             });
         } catch (error) {
-            console.error('QUIZ_ROUTE_IDEMPOTENCY_COMPLETE_ERROR', error);
+            logger.error('QUIZ_ROUTE_IDEMPOTENCY_COMPLETE_ERROR', {
+                requestId,
+                route: '/api/record-quiz',
+                userId: user.id,
+                error: error instanceof Error ? error : undefined,
+            });
         }
 
         return successResponse(

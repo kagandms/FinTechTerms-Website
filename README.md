@@ -2,7 +2,7 @@
 
 > 📖 **EN** · **TR** · **RU** — Learn finance, fintech & IT terms with SRS-powered spaced repetition.
 
-[![CI/CD](https://github.com/YOUR_USERNAME/fintechterms/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/fintechterms/actions)
+[![CI/CD](https://github.com/kagandms/FinTechTerms-Website/actions/workflows/ci.yml/badge.svg)](https://github.com/kagandms/FinTechTerms-Website/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/demo-fintechterms.vercel.app-blue)](https://fintechterms.vercel.app)
 
 ---
@@ -40,13 +40,27 @@ FinTechTerms Website/
 # Install dependencies
 npm install
 
-# Set environment variables
+# Set environment variables for the web app and repo-level scripts
 cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
+# Edit .env.local with the web app values from the "Web App / Shared Scripts" section
 
 # Run development server
 npm run dev
 ```
+
+> After cloning, run `npm run dev` once before opening the project in your IDE.
+> Next.js generates `next-env.d.ts` on first run, and TypeScript tooling expects that file locally.
+
+> ⚠ **Database setup**: Always run the Supabase CLI migrations (`supabase db push`).
+> Never manually execute SQL files from `lib/`. Those files are archived references only.
+
+Repo-level maintenance scripts such as `scripts/run_schema_update.py` read
+`.env.local` first and fall back to `.env`, so a developer who follows the
+setup above can run both the app and the scripts without duplicating values.
+
+> ⚠ The Telegram bot uses `SUPABASE_ANON_KEY` (public anon key, RLS enforced).
+> Root maintenance scripts use `SUPABASE_SERVICE_ROLE_KEY` (privileged and not safe to share).
+> These keys are different and must never be substituted for one another.
 
 ### Telegram Bot (Python)
 
@@ -60,13 +74,17 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set environment variables
+# Set environment variables for the bot runtime
 cp .env.example .env
-# Edit .env with your BOT_TOKEN and SUPABASE_KEY
+# Edit .env with the bot values from the "Telegram Bot Runtime" section
 
 # Run the bot
 python -m bot
 ```
+
+The root [`.env.example`](.env.example) is the complete catalog of every
+environment variable consumed anywhere in the repo. Use root `.env.local` for
+the web app and repo-level scripts, and `telegram-bot/.env` for the bot.
 
 ## 🧪 Testing
 
@@ -76,15 +94,37 @@ npx jest --verbose
 
 # E2E tests (Playwright)
 npx playwright test
+npm run test:e2e:guest
+npm run test:e2e:auth
 
 # Bot tests (pytest)
 cd telegram-bot && python -m pytest tests/ -v
 ```
 
+The authenticated Playwright flow uses `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD`.
+Set them in local `.env.local` for `npx playwright test`, and in GitHub Actions
+as repository secrets for `.github/workflows/e2e.yml`.
+
+Preview release verification uses:
+- `npm run verify:release-db`
+- `npm run test:e2e:guest`
+- `npm run test:e2e:auth`
+- `npm run smoke:staging`
+
+If Preview Deployment Protection is enabled on Vercel, also provide
+`VERCEL_AUTOMATION_BYPASS_SECRET` so Playwright and staging smoke can access
+the protected preview URL non-interactively.
+
+Optional production observability is wired through Sentry. Set
+`NEXT_PUBLIC_SENTRY_DSN` to enable browser/server error capture and add
+`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` in CI only if you want
+source-map upload.
+
 ## 📚 Documentation
 
 - **[ADR.md](docs/ADR.md)** — Architecture Decision Records
 - **[SECURITY.md](docs/SECURITY.md)** — Threat model & security documentation
+- **[OPERATIONS.md](docs/OPERATIONS.md)** — Deploy, rollback, and incident runbook
 
 ## 🔧 Tech Stack
 

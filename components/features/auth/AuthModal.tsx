@@ -93,7 +93,12 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
     if (!props.isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            data-testid="auth-modal"
+        >
             <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-100">
                 {/* Close (X) Button — always visible, always works */}
                 <button

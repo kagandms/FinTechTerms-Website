@@ -1,62 +1,48 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { applyPreviewProtectionBypass, grantResearchConsent, waitForAppReady } from './support';
 
 test.describe('Visitor Flow', () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto('/');
-    });
+    test('loads the homepage with the correct title', async ({ page }) => {
+        await applyPreviewProtectionBypass(page);
+        await grantResearchConsent(page);
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
 
-    test('should load the homepage with correct title', async ({ page }) => {
         await expect(page).toHaveTitle(/FinTechTerms/);
-        await expect(page.getByText('FinTechTerms', { exact: false }).first()).toBeVisible();
     });
 
-    test('should search for a term and find results', async ({ page }) => {
-        const searchInput = page.getByPlaceholder('Terim veya açıklama ara...'); // Turkish is default usually, but let's check placeholder logic or use generic selector
-        // Actually, generic selector is safer if translation varies, but default locale is ambiguous here.
-        // Let's use input[type="text"] or just placeholder content from codebase. 
-        // In SearchBar.tsx: placeholder={t('search.placeholder')}
-        // If en: "Search term or definition..."
-        // If tr: "Terim veya açıklama ara..."
+    test('searches for a term and finds results', async ({ page }) => {
+        await applyPreviewProtectionBypass(page);
+        await grantResearchConsent(page);
+        await page.goto('/search', { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
 
-        // Let's target by input type to be safe or try generic aria if possible, but we don't have aria yet.
-        const input = page.locator('input[type="text"]');
-        await expect(input).toBeVisible();
-
-        await input.fill('bitcoin');
-
-        // Wait for results. Assuming "Bitcoin" term exists in data/terms.
-        // We know it does from our unit tests mocks, but this is E2E so it uses REAL data.
-        // 'bitcoin' should be in 'technology.ts' or 'fintech.ts'.
-
-        // Check if a card with "Bitcoin" appears.
-        await expect(page.locator('text=Bitcoin').first()).toBeVisible();
+        await expect(page.getByTestId('search-input')).toBeVisible();
+        await page.getByTestId('search-input').fill('bitcoin');
+        await expect(page.getByText(/bitcoin/i).first()).toBeVisible();
     });
 
-    test('should filter by category', async ({ page }) => {
-        // Open filters
-        // The filter button is the one with the specific icon, finding it via CSS class or structure is brittle.
-        // Best effort: find button that toggles filters.
-        const filterToggle = page.locator('button').filter({ has: page.locator('.lucide-filter') });
-        if (await filterToggle?.isVisible()) {
-            await filterToggle.click();
+    test('persists category filters in the URL', async ({ page }) => {
+        await applyPreviewProtectionBypass(page);
+        await grantResearchConsent(page);
+        await page.goto('/search', { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
 
-            // Click "Fintech" category
-            await page.getByText('Fintech', { exact: true }).click();
+        const fintechCategoryChip = page.getByRole('button', { name: /^(fintech|финтех|fintek)$/i }).first();
+        await page.locator('[data-testid="search-filter-toggle"]:visible').click();
+        await fintechCategoryChip.click();
 
-            // Verify some fintech term is visible or category badge is active
-            // Check if "Fintech" button is active (primary color)
-            // This is hard to assert without visual comparison or class check.
-            // Let's just assume no crash.
-        }
+        await expect(page).toHaveURL(/category=Fintech/);
+        await expect(fintechCategoryChip).toHaveAttribute('aria-pressed', 'true');
     });
 
-    test('should toggle theme', async ({ page }) => {
-        // Find theme toggle (moon/sun icon)
-        const themeButton = page.locator('button[aria-label="Toggle theme"]').first();
-        await themeButton.click();
+    test('toggles theme from the homepage', async ({ page }) => {
+        await applyPreviewProtectionBypass(page);
+        await grantResearchConsent(page);
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
 
-        // Check html class (dark mode usually adds 'dark' class to html)
-        const html = page.locator('html');
-        await expect(html).toHaveClass(/dark/);
+        await page.locator('[data-testid="theme-toggle"]:visible').first().click();
+        await expect(page.locator('html')).toHaveClass(/dark/);
     });
 });

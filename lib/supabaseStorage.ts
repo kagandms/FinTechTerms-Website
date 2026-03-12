@@ -4,7 +4,7 @@
 // ============================================
 
 import { z } from 'zod';
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 import { UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
@@ -28,6 +28,12 @@ export interface RecordQuizResult {
         times_correct: number;
     };
 }
+
+export type SaveQuizAttemptResult =
+    | { status: 'ok'; data: RecordQuizResult }
+    | { status: 'auth_expired'; message: string }
+    | { status: 'retryable'; message: string }
+    | { status: 'non_retryable'; message: string };
 
 interface StreakSummaryRow {
     current_streak: number;
@@ -133,6 +139,8 @@ const sleep = (ms: number) => new Promise((resolve) => {
 });
 
 const waitForAccessToken = async (): Promise<string | null> => {
+    const supabase = getSupabaseClient();
+
     for (let attempt = 0; attempt < 6; attempt += 1) {
         const {
             data: { session },
@@ -200,8 +208,12 @@ const fetchWithTimeout = async (
 const fetchWithAuthRetry = async (
     input: RequestInfo | URL,
     init: RequestInit,
-    fallbackMessage: string
+    fallbackMessage: string,
+    options?: {
+        throwOnFinalUnauthorized?: boolean;
+    }
 ): Promise<Response> => {
+    const supabase = getSupabaseClient();
     let headers = await getAuthenticatedRequestHeaders();
     let response = await fetchWithTimeout(input, {
         ...init,
@@ -233,6 +245,10 @@ const fetchWithAuthRetry = async (
     }, REQUEST_TIMEOUT_MESSAGE);
 
     if (!response.ok && response.status === 401) {
+        if (options?.throwOnFinalUnauthorized === false) {
+            return response;
+        }
+
         const message = await readApiError(response, fallbackMessage);
         throw new Error(message);
     }
@@ -244,6 +260,8 @@ const fetchWithAuthRetry = async (
  * Fetch user progress from Supabase
  */
 export async function getUserProgressFromSupabase(userId: string): Promise<UserProgress | null> {
+    const supabase = getSupabaseClient();
+
     const [
         { data: progressData, error: progressError },
         { data: favoritesData, error: favoritesError },
@@ -376,29 +394,60 @@ export async function toggleFavoriteInSupabase(
 export async function saveQuizAttemptToSupabase(
     _userId: string,
     attempt: QuizAttempt
-): Promise<RecordQuizResult> {
-    const response = await fetchWithAuthRetry('/api/record-quiz', {
-        method: 'POST',
-        body: JSON.stringify({
-            term_id: attempt.term_id,
-            is_correct: attempt.is_correct,
-            response_time_ms: attempt.response_time_ms,
-            quiz_type: attempt.quiz_type,
-            idempotencyKey: attempt.id || createIdempotencyKey(),
-        }),
-    }, 'Failed to save quiz attempt.');
+): Promise<SaveQuizAttemptResult> {
+    try {
+        const response = await fetchWithAuthRetry('/api/record-quiz', {
+            method: 'POST',
+            body: JSON.stringify({
+                term_id: attempt.term_id,
+                is_correct: attempt.is_correct,
+                response_time_ms: attempt.response_time_ms,
+                quiz_type: attempt.quiz_type,
+                idempotencyKey: attempt.id || createIdempotencyKey(),
+            }),
+        }, 'Failed to save quiz attempt.', {
+            throwOnFinalUnauthorized: false,
+        });
 
-    if (!response.ok) {
-        const message = await readApiError(response, 'Failed to save quiz attempt.');
-        throw new Error(message);
+        if (response.status === 401) {
+            return {
+                status: 'auth_expired',
+                message: 'Session expired. Please sign in again to save this answer.',
+            };
+        }
+
+        if (!response.ok) {
+            const message = await readApiError(response, 'Progress could not be saved. Please try again.');
+
+            if (response.status >= 500 || response.status === 429) {
+                return {
+                    status: 'retryable',
+                    message,
+                };
+            }
+
+            return {
+                status: 'non_retryable',
+                message,
+            };
+        }
+
+        const payload = parseResponseOrThrow(
+            recordQuizPayloadSchema,
+            await response.json(),
+            'Quiz service returned malformed data.'
+        );
+
+        return {
+            status: 'ok',
+            data: payload.state,
+        };
+    } catch (error) {
+        return {
+            status: 'retryable',
+            message: error instanceof Error ? error.message : 'Failed to save quiz attempt.',
+        };
     }
-
-    const payload = parseResponseOrThrow(
-        recordQuizPayloadSchema,
-        await response.json(),
-        'Quiz service returned malformed data.'
-    );
-    return payload.state;
 }
 
 /**
@@ -408,6 +457,7 @@ export async function getTermSRSFromSupabase(
     userId: string,
     termId: string
 ): Promise<Partial<Term> | null> {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from('user_term_srs')
         .select('*')
@@ -434,6 +484,7 @@ export async function getTermSRSFromSupabase(
 export async function getAllTermSRSFromSupabase(
     userId: string
 ): Promise<Map<string, Partial<Term>>> {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from('user_term_srs')
         .select('*')
@@ -467,6 +518,8 @@ export async function getAllTermSRSFromSupabase(
  * Returns just the content, not user SRS data
  */
 export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
+    const supabase = getSupabaseClient();
+
     const runTermsQuery = async (filterAcademicOnly: boolean) => {
         let query = supabase
             .from('terms')
@@ -502,6 +555,7 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
  * Fetch a single term by ID from Supabase
  */
 export async function getTermById(termId: string): Promise<Partial<Term> | null> {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from('terms')
         .select('*')

@@ -6,6 +6,7 @@
  */
 
 import { Term, UserProgress } from '@/types';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME } from '@/lib/language';
 
 // ── Mock localStorage ─────────────────────────────────────
 const localStorageMock = (() => {
@@ -51,6 +52,7 @@ const createProgress = (overrides: Partial<UserProgress> = {}): UserProgress => 
 
 beforeEach(() => {
     localStorageMock.clear();
+    document.cookie = `${LANGUAGE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
     jest.clearAllMocks();
 });
 
@@ -193,18 +195,19 @@ describe('addQuizAttempt', () => {
 // Language preference
 // ══════════════════════════════════════════════════════════
 describe('Language preference', () => {
-    it('should default to ru', () => {
-        expect(getCurrentLanguage()).toBe('ru');
+    it('should default to the configured repository language', () => {
+        expect(getCurrentLanguage()).toBe(DEFAULT_LANGUAGE);
     });
 
-    it('should save and retrieve language', () => {
+    it('should save and retrieve language from localStorage and cookie', () => {
         setCurrentLanguage('tr');
+        expect(document.cookie).toContain(`${LANGUAGE_COOKIE_NAME}=tr`);
         expect(getCurrentLanguage()).toBe('tr');
     });
 
-    it('should only accept valid languages', () => {
-        setCurrentLanguage('ru');
-        expect(getCurrentLanguage()).toBe('ru');
+    it('should read language from the cookie when localStorage is empty', () => {
+        document.cookie = `${LANGUAGE_COOKIE_NAME}=en; Path=/; SameSite=Lax`;
+        expect(getCurrentLanguage()).toBe('en');
     });
 });
 
@@ -222,5 +225,6 @@ describe('resetAllData', () => {
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_terms');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_language');
+        expect(document.cookie).not.toContain(`${LANGUAGE_COOKIE_NAME}=tr`);
     });
 });

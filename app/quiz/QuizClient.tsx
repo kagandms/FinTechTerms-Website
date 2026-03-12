@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X, Loader2, RefreshCw } from 'lucide-react';
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
+import { createIdempotencyKey } from '@/lib/idempotency';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
@@ -108,6 +109,8 @@ export default function QuizPage() {
     const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
+    const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
+    const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -154,6 +157,15 @@ export default function QuizPage() {
 
     const currentTerm = sessionTerms[currentIndex];
 
+    useEffect(() => {
+        if (!currentTerm || isQuickQuiz) {
+            setCurrentReviewId(null);
+            return;
+        }
+
+        setCurrentReviewId(createIdempotencyKey());
+    }, [currentIndex, currentTerm, isQuickQuiz]);
+
     // Start quick quiz with selected word count and category
     const startQuickQuiz = (count: number) => {
         const pool = getQuickQuizPool(quickQuizCategory);
@@ -181,7 +193,15 @@ export default function QuizPage() {
 
             // Submit to SRS system (only for actual favorites, not quick quiz)
             if (!isQuickQuiz) {
-                await withQuizSubmissionTimeout(submitQuizAnswer(currentTerm.id, isCorrect, responseTimeMs));
+                await withQuizSubmissionTimeout(
+                    submitQuizAnswer(
+                        currentTerm.id,
+                        isCorrect,
+                        responseTimeMs,
+                        currentReviewId ?? createIdempotencyKey()
+                    )
+                );
+                setShowSavedIndicator(true);
             }
 
             if (isCorrect) {
@@ -214,6 +234,8 @@ export default function QuizPage() {
         setQuickQuizCategory(null);
         setUseOnlyFavorites(false);
         setSubmissionError(null);
+        setCurrentReviewId(null);
+        setShowSavedIndicator(false);
     };
 
     // Start SRS review mode
@@ -232,6 +254,9 @@ export default function QuizPage() {
                     {!isLoading && canUseProgressData && dueTerms.length > 0 && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('quiz.chooseMode')}</p>
                     )}
+                    <span className="sr-only" data-testid="due-card-count">
+                        {dueTerms.length}
+                    </span>
                 </header>
 
                 {isLoading ? (
@@ -330,6 +355,7 @@ export default function QuizPage() {
                                 </div>
                                 <button
                                     onClick={startSrsReview}
+                                    data-testid="start-srs-review"
                                     className="w-full mt-3 py-2.5 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
                                 >
                                     {t('quiz.startSrsReview')}
@@ -667,6 +693,9 @@ export default function QuizPage() {
                         {currentIndex + 1} / {sessionTerms.length}
                     </span>
                 </div>
+                <span className="sr-only" data-testid="due-card-count">
+                    {dueTerms.length}
+                </span>
 
                 {/* Progress Bar */}
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -684,6 +713,19 @@ export default function QuizPage() {
                         title={stateCopy.slowLoadingTitle}
                         description={submissionError}
                     />
+                </div>
+            ) : null}
+
+            {showSavedIndicator ? (
+                <div
+                    className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+                    data-testid="quiz-saved-indicator"
+                >
+                    {language === 'tr'
+                        ? 'Ilerleme kaydedildi.'
+                        : language === 'ru'
+                            ? 'Прогресс сохранен.'
+                            : 'Progress saved.'}
                 </div>
             ) : null}
 

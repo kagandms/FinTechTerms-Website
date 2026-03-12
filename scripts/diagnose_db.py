@@ -21,12 +21,12 @@ def _require_env(name: str, fallback_name: str | None = None) -> str:
 
 # Use the same config as the main script
 SUPABASE_URL = _require_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = _require_env("SUPABASE_KEY", "SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_KEY = _require_env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY")
 
 def test_insert():
     print(f"Connecting to {SUPABASE_URL}...")
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     except Exception as e:
         print(f"❌ Client Init Failed: {e}")
         return

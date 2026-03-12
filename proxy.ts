@@ -1,19 +1,51 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
+import { getPublicEnv } from '@/lib/env';
+import { LANGUAGE_COOKIE_NAME, resolvePreferredLanguage } from '@/lib/language';
 
-const PROTECTED_PATHS = ['/profile', '/quiz', '/favorites'];
+const PROTECTED_PATHS = ['/favorites'];
 
 const isProtectedPath = (pathname: string): boolean => (
     PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 );
 
+const appendVaryHeader = (response: NextResponse, value: string) => {
+    const currentValues = (response.headers.get('Vary') ?? '')
+        .split(',')
+        .map(entry => entry.trim())
+        .filter(Boolean);
+
+    if (!currentValues.includes(value)) {
+        currentValues.push(value);
+    }
+
+    if (currentValues.length > 0) {
+        response.headers.set('Vary', currentValues.join(', '));
+    }
+};
+
+const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): NextResponse => {
+    const language = resolvePreferredLanguage({
+        cookieValue: request.cookies.get(LANGUAGE_COOKIE_NAME)?.value ?? null,
+        acceptLanguage: request.headers.get('accept-language'),
+    });
+
+    response.headers.set('Content-Language', language);
+    appendVaryHeader(response, 'Accept-Language');
+    appendVaryHeader(response, 'Cookie');
+    return response;
+};
+
 const createPassThroughResponse = (request: NextRequest): NextResponse => (
-    NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    })
+    applyLocalizedHeaders(
+        request,
+        NextResponse.next({
+            request: {
+                headers: request.headers,
+            },
+        })
+    )
 );
 
 const buildRedirectResponse = (
@@ -42,18 +74,19 @@ const buildRedirectResponse = (
         }
     }
 
-    return redirectResponse;
+    return applyLocalizedHeaders(request, redirectResponse);
 };
 
 export async function proxy(request: NextRequest) {
     const requiresAuth = isProtectedPath(request.nextUrl.pathname);
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const env = getPublicEnv();
+    const supabaseUrl = env.supabaseUrl;
+    const supabaseAnonKey = env.supabaseAnonKey;
 
     if (!supabaseUrl || !supabaseAnonKey) {
         return requiresAuth
-            ? NextResponse.redirect(new URL('/', request.url))
-            : NextResponse.next();
+            ? applyLocalizedHeaders(request, NextResponse.redirect(new URL('/', request.url)))
+            : applyLocalizedHeaders(request, NextResponse.next());
     }
 
     let supabaseResponse = createPassThroughResponse(request);

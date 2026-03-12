@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { usePathname } from 'next/navigation';
 import { Language } from '@/types';
 import { getCurrentLanguage, setCurrentLanguage as saveLanguage } from '@/utils/storage';
+import { DEFAULT_LANGUAGE } from '@/lib/language';
 
 // Import translation files
 import trTranslations from '@/locales/tr.json';
@@ -12,12 +13,6 @@ import ruTranslations from '@/locales/ru.json';
 
 type TranslationKey = string;
 type Translations = typeof trTranslations;
-const configuredDefaultLanguage = process.env.NEXT_PUBLIC_DEFAULT_LANGUAGE;
-const DEFAULT_LANGUAGE: Language = configuredDefaultLanguage === 'tr'
-    || configuredDefaultLanguage === 'en'
-    || configuredDefaultLanguage === 'ru'
-    ? configuredDefaultLanguage
-    : 'ru';
 
 const translations: Record<Language, Translations> = {
     tr: trTranslations,
@@ -72,16 +67,9 @@ const pageTitles: Record<string, Record<Language, string>> = {
 };
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-    const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
-    const [isHydrated, setIsHydrated] = useState(false);
+    const [language, setLanguageState] = useState<Language>(() => getCurrentLanguage());
+    const [isHydrated] = useState(() => typeof window !== 'undefined');
     const pathname = usePathname();
-
-    // Hydrate from localStorage on mount
-    useEffect(() => {
-        const saved = getCurrentLanguage();
-        setLanguageState(saved || DEFAULT_LANGUAGE);
-        setIsHydrated(true);
-    }, []);
 
     const setLanguage = useCallback((lang: Language) => {
         const nextLanguage = ['ru', 'en', 'tr'].includes(lang) ? lang : DEFAULT_LANGUAGE;
@@ -136,9 +124,9 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
             return localizedValue;
         }
 
-        const russianFallback = resolveNestedValue(DEFAULT_LANGUAGE);
-        if (typeof russianFallback === 'string' && russianFallback.trim()) {
-            return russianFallback;
+        const defaultFallback = resolveNestedValue(DEFAULT_LANGUAGE);
+        if (typeof defaultFallback === 'string' && defaultFallback.trim()) {
+            return defaultFallback;
         }
 
         return key;

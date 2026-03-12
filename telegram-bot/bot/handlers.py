@@ -34,7 +34,7 @@ from bot.db_terms import (
     fetch_term_by_id,
 )
 from bot.i18n import t
-from bot.quiz import build_quiz
+from bot.quiz import build_quiz, build_quiz_result
 from bot.tts import generate_tts_audio
 from bot.rate_limiter import is_rate_limited
 
@@ -874,32 +874,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             parts = data.split(":")
             is_correct = parts[1] == "1"
             term_id = parts[2] if len(parts) > 2 else ""
-
-            if is_correct:
-                result_text = t("quiz_correct", lang)
-            else:
-                term = await fetch_term_by_id(term_id) if term_id else None
-                def_key = f"definition_{lang}"
-                answer = (
-                    term.get(def_key, term.get("definition_en", "—")) if term else "—"
-                )
-                result_text = t("quiz_wrong", lang, answer=answer)
+            result_text, reply_markup = await build_quiz_result(lang, is_correct, term_id)
 
             await _edit_paginated(
                 query,
                 context,
                 result_text,
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                "🎯 " + ("Ещё тест" if lang == "ru" else "Tekrar test" if lang == "tr" else "Next quiz"),
-                                callback_data="menu:quiz",
-                            ),
-                            _back_button(lang),
-                        ]
-                    ]
-                ),
+                reply_markup=reply_markup,
                 parse_mode=ParseMode.HTML,
                 lang=lang,
                 scope="cb-quiz-result",

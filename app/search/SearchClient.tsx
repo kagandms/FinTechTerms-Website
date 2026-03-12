@@ -7,7 +7,7 @@ import { useSRS } from '@/contexts/SRSContext';
 import SearchBar from '@/components/SearchBar';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
-import { siteUrl } from '@/lib/site-url';
+import { getSiteUrl } from '@/lib/site-url';
 import { RegionalMarket } from '@/types';
 import { Search as SearchIcon, Loader2, RefreshCw } from 'lucide-react';
 import {
@@ -22,6 +22,7 @@ import {
 export default function SearchPage() {
     const { language, t } = useLanguage();
     const { terms, isLoading, termsStatus, refreshData } = useSRS();
+    const siteUrl = getSiteUrl();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();

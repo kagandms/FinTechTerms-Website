@@ -7,12 +7,14 @@ import { CONSENT_GRANTED_EVENT, hasResearchConsent } from './ConsentModal';
 import { createIdempotencyKey } from '@/lib/idempotency';
 
 const SESSION_KEY = 'fintechterms_session';
+const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
 const MAX_RETRY_QUEUE_SIZE = 50;
 type SessionMode = 'anonymous' | 'authenticated';
 
 interface SessionData {
     id: string | null;
+    token: string | null;
     startTime: number;
     pageViews: number;
     quizAttempts: number;
@@ -22,37 +24,58 @@ interface SessionData {
 
 interface PersistSessionResult {
     ok: boolean;
-    data: { sessionId?: string } | null;
+    data: { sessionId?: string; sessionToken?: string } | null;
     retryable: boolean;
 }
 
 interface StartSessionOptions {
     mode?: SessionMode;
     previousSessionId?: string | null;
-    previousAnonymousId?: string | null;
+    previousSessionToken?: string | null;
 }
 
+type StartSessionMutationPayload = {
+    action: 'start';
+    anonymousId: string | null;
+    deviceType: string;
+    userAgent: string | null;
+    consentGiven: true;
+    previous_session_id: string | null;
+    previous_session_token?: string | null;
+};
+
+type HeartbeatSessionMutationPayload = {
+    action: 'heartbeat';
+    sessionId: string;
+    sessionToken: string;
+    durationSeconds: number;
+    pageViews: number;
+    quizAttempts: number;
+};
+
+type EndSessionMutationPayload = {
+    action: 'end';
+    sessionId: string;
+    sessionToken: string;
+    durationSeconds: number;
+    pageViews: number;
+    quizAttempts: number;
+};
+
 type SessionMutationPayload =
-    | {
-        action: 'start';
-        anonymousId: string | null;
-        deviceType: string;
-        userAgent: string | null;
-        consentGiven: true;
-        previous_session_id: string | null;
-    }
-    | {
-        action: 'heartbeat' | 'end';
-        sessionId: string;
-        anonymousId: string | null;
-        durationSeconds: number;
-        pageViews: number;
-        quizAttempts: number;
-    };
+    | StartSessionMutationPayload
+    | HeartbeatSessionMutationPayload
+    | EndSessionMutationPayload;
 
 interface QueuedSessionMutation {
     payload: SessionMutationPayload;
     sessionStartTime: number | null;
+    idempotencyKey: string;
+}
+
+interface PendingEndSessionMutation {
+    payload: EndSessionMutationPayload;
+    idempotencyKey: string;
 }
 
 /**
@@ -70,9 +93,84 @@ export default function SessionTracker() {
     const pathnameRef = useRef(pathname);
     const retryQueueRef = useRef<QueuedSessionMutation[]>([]);
     const isFlushingQueueRef = useRef(false);
+    const startKeyRef = useRef<string | null>(null);
+    const endKeyRef = useRef<string | null>(null);
+    const pendingEndPayloadRef = useRef<PendingEndSessionMutation | null>(null);
 
     const queueRetryableMutation = useCallback((entry: QueuedSessionMutation) => {
         retryQueueRef.current = [...retryQueueRef.current, entry].slice(-MAX_RETRY_QUEUE_SIZE);
+    }, []);
+
+    const clearPendingEndSession = useCallback((expectedIdempotencyKey?: string) => {
+        const currentPending = pendingEndPayloadRef.current;
+        if (
+            expectedIdempotencyKey
+            && currentPending
+            && currentPending.idempotencyKey !== expectedIdempotencyKey
+        ) {
+            return;
+        }
+
+        pendingEndPayloadRef.current = null;
+
+        try {
+            const stored = sessionStorage.getItem(PENDING_END_SESSION_KEY);
+            if (!stored) {
+                return;
+            }
+
+            const parsed = JSON.parse(stored) as Partial<PendingEndSessionMutation>;
+            if (
+                expectedIdempotencyKey
+                && parsed.idempotencyKey
+                && parsed.idempotencyKey !== expectedIdempotencyKey
+            ) {
+                return;
+            }
+
+            sessionStorage.removeItem(PENDING_END_SESSION_KEY);
+        } catch {
+            sessionStorage.removeItem(PENDING_END_SESSION_KEY);
+        }
+    }, []);
+
+    const persistPendingEndSession = useCallback((pending: PendingEndSessionMutation) => {
+        pendingEndPayloadRef.current = pending;
+
+        try {
+            sessionStorage.setItem(PENDING_END_SESSION_KEY, JSON.stringify(pending));
+        } catch {
+            // Best-effort persistence only.
+        }
+    }, []);
+
+    const readPendingEndSession = useCallback((): PendingEndSessionMutation | null => {
+        if (pendingEndPayloadRef.current) {
+            return pendingEndPayloadRef.current;
+        }
+
+        try {
+            const stored = sessionStorage.getItem(PENDING_END_SESSION_KEY);
+            if (!stored) {
+                return null;
+            }
+
+            const parsed = JSON.parse(stored) as Partial<PendingEndSessionMutation>;
+            if (
+                !parsed
+                || typeof parsed !== 'object'
+                || !parsed.payload
+                || typeof parsed.idempotencyKey !== 'string'
+            ) {
+                return null;
+            }
+
+            const pending = parsed as PendingEndSessionMutation;
+            pendingEndPayloadRef.current = pending;
+            return pending;
+        } catch {
+            return null;
+        }
     }, []);
 
     const saveSessionToStorage = useCallback((session: SessionData | null) => {
@@ -99,6 +197,7 @@ export default function SessionTracker() {
             return {
                 ...session,
                 id: typeof persisted.id === 'string' ? persisted.id : session.id,
+                token: typeof persisted.token === 'string' ? persisted.token : session.token,
                 pageViews: typeof persisted.pageViews === 'number' ? persisted.pageViews : session.pageViews,
                 quizAttempts: typeof persisted.quizAttempts === 'number' ? persisted.quizAttempts : session.quizAttempts,
                 authMode: persisted.authMode === 'anonymous' || persisted.authMode === 'authenticated'
@@ -111,36 +210,56 @@ export default function SessionTracker() {
         }
     }, []);
 
-    const applySessionIdToCurrentSession = useCallback((sessionStartTime: number | null, sessionId: string) => {
+    const applyStartResponseToCurrentSession = useCallback((
+        sessionStartTime: number | null,
+        nextSessionId: string,
+        nextSessionToken: string
+    ) => {
         if (sessionStartTime === null) {
             return;
         }
 
         const currentSession = sessionRef.current;
-        if (!currentSession || currentSession.startTime !== sessionStartTime || currentSession.id === sessionId) {
+        if (
+            !currentSession
+            || currentSession.startTime !== sessionStartTime
+            || (
+                currentSession.id === nextSessionId
+                && currentSession.token === nextSessionToken
+            )
+        ) {
             return;
         }
 
         const updatedSession = {
             ...currentSession,
-            id: sessionId,
+            id: nextSessionId,
+            token: nextSessionToken,
         };
 
         sessionRef.current = updatedSession;
         saveSessionToStorage(updatedSession);
     }, [saveSessionToStorage]);
 
-    const persistSessionMutation = useCallback(async (payload: SessionMutationPayload): Promise<PersistSessionResult> => {
+    const buildMutationBody = useCallback((
+        payload: SessionMutationPayload,
+        idempotencyKey: string
+    ) => JSON.stringify({
+        ...payload,
+        idempotency_key: idempotencyKey,
+    }), []);
+
+    const persistSessionMutation = useCallback(async (
+        payload: SessionMutationPayload,
+        idempotencyKey: string
+    ): Promise<PersistSessionResult> => {
         try {
             const response = await fetch('/api/study-sessions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    ...payload,
-                    idempotency_key: createIdempotencyKey(),
-                }),
+                body: buildMutationBody(payload, idempotencyKey),
                 keepalive: true,
             });
 
@@ -185,8 +304,11 @@ export default function SessionTracker() {
                 const sessionId = 'sessionId' in responseBody && typeof responseBody.sessionId === 'string'
                     ? responseBody.sessionId
                     : null;
+                const sessionToken = 'sessionToken' in responseBody && typeof responseBody.sessionToken === 'string'
+                    ? responseBody.sessionToken
+                    : null;
 
-                if (!sessionId) {
+                if (!sessionId || !sessionToken) {
                     return {
                         ok: false,
                         data: null,
@@ -196,7 +318,7 @@ export default function SessionTracker() {
 
                 return {
                     ok: true,
-                    data: { sessionId },
+                    data: { sessionId, sessionToken },
                     retryable: false,
                 };
             }
@@ -213,7 +335,7 @@ export default function SessionTracker() {
                 retryable: true,
             };
         }
-    }, []);
+    }, [buildMutationBody]);
 
     const flushRetryQueue = useCallback(async () => {
         if (isFlushingQueueRef.current || retryQueueRef.current.length === 0) {
@@ -236,9 +358,22 @@ export default function SessionTracker() {
                     continue;
                 }
 
-                const response = await persistSessionMutation(entry.payload);
+                const response = await persistSessionMutation(entry.payload, entry.idempotencyKey);
 
                 if (!response.ok) {
+                    if (!response.retryable) {
+                        if (entry.payload.action === 'start' && startKeyRef.current === entry.idempotencyKey) {
+                            startKeyRef.current = null;
+                        }
+
+                        if (entry.payload.action === 'end') {
+                            if (endKeyRef.current === entry.idempotencyKey) {
+                                endKeyRef.current = null;
+                            }
+                            clearPendingEndSession(entry.idempotencyKey);
+                        }
+                    }
+
                     const remainingEntries = response.retryable
                         ? pending.slice(index)
                         : pending.slice(index + 1);
@@ -246,14 +381,32 @@ export default function SessionTracker() {
                     break;
                 }
 
-                if (entry.payload.action === 'start' && response.data?.sessionId) {
-                    applySessionIdToCurrentSession(entry.sessionStartTime, response.data.sessionId);
+                if (
+                    entry.payload.action === 'start'
+                    && response.data?.sessionId
+                    && response.data.sessionToken
+                ) {
+                    applyStartResponseToCurrentSession(
+                        entry.sessionStartTime,
+                        response.data.sessionId,
+                        response.data.sessionToken
+                    );
+                    if (startKeyRef.current === entry.idempotencyKey) {
+                        startKeyRef.current = null;
+                    }
+                }
+
+                if (entry.payload.action === 'end') {
+                    if (endKeyRef.current === entry.idempotencyKey) {
+                        endKeyRef.current = null;
+                    }
+                    clearPendingEndSession(entry.idempotencyKey);
                 }
             }
         } finally {
             isFlushingQueueRef.current = false;
         }
-    }, [applySessionIdToCurrentSession, persistSessionMutation]);
+    }, [applyStartResponseToCurrentSession, clearPendingEndSession, persistSessionMutation]);
 
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
@@ -278,6 +431,86 @@ export default function SessionTracker() {
         return 'desktop';
     }, []);
 
+    const buildEndPayload = useCallback((session: SessionData): EndSessionMutationPayload => ({
+        action: 'end',
+        sessionId: session.id as string,
+        sessionToken: session.token as string,
+        durationSeconds: Math.floor((Date.now() - session.startTime) / 1000),
+        pageViews: session.pageViews,
+        quizAttempts: session.quizAttempts,
+    }), []);
+
+    const getPendingEndSessionForCurrentState = useCallback((): PendingEndSessionMutation | null => {
+        if (!sessionRef.current || !hasResearchConsent()) {
+            return null;
+        }
+
+        const session = hydrateSessionFromStorage(sessionRef.current);
+        sessionRef.current = session;
+
+        if (!session.id || !session.token) {
+            return null;
+        }
+
+        const idempotencyKey = endKeyRef.current ?? createIdempotencyKey();
+        endKeyRef.current = idempotencyKey;
+
+        const pending = {
+            payload: buildEndPayload(session),
+            idempotencyKey,
+        };
+
+        persistPendingEndSession(pending);
+        return pending;
+    }, [buildEndPayload, hydrateSessionFromStorage, persistPendingEndSession]);
+
+    const sendPendingEndWithBeacon = useCallback((pending: PendingEndSessionMutation | null) => {
+        if (
+            !pending
+            || typeof navigator === 'undefined'
+            || typeof navigator.sendBeacon !== 'function'
+        ) {
+            return;
+        }
+
+        const body = buildMutationBody(pending.payload, pending.idempotencyKey);
+        navigator.sendBeacon(
+            '/api/study-sessions',
+            new Blob([body], { type: 'application/json' })
+        );
+    }, [buildMutationBody]);
+
+    const replayPendingEndSession = useCallback(async () => {
+        const pending = readPendingEndSession();
+        if (!pending) {
+            return;
+        }
+
+        const response = await persistSessionMutation(pending.payload, pending.idempotencyKey);
+
+        if (response.ok) {
+            clearPendingEndSession(pending.idempotencyKey);
+            if (endKeyRef.current === pending.idempotencyKey) {
+                endKeyRef.current = null;
+            }
+            return;
+        }
+
+        if (response.retryable) {
+            queueRetryableMutation({
+                payload: pending.payload,
+                sessionStartTime: null,
+                idempotencyKey: pending.idempotencyKey,
+            });
+            return;
+        }
+
+        clearPendingEndSession(pending.idempotencyKey);
+        if (endKeyRef.current === pending.idempotencyKey) {
+            endKeyRef.current = null;
+        }
+    }, [clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
+
     // Start a new session
     const trackPageView = useCallback((currentPathname: string | null) => {
         if (!currentPathname || !sessionRef.current || !hasResearchConsent()) {
@@ -296,15 +529,16 @@ export default function SessionTracker() {
     const startSession = useCallback(async ({
         mode = authStateRef.current ? 'authenticated' : 'anonymous',
         previousSessionId = null,
-        previousAnonymousId = null,
+        previousSessionToken = null,
     }: StartSessionOptions = {}) => {
         if (!hasResearchConsent()) return;
 
         const requestAnonymousId = mode === 'anonymous'
-            ? (previousAnonymousId ?? getAnonymousId())
-            : previousAnonymousId;
+            ? getAnonymousId()
+            : null;
         const session: SessionData = {
             id: null,
+            token: null,
             startTime: Date.now(),
             pageViews: 0,
             quizAttempts: 0,
@@ -324,24 +558,34 @@ export default function SessionTracker() {
             deviceType: getDeviceType(),
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
             consentGiven: true,
+            previous_session_token: previousSessionToken,
         };
+        const startIdempotencyKey = startKeyRef.current ?? createIdempotencyKey();
+        startKeyRef.current = startIdempotencyKey;
 
         try {
-            const response = await persistSessionMutation(startPayload);
+            const response = await persistSessionMutation(startPayload, startIdempotencyKey);
 
             if (!response.ok) {
                 if (response.retryable) {
                     queueRetryableMutation({
                         payload: startPayload,
                         sessionStartTime: session.startTime,
+                        idempotencyKey: startIdempotencyKey,
                     });
+                } else if (startKeyRef.current === startIdempotencyKey) {
+                    startKeyRef.current = null;
                 }
                 return;
             }
 
             session.id = response.data?.sessionId || null;
+            session.token = response.data?.sessionToken || null;
             sessionRef.current = session;
             saveSessionToStorage(session);
+            if (startKeyRef.current === startIdempotencyKey) {
+                startKeyRef.current = null;
+            }
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
             }
@@ -360,27 +604,29 @@ export default function SessionTracker() {
         const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
         saveSessionToStorage(session);
 
-        if (!session.id) {
+        if (!session.id || !session.token) {
             return;
         }
 
         const heartbeatPayload: SessionMutationPayload = {
             action: 'heartbeat',
             sessionId: session.id,
-            anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
+            sessionToken: session.token,
             durationSeconds,
             pageViews: session.pageViews,
             quizAttempts: session.quizAttempts,
         };
+        const heartbeatIdempotencyKey = createIdempotencyKey();
 
         try {
-            const response = await persistSessionMutation(heartbeatPayload);
+            const response = await persistSessionMutation(heartbeatPayload, heartbeatIdempotencyKey);
 
             if (!response.ok) {
                 if (response.retryable) {
                     queueRetryableMutation({
                         payload: heartbeatPayload,
                         sessionStartTime: session.startTime,
+                        idempotencyKey: heartbeatIdempotencyKey,
                     });
                 }
                 return;
@@ -400,35 +646,42 @@ export default function SessionTracker() {
         const session = hydrateSessionFromStorage(sessionRef.current);
         sessionRef.current = session;
 
-        const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
-
-        if (!session.id) {
+        if (!session.id || !session.token) {
             sessionRef.current = null;
             lastTrackedPathnameRef.current = null;
             saveSessionToStorage(null);
             return;
         }
 
-        const endPayload: SessionMutationPayload = {
-            action: 'end',
-            sessionId: session.id,
-            anonymousId: session.authMode === 'anonymous' ? session.anonymousId : null,
-            durationSeconds,
-            pageViews: session.pageViews,
-            quizAttempts: session.quizAttempts,
-        };
+        const endPayload = buildEndPayload(session);
+        const endIdempotencyKey = endKeyRef.current ?? createIdempotencyKey();
+        endKeyRef.current = endIdempotencyKey;
+        persistPendingEndSession({
+            payload: endPayload,
+            idempotencyKey: endIdempotencyKey,
+        });
 
         try {
-            const response = await persistSessionMutation(endPayload);
+            const response = await persistSessionMutation(endPayload, endIdempotencyKey);
 
             if (!response.ok) {
                 if (response.retryable) {
                     queueRetryableMutation({
                         payload: endPayload,
                         sessionStartTime: session.startTime,
+                        idempotencyKey: endIdempotencyKey,
                     });
+                } else {
+                    clearPendingEndSession(endIdempotencyKey);
+                    if (endKeyRef.current === endIdempotencyKey) {
+                        endKeyRef.current = null;
+                    }
                 }
                 return;
+            }
+            clearPendingEndSession(endIdempotencyKey);
+            if (endKeyRef.current === endIdempotencyKey) {
+                endKeyRef.current = null;
             }
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
@@ -440,7 +693,16 @@ export default function SessionTracker() {
             lastTrackedPathnameRef.current = null;
             saveSessionToStorage(null);
         }
-    }, [flushRetryQueue, hydrateSessionFromStorage, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
+    }, [
+        buildEndPayload,
+        clearPendingEndSession,
+        flushRetryQueue,
+        hydrateSessionFromStorage,
+        persistPendingEndSession,
+        persistSessionMutation,
+        queueRetryableMutation,
+        saveSessionToStorage,
+    ]);
 
     useEffect(() => {
         authStateRef.current = isAuthenticated;
@@ -452,8 +714,22 @@ export default function SessionTracker() {
 
     // Initialize session tracking
     useEffect(() => {
-        // Start session on mount
-        void startSession();
+        let isMounted = true;
+
+        void (async () => {
+            await replayPendingEndSession();
+
+            if (!isMounted) {
+                return;
+            }
+
+            await startSession();
+            if (!isMounted) {
+                return;
+            }
+
+            trackPageView(pathnameRef.current);
+        })();
 
         // Set up periodic updates
         intervalRef.current = setInterval(updateSession, SESSION_UPDATE_INTERVAL);
@@ -461,12 +737,14 @@ export default function SessionTracker() {
         // Handle page visibility changes
         const handleVisibilityChange = () => {
             if (document.hidden) {
+                sendPendingEndWithBeacon(getPendingEndSessionForCurrentState());
                 void updateSession();
             }
         };
 
         // Handle page unload
         const handleBeforeUnload = () => {
+            sendPendingEndWithBeacon(getPendingEndSessionForCurrentState());
             void endSession();
         };
 
@@ -489,6 +767,7 @@ export default function SessionTracker() {
         window.addEventListener('online', handleOnline);
 
         return () => {
+            isMounted = false;
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
@@ -496,9 +775,19 @@ export default function SessionTracker() {
             window.removeEventListener('beforeunload', handleBeforeUnload);
             window.removeEventListener(CONSENT_GRANTED_EVENT, handleConsentGranted);
             window.removeEventListener('online', handleOnline);
+            sendPendingEndWithBeacon(getPendingEndSessionForCurrentState());
             void endSession();
         };
-    }, [endSession, flushRetryQueue, startSession, trackPageView, updateSession]);
+    }, [
+        endSession,
+        flushRetryQueue,
+        getPendingEndSessionForCurrentState,
+        replayPendingEndSession,
+        sendPendingEndWithBeacon,
+        startSession,
+        trackPageView,
+        updateSession,
+    ]);
 
     useEffect(() => {
         trackPageView(pathname);
@@ -514,16 +803,14 @@ export default function SessionTracker() {
 
         const currentSession = hydrateSessionFromStorage(sessionRef.current);
         const previousSessionId = currentSession.id;
-        const previousAnonymousId = currentSession.authMode === 'anonymous'
-            ? currentSession.anonymousId
-            : null;
+        const previousSessionToken = currentSession.token;
 
         void (async () => {
             await endSession();
             await startSession({
                 mode: isAuthenticated ? 'authenticated' : 'anonymous',
                 previousSessionId: !previousAuthState && isAuthenticated ? previousSessionId : null,
-                previousAnonymousId,
+                previousSessionToken,
             });
             trackPageView(pathname);
         })();

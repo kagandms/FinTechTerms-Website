@@ -7,8 +7,7 @@ from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.config import CATEGORY_EMOJI
-from bot.db_terms import fetch_all_terms
+from bot.db_terms import fetch_all_terms, fetch_term_by_id
 from bot.i18n import t
 
 MAX_QUIZ_OPTIONS = 4
@@ -64,6 +63,10 @@ def _short_option_text(option: str) -> str:
         return option
 
     return option[:QUIZ_OPTION_PREVIEW_LENGTH] + "…"
+
+
+def _quiz_retry_label(lang: str) -> str:
+    return "🎯 Ещё тест" if lang == "ru" else "🎯 Tekrar test" if lang == "tr" else "🎯 Next quiz"
 
 
 async def build_quiz(
@@ -124,6 +127,34 @@ async def build_quiz(
     text = t("quiz_question", lang, term=term_display)
 
     return text, InlineKeyboardMarkup(buttons)
+
+
+async def build_quiz_result(
+    lang: str,
+    is_correct: bool,
+    term_id: str,
+) -> tuple[str, InlineKeyboardMarkup]:
+    """Build the result copy and follow-up keyboard for a quiz answer."""
+    if is_correct:
+        result_text = t("quiz_correct", lang)
+    else:
+        term = await fetch_term_by_id(term_id) if term_id else None
+        answer = _localized_definition(term or {}, lang)
+        result_text = t("quiz_wrong", lang, answer=answer)
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    _quiz_retry_label(lang),
+                    callback_data="menu:quiz",
+                ),
+                _back_button(lang),
+            ]
+        ]
+    )
+
+    return result_text, keyboard
 
 
 def build_accuracy_bar(accuracy: int, length: int = 10) -> str:

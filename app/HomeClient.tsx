@@ -13,7 +13,7 @@ import Image from 'next/image';
 import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
-import { siteUrl } from '@/lib/site-url';
+import { getSiteUrl } from '@/lib/site-url';
 
 import { Term } from '@/types';
 
@@ -48,19 +48,12 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
     const { resolvedTheme, setTheme } = useTheme();
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
-    const displayTermsKey = React.useMemo(
-        () => displayTerms.map((term) => term.id).join('|'),
-        [displayTerms]
-    );
-    const [recentTerms, setRecentTerms] = React.useState<Term[]>(() => pickInitialTerms(displayTerms));
-
-    React.useEffect(() => {
-        const nextTerms = displayTerms.length <= 3
+    const siteUrl = getSiteUrl();
+    const recentTerms = React.useMemo<Term[]>(() => (
+        displayTerms.length <= 3
             ? pickInitialTerms(displayTerms)
-            : pickInitialTerms(shuffleTerms(displayTerms));
-
-        setRecentTerms(nextTerms);
-    }, [displayTermsKey]);
+            : pickInitialTerms(shuffleTerms(displayTerms))
+    ), [displayTerms]);
 
     // Toggle theme quickly
     const toggleTheme = () => {
@@ -124,6 +117,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                     </div>
                     <button
                         onClick={toggleTheme}
+                        data-testid="theme-toggle"
                         className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                         aria-label="Переключить тему"
                     >
@@ -179,6 +173,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
 
                         <button
                             onClick={toggleTheme}
+                            data-testid="theme-toggle"
                             className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
                             aria-label="Переключить тему"
                         >

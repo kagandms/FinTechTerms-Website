@@ -21,7 +21,7 @@ const SERVICE_KEY = getEnvParam('SUPABASE_SERVICE_ROLE_KEY');
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 async function migrate() {
-    console.log(`Starting migration of ${mockTerms.length} terms...`);
+    console.warn(`Starting migration of ${mockTerms.length} terms...`);
 
     const records = mockTerms.map(term => ({
         id: term.id,
@@ -50,7 +50,7 @@ async function migrate() {
         console.error('Migration failed:', error);
         process.exit(1);
     } else {
-        console.log('Successfully migrated terms to Supabase!');
+        console.warn('Successfully migrated terms to Supabase!');
     }
 }
 
