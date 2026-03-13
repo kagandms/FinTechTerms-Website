@@ -84,6 +84,26 @@ const readOptionalValue = (
     return value;
 };
 
+const readPlatformSiteUrl = (): string | null => {
+    const renderExternalUrl = readOptionalValue(process.env.RENDER_EXTERNAL_URL, new Set(['']));
+
+    if (renderExternalUrl) {
+        if (!isValidAbsoluteUrl(renderExternalUrl)) {
+            throw new Error('RENDER_EXTERNAL_URL must be an absolute http(s) URL.');
+        }
+
+        return normalizeSiteUrl(renderExternalUrl);
+    }
+
+    const vercelUrl = readOptionalValue(process.env.VERCEL_URL, new Set(['']));
+
+    if (!vercelUrl) {
+        return null;
+    }
+
+    return normalizeSiteUrl(`https://${vercelUrl}`);
+};
+
 const readRequiredSiteUrl = (): string => {
     const configuredUrl = readOptionalValue(
         process.env.NEXT_PUBLIC_SITE_URL,
@@ -108,9 +128,10 @@ const readRequiredSiteUrl = (): string => {
         return normalizeSiteUrl(window.location.origin);
     }
 
-    const vercelUrl = process.env.VERCEL_URL?.trim();
-    if (vercelUrl) {
-        return normalizeSiteUrl(`https://${vercelUrl}`);
+    const platformSiteUrl = readPlatformSiteUrl();
+
+    if (platformSiteUrl) {
+        return platformSiteUrl;
     }
 
     throw new Error(

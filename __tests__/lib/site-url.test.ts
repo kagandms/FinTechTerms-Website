@@ -23,6 +23,21 @@ describe('site URL configuration', () => {
         });
     });
 
+    it('uses RENDER_EXTERNAL_URL during production when NEXT_PUBLIC_SITE_URL is missing', () => {
+        delete process.env.NEXT_PUBLIC_SITE_URL;
+        process.env = {
+            ...process.env,
+            NODE_ENV: 'production',
+            RENDER_EXTERNAL_URL: 'https://fintechterms-website.onrender.com/',
+        };
+
+        jest.isolateModules(() => {
+            const { getSiteUrl } = require('@/lib/site-url');
+
+            expect(getSiteUrl()).toBe('https://fintechterms-website.onrender.com');
+        });
+    });
+
     it('throws during production access when NEXT_PUBLIC_SITE_URL is missing', () => {
         delete process.env.NEXT_PUBLIC_SITE_URL;
         process.env = {
