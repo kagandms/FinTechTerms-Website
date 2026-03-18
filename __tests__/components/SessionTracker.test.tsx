@@ -4,7 +4,8 @@
 
 import React from 'react';
 import { act, render, waitFor } from '@testing-library/react';
-import SessionTracker from '@/components/SessionTracker';
+
+import SessionTracker, { incrementQuizAttempt } from '@/components/SessionTracker';
 import { CONSENT_GRANTED_EVENT } from '@/components/ConsentModal';
 
 const mockUseAuth = jest.fn();
@@ -19,6 +20,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const SESSION_KEY = 'fintechterms_session';
+const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
 const CONSENT_KEY = 'fintechterms_research_consent';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
 
@@ -36,17 +38,32 @@ const grantConsent = () => {
     }));
 };
 
-const readStoredSession = () => JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') as {
-    id: string | null;
-    token: string | null;
-    pageViews: number;
-    anonymousId: string | null;
+const getCurrentTabId = (): string | null => sessionStorage.getItem(SESSION_TAB_ID_KEY);
+const getCurrentSessionKey = (): string | null => {
+    const tabId = getCurrentTabId();
+    return tabId ? `${SESSION_KEY}:${tabId}` : null;
+};
+const getCurrentPendingEndKey = (): string | null => {
+    const tabId = getCurrentTabId();
+    return tabId ? `${PENDING_END_SESSION_KEY}:${tabId}` : null;
+};
+
+const readStoredSession = () => {
+    const storageKey = getCurrentSessionKey();
+    return JSON.parse(storageKey ? sessionStorage.getItem(storageKey) || 'null' : 'null') as {
+        id: string | null;
+        token: string | null;
+        pageViews: number;
+        quizAttempts: number;
+        anonymousId: string | null;
+    };
 };
 
 describe('SessionTracker', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         localStorage.clear();
+        sessionStorage.clear();
         mockUseAuth.mockReturnValue({ isAuthenticated: false });
         mockUsePathname.mockReturnValue('/search');
         global.fetch = jest.fn().mockResolvedValue(createFetchResponse({
@@ -66,7 +83,7 @@ describe('SessionTracker', () => {
     it('starts tracking immediately when consent is granted in the same tab', async () => {
         render(<SessionTracker />);
 
-        expect(localStorage.getItem(SESSION_KEY)).toBeNull();
+        expect(readStoredSession()).toBeNull();
 
         grantConsent();
         window.dispatchEvent(new CustomEvent(CONSENT_GRANTED_EVENT));
@@ -112,8 +129,6 @@ describe('SessionTracker', () => {
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
-
-        const initialStartPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
 
         mockUseAuth.mockReturnValue({ isAuthenticated: true });
         rerender(<SessionTracker />);
@@ -176,9 +191,10 @@ describe('SessionTracker', () => {
         expect(retriedHeartbeatPayload.idempotency_key).toBe(failedHeartbeatPayload.idempotency_key);
     });
 
-    it('replays a pending end-session from sessionStorage before starting a new session', async () => {
+    it('replays a pending end-session from the current tab storage before starting a new session', async () => {
         grantConsent();
-        sessionStorage.setItem(PENDING_END_SESSION_KEY, JSON.stringify({
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${PENDING_END_SESSION_KEY}:tab_test`, JSON.stringify({
             payload: {
                 action: 'end',
                 sessionId: 'session_pending',
@@ -213,10 +229,10 @@ describe('SessionTracker', () => {
             idempotency_key: 'pending-end-key',
         });
         expect(startedPayload.action).toBe('start');
-        expect(sessionStorage.getItem(PENDING_END_SESSION_KEY)).toBeNull();
+        expect(sessionStorage.getItem(`${PENDING_END_SESSION_KEY}:tab_test`)).toBeNull();
     });
 
-    it('stores a pending end-session and sends it with sendBeacon when the page is hidden', async () => {
+    it('does not persist or beacon an end-session payload when the page is hidden', async () => {
         grantConsent();
         const sendBeacon = jest.fn().mockReturnValue(true);
         Object.defineProperty(navigator, 'sendBeacon', {
@@ -240,16 +256,6 @@ describe('SessionTracker', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
-        localStorage.setItem(SESSION_KEY, JSON.stringify({
-            id: 'session_1',
-            token: 'token_1',
-            startTime: Date.now() - 5000,
-            pageViews: 1,
-            quizAttempts: 0,
-            authMode: 'anonymous',
-            anonymousId: 'anon_123',
-        }));
-
         Object.defineProperty(Document.prototype, 'hidden', {
             configurable: true,
             get: () => true,
@@ -260,19 +266,12 @@ describe('SessionTracker', () => {
         });
 
         await waitFor(() => {
-            expect(sendBeacon).toHaveBeenCalledTimes(1);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
         });
 
-        const pendingPayload = JSON.parse(sessionStorage.getItem(PENDING_END_SESSION_KEY) || 'null');
-        expect(pendingPayload).toMatchObject({
-            payload: expect.objectContaining({
-                action: 'end',
-                sessionId: 'session_1',
-                sessionToken: 'token_1',
-            }),
-        });
-        expect(sendBeacon.mock.calls[0]?.[0]).toBe('/api/study-sessions');
-        expect(sendBeacon.mock.calls[0]?.[1]).toBeInstanceOf(Blob);
+        expect(sendBeacon).not.toHaveBeenCalled();
+        const pendingKey = getCurrentPendingEndKey();
+        expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).toBeNull();
 
         if (originalHidden) {
             Object.defineProperty(Document.prototype, 'hidden', originalHidden);
@@ -282,5 +281,36 @@ describe('SessionTracker', () => {
                 value: false,
             });
         }
+    });
+
+    it('increments quiz attempts only for the active tab session record', async () => {
+        grantConsent();
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(readStoredSession().pageViews).toBe(1);
+        });
+
+        const currentTabId = getCurrentTabId();
+        expect(currentTabId).not.toBeNull();
+
+        sessionStorage.setItem(`${SESSION_KEY}:tab_other`, JSON.stringify({
+            id: 'session_other',
+            token: 'token_other',
+            startTime: Date.now(),
+            pageViews: 5,
+            quizAttempts: 7,
+            authMode: 'anonymous',
+            anonymousId: 'anon_other',
+        }));
+
+        act(() => {
+            incrementQuizAttempt();
+        });
+
+        expect(readStoredSession().quizAttempts).toBe(1);
+        expect(JSON.parse(sessionStorage.getItem(`${SESSION_KEY}:tab_other`) || 'null')).toMatchObject({
+            quizAttempts: 7,
+        });
     });
 });

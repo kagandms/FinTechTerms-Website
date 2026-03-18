@@ -42,9 +42,21 @@ describe('getLearningStats', () => {
             error: null,
             count: 27,
         });
-        const mockReviewSelect = jest.fn(() => ({
-            eq: mockReviewEq,
+        const mockCorrectReviewEq = jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
+            count: 19,
+        });
+        const mockCorrectReviewUserEq = jest.fn(() => ({
+            eq: mockCorrectReviewEq,
         }));
+        const mockReviewSelect = jest.fn()
+            .mockImplementationOnce(() => ({
+                eq: mockReviewEq,
+            }))
+            .mockImplementationOnce(() => ({
+                eq: mockCorrectReviewUserEq,
+            }));
         const mockFrom = jest.fn((table: string) => {
             if (table === 'user_badges') {
                 return {
@@ -88,8 +100,11 @@ describe('getLearningStats', () => {
 
         expect(mockFrom).toHaveBeenCalledWith('user_badges');
         expect(mockFrom).toHaveBeenCalledWith('quiz_attempts');
-        expect(mockReviewSelect).toHaveBeenCalledWith('id', { count: 'exact', head: true });
+        expect(mockReviewSelect).toHaveBeenNthCalledWith(1, 'id', { count: 'exact', head: true });
         expect(mockReviewEq).toHaveBeenCalledWith('user_id', 'user-1');
+        expect(mockReviewSelect).toHaveBeenNthCalledWith(2, 'id', { count: 'exact', head: true });
+        expect(mockCorrectReviewUserEq).toHaveBeenCalledWith('user_id', 'user-1');
+        expect(mockCorrectReviewEq).toHaveBeenCalledWith('is_correct', true);
         expect(result).toEqual({
             ok: true,
             data: {
@@ -104,6 +119,92 @@ describe('getLearningStats', () => {
                 totalActivity: 4,
                 todayActivity: 1,
                 totalReviews: 27,
+                correctReviews: 19,
+            },
+        });
+    });
+
+    it('nulls review aggregates when an exact review count fails', async () => {
+        const mockBadgesOrder = jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
+        });
+        const mockBadgesEq = jest.fn(() => ({
+            order: mockBadgesOrder,
+        }));
+        const mockBadgesSelect = jest.fn(() => ({
+            eq: mockBadgesEq,
+        }));
+        const mockReviewEq = jest.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'count failed' },
+            count: null,
+        });
+        const mockCorrectReviewEq = jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
+            count: 11,
+        });
+        const mockCorrectReviewUserEq = jest.fn(() => ({
+            eq: mockCorrectReviewEq,
+        }));
+        const mockReviewSelect = jest.fn()
+            .mockImplementationOnce(() => ({
+                eq: mockReviewEq,
+            }))
+            .mockImplementationOnce(() => ({
+                eq: mockCorrectReviewUserEq,
+            }));
+        const mockFrom = jest.fn((table: string) => {
+            if (table === 'user_badges') {
+                return {
+                    select: mockBadgesSelect,
+                };
+            }
+
+            if (table === 'quiz_attempts') {
+                return {
+                    select: mockReviewSelect,
+                };
+            }
+
+            throw new Error(`Unexpected table ${table}`);
+        });
+        const mockRpc = jest.fn()
+            .mockResolvedValueOnce({
+                data: [{ log_date: '2026-03-11', activity_count: 1 }],
+                error: null,
+            })
+            .mockResolvedValueOnce({
+                data: [{ current_streak: 1, last_study_date: '2026-03-11' }],
+                error: null,
+            });
+
+        mockCreateOptionalClient.mockResolvedValue({
+            rpc: mockRpc,
+            from: mockFrom,
+        });
+        mockSafeGetSupabaseUser.mockResolvedValue({
+            user: { id: 'user-1' },
+            ghostSession: false,
+            message: null,
+        });
+
+        const { getLearningStats } = await import('@/app/actions/getLearningStats');
+        const result = await getLearningStats();
+
+        expect(result).toEqual({
+            ok: true,
+            data: {
+                heatmap: [{ log_date: '2026-03-11', activity_count: 1 }],
+                currentStreak: 1,
+                lastStudyDate: '2026-03-11',
+                badges: [],
+                activeDays: 1,
+                totalActivity: 1,
+                todayActivity: 1,
+                totalReviews: null,
+                correctReviews: null,
             },
         });
     });

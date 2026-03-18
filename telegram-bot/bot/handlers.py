@@ -25,6 +25,7 @@ from telegram.constants import ParseMode
 
 from bot.config import CATEGORY_EMOJI, WEB_APP_URL, SUPPORTED_LANGUAGES, config
 from bot.db_stats import (
+    StatsUnavailableError,
     get_term_count,
     get_category_counts,
 )
@@ -722,8 +723,12 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def _build_stats_text(lang: str) -> str:
-    total = await get_term_count()
-    cats = await get_category_counts()
+    try:
+        total = await get_term_count()
+        cats = await get_category_counts()
+    except StatsUnavailableError:
+        return f"{t('stats_unavailable', lang)}\n\n🌐 {WEB_APP_URL}"
+
     text = t("stats_header", lang, total=total)
     for cat_name, count in sorted(cats.items()):
         emoji = CATEGORY_EMOJI.get(cat_name, "📖")

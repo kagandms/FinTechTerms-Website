@@ -9,7 +9,7 @@ interface StatsGridProps {
         dueToday: number;
     };
     totalReviews: number | null;
-    accuracy: number;
+    accuracy: number | null;
     isAuthenticated: boolean;
     t: (key: string) => string;
 }
@@ -98,7 +98,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                         </div>
                         <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</span>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">%{accuracy}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {accuracy === null && isAuthenticated ? '—' : `%${accuracy ?? 0}`}
+                    </p>
                 </div>
             </div>
         </section>

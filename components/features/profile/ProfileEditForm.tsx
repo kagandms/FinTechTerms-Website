@@ -7,6 +7,8 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
 import { getSupabaseClient } from '@/lib/supabase';
 import {
+    getSupabaseUserMetadataBirthDate,
+    getSupabaseUserMetadataName,
     getSupabaseUserNameSeed,
     supportsPasswordSignIn,
 } from '@/lib/auth/user';
@@ -106,6 +108,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
     // UI Alerts
     const [formSuccess, setFormSuccess] = useState<string | null>(null);
+    const [formWarning, setFormWarning] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -125,6 +128,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         pwdConfirm: language === 'tr' ? 'Yeni Şifre (Tekrar)' : language === 'ru' ? 'Новый пароль (Еще раз)' : 'Confirm New Password',
         unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
         profileUpdated: language === 'tr' ? 'Başarıyla kaydedildi' : language === 'ru' ? 'Успешно сохранено' : 'Successfully saved',
+        profilePartiallyUpdated: language === 'tr'
+            ? 'Profil bilgileri kaydedildi, ancak yedek profil senkronizasyonu tamamlanamadi.'
+            : language === 'ru'
+                ? 'Данные профиля сохранены, но резервная синхронизация профиля не завершилась.'
+                : 'Profile details were saved, but the secondary profile sync did not complete.',
         passwordUpdated: language === 'tr' ? 'Şifreniz başarıyla güncellendi!' : language === 'ru' ? 'Пароль успешно обновлён!' : 'Password updated successfully!',
         currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
         authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
@@ -203,8 +211,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     return;
                 }
 
-                let fullName = getSupabaseUserNameSeed(supabaseUser);
-                let birthDate = toDateInputValue(supabaseUser.user_metadata?.birth_date || '');
+                let fullName = getSupabaseUserMetadataName(supabaseUser);
+                let birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(supabaseUser));
 
                 const { data: profile } = await supabase
                     .from('profiles')
@@ -212,8 +220,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     .eq('id', supabaseUser.id)
                     .maybeSingle();
 
-                if (profile?.full_name) fullName = profile.full_name.trim();
-                if (profile?.birth_date) birthDate = toDateInputValue(profile.birth_date);
+                if (!fullName && profile?.full_name) fullName = profile.full_name.trim();
+                if (!birthDate && profile?.birth_date) birthDate = toDateInputValue(profile.birth_date);
+                if (!fullName) fullName = getSupabaseUserNameSeed(supabaseUser);
 
                 const nameParts = fullName ? fullName.split(' ') : [''];
                 const firstName = nameParts[0] || '';
@@ -256,6 +265,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const onSubmit = async (data: ProfileFormValues) => {
         setIsPending(true);
         setFormSuccess(null);
+        setFormWarning(null);
         setFormError(null);
         const timeoutController = new AbortController();
         const timeoutId = globalThis.setTimeout(() => {
@@ -278,26 +288,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const authUser = userResultData.user;
             const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(data.birthDate);
+            let hasProfileSyncWarning = false;
 
-            // 1. Update Profile Table (Optional sync, do not throw on RLS failure)
-            const { error: profileError } = await withTimeout(async () => await supabase
-                .from('profiles')
-                .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
-                .eq('id', authUser.id)
-                .abortSignal(timeoutController.signal));
-
-            if (profileError) {
-                console.warn('Profile table sync warning (RLS restricted):', profileError);
-            }
-
-            // 2. Update Auth Metadata (Source of truth)
-            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
-                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
-            }));
-
-            if (metadataError) throw metadataError;
-
-            // 3. Optional Password Update
             if (showPasswordSection && data.newPassword) {
                 if (!supportsPasswordSignIn(authUser)) {
                     throw new Error(dict.passwordManagedByProvider);
@@ -314,7 +306,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 }));
 
                 if (reauthError) throw new Error(dict.currentPasswordError);
+            }
 
+            // 1. Update auth metadata first because it is the primary profile source.
+            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
+                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
+            }));
+
+            if (metadataError) throw metadataError;
+
+            // 2. Optional password update after re-auth validation succeeds.
+            if (showPasswordSection && data.newPassword) {
                 const { error: passwordError } = await withTimeout(() => supabase.auth.updateUser({ password: data.newPassword }));
                 if (passwordError) throw passwordError;
 
@@ -322,9 +324,25 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 showToast(dict.passwordUpdated, 'success');
             }
 
-            // Success state handling
-            setFormSuccess(dict.profileUpdated);
-            showToastAfterRefresh(dict.profileUpdated, 'success');
+            // 3. Keep profiles table in sync when allowed, but do not downgrade the canonical write.
+            const { error: profileError } = await withTimeout(async () => await supabase
+                .from('profiles')
+                .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
+                .eq('id', authUser.id)
+                .abortSignal(timeoutController.signal));
+
+            if (profileError) {
+                console.warn('Profile table sync warning (RLS restricted):', profileError);
+                hasProfileSyncWarning = true;
+            }
+
+            if (hasProfileSyncWarning) {
+                setFormWarning(dict.profilePartiallyUpdated);
+                showToastAfterRefresh(dict.profilePartiallyUpdated, 'warning');
+            } else {
+                setFormSuccess(dict.profileUpdated);
+                showToastAfterRefresh(dict.profileUpdated, 'success');
+            }
 
             // Soft reset to update values instantly
             reset({
@@ -345,6 +363,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const detailedMessage = timedOut
                 ? dict.requestTimeout
                 : safeError.message || dict.unknownError;
+            setFormWarning(null);
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
@@ -363,6 +382,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             {formSuccess && (
                 <div className="mb-4 p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg">
                     {formSuccess}
+                </div>
+            )}
+
+            {formWarning && (
+                <div className="mb-4 p-3 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg">
+                    {formWarning}
                 </div>
             )}
 

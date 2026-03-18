@@ -203,6 +203,53 @@ class TestI18n:
             assert "/bagla" not in help_text
             assert "/report" not in help_text
 
+    def test_account_dashboard_copy_is_localized(self) -> None:
+        english_welcome = t("account_welcome", "en", name="Alex")
+        turkish_welcome = t("account_welcome", "tr", name="Alex")
+
+        assert "Hello" in english_welcome
+        assert "Привет" not in english_welcome
+        assert "Merhaba" in turkish_welcome
+        assert "Привет" not in turkish_welcome
+        assert "Привет" in t("account_welcome", "ru", name="Alex")
+
+        english_unlinked = t("account_not_linked", "en")
+        turkish_unlinked = t("account_not_linked", "tr")
+
+        assert "Your account is not linked yet" in english_unlinked
+        assert "Ваш аккаунт еще не привязан" not in english_unlinked
+        assert "Hesabınız henüz bağlanmamış" in turkish_unlinked
+        assert "Ваш аккаунт еще не привязан" not in turkish_unlinked
+        assert "Ваш аккаунт еще не привязан" in t("account_not_linked", "ru")
+
+    def test_account_dashboard_headers_are_not_stuck_in_russian(self) -> None:
+        assert "My Favorites" in t("account_favorites_header", "en", count=3)
+        assert "Favorilerim" in t("account_favorites_header", "tr", count=3)
+        assert "Мои избранные" in t("account_favorites_header", "ru", count=3)
+
+        assert "My Statistics" in t(
+            "account_stats",
+            "en",
+            quizzes_taken=1,
+            quizzes_correct=1,
+            accuracy=100,
+            words_added=1,
+            words_reviewed=1,
+            favorites_count=1,
+            active_days=1,
+        )
+        assert "İstatistiklerim" in t(
+            "account_stats",
+            "tr",
+            quizzes_taken=1,
+            quizzes_correct=1,
+            accuracy=100,
+            words_added=1,
+            words_reviewed=1,
+            favorites_count=1,
+            active_days=1,
+        )
+
 
 class TestConfig:
     def test_category_emoji_mapping(self) -> None:
@@ -543,6 +590,30 @@ class TestCommandHandlers:
         assert "42" in sent.text
         assert WEB_APP_URL in sent.text
         assert "Technology" in sent.text
+
+    def test_stats_handler_returns_unavailable_copy_when_backend_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_get_term_count() -> int:
+            raise handlers.StatsUnavailableError("stats unavailable")
+
+        async def fake_get_category_counts() -> dict[str, int]:
+            return {"Finance": 20}
+
+        monkeypatch.setattr(handlers, "get_term_count", fake_get_term_count)
+        monkeypatch.setattr(handlers, "get_category_counts", fake_get_category_counts)
+
+        message = DummyMessage()
+        update = make_update(message=message)
+        context = make_context()
+
+        asyncio.run(handlers.stats_handler(update, context))
+
+        sent = message.replies[0]
+        assert "temporarily unavailable" in sent.text
+        assert "Total terms" not in sent.text
+        assert WEB_APP_URL in sent.text
 
     def test_help_handler_sends_help_copy(self) -> None:
         message = DummyMessage()

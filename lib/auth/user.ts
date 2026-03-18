@@ -16,6 +16,7 @@ const DISPLAY_NAME_METADATA_KEYS = [
     'user_name',
     'nickname',
 ];
+const BIRTH_DATE_METADATA_KEYS = ['birth_date'];
 
 const normalizeString = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
@@ -67,6 +68,22 @@ export const supportsPasswordSignIn = (
 export const getSupabaseUserNameSeed = (
     supabaseUser: Pick<SupabaseUser, 'user_metadata' | 'email'> | null | undefined
 ): string => {
+    const metadataName = getSupabaseUserMetadataName(supabaseUser);
+    if (metadataName) {
+        return metadataName;
+    }
+
+    const email = normalizeString(supabaseUser?.email);
+    if (email.includes('@')) {
+        return email.split('@')[0]?.trim() || '';
+    }
+
+    return '';
+};
+
+export const getSupabaseUserMetadataName = (
+    supabaseUser: Pick<SupabaseUser, 'user_metadata'> | null | undefined
+): string => {
     for (const key of DISPLAY_NAME_METADATA_KEYS) {
         const metadataValue = normalizeString(supabaseUser?.user_metadata?.[key]);
         if (metadataValue) {
@@ -74,9 +91,17 @@ export const getSupabaseUserNameSeed = (
         }
     }
 
-    const email = normalizeString(supabaseUser?.email);
-    if (email.includes('@')) {
-        return email.split('@')[0]?.trim() || '';
+    return '';
+};
+
+export const getSupabaseUserMetadataBirthDate = (
+    supabaseUser: Pick<SupabaseUser, 'user_metadata'> | null | undefined
+): string => {
+    for (const key of BIRTH_DATE_METADATA_KEYS) {
+        const metadataValue = normalizeString(supabaseUser?.user_metadata?.[key]);
+        if (metadataValue) {
+            return metadataValue;
+        }
     }
 
     return '';

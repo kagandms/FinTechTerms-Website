@@ -39,7 +39,7 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
 
         const userId = authState.user.id;
 
-        const [heatmapResult, streakResult, badgesResult, reviewCountResult] = await Promise.all([
+        const [heatmapResult, streakResult, badgesResult, reviewCountResult, correctReviewCountResult] = await Promise.all([
             supabase.rpc('get_user_learning_heatmap'),
             supabase.rpc('get_user_streak_summary', {
                 p_user_id: userId,
@@ -53,6 +53,11 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
                 .from('quiz_attempts')
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId),
+            supabase
+                .from('quiz_attempts')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('is_correct', true),
         ]);
 
         if (heatmapResult.error) {
@@ -90,6 +95,14 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
             });
         }
 
+        if (correctReviewCountResult.error) {
+            logger.warn('GET_LEARNING_STATS_CORRECT_REVIEW_COUNT_ERROR', {
+                route: 'getLearningStats',
+                userId,
+                error: new Error(correctReviewCountResult.error.message),
+            });
+        }
+
         const heatmap = (heatmapResult.data ?? []) as LearningHeatmapEntry[];
         const streakSummary = Array.isArray(streakResult.data)
             ? streakResult.data[0]
@@ -98,9 +111,13 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
         const activeDays = heatmap.filter((entry) => entry.activity_count > 0).length;
         const totalActivity = heatmap.reduce((sum, entry) => sum + entry.activity_count, 0);
         const todayActivity = heatmap[heatmap.length - 1]?.activity_count ?? 0;
-        const totalReviews = reviewCountResult.error
+        const reviewCountsUnavailable = reviewCountResult.error || correctReviewCountResult.error;
+        const totalReviews = reviewCountsUnavailable
             ? null
             : (reviewCountResult.count ?? 0);
+        const correctReviews = reviewCountsUnavailable
+            ? null
+            : (correctReviewCountResult.count ?? 0);
 
         return {
             ok: true,
@@ -113,6 +130,7 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
                 totalActivity,
                 todayActivity,
                 totalReviews,
+                correctReviews,
             },
         };
     } catch (error) {

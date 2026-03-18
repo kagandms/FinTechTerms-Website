@@ -7,7 +7,9 @@ import { CONSENT_GRANTED_EVENT, hasResearchConsent } from './ConsentModal';
 import { createIdempotencyKey } from '@/lib/idempotency';
 
 const SESSION_KEY = 'fintechterms_session';
+const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
+const ANONYMOUS_ID_KEY = 'fintechterms_anon_id';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
 const MAX_RETRY_QUEUE_SIZE = 50;
 type SessionMode = 'anonymous' | 'authenticated';
@@ -78,6 +80,28 @@ interface PendingEndSessionMutation {
     idempotencyKey: string;
 }
 
+const buildSessionStorageKey = (tabId: string): string => `${SESSION_KEY}:${tabId}`;
+const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
+
+const getOrCreateSessionTabId = (): string | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const existingTabId = window.sessionStorage.getItem(SESSION_TAB_ID_KEY);
+        if (existingTabId) {
+            return existingTabId;
+        }
+
+        const nextTabId = `tab_${createIdempotencyKey()}`;
+        window.sessionStorage.setItem(SESSION_TAB_ID_KEY, nextTabId);
+        return nextTabId;
+    } catch {
+        return null;
+    }
+};
+
 /**
  * SessionTracker - Invisible component that tracks user sessions
  * for academic research purposes
@@ -85,6 +109,7 @@ interface PendingEndSessionMutation {
 export default function SessionTracker() {
     const { isAuthenticated } = useAuth();
     const pathname = usePathname();
+    const tabIdRef = useRef<string | null>(null);
     const sessionRef = useRef<SessionData | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const authStateRef = useRef(isAuthenticated);
@@ -96,6 +121,16 @@ export default function SessionTracker() {
     const startKeyRef = useRef<string | null>(null);
     const endKeyRef = useRef<string | null>(null);
     const pendingEndPayloadRef = useRef<PendingEndSessionMutation | null>(null);
+
+    const getCurrentTabId = useCallback((): string | null => {
+        if (tabIdRef.current) {
+            return tabIdRef.current;
+        }
+
+        const nextTabId = getOrCreateSessionTabId();
+        tabIdRef.current = nextTabId;
+        return nextTabId;
+    }, []);
 
     const queueRetryableMutation = useCallback((entry: QueuedSessionMutation) => {
         retryQueueRef.current = [...retryQueueRef.current, entry].slice(-MAX_RETRY_QUEUE_SIZE);
@@ -112,9 +147,14 @@ export default function SessionTracker() {
         }
 
         pendingEndPayloadRef.current = null;
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
+        const storageKey = buildPendingEndSessionStorageKey(tabId);
 
         try {
-            const stored = sessionStorage.getItem(PENDING_END_SESSION_KEY);
+            const stored = sessionStorage.getItem(storageKey);
             if (!stored) {
                 return;
             }
@@ -128,29 +168,38 @@ export default function SessionTracker() {
                 return;
             }
 
-            sessionStorage.removeItem(PENDING_END_SESSION_KEY);
+            sessionStorage.removeItem(storageKey);
         } catch {
-            sessionStorage.removeItem(PENDING_END_SESSION_KEY);
+            sessionStorage.removeItem(storageKey);
         }
-    }, []);
+    }, [getCurrentTabId]);
 
     const persistPendingEndSession = useCallback((pending: PendingEndSessionMutation) => {
         pendingEndPayloadRef.current = pending;
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
 
         try {
-            sessionStorage.setItem(PENDING_END_SESSION_KEY, JSON.stringify(pending));
+            sessionStorage.setItem(buildPendingEndSessionStorageKey(tabId), JSON.stringify(pending));
         } catch {
             // Best-effort persistence only.
         }
-    }, []);
+    }, [getCurrentTabId]);
 
     const readPendingEndSession = useCallback((): PendingEndSessionMutation | null => {
         if (pendingEndPayloadRef.current) {
             return pendingEndPayloadRef.current;
         }
 
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return null;
+        }
+
         try {
-            const stored = sessionStorage.getItem(PENDING_END_SESSION_KEY);
+            const stored = sessionStorage.getItem(buildPendingEndSessionStorageKey(tabId));
             if (!stored) {
                 return null;
             }
@@ -171,24 +220,35 @@ export default function SessionTracker() {
         } catch {
             return null;
         }
-    }, []);
+    }, [getCurrentTabId]);
 
     const saveSessionToStorage = useCallback((session: SessionData | null) => {
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
+        const storageKey = buildSessionStorageKey(tabId);
+
         try {
             if (session) {
-                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+                sessionStorage.setItem(storageKey, JSON.stringify(session));
                 return;
             }
 
-            localStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(storageKey);
         } catch {
             // Silently fail
         }
-    }, []);
+    }, [getCurrentTabId]);
 
     const hydrateSessionFromStorage = useCallback((session: SessionData): SessionData => {
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return session;
+        }
+
         try {
-            const stored = localStorage.getItem(SESSION_KEY);
+            const stored = sessionStorage.getItem(buildSessionStorageKey(tabId));
             if (!stored) {
                 return session;
             }
@@ -208,7 +268,7 @@ export default function SessionTracker() {
         } catch {
             return session;
         }
-    }, []);
+    }, [getCurrentTabId]);
 
     const applyStartResponseToCurrentSession = useCallback((
         sessionStartTime: number | null,
@@ -411,10 +471,10 @@ export default function SessionTracker() {
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
         try {
-            let anonId = localStorage.getItem('fintechterms_anon_id');
+            let anonId = localStorage.getItem(ANONYMOUS_ID_KEY);
             if (!anonId) {
                 anonId = `anon_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-                localStorage.setItem('fintechterms_anon_id', anonId);
+                localStorage.setItem(ANONYMOUS_ID_KEY, anonId);
             }
             return anonId;
         } catch {
@@ -737,7 +797,6 @@ export default function SessionTracker() {
         // Handle page visibility changes
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                sendPendingEndWithBeacon(getPendingEndSessionForCurrentState());
                 void updateSession();
             }
         };
@@ -825,11 +884,16 @@ export default function SessionTracker() {
  */
 export function incrementQuizAttempt() {
     try {
-        const stored = localStorage.getItem(SESSION_KEY);
+        const tabId = getOrCreateSessionTabId();
+        if (!tabId) {
+            return;
+        }
+
+        const stored = sessionStorage.getItem(buildSessionStorageKey(tabId));
         if (stored) {
             const session: SessionData = JSON.parse(stored);
             session.quizAttempts += 1;
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            sessionStorage.setItem(buildSessionStorageKey(tabId), JSON.stringify(session));
         }
     } catch {
         // Silently fail

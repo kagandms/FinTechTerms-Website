@@ -17,6 +17,7 @@ export interface LearningStatsData {
     totalActivity: number;
     todayActivity: number;
     totalReviews: number | null;
+    correctReviews: number | null;
 }
 
 export interface ActionErrorPayload {

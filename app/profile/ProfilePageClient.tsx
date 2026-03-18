@@ -34,8 +34,8 @@ interface ProfilePageClientProps {
 export type ProfileWarningCode = 'PROFILE_DATA_PARTIAL' | 'PROFILE_DATA_LOAD_FAILED';
 
 const learningAnalyticsUnavailableCopy = {
-    tr: 'Аналитика интервального повторения временно недоступна.',
-    en: 'Аналитика интервального повторения временно недоступна.',
+    tr: 'Aralıklı tekrar analitiği geçici olarak kullanılamıyor.',
+    en: 'Spaced repetition analytics are temporarily unavailable.',
     ru: 'Аналитика интервального повторения временно недоступна.',
 };
 
@@ -85,9 +85,26 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     // Calculated fields
     const learningStatsData = learningStats.ok ? learningStats.data : null;
     const totalReviews = learningStatsData?.totalReviews ?? (isAuthenticated ? null : 0);
-    const accuracy = userProgress?.quiz_history?.length
-        ? Math.round((userProgress?.quiz_history?.filter((q: any) => q.is_correct)?.length || 0) / (userProgress?.quiz_history?.length || 1) * 100)
-        : 0;
+    const accuracy = (() => {
+        if (!learningStatsData) {
+            return isAuthenticated ? null : 0;
+        }
+
+        if (
+            learningStatsData.totalReviews === null
+            || learningStatsData.correctReviews === null
+        ) {
+            return isAuthenticated ? null : 0;
+        }
+
+        if (learningStatsData.totalReviews === 0) {
+            return 0;
+        }
+
+        return Math.round(
+            (learningStatsData.correctReviews / learningStatsData.totalReviews) * 100
+        );
+    })();
     const showLearningAnalyticsFallback = isAuthenticated
         && !learningStats.ok
         && learningStats.error.code !== 'UNAUTHORIZED';

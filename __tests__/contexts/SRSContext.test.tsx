@@ -128,12 +128,14 @@ const computeDueTerms = (terms: typeof baseTerm[], favorites: string[]) => terms
 ));
 
 function TestConsumer() {
-    const { dueTerms, submitQuizAnswer } = useSRS();
+    const { dueTerms, submitQuizAnswer, userProgress } = useSRS();
     const [error, setError] = React.useState<string | null>(null);
 
     return (
         <div>
             <div data-testid="due-count">{dueTerms.length}</div>
+            <div data-testid="current-streak">{userProgress.current_streak}</div>
+            <div data-testid="last-study-date">{userProgress.last_study_date ?? 'none'}</div>
             <button
                 type="button"
                 onClick={() => {
@@ -195,7 +197,27 @@ describe('SRSContext', () => {
         mockUpdateTermInStorage.mockReturnValue([baseTerm]);
     });
 
-    it('does not optimistically commit an expired-auth review and replays it with the same idempotency key after login returns', async () => {
+    it('keeps cached streak data visible when cloud progress reload fails', async () => {
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            current_streak: 5,
+            last_study_date: '2026-03-10T10:00:00.000Z',
+        });
+        mockGetUserProgressFromSupabase.mockRejectedValue(new Error('Supabase unavailable'));
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('current-streak')).toHaveTextContent('5');
+            expect(screen.getByTestId('last-study-date')).toHaveTextContent('2026-03-10T10:00:00.000Z');
+        });
+    });
+
+    it('replays an auth-expired review after remount/login with the same idempotency key', async () => {
         mockGetUserProgressFromSupabase
             .mockResolvedValueOnce(baseProgress)
             .mockResolvedValue({
@@ -227,7 +249,7 @@ describe('SRSContext', () => {
                 data: recordQuizResult,
             });
 
-        const { rerender } = render(
+        const { unmount } = render(
             <SRSProvider>
                 <TestConsumer />
             </SRSProvider>
@@ -250,12 +272,19 @@ describe('SRSContext', () => {
         });
         expect(screen.getByTestId('due-count')).toHaveTextContent('1');
 
+        expect(JSON.parse(String(sessionStorage.getItem('fintechterms_pending_review')))).toMatchObject({
+            reviewId: 'review-1',
+            idempotencyKey: 'review-key-1',
+        });
+
+        unmount();
+
         authState = {
             ...authState,
             isAuthenticated: false,
             user: null,
         };
-        rerender(
+        const secondRender = render(
             <SRSProvider>
                 <TestConsumer />
             </SRSProvider>
@@ -270,7 +299,7 @@ describe('SRSContext', () => {
             isAuthenticated: true,
             user: { id: 'user-1' },
         };
-        rerender(
+        secondRender.rerender(
             <SRSProvider>
                 <TestConsumer />
             </SRSProvider>
@@ -289,6 +318,7 @@ describe('SRSContext', () => {
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
+        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
     });
 
     it('drops a due card when another tab broadcasts a committed review through storage sync', async () => {

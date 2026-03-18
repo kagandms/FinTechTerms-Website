@@ -119,6 +119,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "{emoji} {name}: <b>{count}</b> terms",
         "tr": "{emoji} {name}: <b>{count}</b> terim",
     },
+    "stats_unavailable": {
+        "ru": "⚠️ Статистика временно недоступна. Попробуйте позже.",
+        "en": "⚠️ Statistics are temporarily unavailable. Please try again later.",
+        "tr": "⚠️ Istatistikler gecici olarak kullanilamiyor. Lutfen daha sonra tekrar deneyin.",
+    },
     # ── Help ────────────────────────────────────────
     "help": {
         "ru": (
@@ -292,12 +297,12 @@ STRINGS: dict[str, dict[str, str]] = {
             "Выберите действие ниже."
         ),
         "en": (
-            "👋 <b>Привет, {name}!</b>\n"
+            "👋 <b>Hello, {name}!</b>\n"
             "Hello, {name}!\n\n"
             "Choose an action below."
         ),
         "tr": (
-            "👋 <b>Привет, {name}!</b>\n"
+            "👋 <b>Merhaba, {name}!</b>\n"
             "Merhaba, {name}!\n\n"
             "Aşağıdan bir işlem seçin."
         ),
@@ -309,12 +314,12 @@ STRINGS: dict[str, dict[str, str]] = {
             "🔗 Нажмите кнопку ниже и завершите привязку на сайте."
         ),
         "en": (
-            "⚠️ <b>Ваш аккаунт еще не привязан.</b>\n"
+            "⚠️ <b>Your account is not linked yet.</b>\n"
             "Your account is not linked yet.\n\n"
             "🔗 Tap the button below and complete linking on the website."
         ),
         "tr": (
-            "⚠️ <b>Ваш аккаунт еще не привязан.</b>\n"
+            "⚠️ <b>Hesabınız henüz bağlanmamış.</b>\n"
             "Hesabınız henüz bağlanmamış.\n\n"
             "🔗 Aşağıdaki butona basıp sitede bağlantıyı tamamlayın."
         ),
@@ -331,8 +336,8 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "account_favorites_header": {
         "ru": "⭐ <b>Мои избранные ({count})</b>",
-        "en": "⭐ <b>Мои избранные ({count})</b>",
-        "tr": "⭐ <b>Мои избранные ({count})</b>",
+        "en": "⭐ <b>My Favorites ({count})</b>",
+        "tr": "⭐ <b>Favorilerim ({count})</b>",
     },
     "account_favorites_item": {
         "ru": "{num}. {cat_emoji} 🇷🇺 <b>{term_ru}</b> · 🇬🇧 {term_en} · 🇹🇷 {term_tr}",
@@ -366,7 +371,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "📅 Активных дней: <b>{active_days}</b>"
         ),
         "en": (
-            "📊 <b>Моя статистика</b>\n\n"
+            "📊 <b>My Statistics</b>\n\n"
             "🎯 Quizzes: <b>{quizzes_taken}</b>\n"
             "✅ Correct: <b>{quizzes_correct}</b>\n"
             "📈 Accuracy: <b>{accuracy}%</b>\n"
@@ -376,7 +381,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "📅 Active days: <b>{active_days}</b>"
         ),
         "tr": (
-            "📊 <b>Моя статистика</b>\n\n"
+            "📊 <b>İstatistiklerim</b>\n\n"
             "🎯 Testler: <b>{quizzes_taken}</b>\n"
             "✅ Doğru: <b>{quizzes_correct}</b>\n"
             "📈 Doğruluk: <b>{accuracy}%</b>\n"

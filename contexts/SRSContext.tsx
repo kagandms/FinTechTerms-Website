@@ -68,12 +68,14 @@ const SRSContext = createContext<SRSContextType | undefined>(undefined);
 
 const SRS_SYNC_CHANNEL = 'srs_sync';
 const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
+const PENDING_REVIEW_STORAGE_KEY = 'fintechterms_pending_review';
 
 interface PendingReview {
     reviewId: string;
     termId: string;
     isCorrect: boolean;
     responseTimeMs: number;
+    idempotencyKey: string;
 }
 
 interface SrsSyncMessage {
@@ -116,6 +118,22 @@ const hasCachedStudyData = (progress: UserProgress): boolean => (
     || progress.last_study_date !== null
 );
 
+const isPendingReview = (value: unknown): value is PendingReview => {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+
+    const candidate = value as Partial<PendingReview>;
+    return (
+        typeof candidate.reviewId === 'string'
+        && typeof candidate.termId === 'string'
+        && typeof candidate.isCorrect === 'boolean'
+        && typeof candidate.responseTimeMs === 'number'
+        && Number.isFinite(candidate.responseTimeMs)
+        && typeof candidate.idempotencyKey === 'string'
+    );
+};
+
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
     const { showToast } = useToast();
@@ -149,6 +167,62 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
     const clearReviewKey = useCallback((reviewId: string) => {
         delete reviewIdempotencyKeysRef.current[reviewId];
+    }, []);
+
+    const clearPendingReview = useCallback(() => {
+        pendingReviewRef.current = null;
+
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
+        } catch {
+            // Best-effort pending review cleanup only.
+        }
+    }, []);
+
+    const persistPendingReview = useCallback((pendingReview: PendingReview) => {
+        pendingReviewRef.current = pendingReview;
+        reviewIdempotencyKeysRef.current[pendingReview.reviewId] = pendingReview.idempotencyKey;
+
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            window.sessionStorage.setItem(
+                PENDING_REVIEW_STORAGE_KEY,
+                JSON.stringify(pendingReview)
+            );
+        } catch {
+            // Best-effort pending review persistence only.
+        }
+    }, []);
+
+    const restorePendingReview = useCallback(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            const storedPendingReview = window.sessionStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
+            if (!storedPendingReview) {
+                return;
+            }
+
+            const parsedPendingReview = JSON.parse(storedPendingReview) as unknown;
+            if (!isPendingReview(parsedPendingReview)) {
+                window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
+                return;
+            }
+
+            pendingReviewRef.current = parsedPendingReview;
+            reviewIdempotencyKeysRef.current[parsedPendingReview.reviewId] = parsedPendingReview.idempotencyKey;
+        } catch {
+            window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
+        }
     }, []);
 
     const applyCommittedReview = useCallback((
@@ -264,15 +338,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
             // Convert back to array
             currentTerms = filterAcademicTerms(Array.from(uniqueLocalTerms.values()));
 
-            // Authenticated streak state must come from the server, not from local heuristics.
+            // Show cached progress immediately, then reconcile with server data when available.
             const localProgress = getLocalUserProgress();
-            const optimisticProgress = isAuthenticated
-                ? {
-                    ...localProgress,
-                    current_streak: 0,
-                    last_study_date: null,
-                }
-                : localProgress;
+            const optimisticProgress = localProgress;
             setUserProgress(optimisticProgress);
 
             // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
@@ -362,6 +430,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
         setFavoriteOptimisticState({});
         setFavoritePendingState({});
     }, [isAuthenticated, userId]);
+
+    useEffect(() => {
+        restorePendingReview();
+    }, [restorePendingReview]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -570,7 +642,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             const updatedProgress = addQuizAttemptToStorage(attempt);
             setUserProgress(updatedProgress);
             clearReviewKey(reviewId);
-            pendingReviewRef.current = null;
+            clearPendingReview();
             return;
         }
 
@@ -585,18 +657,19 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 termSrs: result.data.termSrs,
                 userProgress: result.data.userProgress,
             });
-            pendingReviewRef.current = null;
+            clearPendingReview();
             clearReviewKey(reviewId);
             return;
         }
 
         if (result.status === 'auth_expired') {
-            pendingReviewRef.current = {
+            persistPendingReview({
                 reviewId,
                 termId,
                 isCorrect,
                 responseTimeMs,
-            };
+                idempotencyKey,
+            });
             throw new Error(result.message);
         }
 
@@ -604,16 +677,18 @@ export function SRSProvider({ children }: SRSProviderProps) {
             throw new Error(result.message);
         }
 
-        pendingReviewRef.current = null;
+        clearPendingReview();
         clearReviewKey(reviewId);
         showToast('Progress could not be saved. Please try again.', 'error');
         throw new Error(result.message);
     }, [
         applyCommittedReview,
         broadcastCommittedReview,
+        clearPendingReview,
         clearReviewKey,
         getOrCreateReviewKey,
         isAuthenticated,
+        persistPendingReview,
         showToast,
         terms,
         userId,

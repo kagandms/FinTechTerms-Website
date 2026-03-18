@@ -12,6 +12,10 @@ from bot.db_client import apply_academic_quarantine, get_public_client
 logger = logging.getLogger(__name__)
 
 
+class StatsUnavailableError(RuntimeError):
+    """Raised when public statistics cannot be loaded from the database."""
+
+
 async def get_term_count() -> int:
     """Return total number of public terms in the database."""
     def _count():
@@ -24,7 +28,7 @@ async def get_term_count() -> int:
         return response.count or 0
     except Exception as e:
         logger.error("Failed to get term count: %s", e)
-        return 0
+        raise StatsUnavailableError("Term count is temporarily unavailable.") from e
 
 
 async def get_category_counts() -> dict[str, int]:
@@ -43,4 +47,4 @@ async def get_category_counts() -> dict[str, int]:
         return counts
     except Exception as e:
         logger.error("Failed to get category counts: %s", e)
-        return {}
+        raise StatsUnavailableError("Category counts are temporarily unavailable.") from e

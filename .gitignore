@@ -26,6 +26,7 @@ __pycache__/
 # Environment
 .env
 .env.local
+.env.preview.local
 telegram-bot/.env
 .env.development.local
 .env.test.local
@@ -53,6 +54,9 @@ yarn-error.log*
 
 # Vercel
 .vercel
+
+# Supabase CLI temp state
+supabase/.temp/
 
 # TypeScript
 *.tsbuildinfo
