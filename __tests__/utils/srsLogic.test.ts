@@ -20,35 +20,39 @@ import {
     MIN_SRS_LEVEL,
 } from '@/utils/srsLogic';
 import { Term } from '@/types';
+import { createTerm } from '@/data/terms/utils';
 
 // ── Test Fixture ──────────────────────────────────────────
 function createMockTerm(overrides: Partial<Term> = {}): Term {
+    const baseTerm = createTerm(
+        'test_001',
+        'Blockchain',
+        'Блокчейн',
+        'Blokzincir',
+        'Fintech',
+        'A distributed ledger technology',
+        'Технология распределённого реестра',
+        'Dağıtık defter teknolojisi',
+        'Blockchain enables...',
+        'Блокчейн обеспечивает...',
+        'Blockchain sağlar...',
+        undefined,
+        undefined,
+        undefined,
+        2.5,
+        {
+            context_tags: {
+                disciplines: ['economics', 'mis'],
+                target_universities: ['SPbU', 'HSE'],
+            },
+            regional_market: 'GLOBAL',
+            primary_market: 'GLOBAL',
+            regional_markets: ['GLOBAL'],
+        }
+    );
+
     return {
-        id: 'test_001',
-        term_en: 'Blockchain',
-        term_tr: 'Blokzincir',
-        term_ru: 'Блокчейн',
-        category: 'Fintech',
-        definition_en: 'A distributed ledger technology',
-        definition_tr: 'Dağıtık defter teknolojisi',
-        definition_ru: 'Технология распределённого реестра',
-        example_sentence_en: 'Blockchain enables...',
-        example_sentence_tr: 'Blockchain sağlar...',
-        example_sentence_ru: 'Блокчейн обеспечивает...',
-        context_tags: {
-            disciplines: ['economics', 'mis'],
-            target_universities: ['SPbU', 'HSE'],
-        },
-        regional_market: 'GLOBAL',
-        is_academic: true,
-        difficulty_level: 'intermediate',
-        srs_level: 1,
-        next_review_date: new Date().toISOString(),
-        last_reviewed: null,
-        difficulty_score: 2.5,
-        retention_rate: 0,
-        times_reviewed: 0,
-        times_correct: 0,
+        ...baseTerm,
         ...overrides,
     };
 }

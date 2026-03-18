@@ -24,6 +24,11 @@ const navigateWithinApp = async (page: Page, href: '/' | '/quiz' | '/profile') =
 
 const seedFavoritesViaApi = async (page: Page, minimumCount: number) => {
     const result = await page.evaluate(async ({ minimum }) => {
+        type StoredTerm = {
+            id: string;
+            next_review_date: string;
+        };
+
         const readAccessToken = () => {
             for (const key of Object.keys(window.localStorage)) {
                 if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) {
@@ -57,12 +62,14 @@ const seedFavoritesViaApi = async (page: Page, minimumCount: number) => {
                 return [];
             }
 
+            const parsedTerms = JSON.parse(rawTerms) as StoredTerm[];
+
             const today = new Date();
             today.setHours(23, 59, 59, 999);
 
-            return JSON.parse(rawTerms)
-                .filter((term) => new Date(term.next_review_date) <= today)
-                .map((term) => term.id);
+            return parsedTerms
+                .filter((term: StoredTerm) => new Date(term.next_review_date) <= today)
+                .map((term: StoredTerm) => term.id);
         };
 
         const accessToken = readAccessToken();

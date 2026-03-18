@@ -117,7 +117,7 @@ export const searchPublicTerms = async (
             return false;
         }
 
-        if (market && term.regional_market !== market) {
+        if (market && !(term.regional_markets ?? [term.regional_market]).includes(market)) {
             return false;
         }
 

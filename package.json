@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint app components contexts hooks lib types utils proxy.ts scripts --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "test": "jest",
+    "audit:seo": "node scripts/lighthouse-seo-budget.mjs",
     "test:e2e:guest": "playwright test --grep-invert @auth-required",
     "test:e2e:auth": "playwright test --grep @auth-required",
     "smoke:staging": "node scripts/staging-smoke.mjs",

@@ -111,7 +111,10 @@ export const filterTermsForSearch = (
     }
 
     if (filterState.selectedMarket) {
-        filtered = filtered.filter((term) => term.regional_market === filterState.selectedMarket);
+        filtered = filtered.filter((term) => {
+            const termMarkets = term.regional_markets ?? [term.regional_market];
+            return termMarkets.includes(filterState.selectedMarket!);
+        });
     }
 
     if (!searchQuery) {

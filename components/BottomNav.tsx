@@ -24,7 +24,7 @@ export default function BottomNav() {
 
     const navItems: NavItem[] = [
         {
-            href: '/',
+            href: '/dashboard',
             labelKey: 'common.home',
             icon: <Home className="w-6 h-6" />,
         },

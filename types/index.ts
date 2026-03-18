@@ -8,6 +8,21 @@ export type Language = 'tr' | 'en' | 'ru';
 export type Category = 'Fintech' | 'Finance' | 'Technology';
 export type RegionalMarket = 'MOEX' | 'BIST' | 'GLOBAL';
 export type DifficultyLevel = 'basic' | 'intermediate' | 'advanced';
+export type ContributorKind = 'person' | 'organization';
+export type ContributorRole = 'author' | 'reviewer';
+export type SourceType = 'documentation' | 'regulation' | 'research' | 'glossary';
+export type TermIndexPriority = 'high' | 'standard' | 'supporting';
+export type EditorialStatus = 'planned' | 'draft' | 'review' | 'published';
+export type PriorityTermTier = 'anchor' | 'supporting';
+export type TopicId =
+    | 'cards-payments'
+    | 'open-banking'
+    | 'regtech-compliance'
+    | 'crypto-infrastructure'
+    | 'rwa-tokenization'
+    | 'market-microstructure'
+    | 'fraud-identity-security'
+    | 'ai-data-finance';
 export type TermContextTagValue =
     | string
     | number
@@ -16,6 +31,75 @@ export type TermContextTagValue =
     | number[]
     | boolean[];
 export type TermContextTags = Record<string, TermContextTagValue | undefined>;
+
+export interface LocalizedText {
+    en: string;
+    ru: string;
+    tr: string;
+}
+
+export interface SourceRef {
+    id: string;
+    title: LocalizedText;
+    publisher: string;
+    url: string;
+    type: SourceType;
+    note: LocalizedText;
+    last_verified: string;
+}
+
+export interface Contributor {
+    id: string;
+    slug: string;
+    updated_at: string;
+    kind: ContributorKind;
+    role: ContributorRole;
+    name: string;
+    title: LocalizedText;
+    bio: LocalizedText;
+    disclosure: LocalizedText;
+    languages: readonly Language[];
+    expertise: readonly string[];
+    organization: string;
+    email: string;
+}
+
+export interface Topic {
+    id: TopicId;
+    slug: string;
+    updated_at: string;
+    title: LocalizedText;
+    description: LocalizedText;
+    hero: LocalizedText;
+    relatedTopicIds: readonly string[];
+    sourceIds: readonly string[];
+    priorityTermSlugs: readonly string[];
+    sections: readonly {
+        title: LocalizedText;
+        body: LocalizedText;
+    }[];
+}
+
+export interface PriorityTermRecord {
+    slug: string;
+    topicId: TopicId;
+    tier: PriorityTermTier;
+    locales: Record<Language, EditorialStatus>;
+    requiredSourceIds: readonly string[];
+    relatedSlugs: readonly string[];
+    comparisonSlug: string | null;
+    prerequisiteSlug: string | null;
+    regionalMarkets: readonly RegionalMarket[];
+}
+
+export interface AuthorityTarget {
+    id: string;
+    name: string;
+    channel: 'academic' | 'media' | 'community' | 'owned';
+    targetUrl: string;
+    rationale: string;
+    status: 'planned' | 'contacted' | 'published';
+}
 
 /**
  * Canonical profile row mirrored from public.profiles.
@@ -33,6 +117,7 @@ export interface Profile {
  */
 export interface Term {
     id: string;
+    slug: string;
 
     // Trilingual Terms
     term_en: string;
@@ -57,11 +142,36 @@ export interface Term {
     example_sentence_ru: string;
     example_sentence_tr: string;
 
+    short_definition: LocalizedText;
+    expanded_definition: LocalizedText;
+    why_it_matters: LocalizedText;
+    how_it_works: LocalizedText;
+    risks_and_pitfalls: LocalizedText;
+    regional_notes: LocalizedText;
+    seo_title: LocalizedText;
+    seo_description: LocalizedText;
+
     // Contest-ready academic taxonomy
     context_tags: TermContextTags;
+    regional_markets: readonly RegionalMarket[];
+    primary_market: RegionalMarket;
+    /**
+     * Backward-compatible mirror for legacy app-shell components.
+     * Prefer primary_market + regional_markets in new code.
+     */
     regional_market: RegionalMarket;
     is_academic: boolean;
     difficulty_level: DifficultyLevel;
+    related_term_ids: readonly string[];
+    comparison_term_id: string | null;
+    prerequisite_term_id: string | null;
+    topic_ids: readonly string[];
+    source_refs: readonly string[];
+    author_id: string;
+    reviewer_id: string;
+    reviewed_at: string;
+    updated_at: string;
+    index_priority: TermIndexPriority;
 
     // ============================================
     // SRS (Spaced Repetition System) Data

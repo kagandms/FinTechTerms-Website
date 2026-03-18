@@ -14,9 +14,16 @@ const ContextTagsSchema = z
     .catch({})
     .transform((value) => value ?? {});
 
+const LocalizedTextSchema = z.object({
+    en: z.string().default(''),
+    ru: z.string().default(''),
+    tr: z.string().default(''),
+});
+
 // Zod Schema mirroring the Term interface
 export const TermSchema = z.object({
     id: z.string().catch('unknown'),
+    slug: z.string().catch('unknown'),
     term_en: z.string().catch('Unknown'),
     term_ru: z.string().nullable().catch('').transform(s => s || ''),
     term_tr: z.string().nullable().catch('').transform(s => s || ''),
@@ -34,10 +41,31 @@ export const TermSchema = z.object({
     example_sentence_ru: z.string().nullable().catch('').transform(s => s || ''),
     example_sentence_tr: z.string().nullable().catch('').transform(s => s || ''),
 
+    short_definition: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    expanded_definition: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    why_it_matters: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    how_it_works: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    risks_and_pitfalls: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    regional_notes: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    seo_title: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+    seo_description: LocalizedTextSchema.default({ en: '', ru: '', tr: '' }),
+
     context_tags: ContextTagsSchema.default({}),
+    regional_markets: z.array(z.enum(['MOEX', 'BIST', 'GLOBAL'])).default(['GLOBAL']),
+    primary_market: z.enum(['MOEX', 'BIST', 'GLOBAL']).default('GLOBAL'),
     regional_market: z.enum(['MOEX', 'BIST', 'GLOBAL']).default('GLOBAL'),
     is_academic: z.boolean().default(true),
     difficulty_level: z.enum(['basic', 'intermediate', 'advanced']).default('intermediate'),
+    related_term_ids: z.array(z.string()).default([]),
+    comparison_term_id: z.string().nullable().default(null),
+    prerequisite_term_id: z.string().nullable().default(null),
+    topic_ids: z.array(z.string()).default([]),
+    source_refs: z.array(z.string()).default([]),
+    author_id: z.string().default('kagan-samet-durmus'),
+    reviewer_id: z.string().default('fintechterms-editorial-review'),
+    reviewed_at: z.string().default(() => new Date().toISOString()),
+    updated_at: z.string().default(() => new Date().toISOString()),
+    index_priority: z.enum(['high', 'standard', 'supporting']).default('standard'),
 
     // SRS Data (with safe defaults)
     srs_level: z.number().default(0),

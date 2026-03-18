@@ -34,7 +34,7 @@ interface LanguageProviderProps {
 
 // Page-specific titles for each language
 const pageTitles: Record<string, Record<Language, string>> = {
-    '/': {
+    '/dashboard': {
         en: 'FinTechTerms | Financial & IT Dictionary',
         tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
         ru: 'FinTechTerms | Словарь экономики и IT',

@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
 import { getPublicEnv } from '@/lib/env';
-import { LANGUAGE_COOKIE_NAME, resolvePreferredLanguage } from '@/lib/language';
+import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
+import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 
 const PROTECTED_PATHS = ['/favorites'];
 
@@ -25,11 +26,27 @@ const appendVaryHeader = (response: NextResponse, value: string) => {
     }
 };
 
-const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): NextResponse => {
-    const language = resolvePreferredLanguage({
+const resolveRequestLocale = (request: NextRequest) => {
+    const queryLocale = normalizeLanguage(request.nextUrl.searchParams.get('lang'));
+
+    if (queryLocale) {
+        return queryLocale;
+    }
+
+    const pathLocale = normalizeLanguage(request.nextUrl.pathname.split('/')[1]);
+
+    if (pathLocale) {
+        return pathLocale;
+    }
+
+    return resolvePreferredLanguage({
         cookieValue: request.cookies.get(LANGUAGE_COOKIE_NAME)?.value ?? null,
         acceptLanguage: request.headers.get('accept-language'),
     });
+};
+
+const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): NextResponse => {
+    const language = resolveRequestLocale(request);
 
     response.headers.set('Content-Language', language);
     appendVaryHeader(response, 'Accept-Language');
@@ -37,15 +54,28 @@ const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): Ne
     return response;
 };
 
-const createPassThroughResponse = (request: NextRequest): NextResponse => (
-    applyLocalizedHeaders(
+const createPassThroughResponse = (request: NextRequest): NextResponse => {
+    request.cookies.set(LANGUAGE_COOKIE_NAME, resolveRequestLocale(request));
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-ftt-locale', resolveRequestLocale(request));
+
+    return applyLocalizedHeaders(
         request,
         NextResponse.next({
             request: {
-                headers: request.headers,
+                headers: requestHeaders,
             },
         })
-    )
+    );
+};
+
+const buildPermanentRedirectResponse = (
+    request: NextRequest,
+    redirectPath: string
+): NextResponse => applyLocalizedHeaders(
+    request,
+    NextResponse.redirect(new URL(redirectPath, request.url), 308)
 );
 
 const buildRedirectResponse = (
@@ -77,7 +107,58 @@ const buildRedirectResponse = (
     return applyLocalizedHeaders(request, redirectResponse);
 };
 
+const buildLegacyLocaleRedirect = (request: NextRequest): NextResponse | null => {
+    const { pathname, searchParams } = request.nextUrl;
+    const localeInput = {
+        queryLanguage: searchParams.get('lang'),
+        cookieLanguage: request.cookies.get(LANGUAGE_COOKIE_NAME)?.value ?? null,
+        acceptLanguage: request.headers.get('accept-language'),
+    };
+
+    if (pathname === '/about') {
+        return buildPermanentRedirectResponse(
+            request,
+            buildLegacyStaticRedirectPath('/about', localeInput)
+        );
+    }
+
+    if (pathname === '/methodology') {
+        return buildPermanentRedirectResponse(
+            request,
+            buildLegacyStaticRedirectPath('/methodology', localeInput)
+        );
+    }
+
+    const legacyTermMatch = pathname.match(/^\/term\/([^/]+)$/);
+    if (!legacyTermMatch) {
+        return null;
+    }
+
+    const termId = legacyTermMatch[1];
+
+    if (!termId) {
+        return null;
+    }
+
+    const redirectPath = buildLegacyTermRedirectPath({
+        termId,
+        ...localeInput,
+    });
+
+    if (!redirectPath) {
+        return null;
+    }
+
+    return buildPermanentRedirectResponse(request, redirectPath);
+};
+
 export async function proxy(request: NextRequest) {
+    const legacyRedirect = buildLegacyLocaleRedirect(request);
+
+    if (legacyRedirect) {
+        return legacyRedirect;
+    }
+
     const requiresAuth = isProtectedPath(request.nextUrl.pathname);
     const env = getPublicEnv();
     const supabaseUrl = env.supabaseUrl;

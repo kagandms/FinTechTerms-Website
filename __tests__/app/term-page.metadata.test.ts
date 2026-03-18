@@ -2,22 +2,15 @@
  * @jest-environment node
  */
 
-const mockGetPublicTermById = jest.fn();
+const mockGetSeoTermBySlug = jest.fn();
 
-jest.mock('@/lib/public-term-catalog', () => ({
-    getPublicTermById: (...args: unknown[]) => mockGetPublicTermById(...args),
+jest.mock('@/lib/public-seo-catalog', () => ({
+    getSeoTermBySlug: (...args: unknown[]) => mockGetSeoTermBySlug(...args),
+    getLocalizedTermSeoTitle: (term: { seo_title: { en: string; ru: string; tr: string } }, locale: 'en' | 'ru' | 'tr') => term.seo_title[locale],
+    getLocalizedTermSeoDescription: (term: { seo_description: { en: string; ru: string; tr: string } }, locale: 'en' | 'ru' | 'tr') => term.seo_description[locale],
 }));
 
-jest.mock('@/components/SmartCard', () => ({
-    __esModule: true,
-    default: () => null,
-}));
-
-jest.mock('@/components/TermTaxonomy', () => ({
-    TaxonomySummary: () => null,
-}));
-
-describe('term page metadata', () => {
+describe('localized glossary metadata', () => {
     const originalEnv = process.env;
 
     beforeEach(() => {
@@ -27,18 +20,22 @@ describe('term page metadata', () => {
             NODE_ENV: 'test',
             NEXT_PUBLIC_SITE_URL: 'https://fintechterms.example.com',
         };
-        mockGetPublicTermById.mockResolvedValue({
-            id: 'term_123',
-            term_ru: 'Облигация',
-            term_en: 'Bond',
-            term_tr: 'Tahvil',
-            definition_ru: 'Описание термина',
-            definition_en: 'Definition of the term',
-            definition_tr: 'Terim aciklamasi',
-            category: 'Finance',
-            regional_market: 'MOEX',
-            context_tags: {},
-            created_at: '2026-03-11T00:00:00.000Z',
+        mockGetSeoTermBySlug.mockResolvedValue({
+            id: 'term_145',
+            slug: 'tokenization',
+            term_en: 'Tokenization',
+            term_ru: 'Токенизация',
+            term_tr: 'Tokenizasyon',
+            seo_title: {
+                en: 'Tokenization meaning in fintech and finance',
+                ru: 'Токенизация: значение в финтехе и финансах',
+                tr: 'Tokenizasyon nedir: fintek ve finans anlamı',
+            },
+            seo_description: {
+                en: 'Learn Tokenization with definition, why it matters, how it works, risks, and BIST/MOEX/GLOBAL context.',
+                ru: 'Изучите термин Токенизация: определение, значение, принцип работы, риски и контекст BIST/MOEX/GLOBAL.',
+                tr: 'Tokenizasyon terimini tanım, önem, çalışma mantığı, riskler ve BIST/MOEX/GLOBAL bağlamıyla öğrenin.',
+            },
         });
     });
 
@@ -46,20 +43,31 @@ describe('term page metadata', () => {
         process.env = originalEnv;
     });
 
-    it('uses the dynamic opengraph image route instead of a missing static asset', async () => {
-        const { generateMetadata } = await import('@/app/term/[id]/page');
+    it('builds locale-aware canonical and metadata for glossary term pages', async () => {
+        const { generateMetadata } = await import('@/app/(public)/[locale]/glossary/[slug]/page');
 
         const metadata = await generateMetadata({
-            params: Promise.resolve({ id: 'term_123' }),
+            params: Promise.resolve({ locale: 'ru', slug: 'tokenization' }),
         });
 
+        expect(metadata.title).toBe('Токенизация: значение в финтехе и финансах | FinTechTerms');
+        expect(metadata.description).toBe('Изучите термин Токенизация: определение, значение, принцип работы, риски и контекст BIST/MOEX/GLOBAL.');
+        expect(metadata.alternates?.canonical).toBe('/ru/glossary/tokenization');
+        expect(metadata.alternates?.languages).toEqual({
+            ru: '/ru/glossary/tokenization',
+            en: '/en/glossary/tokenization',
+            tr: '/tr/glossary/tokenization',
+        });
         expect(metadata.openGraph?.images).toEqual([
-            expect.objectContaining({
-                url: 'https://fintechterms.example.com/term/term_123/opengraph-image',
-            }),
+            {
+                url: 'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image',
+                width: 1200,
+                height: 630,
+                alt: 'Токенизация: значение в финтехе и финансах | FinTechTerms',
+            },
         ]);
         expect(metadata.twitter?.images).toEqual([
-            'https://fintechterms.example.com/term/term_123/opengraph-image',
+            'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image',
         ]);
     });
 });
