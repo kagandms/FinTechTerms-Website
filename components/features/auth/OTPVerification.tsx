@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { OTPVerificationProps } from './types';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
+import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 
 export const OTPVerification: React.FC<OTPVerificationProps> = ({
     otpCode, setOtpCode, authError, setAuthError, verifyOTP,
@@ -123,7 +124,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             const res = await verifyOTP(pendingVerificationEmail, normalizedCode);
 
             if (!res.success) {
-                const msg = res.error || (language === 'tr' ? 'Geçersiz kod' : language === 'ru' ? 'Неверный код' : 'Invalid code');
+                const msg = getLocalizedAuthError(res.error, language);
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
@@ -134,8 +135,8 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             setCodeChars(emptyCode());
             setOtpCode('');
             await Promise.resolve(onClose());
-        } catch (error: any) {
-            const msg = error?.message || otpUnexpected;
+        } catch (error: unknown) {
+            const msg = getLocalizedAuthError(error, language) || otpUnexpected;
             setAuthError(msg);
             showToast(msg, 'error');
         } finally {
@@ -159,7 +160,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         try {
             const res = await resendOTP(pendingVerificationEmail);
             if (!res.success) {
-                const msg = res.error || (language === 'tr' ? 'Kod gönderilemedi.' : language === 'ru' ? 'Не удалось отправить код.' : 'Failed to send code.');
+                const msg = getLocalizedAuthError(res.error, language);
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
@@ -169,8 +170,8 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             setCodeChars(emptyCode());
             startCooldown();
             showToast(codeSent, 'success');
-        } catch (error: any) {
-            const msg = error?.message || (language === 'tr' ? 'Kod gönderilirken hata oluştu.' : language === 'ru' ? 'Ошибка при отправке кода.' : 'Error sending code.');
+        } catch (error: unknown) {
+            const msg = getLocalizedAuthError(error, language);
             setAuthError(msg);
             showToast(msg, 'error');
         } finally {

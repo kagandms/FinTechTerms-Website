@@ -87,6 +87,11 @@ interface StudySessionRow {
     session_token_hash: string | null;
 }
 
+const buildMonotonicNumericFilter = (
+    column: 'duration_seconds' | 'page_views' | 'quiz_attempts',
+    nextValue: number
+): string => `${column}.is.null,${column}.lt.${nextValue}`;
+
 const buildScopedIdempotencyKey = (
     ip: string,
     payload: SessionAction,
@@ -348,17 +353,42 @@ const updateStudySession = async (
     supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
     payload: SessionFollowUpAction
 ): Promise<void> => {
-    const updatePayload = {
-        duration_seconds: payload.durationSeconds,
-        page_views: payload.pageViews,
-        quiz_attempts: payload.quizAttempts,
-        ...(payload.action === 'end' ? { session_end: new Date().toISOString() } : {}),
-    };
+    const monotonicUpdates = [
+        {
+            column: 'duration_seconds' as const,
+            value: payload.durationSeconds,
+        },
+        {
+            column: 'page_views' as const,
+            value: payload.pageViews,
+        },
+        {
+            column: 'quiz_attempts' as const,
+            value: payload.quizAttempts,
+        },
+    ];
+
+    for (const update of monotonicUpdates) {
+        const { error } = await supabaseAdmin
+            .from('study_sessions')
+            .update({ [update.column]: update.value })
+            .eq('id', payload.sessionId)
+            .or(buildMonotonicNumericFilter(update.column, update.value));
+
+        if (error) {
+            throw error;
+        }
+    }
+
+    if (payload.action !== 'end') {
+        return;
+    }
 
     const { error } = await supabaseAdmin
         .from('study_sessions')
-        .update(updatePayload)
-        .eq('id', payload.sessionId);
+        .update({ session_end: new Date().toISOString() })
+        .eq('id', payload.sessionId)
+        .is('session_end', null);
 
     if (error) {
         throw error;

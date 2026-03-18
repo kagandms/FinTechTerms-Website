@@ -4,6 +4,7 @@
 
 import { clearEphemeralIdempotencyReservations } from '@/lib/ephemeral-idempotency';
 import { studySessionRouteRateLimiter } from '@/lib/rate-limiter';
+import { hashStudySessionToken } from '@/lib/study-session-token';
 
 const mockResolveRequestAuthState = jest.fn();
 const mockCreateServiceRoleClient = jest.fn();
@@ -11,7 +12,7 @@ const mockHasConfiguredServiceRoleEnv = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createServiceRoleClient: () => mockCreateServiceRoleClient(),
-    resolveRequestAuthState: (...args: unknown[]) => mockResolveRequestAuthState(...args),
+    resolveRequestAuthState: (request: Request) => mockResolveRequestAuthState(request),
 }));
 
 jest.mock('@/lib/env', () => ({
@@ -45,6 +46,7 @@ const createStudySessionClient = (options?: {
     insertSingleResult?: { data: { id: string } | null; error: { code?: string } | null };
     existingSessionId?: string | null;
     updateResult?: { error: { code?: string } | null };
+    studySessionRow?: Record<string, unknown> | null;
 }) => {
     const insertSingle = jest.fn().mockResolvedValue(
         options?.insertSingleResult ?? {
@@ -52,13 +54,23 @@ const createStudySessionClient = (options?: {
             error: null,
         }
     );
-    const maybeSingle = jest.fn().mockResolvedValue({
-        data: options?.existingSessionId ? { id: options.existingSessionId } : null,
+    const selectMaybeSingle = jest.fn().mockResolvedValue({
+        data: options?.studySessionRow ?? (
+            options?.existingSessionId ? { id: options.existingSessionId } : null
+        ),
         error: null,
     });
-    const updateEq = jest.fn().mockResolvedValue(
+    const updateOr = jest.fn().mockResolvedValue(
         options?.updateResult ?? { error: null }
     );
+    const updateIs = jest.fn().mockResolvedValue(
+        options?.updateResult ?? { error: null }
+    );
+    const updateEq = jest.fn(() => ({
+        error: options?.updateResult?.error ?? null,
+        or: updateOr,
+        is: updateIs,
+    }));
 
     const from = jest.fn(() => ({
         insert: jest.fn(() => ({
@@ -69,11 +81,11 @@ const createStudySessionClient = (options?: {
         select: jest.fn(() => ({
             eq: jest.fn(() => ({
                 eq: jest.fn(() => ({
-                    maybeSingle,
+                    maybeSingle: selectMaybeSingle,
                 })),
-                maybeSingle,
+                maybeSingle: selectMaybeSingle,
             })),
-            maybeSingle,
+            maybeSingle: selectMaybeSingle,
         })),
         update: jest.fn(() => ({
             eq: updateEq,
@@ -83,8 +95,10 @@ const createStudySessionClient = (options?: {
     return {
         client: { from },
         insertSingle,
-        maybeSingle,
+        selectMaybeSingle,
         updateEq,
+        updateOr,
+        updateIs,
     };
 };
 
@@ -179,7 +193,7 @@ describe('study-sessions route', () => {
     });
 
     it('reissues a session token when the durable unique index rejects a duplicate start', async () => {
-        const { client, insertSingle, maybeSingle, updateEq } = createStudySessionClient({
+        const { client, insertSingle, selectMaybeSingle, updateEq } = createStudySessionClient({
             insertSingleResult: {
                 data: null,
                 error: { code: '23505' },
@@ -198,7 +212,7 @@ describe('study-sessions route', () => {
             sessionToken: expect.any(String),
         });
         expect(insertSingle).toHaveBeenCalledTimes(1);
-        expect(maybeSingle).toHaveBeenCalledTimes(1);
+        expect(selectMaybeSingle).toHaveBeenCalledTimes(1);
         expect(updateEq).toHaveBeenCalledTimes(1);
     });
 
@@ -300,6 +314,43 @@ describe('study-sessions route', () => {
             code: 'INVALID_STUDY_SESSION_PAYLOAD',
             retryable: false,
         });
+    });
+
+    it('uses monotonic conditional updates for heartbeat writes', async () => {
+        mockResolveRequestAuthState.mockResolvedValue({
+            user: null,
+            hadCredentials: false,
+            ghostSession: false,
+        });
+
+        const { client, updateEq, updateOr } = createStudySessionClient({
+            studySessionRow: {
+                id: '550e8400-e29b-41d4-a716-446655440001',
+                user_id: null,
+                anonymous_id: 'anon_123',
+                session_token_hash: hashStudySessionToken('a'.repeat(32)),
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue(client);
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createRequest({
+            action: 'heartbeat',
+            sessionId: '550e8400-e29b-41d4-a716-446655440001',
+            sessionToken: 'a'.repeat(32),
+            durationSeconds: 12,
+            pageViews: 4,
+            quizAttempts: 2,
+            idempotency_key: '33333333-3333-4333-8333-333333333333',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({ success: true });
+        expect(updateEq).toHaveBeenCalledTimes(3);
+        expect(updateOr).toHaveBeenNthCalledWith(1, 'duration_seconds.is.null,duration_seconds.lt.12');
+        expect(updateOr).toHaveBeenNthCalledWith(2, 'page_views.is.null,page_views.lt.4');
+        expect(updateOr).toHaveBeenNthCalledWith(3, 'quiz_attempts.is.null,quiz_attempts.lt.2');
     });
 
     it('returns a non-retryable disabled response when service-role env is unavailable', async () => {

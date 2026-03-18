@@ -2,6 +2,8 @@
  * @jest-environment node
  */
 
+export {};
+
 const mockResolveAuthenticatedUser = jest.fn();
 const mockGetServerEnv = jest.fn();
 const mockCaptureException = jest.fn(() => 'event_123');
@@ -13,7 +15,7 @@ const mockSetUser = jest.fn();
 const mockSetExtra = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
-    resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
+    resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
 }));
 
 jest.mock('@/lib/env', () => ({
@@ -32,9 +34,9 @@ jest.mock('@sentry/nextjs', () => ({
         setUser: mockSetUser,
         setExtra: mockSetExtra,
     }),
-    captureException: (...args: unknown[]) => mockCaptureException(...args),
-    captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
-    flush: (...args: unknown[]) => mockFlush(...args),
+    captureException: mockCaptureException,
+    captureMessage: mockCaptureMessage,
+    flush: mockFlush,
 }));
 
 const createRequest = () => new Request('http://localhost:3000/api/admin/sentry-smoke', {

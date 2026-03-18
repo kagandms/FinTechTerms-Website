@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { UpdatePasswordProps } from './types';
+import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 
 export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
     authForm, setAuthForm, showPassword, setShowPassword,
@@ -61,12 +62,12 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
                                 return;
                             }
 
-                            const errorMessage = res.error || dict.error;
+                            const errorMessage = getLocalizedAuthError(res.error, lang);
                             setAuthError(errorMessage);
                             showToast(errorMessage, 'error');
-                        } catch (error) {
+                        } catch (error: unknown) {
                             console.error('AUTH_UPDATE_PASSWORD_UI_ERROR', error);
-                            const errorMessage = error instanceof Error ? error.message : dict.error;
+                            const errorMessage = getLocalizedAuthError(error, lang);
                             setAuthError(errorMessage);
                             showToast(errorMessage, 'error');
                         } finally {

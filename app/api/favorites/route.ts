@@ -8,7 +8,11 @@ import {
 } from '@/lib/api-response';
 import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
 import { apiRouteRateLimiter, favoritesMutationRateLimiter } from '@/lib/rate-limiter';
-import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import {
+    createRequestScopedClient,
+    createServiceRoleClient,
+    resolveAuthenticatedUser,
+} from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 
 const FavoriteRequestSchema = z.object({
@@ -344,8 +348,18 @@ export async function GET(request: Request) {
             });
         }
 
-        const supabaseAdmin = createServiceRoleClient();
-        const response = await supabaseAdmin
+        const supabase = await createRequestScopedClient(request);
+        if (!supabase) {
+            return errorResponse({
+                status: 503,
+                code: 'FAVORITES_LOAD_FAILED',
+                message: 'Unable to load favorites.',
+                requestId,
+                retryable: false,
+            });
+        }
+
+        const response = await supabase
             .from('user_favorites')
             .select('term_id')
             .eq('user_id', user.id)

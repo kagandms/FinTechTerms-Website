@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { AuthFormProps, AuthFormState } from './types';
+import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
@@ -164,13 +165,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                     setAuthError(successMessage);
                                     showToast(successMessage, 'success');
                                 } else {
-                                    const errorMessage = res.error || copy.genericError;
+                                    const errorMessage = getLocalizedAuthError(res.error, language);
                                     setAuthError(errorMessage);
                                     showToast(errorMessage, 'error');
                                 }
-                            } catch (error) {
+                            } catch (error: unknown) {
                                 console.error('AUTH_RESET_PASSWORD_UI_ERROR', error);
-                                const errorMessage = error instanceof Error ? error.message : copy.genericError;
+                                const errorMessage = getLocalizedAuthError(error, language);
                                 setAuthError(errorMessage);
                                 showToast(errorMessage, 'error');
                             } finally {

@@ -7,35 +7,9 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
+import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
-
-// Supabase error translations map
-const translateAuthError = (errorMsg: string, lang: string): string => {
-    const msg = errorMsg.toLowerCase();
-
-    if (msg.includes('invalid login credentials')) {
-        return lang === 'tr' ? 'E-posta veya şifre hatalı.' : lang === 'ru' ? 'Неверный e-mail или пароль.' : 'Invalid email or password.';
-    }
-    if (msg.includes('email not confirmed')) {
-        return lang === 'tr' ? 'E-posta adresi henüz doğrulanmadı.' : lang === 'ru' ? 'E-mail адрес не подтвержден.' : 'Email address not confirmed.';
-    }
-    if (msg.includes('already registered')) {
-        return lang === 'tr' ? 'Bu e-posta adresi zaten kayıtlı.' : lang === 'ru' ? 'Этот e-mail уже зарегистрирован.' : 'This email is already registered.';
-    }
-    if (msg.includes('token has expired') || msg.includes('invalid token')) {
-        return lang === 'tr' ? 'Girdiğiniz kod hatalı veya süresi dolmuş.' : lang === 'ru' ? 'Введенный код неверен или истек его срок действия.' : 'The code is invalid or has expired.';
-    }
-    if (msg.includes('password should be at least')) {
-        return lang === 'tr' ? 'Şifre daha güçlü olmalıdır.' : lang === 'ru' ? 'Пароль должен быть надежнее.' : 'Password should be stronger.';
-    }
-    if (msg.includes('rate limit')) {
-        return lang === 'tr' ? 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.' : lang === 'ru' ? 'Слишком много попыток. Пожалуйста, подождите.' : 'Too many attempts. Please wait.';
-    }
-
-    // Default fallback translations
-    return lang === 'tr' ? 'Bir hata oluştu: ' + errorMsg : lang === 'ru' ? 'Произошла ошибка: ' + errorMsg : errorMsg;
-};
 
 export function useAuthLogic() {
     const supabase = getSupabaseClient();
@@ -229,7 +203,7 @@ export function useAuthLogic() {
                             router.refresh();
                             router.push('/profile');
                         } catch (navError: any) {
-                            const navErrorMsg = translateAuthError(navError?.message || 'Navigation failed', language);
+                            const navErrorMsg = getLocalizedAuthError(navError, language);
                             setAuthError(navErrorMsg);
                             showToast(navErrorMsg, 'error');
                         }
@@ -246,12 +220,12 @@ export function useAuthLogic() {
                     }
                 }
             } else {
-                const msg = translateAuthError(result.error || '', language);
+                const msg = getLocalizedAuthError(result.error, language);
                 setAuthError(msg);
                 showToast(msg, 'error');
             }
-        } catch (error: any) {
-            const msg = translateAuthError(error?.message || '', language);
+        } catch (error: unknown) {
+            const msg = getLocalizedAuthError(error, language);
             setAuthError(msg);
             showToast(msg, 'error');
         } finally {

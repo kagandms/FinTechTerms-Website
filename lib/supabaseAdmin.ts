@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient, type User } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createTimeoutFetch } from '@/lib/api-response';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { getPublicEnv, getServerEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
@@ -31,6 +31,34 @@ const getBearerToken = (request: Request): string | null => {
 
     const token = authHeader.replace('Bearer ', '').trim();
     return token || null;
+};
+
+export const createRequestScopedClient = async (
+    request: Request
+): Promise<SupabaseClient | null> => {
+    const publicEnv = getPublicEnv();
+
+    if (!hasConfiguredPublicSupabaseEnv(publicEnv)) {
+        return null;
+    }
+
+    const bearerToken = getBearerToken(request);
+    if (bearerToken) {
+        return createRouteSupabaseClient(
+            publicEnv.supabaseUrl!,
+            publicEnv.supabaseAnonKey!,
+            bearerToken
+        );
+    }
+
+    if (hasRequestAuthCookies(request)) {
+        return await createServerClient();
+    }
+
+    return createRouteSupabaseClient(
+        publicEnv.supabaseUrl!,
+        publicEnv.supabaseAnonKey!
+    );
 };
 
 export const createServiceRoleClient = () => createRouteSupabaseClient(
