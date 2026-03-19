@@ -38,10 +38,12 @@ describe('InstallButton', () => {
         });
     });
 
-    it('does not render before an install prompt is available', () => {
+    it('renders a manual-install fallback button when no install prompt is available', async () => {
         render(<InstallButton />);
 
-        expect(screen.queryByRole('button', { name: 'Install' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+
+        expect(await screen.findByText('How to Install?')).toBeInTheDocument();
     });
 
     it('renders after beforeinstallprompt and invokes the prompt on click', async () => {

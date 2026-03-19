@@ -35,7 +35,7 @@ export default async function AppLayout({
 
     return (
         <html lang={htmlLanguage}>
-            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-[#f5f7fb] text-slate-950`}>
+            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
                 <ThemeProvider>
                     <AuthProvider>
                         <LanguageProvider>

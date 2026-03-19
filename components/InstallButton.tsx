@@ -34,12 +34,14 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
     const { language } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
+    const [isInstalled, setIsInstalled] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
 
     useEffect(() => {
         const syncInstallability = () => {
             setIsIOSInstallAvailable(canShowIOSInstallInstructions());
+            setIsInstalled(isStandaloneDisplayMode());
         };
 
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -51,6 +53,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         const handleAppInstalled = () => {
             setDeferredPrompt(null);
             setIsIOSInstallAvailable(false);
+            setIsInstalled(true);
             setShowIOSInstructions(false);
             setShowManualInstructions(false);
         };
@@ -65,8 +68,6 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         };
     }, []);
 
-    const isInstallable = isIOSInstallAvailable || deferredPrompt !== null;
-
     const handleInstallClick = async () => {
         if (isIOSInstallAvailable) {
             setShowIOSInstructions(true);
@@ -74,6 +75,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         }
 
         if (!deferredPrompt) {
+            setShowManualInstructions(true);
             return;
         }
 
@@ -86,7 +88,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         }
     };
 
-    if (!isInstallable) {
+    if (isInstalled) {
         return null;
     }
 
