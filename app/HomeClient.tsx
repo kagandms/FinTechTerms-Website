@@ -72,22 +72,16 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
         tr: {
             telegramAria: 'Telegram API entegrasyonunu aç',
             themeAria: 'Temayı değiştir',
-            installTitle: 'Uygulamayı yükle',
-            installDescription: 'FinTechTerms simgesini ana ekranına ekleyip hızlı erişim ve PWA deneyimini aç.',
             openFavorites: 'Favorileri aç',
         },
         en: {
             telegramAria: 'Open Telegram API integration',
             themeAria: 'Toggle theme',
-            installTitle: 'Install the app',
-            installDescription: 'Add the FinTechTerms icon to your home screen for quick access and the full PWA experience.',
             openFavorites: 'Open favorites',
         },
         ru: {
             telegramAria: 'Открыть интеграцию Telegram API',
             themeAria: 'Переключить тему',
-            installTitle: 'Установить приложение',
-            installDescription: 'Добавьте иконку FinTechTerms на главный экран для быстрого доступа и полноценного PWA-режима.',
             openFavorites: 'Открыть избранное',
         },
     }[language];
@@ -229,22 +223,6 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
             {/* Daily Review Card */}
             <section className="mb-6">
                 <DailyReview />
-            </section>
-
-            <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-slate-900/80">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 className="text-base font-bold text-gray-900 dark:text-white">
-                            {uiCopy.installTitle}
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {uiCopy.installDescription}
-                        </p>
-                    </div>
-                    <div className="flex justify-start md:justify-end">
-                        <InstallButton variant="prominent" />
-                    </div>
-                </div>
             </section>
 
             <section className="mb-6">
