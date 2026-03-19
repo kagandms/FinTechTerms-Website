@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, getSeoSourceById, getSeoTopicBySlug, listStaticTopicSlugs, listTopicTerms } from '@/lib/public-seo-catalog';
+import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -50,6 +51,7 @@ export default async function TopicPage({
     params: Promise<{ locale: string; topicSlug: string }>;
 }) {
     const { locale: rawLocale, topicSlug } = await params;
+    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -131,6 +133,7 @@ export default async function TopicPage({
             </section>
 
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({

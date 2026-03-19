@@ -1,4 +1,4 @@
-import { mockTerms } from '@/data/mockData';
+import { terms } from '@/data/terms';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 import { buildLocalePath } from '@/lib/seo-routing';
@@ -17,7 +17,7 @@ interface LegacyTermRedirectInput extends LegacyLocaleInput {
 }
 
 const legacySeoTermSlugById = new Map(
-    filterAcademicTerms(mockTerms).map((term) => [term.id, term.slug] as const)
+    filterAcademicTerms(terms).map((term) => [term.id, term.slug] as const)
 );
 
 export const resolveLegacyPublicLocale = ({

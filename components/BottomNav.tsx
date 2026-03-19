@@ -19,8 +19,7 @@ export default function BottomNav() {
     const pathname = usePathname();
     const { t } = useLanguage();
     const { dueTerms } = useSRS();
-    const { user } = useAuth();
-    const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const { isAdmin } = useAuth();
 
     const navItems: NavItem[] = [
         {
@@ -46,7 +45,7 @@ export default function BottomNav() {
         },
     ];
 
-    if (user?.email && ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
+    if (isAdmin) {
         navItems.push({
             href: '/admin/dashboard',
             labelKey: 'common.dashboard',

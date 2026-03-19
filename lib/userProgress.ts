@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { UserProgress } from '@/types';
+import { QUIZ_TYPE_VALUES, UserProgress } from '@/types';
 
 export const quizAttemptSchema = z.object({
     id: z.string().min(1),
@@ -8,7 +8,7 @@ export const quizAttemptSchema = z.object({
     is_correct: z.boolean(),
     response_time_ms: z.number().finite().nonnegative(),
     timestamp: z.string().min(1),
-    quiz_type: z.enum(['daily', 'practice', 'review']),
+    quiz_type: z.enum(QUIZ_TYPE_VALUES),
 }).strict();
 
 export const userProgressSchema = z.object({

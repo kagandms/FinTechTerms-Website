@@ -6,29 +6,74 @@ import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
     authLoading, handleAuth, authError, setAuthError,
-    showPassword, setShowPassword, resetPassword, showToast, language
+    showPassword, setShowPassword, showConfirmPassword,
+    setShowConfirmPassword, resetPassword, showToast, language
 }) => {
     const copy = {
-        login: 'Войти',
-        register: 'Регистрация',
-        resetPassword: 'Восстановление доступа',
-        email: 'Эл. почта',
-        password: 'Пароль',
-        name: 'Имя',
-        surname: 'Фамилия',
-        birthDate: 'Дата рождения',
-        loginLoading: 'Выполняется вход...',
-        registerLoading: 'Создаём профиль...',
-        resetLoading: 'Отправка...',
-        sendResetLink: 'Отправить ссылку',
-        forgotPassword: 'Забыли пароль?',
-        noAccount: 'Нет аккаунта?',
-        alreadyHaveAccount: 'Уже есть аккаунт?',
-        checkEmail: '✅ Проверьте почту и папку «Спам»',
-        genericError: 'Ошибка',
-        showPassword: 'Показать пароль',
-        hidePassword: 'Скрыть пароль',
-    };
+        tr: {
+            login: 'Giriş Yap',
+            register: 'Kayıt Ol',
+            resetPassword: 'Şifre Sıfırlama',
+            email: 'E-posta',
+            password: 'Şifre',
+            confirmPassword: 'Şifreyi Onayla',
+            name: 'Ad',
+            surname: 'Soyad',
+            birthDate: 'Doğum Tarihi',
+            loginLoading: 'Giriş yapılıyor...',
+            registerLoading: 'Hesap oluşturuluyor...',
+            resetLoading: 'Gönderiliyor...',
+            sendResetLink: 'Sıfırlama Bağlantısı Gönder',
+            forgotPassword: 'Şifreni mi unuttun?',
+            noAccount: 'Hesabın yok mu?',
+            alreadyHaveAccount: 'Zaten hesabın var mı?',
+            checkEmail: '✅ E-postanı ve spam klasörünü kontrol et',
+            showPassword: 'Şifreyi göster',
+            hidePassword: 'Şifreyi gizle',
+        },
+        en: {
+            login: 'Log In',
+            register: 'Sign Up',
+            resetPassword: 'Reset Password',
+            email: 'Email',
+            password: 'Password',
+            confirmPassword: 'Confirm Password',
+            name: 'First Name',
+            surname: 'Last Name',
+            birthDate: 'Date of Birth',
+            loginLoading: 'Signing in...',
+            registerLoading: 'Creating account...',
+            resetLoading: 'Sending...',
+            sendResetLink: 'Send Reset Link',
+            forgotPassword: 'Forgot password?',
+            noAccount: 'No account yet?',
+            alreadyHaveAccount: 'Already have an account?',
+            checkEmail: '✅ Check your inbox and spam folder',
+            showPassword: 'Show password',
+            hidePassword: 'Hide password',
+        },
+        ru: {
+            login: 'Войти',
+            register: 'Регистрация',
+            resetPassword: 'Восстановление доступа',
+            email: 'Эл. почта',
+            password: 'Пароль',
+            confirmPassword: 'Подтвердите пароль',
+            name: 'Имя',
+            surname: 'Фамилия',
+            birthDate: 'Дата рождения',
+            loginLoading: 'Выполняется вход...',
+            registerLoading: 'Создаём профиль...',
+            resetLoading: 'Отправка...',
+            sendResetLink: 'Отправить ссылку',
+            forgotPassword: 'Забыли пароль?',
+            noAccount: 'Нет аккаунта?',
+            alreadyHaveAccount: 'Уже есть аккаунт?',
+            checkEmail: '✅ Проверьте почту и папку «Спам»',
+            showPassword: 'Показать пароль',
+            hidePassword: 'Скрыть пароль',
+        },
+    }[language === 'tr' || language === 'en' ? language : 'ru'];
     const [isResetting, setIsResetting] = useState(false);
 
     const updateAuthField = (field: keyof AuthFormState, value: string) => {
@@ -126,26 +171,51 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
                 {/* Password Field (Not for forgot-password) */}
                 {authMode !== 'forgot-password' && (
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            value={authForm.password}
-                            onChange={(e) => updateAuthField('password', e.target.value)}
-                            data-testid="auth-password"
-                            className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
-                            placeholder={copy.password}
-                            aria-label={copy.password}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-                            aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                        >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                    </div>
+                    <>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={authForm.password}
+                                onChange={(e) => updateAuthField('password', e.target.value)}
+                                data-testid="auth-password"
+                                className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
+                                placeholder={copy.password}
+                                aria-label={copy.password}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                                aria-label={showPassword ? copy.hidePassword : copy.showPassword}
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+
+                        {authMode === 'register' ? (
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={authForm.confirmPassword}
+                                    onChange={(e) => updateAuthField('confirmPassword', e.target.value)}
+                                    data-testid="auth-confirm-password"
+                                    className="w-full pl-10 pr-12 py-3 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
+                                    placeholder={copy.confirmPassword}
+                                    aria-label={copy.confirmPassword}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label={showConfirmPassword ? copy.hidePassword : copy.showPassword}
+                                >
+                                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        ) : null}
+                    </>
                 )}
 
                 {authError && <p className="text-sm text-red-500 animate-fade-in">{authError}</p>}

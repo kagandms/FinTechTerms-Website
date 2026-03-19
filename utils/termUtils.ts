@@ -1,25 +1,28 @@
 import { Term } from '@/types';
 import { TermSchema } from '@/lib/validators';
+import { logger } from '@/lib/logger';
 
 /**
  * Creates a safe, fully-populated Term object from partial or potentially undefined data.
  * Uses Zod for runtime validation to ensure data integrity.
  * 
  * @param data - Partial term data, null, or undefined
- * @returns A complete Term object with safe defaults
+ * @returns A validated Term, or null when the payload is malformed
  */
-export function createSafeTerm(data: Partial<Term> | null | undefined): Term {
+export function createSafeTerm(data: Partial<Term> | null | undefined): Term | null {
     if (!data) {
-        return TermSchema.parse({}); // Returns object with defaults
+        return null;
     }
 
     const result = TermSchema.safeParse(data);
 
     if (result.success) {
         return result.data as Term;
-    } else {
-        console.warn('Term Validation Failed:', result.error);
-        // Fallback to safe defaults if validation fails to prevent crash
-        return TermSchema.parse({});
     }
+
+    logger.warn('TERM_VALIDATION_FAILED', {
+        route: 'createSafeTerm',
+        issues: result.error.flatten(),
+    });
+    return null;
 }

@@ -130,4 +130,17 @@ describe('proxy locale headers', () => {
         expect(response.headers.get('location')).toBe('https://fintechterms.app/en/glossary/tokenization');
         expect(response.headers.get('Content-Language')).toBe('en');
     });
+
+    it('redirects protected routes to profile login while preserving the intended destination', async () => {
+        const { NextRequest } = await import('next/server');
+        const { proxy } = await import('@/proxy');
+
+        const request = new NextRequest('https://fintechterms.app/favorites?view=all');
+        const response = await proxy(request);
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get('location')).toBe(
+            'https://fintechterms.app/profile?auth=login&next=%2Ffavorites%3Fview%3Dall'
+        );
+    });
 });

@@ -67,7 +67,7 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
                 retention_rate: localTerm.retention_rate,
                 times_reviewed: localTerm.times_reviewed,
                 times_correct: localTerm.times_correct,
-            });
+            }) ?? localTerm;
         }
         return localTerm;
     });
@@ -81,7 +81,10 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
         const existsByTitle = titleKey ? localTitleIndex.has(titleKey) : false;
 
         if (!existsById && !existsByTitle) {
-            merged.push(createDefaultSRSTerm(dbTerm));
+            const nextTerm = createDefaultSRSTerm(dbTerm);
+            if (nextTerm) {
+                merged.push(nextTerm);
+            }
         }
     }
 
@@ -91,7 +94,7 @@ export function mergeTermsWithDB(localTerms: Term[], dbTerms: Partial<Term>[]): 
 /**
  * Creates a Term with default SRS values from a partial DB record.
  */
-export function createDefaultSRSTerm(partial: Partial<Term>): Term {
+export function createDefaultSRSTerm(partial: Partial<Term>): Term | null {
     return createSafeTerm({
         ...partial,
         srs_level: 1,

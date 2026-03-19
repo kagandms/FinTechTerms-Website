@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
+import { buildContentSecurityPolicy, CSP_NONCE_HEADER } from '@/lib/csp';
 import { getPublicEnv } from '@/lib/env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
 import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
@@ -24,6 +25,15 @@ const appendVaryHeader = (response: NextResponse, value: string) => {
     if (currentValues.length > 0) {
         response.headers.set('Vary', currentValues.join(', '));
     }
+};
+
+const applySecurityHeaders = (
+    response: NextResponse,
+    nonce: string
+): NextResponse => {
+    response.headers.set(CSP_NONCE_HEADER, nonce);
+    response.headers.set('Content-Security-Policy', buildContentSecurityPolicy(nonce));
+    return response;
 };
 
 const resolveRequestLocale = (request: NextRequest) => {
@@ -54,36 +64,48 @@ const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): Ne
     return response;
 };
 
-const createPassThroughResponse = (request: NextRequest): NextResponse => {
+const createPassThroughResponse = (
+    request: NextRequest,
+    nonce: string
+): NextResponse => {
     request.cookies.set(LANGUAGE_COOKIE_NAME, resolveRequestLocale(request));
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-ftt-locale', resolveRequestLocale(request));
+    requestHeaders.set(CSP_NONCE_HEADER, nonce);
 
-    return applyLocalizedHeaders(
+    return applySecurityHeaders(applyLocalizedHeaders(
         request,
         NextResponse.next({
             request: {
                 headers: requestHeaders,
             },
         })
-    );
+    ), nonce);
 };
 
 const buildPermanentRedirectResponse = (
     request: NextRequest,
-    redirectPath: string
-): NextResponse => applyLocalizedHeaders(
+    redirectPath: string,
+    nonce: string
+): NextResponse => applySecurityHeaders(applyLocalizedHeaders(
     request,
     NextResponse.redirect(new URL(redirectPath, request.url), 308)
-);
+), nonce);
 
 const buildRedirectResponse = (
     request: NextRequest,
     supabaseResponse: NextResponse,
-    clearAuthCookies: boolean
+    clearAuthCookies: boolean,
+    nonce: string
 ): NextResponse => {
-    const redirectResponse = NextResponse.redirect(new URL('/', request.url));
+    const redirectUrl = new URL('/profile', request.url);
+    redirectUrl.searchParams.set('auth', 'login');
+    redirectUrl.searchParams.set(
+        'next',
+        `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
+    const redirectResponse = NextResponse.redirect(redirectUrl);
 
     for (const cookie of supabaseResponse.cookies.getAll()) {
         redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -104,10 +126,13 @@ const buildRedirectResponse = (
         }
     }
 
-    return applyLocalizedHeaders(request, redirectResponse);
+    return applySecurityHeaders(applyLocalizedHeaders(request, redirectResponse), nonce);
 };
 
-const buildLegacyLocaleRedirect = (request: NextRequest): NextResponse | null => {
+const buildLegacyLocaleRedirect = (
+    request: NextRequest,
+    nonce: string
+): NextResponse | null => {
     const { pathname, searchParams } = request.nextUrl;
     const localeInput = {
         queryLanguage: searchParams.get('lang'),
@@ -118,14 +143,16 @@ const buildLegacyLocaleRedirect = (request: NextRequest): NextResponse | null =>
     if (pathname === '/about') {
         return buildPermanentRedirectResponse(
             request,
-            buildLegacyStaticRedirectPath('/about', localeInput)
+            buildLegacyStaticRedirectPath('/about', localeInput),
+            nonce
         );
     }
 
     if (pathname === '/methodology') {
         return buildPermanentRedirectResponse(
             request,
-            buildLegacyStaticRedirectPath('/methodology', localeInput)
+            buildLegacyStaticRedirectPath('/methodology', localeInput),
+            nonce
         );
     }
 
@@ -149,14 +176,15 @@ const buildLegacyLocaleRedirect = (request: NextRequest): NextResponse | null =>
         return null;
     }
 
-    return buildPermanentRedirectResponse(request, redirectPath);
+    return buildPermanentRedirectResponse(request, redirectPath, nonce);
 };
 
 export async function proxy(request: NextRequest) {
-    const legacyRedirect = buildLegacyLocaleRedirect(request);
+    const nonce = crypto.randomUUID();
+    const legacyRedirect = buildLegacyLocaleRedirect(request, nonce);
 
     if (legacyRedirect) {
-        return legacyRedirect;
+        return applySecurityHeaders(legacyRedirect, nonce);
     }
 
     const requiresAuth = isProtectedPath(request.nextUrl.pathname);
@@ -166,11 +194,11 @@ export async function proxy(request: NextRequest) {
 
     if (!supabaseUrl || !supabaseAnonKey) {
         return requiresAuth
-            ? applyLocalizedHeaders(request, NextResponse.redirect(new URL('/', request.url)))
-            : applyLocalizedHeaders(request, NextResponse.next());
+            ? buildRedirectResponse(request, applySecurityHeaders(NextResponse.next(), nonce), false, nonce)
+            : applySecurityHeaders(applyLocalizedHeaders(request, NextResponse.next()), nonce);
     }
 
-    let supabaseResponse = createPassThroughResponse(request);
+    let supabaseResponse = createPassThroughResponse(request, nonce);
 
     const supabase = createServerClient(
         supabaseUrl,
@@ -185,7 +213,7 @@ export async function proxy(request: NextRequest) {
                         request.cookies.set(name, value);
                     });
 
-                    supabaseResponse = createPassThroughResponse(request);
+                    supabaseResponse = createPassThroughResponse(request, nonce);
 
                     cookiesToSet.forEach(({ name, value, options }) => {
                         supabaseResponse.cookies.set(name, value, options);
@@ -213,7 +241,8 @@ export async function proxy(request: NextRequest) {
         return buildRedirectResponse(
             request,
             supabaseResponse,
-            shouldClearAuthCookies
+            shouldClearAuthCookies,
+            nonce
         );
     }
 

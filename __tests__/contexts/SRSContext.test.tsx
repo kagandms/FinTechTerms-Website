@@ -23,6 +23,7 @@ const mockGetUserProgressFromSupabase = jest.fn();
 const mockToggleFavoriteInSupabase = jest.fn();
 const mockSaveQuizAttemptToSupabase = jest.fn();
 const mockGetAllTermSRSFromSupabase = jest.fn();
+const mockGetAllTermSRSFromSupabaseUnbounded = jest.fn();
 const mockFetchTermsFromSupabase = jest.fn();
 const mockCreateIdempotencyKey = jest.fn();
 
@@ -57,6 +58,7 @@ jest.mock('@/lib/supabaseStorage', () => ({
     toggleFavoriteInSupabase: (...args: unknown[]) => mockToggleFavoriteInSupabase(...args),
     saveQuizAttemptToSupabase: (...args: unknown[]) => mockSaveQuizAttemptToSupabase(...args),
     getAllTermSRSFromSupabase: (...args: unknown[]) => mockGetAllTermSRSFromSupabase(...args),
+    getAllTermSRSFromSupabaseUnbounded: (...args: unknown[]) => mockGetAllTermSRSFromSupabaseUnbounded(...args),
     fetchTermsFromSupabase: (...args: unknown[]) => mockFetchTermsFromSupabase(...args),
 }));
 
@@ -176,7 +178,8 @@ describe('SRSContext', () => {
         mockGetUserProgress.mockReturnValue(baseProgress);
         mockFetchTermsFromSupabase.mockResolvedValue([baseTerm]);
         mockGetUserProgressFromSupabase.mockResolvedValue(baseProgress);
-        mockGetAllTermSRSFromSupabase.mockResolvedValue(new Map());
+        mockGetAllTermSRSFromSupabase.mockResolvedValue({ status: 'ok', data: new Map() });
+        mockGetAllTermSRSFromSupabaseUnbounded.mockResolvedValue({ status: 'ok', data: new Map() });
         mockCalculateProgressStats.mockImplementation((terms: typeof baseTerm[], favorites: string[]) => ({
             totalFavorites: favorites.length,
             mastered: terms.filter((term) => term.srs_level >= 4).length,
@@ -191,7 +194,10 @@ describe('SRSContext', () => {
             next_review_date: '2099-01-01T00:00:00.000Z',
         }));
         mockCreateIdempotencyKey.mockReturnValue('review-key-1');
-        mockToggleFavoriteInSupabase.mockResolvedValue({ favorites: ['term-1'], isFavorite: true });
+        mockToggleFavoriteInSupabase.mockResolvedValue({
+            status: 'ok',
+            data: { favorites: ['term-1'], isFavorite: true },
+        });
         mockToggleFavoriteInStorage.mockReturnValue(baseProgress);
         mockAddQuizAttemptToStorage.mockReturnValue(baseProgress);
         mockUpdateTermInStorage.mockReturnValue([baseTerm]);
@@ -227,18 +233,21 @@ describe('SRSContext', () => {
                 updated_at: recordQuizResult.userProgress.updated_at,
             });
         mockGetAllTermSRSFromSupabase
-            .mockResolvedValueOnce(new Map())
-            .mockResolvedValue(new Map([
-                ['term-1', {
-                    srs_level: recordQuizResult.termSrs.srs_level,
-                    next_review_date: recordQuizResult.termSrs.next_review_date,
-                    last_reviewed: recordQuizResult.termSrs.last_reviewed,
-                    difficulty_score: recordQuizResult.termSrs.difficulty_score,
-                    retention_rate: recordQuizResult.termSrs.retention_rate,
-                    times_reviewed: recordQuizResult.termSrs.times_reviewed,
-                    times_correct: recordQuizResult.termSrs.times_correct,
-                }],
-            ]));
+            .mockResolvedValueOnce({ status: 'ok', data: new Map() })
+            .mockResolvedValue({
+                status: 'ok',
+                data: new Map([
+                    ['term-1', {
+                        srs_level: recordQuizResult.termSrs.srs_level,
+                        next_review_date: recordQuizResult.termSrs.next_review_date,
+                        last_reviewed: recordQuizResult.termSrs.last_reviewed,
+                        difficulty_score: recordQuizResult.termSrs.difficulty_score,
+                        retention_rate: recordQuizResult.termSrs.retention_rate,
+                        times_reviewed: recordQuizResult.termSrs.times_reviewed,
+                        times_correct: recordQuizResult.termSrs.times_correct,
+                    }],
+                ]),
+            });
         mockSaveQuizAttemptToSupabase
             .mockResolvedValueOnce({
                 status: 'auth_expired',
@@ -313,7 +322,7 @@ describe('SRSContext', () => {
             id: 'review-key-1',
             term_id: 'term-1',
         });
-        expect(mockShowToast).toHaveBeenCalledWith('Session refreshed — saving your answer…', 'info');
+        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
 
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
@@ -346,6 +355,14 @@ describe('SRSContext', () => {
             termId: 'term-1',
             termSrs: recordQuizResult.termSrs,
             userProgress: recordQuizResult.userProgress,
+            attempt: {
+                id: 'review-2',
+                term_id: 'term-1',
+                is_correct: true,
+                response_time_ms: 0,
+                timestamp: recordQuizResult.userProgress.updated_at,
+                quiz_type: 'daily',
+            },
             emittedAt: Date.now(),
         });
 
@@ -359,5 +376,40 @@ describe('SRSContext', () => {
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
+    });
+
+    it('replays a pending review immediately on mount when the user is already authenticated', async () => {
+        sessionStorage.setItem('fintechterms_pending_review', JSON.stringify({
+            reviewId: 'review-1',
+            termId: 'term-1',
+            isCorrect: true,
+            responseTimeMs: 0,
+            idempotencyKey: 'review-key-1',
+        }));
+        mockSaveQuizAttemptToSupabase.mockResolvedValue({
+            status: 'ok',
+            data: recordQuizResult,
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(1);
+        });
+
+        expect(mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]).toMatchObject({
+            id: 'review-key-1',
+            response_time_ms: 0,
+        });
+        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
     });
 });

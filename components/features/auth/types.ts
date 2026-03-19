@@ -1,9 +1,10 @@
 import { AuthMode } from '@/hooks/useAuthLogic';
+import { Language } from '@/types';
 
 export interface AuthFormState {
     email: string;
     password: string;
-    confirmPassword?: string;
+    confirmPassword: string;
     name: string;
     surname: string;
     birthDate: string;
@@ -18,7 +19,7 @@ export interface AuthActionResult {
 
 export interface CommonAuthProps {
     t: (key: string) => string;
-    language: string;
+    language: Language;
     authLoading: boolean;
     authError: string;
     setAuthError: (err: string) => void;
@@ -33,6 +34,8 @@ export interface AuthFormProps extends CommonAuthProps {
     resetPassword: (email: string) => Promise<AuthActionResult>;
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;
+    showConfirmPassword: boolean;
+    setShowConfirmPassword: (show: boolean) => void;
     showToast: (msg: string, type: AuthToastType) => void;
 }
 

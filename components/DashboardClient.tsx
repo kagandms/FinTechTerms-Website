@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import DashboardQueryError from '@/components/DashboardQueryError';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    BarChart, Bar, AreaChart, Area, ComposedChart
+    BarChart, Bar, AreaChart, Area
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogOut } from 'lucide-react';
@@ -69,16 +69,22 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
         ];
     }, [latencyData.data]);
 
-    // 3. Process Fatigue (Group by order in session)
+    // 3. Process Fatigue (Group by attempt order within a user-day run)
     const fatigueChart = useMemo(() => {
-        // We need session_id to group. If missing, we can't do it accurately.
-        // If not present, we return empty.
-        if (!fatigueRaw.data.length || !fatigueRaw.data[0].session_id) return [];
+        if (!fatigueRaw.data.length) return [];
 
         const sessions: any = {};
         fatigueRaw.data.forEach(item => {
-            if (!sessions[item.session_id]) sessions[item.session_id] = [];
-            sessions[item.session_id].push(item);
+            if (!item.created_at) {
+                return;
+            }
+
+            const day = item.created_at.split('T')[0];
+            const userKey = item.user_id || 'anonymous';
+            const sessionKey = `${userKey}:${day}`;
+
+            if (!sessions[sessionKey]) sessions[sessionKey] = [];
+            sessions[sessionKey].push(item);
         });
 
         // Sort each session by created_at and assign index
@@ -105,17 +111,28 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
 
     }, [fatigueRaw.data]);
 
-    // 4. Process Class Distribution (Accuracy per student)
+    // 4. Process Class Distribution (Accuracy per user)
     const distributionChart = useMemo(() => {
         if (!distributionRaw.data.length) return [];
 
-        const studentAccuracies: number[] = distributionRaw.data.map((session: any) => {
-            // Each row is a session with nested quiz_attempts
-            const attempts = session.quiz_attempts || [];
-            if (!attempts.length) return 0;
-            const correct = attempts.filter((a: any) => a.is_correct).length;
-            return (correct / attempts.length) * 100;
+        const attemptsByUser: Record<string, { total: number; correct: number }> = {};
+        distributionRaw.data.forEach((attempt: any) => {
+            const userKey = attempt.user_id || 'anonymous';
+            if (!attemptsByUser[userKey]) {
+                attemptsByUser[userKey] = { total: 0, correct: 0 };
+            }
+
+            attemptsByUser[userKey].total += 1;
+            if (attempt.is_correct) {
+                attemptsByUser[userKey].correct += 1;
+            }
         });
+
+        const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats: any) => (
+            userStats.total > 0
+                ? (userStats.correct / userStats.total) * 100
+                : 0
+        ));
 
         // Binning for Bell Curve (5% intervals)
         const bins: any = {};
@@ -199,23 +216,13 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                             </LineChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-red-500 border border-dashed border-red-300 rounded bg-red-50 p-4 text-center">
-                            {fatigueRaw.data.length === 0 ? (
-                                <>
-                                    <p className="font-bold">No Data Found</p>
-                                    <p className="text-sm mt-1 text-red-400">Run more simulation quizzes to populate this chart.</p>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="font-bold">Missing &apos;session_id&apos; in Database</p>
-                                    <p className="text-sm mt-1">Run SQL migration &apos;lib/add_session_id.sql&apos;</p>
-                                    <p className="text-sm">Then restart simulation script.</p>
-                                </>
-                            )}
+                        <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                            <p>No data available yet.</p>
+                            <p className="text-sm mt-2">Run more simulation quizzes to populate this chart.</p>
                         </div>
                     )}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">Expectation: Error rate spikes after ~15th question.</p>
+                <p className="text-sm text-gray-500 mt-2">Expectation: Error rate rises deeper into a user&apos;s daily simulation run.</p>
             </div>
 
             {/* 3. Response Latency */}
@@ -255,7 +262,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                             <BarChart data={distributionChart}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="range" />
-                                <YAxis label={{ value: 'Student Count', angle: -90, position: 'insideLeft' }} />
+                                <YAxis label={{ value: 'User Count', angle: -90, position: 'insideLeft' }} />
                                 <Tooltip />
                                 <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
                             </BarChart>
@@ -266,7 +273,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                         </div>
                     )}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">Expectation: Normal distribution of student accuracies.</p>
+                <p className="text-sm text-gray-500 mt-2">Expectation: Normal distribution of per-user simulation accuracies.</p>
             </div>
 
         </div>

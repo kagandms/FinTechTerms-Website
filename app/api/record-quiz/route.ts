@@ -4,10 +4,15 @@ import {
     createRequestId,
     errorResponse,
     handleRouteError,
-    successResponse,
     getClientIp,
+    successResponse,
 } from '@/lib/api-response';
-import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
+import {
+    completeIdempotentRequest,
+    failIdempotentRequest,
+    inspectIdempotentRequest,
+    reserveIdempotentRequest,
+} from '@/lib/api-idempotency';
 import { logger } from '@/lib/logger';
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
@@ -57,7 +62,101 @@ const markQuizFailure = async (
 export async function POST(request: NextRequest) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
-    const limitCheck = apiRouteRateLimiter.check(ip);
+    let body: unknown;
+    try {
+        body = await request.json();
+    } catch (error) {
+        logger.error('QUIZ_ROUTE_INVALID_JSON', {
+            requestId,
+            route: '/api/record-quiz',
+            error: error instanceof Error ? error : undefined,
+            retryable: false,
+        });
+        return errorResponse({
+            status: 400,
+            code: 'INVALID_JSON',
+            message: 'Invalid JSON payload.',
+            requestId,
+            retryable: false,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    const validatedData = RecordQuizRequestSchema.safeParse(body);
+    if (!validatedData.success) {
+        logger.error('QUIZ_ROUTE_VALIDATION_ERROR', {
+            requestId,
+            route: '/api/record-quiz',
+            retryable: false,
+            issues: validatedData.error.flatten(),
+        });
+        return errorResponse({
+            status: 400,
+            code: 'VALIDATION_ERROR',
+            message: 'Quiz attempt payload is invalid.',
+            requestId,
+            retryable: false,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    const user = await resolveAuthenticatedUser(request);
+    if (!user) {
+        return errorResponse({
+            status: 401,
+            code: 'UNAUTHORIZED',
+            message: AUTH_REQUIRED_MESSAGE,
+            requestId,
+            retryable: false,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    const routeSupabase = createServiceRoleClient();
+    const {
+        term_id,
+        is_correct,
+        response_time_ms,
+        quiz_type,
+        idempotencyKey,
+    } = validatedData.data;
+
+    const inspection = await inspectIdempotentRequest({
+        supabaseAdmin: routeSupabase,
+        userId: user.id,
+        action: 'quiz_submission',
+        idempotencyKey,
+        payload: {
+            term_id,
+            is_correct,
+            response_time_ms,
+            quiz_type,
+        },
+    });
+
+    if (inspection.kind === 'replay') {
+        return successResponse(
+            inspection.responseBody,
+            requestId,
+            {
+                status: inspection.statusCode,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            }
+        );
+    }
+
+    if (inspection.kind === 'conflict') {
+        return errorResponse({
+            status: 409,
+            code: inspection.code,
+            message: inspection.message,
+            requestId,
+            retryable: inspection.code === 'REQUEST_IN_PROGRESS',
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    const limitCheck = await apiRouteRateLimiter.check(`record-quiz:${ip}`);
     const headers = {
         ...GLOBAL_RATE_LIMIT_HEADERS,
         'X-RateLimit-Remaining': limitCheck.remaining.toString(),
@@ -77,19 +176,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const user = await resolveAuthenticatedUser(request);
-    if (!user) {
-        return errorResponse({
-            status: 401,
-            code: 'UNAUTHORIZED',
-            message: AUTH_REQUIRED_MESSAGE,
-            requestId,
-            retryable: false,
-            headers,
-        });
-    }
-
-    const writeLimitCheck = quizMutationRateLimiter.check(`${user.id}:${ip}`);
+    const writeLimitCheck = await quizMutationRateLimiter.check(user.id);
     const guardedHeaders = {
         ...headers,
         'X-Write-RateLimit-Limit': WRITE_RATE_LIMIT.toString(),
@@ -109,53 +196,6 @@ export async function POST(request: NextRequest) {
             },
         });
     }
-
-    let body: unknown;
-    try {
-        body = await request.json();
-    } catch (error) {
-        logger.error('QUIZ_ROUTE_INVALID_JSON', {
-            requestId,
-            route: '/api/record-quiz',
-            error: error instanceof Error ? error : undefined,
-            retryable: false,
-        });
-        return errorResponse({
-            status: 400,
-            code: 'INVALID_JSON',
-                message: 'Invalid JSON payload.',
-                requestId,
-                retryable: false,
-                headers: guardedHeaders,
-            });
-    }
-
-    const validatedData = RecordQuizRequestSchema.safeParse(body);
-    if (!validatedData.success) {
-        logger.error('QUIZ_ROUTE_VALIDATION_ERROR', {
-            requestId,
-            route: '/api/record-quiz',
-            retryable: false,
-            issues: validatedData.error.flatten(),
-        });
-        return errorResponse({
-            status: 400,
-            code: 'VALIDATION_ERROR',
-            message: 'Quiz attempt payload is invalid.',
-            requestId,
-            retryable: false,
-            headers: guardedHeaders,
-        });
-    }
-
-    const routeSupabase = createServiceRoleClient();
-    const {
-        term_id,
-        is_correct,
-        response_time_ms,
-        quiz_type,
-        idempotencyKey,
-    } = validatedData.data;
 
     try {
         const reservation = await reserveIdempotentRequest({

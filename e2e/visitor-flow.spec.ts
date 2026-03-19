@@ -39,7 +39,7 @@ test.describe('Visitor Flow', () => {
     test('toggles theme from the homepage', async ({ page }) => {
         await applyPreviewProtectionBypass(page);
         await grantResearchConsent(page);
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
 
         await page.locator('[data-testid="theme-toggle"]:visible').first().click();

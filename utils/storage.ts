@@ -9,6 +9,7 @@ import { mockTerms, defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
+import { endOfUtcDay, startOfUtcDay } from '@/lib/time';
 
 const STORAGE_KEYS = {
     TERMS: 'globalfinterm_terms',
@@ -31,6 +32,16 @@ function isLocalStorageAvailable(): boolean {
 }
 
 const DATA_VERSION = '2026-03-08-v4'; // Force refresh after academic quarantine fields were added
+
+const TERM_STATE_FIELDS = [
+    'srs_level',
+    'next_review_date',
+    'last_reviewed',
+    'difficulty_score',
+    'retention_rate',
+    'times_reviewed',
+    'times_correct',
+] as const;
 
 const createDefaultProgress = (): UserProgress => {
     const now = new Date().toISOString();
@@ -56,6 +67,48 @@ const clearCorruptedProgress = (): UserProgress => {
     return createDefaultProgress();
 };
 
+const parseStoredTerms = (stored: string | null): Term[] => {
+    if (!stored) {
+        return [];
+    }
+
+    return (JSON.parse(stored) as Array<Partial<Term>>)
+        .map((term) => createSafeTerm(term))
+        .filter((term): term is Term => Boolean(term));
+};
+
+const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[] => {
+    const storedTermsById = new Map(storedTerms.map((term) => [term.id, term] as const));
+
+    return fallbackTerms.map((fallbackTerm) => {
+        const storedTerm = storedTermsById.get(fallbackTerm.id);
+        if (!storedTerm) {
+            return fallbackTerm;
+        }
+
+        const preservedState = TERM_STATE_FIELDS.reduce<Pick<Term, typeof TERM_STATE_FIELDS[number]>>(
+            (result, field) => ({
+                ...result,
+                [field]: storedTerm[field],
+            }),
+            {
+                srs_level: fallbackTerm.srs_level,
+                next_review_date: fallbackTerm.next_review_date,
+                last_reviewed: fallbackTerm.last_reviewed,
+                difficulty_score: fallbackTerm.difficulty_score,
+                retention_rate: fallbackTerm.retention_rate,
+                times_reviewed: fallbackTerm.times_reviewed,
+                times_correct: fallbackTerm.times_correct,
+            }
+        );
+
+        return {
+            ...fallbackTerm,
+            ...preservedState,
+        };
+    });
+};
+
 /**
  * Get all terms from storage (or initialize with mock data)
  * Refresh cached data only when the schema version changes
@@ -68,16 +121,17 @@ export function getTerms(): Term[] {
     try {
         const storedVersion = localStorage.getItem('globalfinterm_data_version');
         const stored = localStorage.getItem(STORAGE_KEYS.TERMS);
+        const parsedTerms = parseStoredTerms(stored);
 
-        // Force update if version mismatch
+        // Refresh content schema while preserving compatible local SRS state.
         if (storedVersion !== DATA_VERSION) {
-            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(fallbackTerms));
+            const migratedTerms = mergeTermStudyState(fallbackTerms, parsedTerms);
+            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(migratedTerms));
             localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
-            return fallbackTerms;
+            return migratedTerms;
         }
 
-        if (stored) {
-            const parsedTerms = (JSON.parse(stored) as Array<Partial<Term>>).map((term) => createSafeTerm(term));
+        if (parsedTerms.length > 0) {
             return filterAcademicTerms(parsedTerms);
         }
 
@@ -188,21 +242,20 @@ export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
     progress.quiz_history.push(attempt);
 
     // Update streak
-    const today = new Date().toDateString();
+    const today = startOfUtcDay(new Date()).getTime();
     const lastStudy = progress.last_study_date
-        ? new Date(progress.last_study_date).toDateString()
+        ? startOfUtcDay(progress.last_study_date).getTime()
         : null;
 
     if (lastStudy !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterday = startOfUtcDay(new Date(Date.now() - (24 * 60 * 60 * 1000))).getTime();
 
-        if (lastStudy === yesterday.toDateString()) {
+        if (lastStudy === yesterday) {
             progress.current_streak += 1;
         } else {
             progress.current_streak = 1;
         }
-        progress.last_study_date = new Date().toISOString();
+        progress.last_study_date = endOfUtcDay(new Date()).toISOString();
     }
 
     // Update words learned count

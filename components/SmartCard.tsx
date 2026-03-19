@@ -117,7 +117,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         : language === 'ru'
                             ? 'Не удалось обновить избранное.'
                             : 'Unable to update favorite.'),
-                'error'
+                result.authExpired ? 'warning' : 'error'
             );
             return;
         }

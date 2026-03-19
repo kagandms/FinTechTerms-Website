@@ -99,9 +99,16 @@ describe('calculateNextReview', () => {
     it('should set next review date based on new level interval', () => {
         const result = calculateNextReview(true, 1, 2.5);
         const expectedInterval = SRS_INTERVALS[1] ?? 3; // Level 2 -> index 1, fallback 3 days
-        const expectedDate = new Date();
-        expectedDate.setDate(expectedDate.getDate() + expectedInterval);
-        expectedDate.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const expectedDate = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + expectedInterval,
+            0,
+            0,
+            0,
+            0
+        ));
         expect(result.nextReviewDate.getTime()).toBe(expectedDate.getTime());
     });
 
@@ -113,6 +120,16 @@ describe('calculateNextReview', () => {
     it('should handle zero difficulty', () => {
         const result = calculateNextReview(true, 1, 0);
         expect(result.difficultyDelta).toBe(-0.1);
+    });
+});
+
+describe('display helpers', () => {
+    it('caps interval descriptions above MAX_SRS_LEVEL instead of falling back to 1 day', () => {
+        expect(getIntervalDescription(6, 'en')).toBe('1 month');
+    });
+
+    it('caps mastery labels above MAX_SRS_LEVEL to the mastered label', () => {
+        expect(getMasteryLevel(6, 'en')).toBe('Mastered');
     });
 });
 
@@ -149,8 +166,16 @@ describe('getTermsDueForReview', () => {
     });
 
     it('should include terms due today', () => {
-        const today = new Date();
-        today.setHours(12, 0, 0, 0);
+        const now = new Date();
+        const today = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate(),
+            12,
+            0,
+            0,
+            0
+        ));
         const term = createMockTerm({ next_review_date: today.toISOString() });
         const result = getTermsDueForReview([term], ['test_001']);
         expect(result).toHaveLength(1);

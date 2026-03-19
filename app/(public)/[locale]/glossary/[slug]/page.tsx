@@ -15,6 +15,7 @@ import {
     listStaticPriorityTermSlugs,
     listRelatedTerms,
 } from '@/lib/public-seo-catalog';
+import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Contributor, Language, SourceRef, Term, Topic } from '@/types';
@@ -169,6 +170,7 @@ export default async function SeoTermPage({
     params: Promise<{ locale: string; slug: string }>;
 }) {
     const { locale: rawLocale, slug } = await params;
+    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -340,6 +342,7 @@ export default async function SeoTermPage({
             </section>
 
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify([

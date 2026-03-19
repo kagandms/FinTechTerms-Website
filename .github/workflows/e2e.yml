@@ -22,7 +22,9 @@ jobs:
              [ -n "${{ secrets.SUPABASE_DB_URL }}" ] && \
              [ -n "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] && \
              [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ] && \
-             [ -n "${{ secrets.ADMIN_EMAIL }}" ]; then
+             [ -n "${{ secrets.ADMIN_USER_IDS }}" ] && \
+             [ -n "${{ secrets.UPSTASH_REDIS_REST_URL }}" ] && \
+             [ -n "${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" ]; then
             echo "core_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "core_ready=false" >> "$GITHUB_OUTPUT"
@@ -36,7 +38,8 @@ jobs:
           fi
 
           if [ -n "${{ secrets.SENTRY_SMOKE_EMAIL }}" ] && \
-             [ -n "${{ secrets.SENTRY_SMOKE_PASSWORD }}" ]; then
+             [ -n "${{ secrets.SENTRY_SMOKE_PASSWORD }}" ] && \
+             [ -n "${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" ]; then
             echo "sentry_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "sentry_ready=false" >> "$GITHUB_OUTPUT"
@@ -60,9 +63,42 @@ jobs:
           echo "Missing required Sentry smoke credentials on a protected branch run."
           exit 1
 
+  bootstrap-db-smoke:
+    name: Clean Bootstrap DB Smoke
+    needs: preflight
+    if: ${{ needs.preflight.outputs.core_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fintechterms
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fintechterms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run clean bootstrap smoke
+        env:
+          BOOTSTRAP_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/fintechterms
+        run: bash scripts/verify-bootstrap-db.sh
+
   migrate-and-verify:
     name: Apply Migrations And Verify DB
-    needs: preflight
+    needs: [preflight, bootstrap-db-smoke]
     if: ${{ needs.preflight.outputs.core_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -71,6 +107,9 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
     steps:
       - name: Checkout
@@ -182,7 +221,6 @@ jobs:
     timeout-minutes: 15
     env:
       STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
       SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
 

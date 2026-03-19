@@ -331,10 +331,10 @@ class TestQuizModule:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+        async def fake_fetch_all_terms_limited(limit: int | None = None) -> list[dict[str, Any]]:
             return sample_terms()
 
-        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+        monkeypatch.setattr(quiz, "fetch_all_terms_limited", fake_fetch_all_terms_limited)
         monkeypatch.setattr(quiz.random, "choice", lambda seq: seq[0])
         monkeypatch.setattr(quiz.random, "sample", lambda seq, count: list(seq)[:count])
         monkeypatch.setattr(quiz.random, "shuffle", lambda seq: None)
@@ -365,10 +365,10 @@ class TestQuizModule:
             make_term("term_4", "Spread", "Difference between bid and ask."),
         ]
 
-        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+        async def fake_fetch_all_terms_limited(limit: int | None = None) -> list[dict[str, Any]]:
             return duplicate_terms
 
-        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+        monkeypatch.setattr(quiz, "fetch_all_terms_limited", fake_fetch_all_terms_limited)
 
         text, keyboard = asyncio.run(build_quiz("en"))
 
@@ -379,10 +379,10 @@ class TestQuizModule:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+        async def fake_fetch_all_terms_limited(limit: int | None = None) -> list[dict[str, Any]]:
             return sample_terms()[:3]
 
-        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+        monkeypatch.setattr(quiz, "fetch_all_terms_limited", fake_fetch_all_terms_limited)
 
         text, keyboard = asyncio.run(build_quiz("en"))
 
@@ -535,11 +535,11 @@ class TestCommandHandlers:
         async def fake_is_rate_limited(user_id: int) -> bool:
             return False
 
-        async def fake_fetch_all_terms() -> list[dict[str, Any]]:
+        async def fake_fetch_all_terms_limited(limit: int | None = None) -> list[dict[str, Any]]:
             return sample_terms()
 
         monkeypatch.setattr(handlers, "is_rate_limited", fake_is_rate_limited)
-        monkeypatch.setattr(quiz, "fetch_all_terms", fake_fetch_all_terms)
+        monkeypatch.setattr(quiz, "fetch_all_terms_limited", fake_fetch_all_terms_limited)
         monkeypatch.setattr(quiz.random, "choice", lambda seq: seq[0])
         monkeypatch.setattr(quiz.random, "sample", lambda seq, count: list(seq)[:count])
         monkeypatch.setattr(quiz.random, "shuffle", lambda seq: None)

@@ -407,6 +407,7 @@ export interface Database {
                     words_incorrect: number
                     new_words_learned: number
                     time_spent_seconds: number
+                    time_spent_ms: number
                     session_count: number
                     created_at: string
                     updated_at: string
@@ -420,6 +421,7 @@ export interface Database {
                     words_incorrect?: number
                     new_words_learned?: number
                     time_spent_seconds?: number
+                    time_spent_ms?: number
                     session_count?: number
                     created_at?: string
                     updated_at?: string
@@ -433,6 +435,7 @@ export interface Database {
                     words_incorrect?: number
                     new_words_learned?: number
                     time_spent_seconds?: number
+                    time_spent_ms?: number
                     session_count?: number
                     created_at?: string
                     updated_at?: string
@@ -498,6 +501,7 @@ export interface Database {
                     words_incorrect: number
                     new_words_learned: number
                     time_spent_seconds: number
+                    time_spent_ms: number
                     session_count: number
                     created_at: string
                     updated_at: string
@@ -511,6 +515,7 @@ export interface Database {
                     words_incorrect?: number
                     new_words_learned?: number
                     time_spent_seconds?: number
+                    time_spent_ms?: number
                     session_count?: number
                     created_at?: string
                     updated_at?: string
@@ -524,6 +529,7 @@ export interface Database {
                     words_incorrect?: number
                     new_words_learned?: number
                     time_spent_seconds?: number
+                    time_spent_ms?: number
                     session_count?: number
                     created_at?: string
                     updated_at?: string
@@ -552,6 +558,7 @@ export interface Database {
                     words_incorrect: number
                     new_words_learned: number
                     time_spent_seconds: number
+                    time_spent_ms: number
                     session_count: number
                     activity_count: number
                 }[]
@@ -574,6 +581,7 @@ export interface Database {
                     words_incorrect: number
                     new_words_learned: number
                     time_spent_seconds: number
+                    time_spent_ms: number
                     session_count: number
                     created_at: string
                     updated_at: string

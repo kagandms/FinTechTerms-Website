@@ -5,13 +5,17 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { CONSENT_GRANTED_EVENT, hasResearchConsent } from './ConsentModal';
 import { createIdempotencyKey } from '@/lib/idempotency';
+import { logger } from '@/lib/logger';
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
+const PENDING_START_SESSION_KEY = 'fintechterms_pending_start_session';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
+const RETRY_QUEUE_SESSION_KEY = 'fintechterms_session_retry_queue';
 const ANONYMOUS_ID_KEY = 'fintechterms_anon_id';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
 const MAX_RETRY_QUEUE_SIZE = 50;
+const MAX_RETRY_QUEUE_AGE_MS = 24 * 60 * 60 * 1000;
 type SessionMode = 'anonymous' | 'authenticated';
 
 interface SessionData {
@@ -73,6 +77,13 @@ interface QueuedSessionMutation {
     payload: SessionMutationPayload;
     sessionStartTime: number | null;
     idempotencyKey: string;
+    queuedAt: number;
+}
+
+interface PendingStartSessionMutation {
+    payload: StartSessionMutationPayload;
+    sessionStartTime: number;
+    idempotencyKey: string;
 }
 
 interface PendingEndSessionMutation {
@@ -81,7 +92,9 @@ interface PendingEndSessionMutation {
 }
 
 const buildSessionStorageKey = (tabId: string): string => `${SESSION_KEY}:${tabId}`;
+const buildPendingStartSessionStorageKey = (tabId: string): string => `${PENDING_START_SESSION_KEY}:${tabId}`;
 const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
+const buildRetryQueueStorageKey = (tabId: string): string => `${RETRY_QUEUE_SESSION_KEY}:${tabId}`;
 
 const getOrCreateSessionTabId = (): string | null => {
     if (typeof window === 'undefined') {
@@ -120,7 +133,20 @@ export default function SessionTracker() {
     const isFlushingQueueRef = useRef(false);
     const startKeyRef = useRef<string | null>(null);
     const endKeyRef = useRef<string | null>(null);
+    const pendingStartPayloadRef = useRef<PendingStartSessionMutation | null>(null);
     const pendingEndPayloadRef = useRef<PendingEndSessionMutation | null>(null);
+
+    const logSessionTrackerWarning = useCallback((
+        message: string,
+        error: unknown,
+        context: Record<string, unknown> = {}
+    ) => {
+        logger.warn(message, {
+            route: 'SessionTracker',
+            error: error instanceof Error ? error : undefined,
+            ...context,
+        });
+    }, []);
 
     const getCurrentTabId = useCallback((): string | null => {
         if (tabIdRef.current) {
@@ -132,9 +158,164 @@ export default function SessionTracker() {
         return nextTabId;
     }, []);
 
-    const queueRetryableMutation = useCallback((entry: QueuedSessionMutation) => {
-        retryQueueRef.current = [...retryQueueRef.current, entry].slice(-MAX_RETRY_QUEUE_SIZE);
-    }, []);
+    const persistRetryQueue = useCallback((queue: QueuedSessionMutation[]) => {
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
+
+        try {
+            if (queue.length === 0) {
+                sessionStorage.removeItem(buildRetryQueueStorageKey(tabId));
+                return;
+            }
+
+            sessionStorage.setItem(buildRetryQueueStorageKey(tabId), JSON.stringify(queue));
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_RETRY_QUEUE_PERSIST_FAILED', error);
+        }
+    }, [getCurrentTabId, logSessionTrackerWarning]);
+
+    const readRetryQueue = useCallback((): QueuedSessionMutation[] => {
+        if (retryQueueRef.current.length > 0) {
+            return retryQueueRef.current;
+        }
+
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return [];
+        }
+
+        try {
+            const stored = sessionStorage.getItem(buildRetryQueueStorageKey(tabId));
+            if (!stored) {
+                return [];
+            }
+
+            const parsed = JSON.parse(stored) as Partial<QueuedSessionMutation>[];
+            const now = Date.now();
+            const queue = parsed.filter((entry): entry is QueuedSessionMutation => (
+                Boolean(entry)
+                && typeof entry === 'object'
+                && Boolean(entry.payload)
+                && typeof entry.idempotencyKey === 'string'
+                && typeof entry.queuedAt === 'number'
+                && now - entry.queuedAt <= MAX_RETRY_QUEUE_AGE_MS
+            ));
+
+            retryQueueRef.current = queue;
+            persistRetryQueue(queue);
+            return queue;
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_RETRY_QUEUE_RESTORE_FAILED', error);
+            return [];
+        }
+    }, [getCurrentTabId, logSessionTrackerWarning, persistRetryQueue]);
+
+    const replaceRetryQueue = useCallback((queue: QueuedSessionMutation[]) => {
+        retryQueueRef.current = queue.slice(-MAX_RETRY_QUEUE_SIZE);
+        persistRetryQueue(retryQueueRef.current);
+    }, [persistRetryQueue]);
+
+    const queueRetryableMutation = useCallback((
+        entry: Omit<QueuedSessionMutation, 'queuedAt'>
+    ) => {
+        replaceRetryQueue([
+            ...readRetryQueue(),
+            {
+                ...entry,
+                queuedAt: Date.now(),
+            },
+        ]);
+    }, [readRetryQueue, replaceRetryQueue]);
+
+    const clearPendingStartSession = useCallback((expectedIdempotencyKey?: string) => {
+        const currentPending = pendingStartPayloadRef.current;
+        if (
+            expectedIdempotencyKey
+            && currentPending
+            && currentPending.idempotencyKey !== expectedIdempotencyKey
+        ) {
+            return;
+        }
+
+        pendingStartPayloadRef.current = null;
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
+
+        const storageKey = buildPendingStartSessionStorageKey(tabId);
+
+        try {
+            const stored = sessionStorage.getItem(storageKey);
+            if (!stored) {
+                return;
+            }
+
+            const parsed = JSON.parse(stored) as Partial<PendingStartSessionMutation>;
+            if (
+                expectedIdempotencyKey
+                && parsed.idempotencyKey
+                && parsed.idempotencyKey !== expectedIdempotencyKey
+            ) {
+                return;
+            }
+
+            sessionStorage.removeItem(storageKey);
+        } catch {
+            sessionStorage.removeItem(storageKey);
+        }
+    }, [getCurrentTabId]);
+
+    const persistPendingStartSession = useCallback((pending: PendingStartSessionMutation) => {
+        pendingStartPayloadRef.current = pending;
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return;
+        }
+
+        try {
+            sessionStorage.setItem(buildPendingStartSessionStorageKey(tabId), JSON.stringify(pending));
+        } catch {
+            // Best-effort persistence only.
+        }
+    }, [getCurrentTabId]);
+
+    const readPendingStartSession = useCallback((): PendingStartSessionMutation | null => {
+        if (pendingStartPayloadRef.current) {
+            return pendingStartPayloadRef.current;
+        }
+
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return null;
+        }
+
+        try {
+            const stored = sessionStorage.getItem(buildPendingStartSessionStorageKey(tabId));
+            if (!stored) {
+                return null;
+            }
+
+            const parsed = JSON.parse(stored) as Partial<PendingStartSessionMutation>;
+            if (
+                !parsed
+                || typeof parsed !== 'object'
+                || !parsed.payload
+                || typeof parsed.idempotencyKey !== 'string'
+                || typeof parsed.sessionStartTime !== 'number'
+            ) {
+                return null;
+            }
+
+            const pending = parsed as PendingStartSessionMutation;
+            pendingStartPayloadRef.current = pending;
+            return pending;
+        } catch {
+            return null;
+        }
+    }, [getCurrentTabId]);
 
     const clearPendingEndSession = useCallback((expectedIdempotencyKey?: string) => {
         const currentPending = pendingEndPayloadRef.current;
@@ -398,7 +579,9 @@ export default function SessionTracker() {
     }, [buildMutationBody]);
 
     const flushRetryQueue = useCallback(async () => {
-        if (isFlushingQueueRef.current || retryQueueRef.current.length === 0) {
+        const existingQueue = readRetryQueue();
+
+        if (isFlushingQueueRef.current || existingQueue.length === 0) {
             return;
         }
 
@@ -409,8 +592,8 @@ export default function SessionTracker() {
         isFlushingQueueRef.current = true;
 
         try {
-            const pending = [...retryQueueRef.current];
-            retryQueueRef.current = [];
+            const pending = [...existingQueue];
+            replaceRetryQueue([]);
 
             for (let index = 0; index < pending.length; index += 1) {
                 const entry = pending[index];
@@ -422,8 +605,11 @@ export default function SessionTracker() {
 
                 if (!response.ok) {
                     if (!response.retryable) {
-                        if (entry.payload.action === 'start' && startKeyRef.current === entry.idempotencyKey) {
-                            startKeyRef.current = null;
+                        if (entry.payload.action === 'start') {
+                            if (startKeyRef.current === entry.idempotencyKey) {
+                                startKeyRef.current = null;
+                            }
+                            clearPendingStartSession(entry.idempotencyKey);
                         }
 
                         if (entry.payload.action === 'end') {
@@ -437,7 +623,7 @@ export default function SessionTracker() {
                     const remainingEntries = response.retryable
                         ? pending.slice(index)
                         : pending.slice(index + 1);
-                    retryQueueRef.current = [...remainingEntries, ...retryQueueRef.current].slice(-MAX_RETRY_QUEUE_SIZE);
+                    replaceRetryQueue([...remainingEntries, ...readRetryQueue()]);
                     break;
                 }
 
@@ -454,6 +640,7 @@ export default function SessionTracker() {
                     if (startKeyRef.current === entry.idempotencyKey) {
                         startKeyRef.current = null;
                     }
+                    clearPendingStartSession(entry.idempotencyKey);
                 }
 
                 if (entry.payload.action === 'end') {
@@ -466,7 +653,14 @@ export default function SessionTracker() {
         } finally {
             isFlushingQueueRef.current = false;
         }
-    }, [applyStartResponseToCurrentSession, clearPendingEndSession, persistSessionMutation]);
+    }, [
+        applyStartResponseToCurrentSession,
+        clearPendingEndSession,
+        clearPendingStartSession,
+        persistSessionMutation,
+        readRetryQueue,
+        replaceRetryQueue,
+    ]);
 
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
@@ -534,10 +728,18 @@ export default function SessionTracker() {
         }
 
         const body = buildMutationBody(pending.payload, pending.idempotencyKey);
-        navigator.sendBeacon(
+        const sent = navigator.sendBeacon(
             '/api/study-sessions',
             new Blob([body], { type: 'application/json' })
         );
+
+        if (!sent) {
+            logger.warn('SESSION_TRACKER_BEACON_SEND_FAILED', {
+                route: 'SessionTracker',
+                idempotencyKey: pending.idempotencyKey,
+                action: pending.payload.action,
+            });
+        }
     }, [buildMutationBody]);
 
     const replayPendingEndSession = useCallback(async () => {
@@ -570,6 +772,71 @@ export default function SessionTracker() {
             endKeyRef.current = null;
         }
     }, [clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
+
+    const replayPendingStartSession = useCallback(async (): Promise<boolean> => {
+        const pending = readPendingStartSession();
+        if (!pending) {
+            return false;
+        }
+
+        const currentTabId = getCurrentTabId();
+        if (currentTabId && !sessionRef.current) {
+            try {
+                const stored = sessionStorage.getItem(buildSessionStorageKey(currentTabId));
+                if (stored) {
+                    sessionRef.current = JSON.parse(stored) as SessionData;
+                }
+            } catch (error) {
+                logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_HYDRATE_FAILED', error);
+            }
+        }
+
+        if (sessionRef.current) {
+            sessionRef.current = hydrateSessionFromStorage(sessionRef.current);
+        }
+
+        const response = await persistSessionMutation(pending.payload, pending.idempotencyKey);
+
+        if (response.ok && response.data?.sessionId && response.data.sessionToken) {
+            applyStartResponseToCurrentSession(
+                pending.sessionStartTime,
+                response.data.sessionId,
+                response.data.sessionToken
+            );
+
+            if (startKeyRef.current === pending.idempotencyKey) {
+                startKeyRef.current = null;
+            }
+
+            clearPendingStartSession(pending.idempotencyKey);
+            return true;
+        }
+
+        if (!response.retryable) {
+            clearPendingStartSession(pending.idempotencyKey);
+            if (startKeyRef.current === pending.idempotencyKey) {
+                startKeyRef.current = null;
+            }
+            return true;
+        }
+
+        queueRetryableMutation({
+            payload: pending.payload,
+            sessionStartTime: pending.sessionStartTime,
+            idempotencyKey: pending.idempotencyKey,
+        });
+
+        return true;
+    }, [
+        applyStartResponseToCurrentSession,
+        clearPendingStartSession,
+        getCurrentTabId,
+        hydrateSessionFromStorage,
+        logSessionTrackerWarning,
+        persistSessionMutation,
+        queueRetryableMutation,
+        readPendingStartSession,
+    ]);
 
     // Start a new session
     const trackPageView = useCallback((currentPathname: string | null) => {
@@ -622,6 +889,11 @@ export default function SessionTracker() {
         };
         const startIdempotencyKey = startKeyRef.current ?? createIdempotencyKey();
         startKeyRef.current = startIdempotencyKey;
+        persistPendingStartSession({
+            payload: startPayload,
+            sessionStartTime: session.startTime,
+            idempotencyKey: startIdempotencyKey,
+        });
 
         try {
             const response = await persistSessionMutation(startPayload, startIdempotencyKey);
@@ -635,6 +907,7 @@ export default function SessionTracker() {
                     });
                 } else if (startKeyRef.current === startIdempotencyKey) {
                     startKeyRef.current = null;
+                    clearPendingStartSession(startIdempotencyKey);
                 }
                 return;
             }
@@ -646,13 +919,27 @@ export default function SessionTracker() {
             if (startKeyRef.current === startIdempotencyKey) {
                 startKeyRef.current = null;
             }
+            clearPendingStartSession(startIdempotencyKey);
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
             }
-        } catch {
-            // Session analytics must never interrupt the UI.
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_START_FAILED', error, {
+                action: 'start',
+                idempotencyKey: startIdempotencyKey,
+            });
         }
-    }, [flushRetryQueue, getAnonymousId, getDeviceType, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
+    }, [
+        clearPendingStartSession,
+        flushRetryQueue,
+        getAnonymousId,
+        getDeviceType,
+        logSessionTrackerWarning,
+        persistPendingStartSession,
+        persistSessionMutation,
+        queueRetryableMutation,
+        saveSessionToStorage,
+    ]);
 
     // Update session (called periodically)
     const updateSession = useCallback(async () => {
@@ -694,10 +981,13 @@ export default function SessionTracker() {
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
             }
-        } catch {
-            // Session analytics must never interrupt the UI.
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_HEARTBEAT_FAILED', error, {
+                action: 'heartbeat',
+                idempotencyKey: heartbeatIdempotencyKey,
+            });
         }
-    }, [flushRetryQueue, hydrateSessionFromStorage, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
+    }, [flushRetryQueue, hydrateSessionFromStorage, logSessionTrackerWarning, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
 
     // End session (called on unmount or page close)
     const endSession = useCallback(async () => {
@@ -707,6 +997,11 @@ export default function SessionTracker() {
         sessionRef.current = session;
 
         if (!session.id || !session.token) {
+            if (readPendingStartSession()) {
+                saveSessionToStorage(session);
+                return;
+            }
+
             sessionRef.current = null;
             lastTrackedPathnameRef.current = null;
             saveSessionToStorage(null);
@@ -746,8 +1041,11 @@ export default function SessionTracker() {
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
             }
-        } catch {
-            // Session analytics must never interrupt the UI.
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_END_FAILED', error, {
+                action: 'end',
+                idempotencyKey: endIdempotencyKey,
+            });
         } finally {
             sessionRef.current = null;
             lastTrackedPathnameRef.current = null;
@@ -758,9 +1056,11 @@ export default function SessionTracker() {
         clearPendingEndSession,
         flushRetryQueue,
         hydrateSessionFromStorage,
+        logSessionTrackerWarning,
         persistPendingEndSession,
         persistSessionMutation,
         queueRetryableMutation,
+        readPendingStartSession,
         saveSessionToStorage,
     ]);
 
@@ -777,15 +1077,19 @@ export default function SessionTracker() {
         let isMounted = true;
 
         void (async () => {
+            readRetryQueue();
             await replayPendingEndSession();
+            const reusedPendingStart = await replayPendingStartSession();
 
             if (!isMounted) {
                 return;
             }
 
-            await startSession();
-            if (!isMounted) {
-                return;
+            if (!reusedPendingStart && !sessionRef.current) {
+                await startSession();
+                if (!isMounted) {
+                    return;
+                }
             }
 
             trackPageView(pathnameRef.current);
@@ -817,7 +1121,10 @@ export default function SessionTracker() {
         };
 
         const handleOnline = () => {
-            void flushRetryQueue();
+            void (async () => {
+                await replayPendingStartSession();
+                await flushRetryQueue();
+            })();
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -841,6 +1148,8 @@ export default function SessionTracker() {
         endSession,
         flushRetryQueue,
         getPendingEndSessionForCurrentState,
+        readRetryQueue,
+        replayPendingStartSession,
         replayPendingEndSession,
         sendPendingEndWithBeacon,
         startSession,
@@ -895,7 +1204,10 @@ export function incrementQuizAttempt() {
             session.quizAttempts += 1;
             sessionStorage.setItem(buildSessionStorageKey(tabId), JSON.stringify(session));
         }
-    } catch {
-        // Silently fail
+    } catch (error) {
+        logger.warn('SESSION_TRACKER_INCREMENT_QUIZ_ATTEMPT_FAILED', {
+            route: 'SessionTracker',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 }

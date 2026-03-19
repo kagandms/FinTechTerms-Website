@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import DailyReview from '@/components/DailyReview';
 import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
-import Link from 'next/link';
 import Image from 'next/image';
 import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
@@ -19,6 +20,7 @@ import { Term } from '@/types';
 
 interface HomeClientProps {
     initialTerms?: Term[];
+    nonce?: string;
 }
 
 const pickInitialTerms = (terms: Term[]): Term[] => terms.slice(0, 3);
@@ -42,10 +44,12 @@ const shuffleTerms = (terms: Term[]): Term[] => {
     return nextTerms;
 };
 
-export default function HomePage({ initialTerms = [] }: HomeClientProps) {
-    const { t } = useLanguage();
+export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) {
+    const { t, language } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
+    const { isAuthenticated } = useAuth();
+    const router = useRouter();
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
     const siteUrl = getSiteUrl();
@@ -64,9 +68,43 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
         }
     };
 
+    const uiCopy = {
+        tr: {
+            telegramAria: 'Telegram API entegrasyonunu aç',
+            themeAria: 'Temayı değiştir',
+            installTitle: 'Uygulamayı yükle',
+            installDescription: 'FinTechTerms simgesini ana ekranına ekleyip hızlı erişim ve PWA deneyimini aç.',
+            openFavorites: 'Favorileri aç',
+        },
+        en: {
+            telegramAria: 'Open Telegram API integration',
+            themeAria: 'Toggle theme',
+            installTitle: 'Install the app',
+            installDescription: 'Add the FinTechTerms icon to your home screen for quick access and the full PWA experience.',
+            openFavorites: 'Open favorites',
+        },
+        ru: {
+            telegramAria: 'Открыть интеграцию Telegram API',
+            themeAria: 'Переключить тему',
+            installTitle: 'Установить приложение',
+            installDescription: 'Добавьте иконку FinTechTerms на главный экран для быстрого доступа и полноценного PWA-режима.',
+            openFavorites: 'Открыть избранное',
+        },
+    }[language];
+
+    const openFavorites = () => {
+        if (isAuthenticated) {
+            router.push('/favorites');
+            return;
+        }
+
+        router.push('/profile?auth=login&next=%2Ffavorites');
+    };
+
     return (
         <div className="page-content px-4 py-6">
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({
@@ -108,18 +146,18 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 rounded-xl border border-sky-100 bg-white text-sky-600 transition-colors hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800 flex items-center justify-center"
-                        aria-label="Интеграция API Telegram"
+                        aria-label={uiCopy.telegramAria}
                     >
                         <Send className="w-5 h-5" />
                     </a>
                     <div className="flex items-center justify-center">
-                        <InstallButton />
+                        <InstallButton variant="prominent" />
                     </div>
                     <button
                         onClick={toggleTheme}
                         data-testid="theme-toggle"
                         className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
-                        aria-label="Переключить тему"
+                        aria-label={uiCopy.themeAria}
                     >
                         {resolvedTheme === 'dark' ? (
                             <Sun className="w-5 h-5 text-yellow-500" />
@@ -163,11 +201,11 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-3 rounded-xl border border-sky-100 bg-white text-sky-600 transition-all shadow-sm hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
-                            aria-label="Интеграция API Telegram"
+                            aria-label={uiCopy.telegramAria}
                         >
                             <Send className="w-5 h-5" />
                         </a>
-                        <InstallButton />
+                        <InstallButton variant="prominent" />
 
                         <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
 
@@ -175,7 +213,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
                             className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
-                            aria-label="Переключить тему"
+                            aria-label={uiCopy.themeAria}
                         >
                             {resolvedTheme === 'dark' ? (
                                 <Sun className="w-5 h-5" />
@@ -191,6 +229,22 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
             {/* Daily Review Card */}
             <section className="mb-6">
                 <DailyReview />
+            </section>
+
+            <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-slate-900/80">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                            {uiCopy.installTitle}
+                        </h2>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {uiCopy.installDescription}
+                        </p>
+                    </div>
+                    <div className="flex justify-start md:justify-end">
+                        <InstallButton variant="prominent" />
+                    </div>
+                </div>
             </section>
 
             <section className="mb-6">
@@ -213,7 +267,12 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">К повтору</p>
                     </div>
 
-                    <Link href="/favorites" className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block">
+                    <button
+                        type="button"
+                        onClick={openFavorites}
+                        aria-label={uiCopy.openFavorites}
+                        className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block"
+                    >
                         <div className="flex justify-center mb-2 group-hover:scale-110 transition-transform">
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                                 <BookMarked className="w-5 h-5 text-primary-500" />
@@ -221,7 +280,7 @@ export default function HomePage({ initialTerms = [] }: HomeClientProps) {
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{stats.totalFavorites}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
-                    </Link>
+                    </button>
 
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="flex justify-center mb-2">

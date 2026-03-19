@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import QuizClient from '@/app/quiz/QuizClient';
+import { getScriptNonce } from '@/lib/script-nonce';
 
 export const metadata: Metadata = {
     title: 'Практика терминов',
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
     },
 };
 
-export default function QuizPage() {
-    return <QuizClient />;
+export default async function QuizPage() {
+    const nonce = await getScriptNonce();
+    return <QuizClient nonce={nonce} />;
 }

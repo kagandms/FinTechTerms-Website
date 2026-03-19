@@ -6,6 +6,7 @@ import {
 import { Language } from '@/types';
 import { languageNames, languageFlags } from '@/contexts/LanguageContext';
 import NotificationSettings from '@/components/NotificationSettings';
+import { buildLocalePath } from '@/lib/seo-routing';
 
 import { Theme } from '@/contexts/ThemeContext';
 
@@ -131,7 +132,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {/* About */}
                 <Link
-                    href="/about"
+                    href={buildLocalePath(language, '/about')}
                     className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">

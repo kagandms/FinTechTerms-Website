@@ -4,6 +4,9 @@
 
 describe('public SEO metadata and route assets', () => {
     const originalEnv = process.env;
+    const normalizeLastModified = (value: string | Date | undefined): string | null => (
+        value ? new Date(value).toISOString() : null
+    );
 
     beforeEach(() => {
         jest.resetModules();
@@ -99,11 +102,11 @@ describe('public SEO metadata and route assets', () => {
         const authorEntry = entries.find((entry) => entry.url === 'https://fintechterms.example.com/tr/authors/kagan-samet-durmus');
         const termEntry = entries.find((entry) => entry.url === 'https://fintechterms.example.com/en/glossary/tokenization');
 
-        expect(rootEntry?.lastModified?.toISOString()).toBe('2026-03-15T00:00:00.000Z');
-        expect(aboutEntry?.lastModified?.toISOString()).toBe('2026-03-15T00:00:00.000Z');
-        expect(topicEntry?.lastModified?.toISOString()).toBe('2026-03-15T00:00:00.000Z');
-        expect(authorEntry?.lastModified?.toISOString()).toBe('2026-03-15T00:00:00.000Z');
-        expect(termEntry?.lastModified?.toISOString()).toBe('2026-03-15T00:00:00.000Z');
+        expect(normalizeLastModified(rootEntry?.lastModified)).toBe('2026-03-15T00:00:00.000Z');
+        expect(normalizeLastModified(aboutEntry?.lastModified)).toBe('2026-03-15T00:00:00.000Z');
+        expect(normalizeLastModified(topicEntry?.lastModified)).toBe('2026-03-15T00:00:00.000Z');
+        expect(normalizeLastModified(authorEntry?.lastModified)).toBe('2026-03-15T00:00:00.000Z');
+        expect(normalizeLastModified(termEntry?.lastModified)).toBe('2026-03-15T00:00:00.000Z');
     });
 
     it('does not generate freshness churn for non-term sitemap entries across calls', async () => {
@@ -114,6 +117,8 @@ describe('public SEO metadata and route assets', () => {
         const firstAboutEntry = firstEntries.find((entry) => entry.url === 'https://fintechterms.example.com/ru/about');
         const secondAboutEntry = secondEntries.find((entry) => entry.url === 'https://fintechterms.example.com/ru/about');
 
-        expect(firstAboutEntry?.lastModified?.toISOString()).toBe(secondAboutEntry?.lastModified?.toISOString());
+        expect(normalizeLastModified(firstAboutEntry?.lastModified)).toBe(
+            normalizeLastModified(secondAboutEntry?.lastModified)
+        );
     });
 });

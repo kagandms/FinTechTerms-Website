@@ -87,6 +87,27 @@ describe('supabaseStorage response validation', () => {
         });
     });
 
+    it('classifies final 401 favorite responses as auth_expired', async () => {
+        global.fetch = jest.fn()
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 401,
+                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 401,
+                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
+            }) as typeof fetch;
+
+        const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(toggleFavoriteInSupabase('user-1', 'term-1', true)).resolves.toEqual({
+            status: 'auth_expired',
+            message: 'Session expired. Please sign in again to update favorites.',
+        });
+    });
+
     it('classifies 422 quiz responses as non_retryable', async () => {
         global.fetch = jest.fn().mockResolvedValue({
             ok: false,

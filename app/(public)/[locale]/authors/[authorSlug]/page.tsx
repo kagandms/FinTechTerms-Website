@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getLocalizedTermLabel, getLocalizedText, getSeoContributorBySlug, listStaticContributorSlugs, listTermsByContributor } from '@/lib/public-seo-catalog';
+import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -50,6 +51,7 @@ export default async function AuthorPage({
     params: Promise<{ locale: string; authorSlug: string }>;
 }) {
     const { locale: rawLocale, authorSlug } = await params;
+    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -126,6 +128,7 @@ export default async function AuthorPage({
             </div>
 
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({

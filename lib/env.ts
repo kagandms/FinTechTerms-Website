@@ -29,6 +29,7 @@ export interface PublicEnv {
 
 export interface ServerEnv extends PublicEnv {
     readonly adminEmail: string | null;
+    readonly adminUserIds: readonly string[];
     readonly serviceRoleKey: string | null;
     readonly sentryAuthToken: string | null;
     readonly sentryOrg: string | null;
@@ -83,6 +84,13 @@ const readOptionalValue = (
 
     return value;
 };
+
+const readAdminUserIds = (rawValue: string | null | undefined): string[] => (
+    (rawValue ?? '')
+        .split(',')
+        .map((value) => unwrapQuotedEnvValue(value).trim())
+        .filter(Boolean)
+);
 
 const readPlatformSiteUrl = (): string | null => {
     const renderExternalUrl = readOptionalValue(process.env.RENDER_EXTERNAL_URL, new Set(['']));
@@ -204,6 +212,7 @@ export const getServerEnv = (): ServerEnv => {
         return {
             ...buildPublicEnv(),
             adminEmail: readOptionalValue(process.env.ADMIN_EMAIL, SERVER_PLACEHOLDER_VALUES),
+            adminUserIds: readAdminUserIds(process.env.ADMIN_USER_IDS),
             serviceRoleKey: readOptionalValue(process.env.SUPABASE_SERVICE_ROLE_KEY, SERVER_PLACEHOLDER_VALUES),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),
@@ -215,6 +224,7 @@ export const getServerEnv = (): ServerEnv => {
         cachedServerEnv = {
             ...getPublicEnv(),
             adminEmail: readOptionalValue(process.env.ADMIN_EMAIL, SERVER_PLACEHOLDER_VALUES),
+            adminUserIds: readAdminUserIds(process.env.ADMIN_USER_IDS),
             serviceRoleKey: readOptionalValue(process.env.SUPABASE_SERVICE_ROLE_KEY, SERVER_PLACEHOLDER_VALUES),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),

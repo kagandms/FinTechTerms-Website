@@ -6,7 +6,12 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
-import { completeIdempotentRequest, failIdempotentRequest, reserveIdempotentRequest } from '@/lib/api-idempotency';
+import {
+    completeIdempotentRequest,
+    failIdempotentRequest,
+    inspectIdempotentRequest,
+    reserveIdempotentRequest,
+} from '@/lib/api-idempotency';
 import { apiRouteRateLimiter, favoritesMutationRateLimiter } from '@/lib/rate-limiter';
 import {
     createRequestScopedClient,
@@ -57,25 +62,7 @@ export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
     let authenticatedUserId: string | null = null;
-    const limitCheck = apiRouteRateLimiter.check(ip);
-    const headers = {
-        ...GLOBAL_RATE_LIMIT_HEADERS,
-        'X-RateLimit-Remaining': limitCheck.remaining.toString(),
-    };
-
-    if (!limitCheck.allowed) {
-        return errorResponse({
-            status: 429,
-            code: 'RATE_LIMITED',
-            message: 'Rate limit exceeded.',
-            requestId,
-            retryable: true,
-            headers: {
-                ...headers,
-                'Retry-After': limitCheck.retryAfter.toString(),
-            },
-        });
-    }
+    let headers: HeadersInit = GLOBAL_RATE_LIMIT_HEADERS;
 
     let body: unknown;
 
@@ -89,7 +76,7 @@ export async function POST(request: Request) {
             message: 'Invalid JSON payload.',
             requestId,
             retryable: false,
-            headers,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
         });
     }
 
@@ -102,7 +89,7 @@ export async function POST(request: Request) {
             message: 'termId is required.',
             requestId,
             retryable: false,
-            headers,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
         });
     }
 
@@ -118,12 +105,65 @@ export async function POST(request: Request) {
                 message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
-                headers,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
             });
         }
         authenticatedUserId = user.id;
 
-        const writeLimitCheck = favoritesMutationRateLimiter.check(`${user.id}:${ip}`);
+        const inspection = await inspectIdempotentRequest({
+            supabaseAdmin,
+            userId: user.id,
+            action: 'favorite_mutation',
+            idempotencyKey,
+            payload: {
+                termId,
+                shouldFavorite,
+            },
+        });
+
+        if (inspection.kind === 'replay') {
+            return successResponse(
+                inspection.responseBody,
+                requestId,
+                {
+                    status: inspection.statusCode,
+                    headers: GLOBAL_RATE_LIMIT_HEADERS,
+                }
+            );
+        }
+
+        if (inspection.kind === 'conflict') {
+            return errorResponse({
+                status: 409,
+                code: inspection.code,
+                message: inspection.message,
+                requestId,
+                retryable: inspection.code === 'REQUEST_IN_PROGRESS',
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const limitCheck = await apiRouteRateLimiter.check(`favorites:${ip}`);
+        headers = {
+            ...GLOBAL_RATE_LIMIT_HEADERS,
+            'X-RateLimit-Remaining': limitCheck.remaining.toString(),
+        };
+
+        if (!limitCheck.allowed) {
+            return errorResponse({
+                status: 429,
+                code: 'RATE_LIMITED',
+                message: 'Rate limit exceeded.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...headers,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            });
+        }
+
+        const writeLimitCheck = await favoritesMutationRateLimiter.check(user.id);
         const guardedHeaders = {
             ...headers,
             'X-Write-RateLimit-Limit': WRITE_RATE_LIMIT.toString(),

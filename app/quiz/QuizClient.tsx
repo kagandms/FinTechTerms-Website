@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useAuth } from '@/contexts/AuthContext';
 import QuizCard from '@/components/QuizCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
@@ -13,6 +15,10 @@ import { createIdempotencyKey } from '@/lib/idempotency';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+
+interface QuizPageProps {
+    nonce?: string;
+}
 
 const withQuizSubmissionTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
     let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -83,8 +89,10 @@ const stateMessages = {
     },
 } as const;
 
-export default function QuizPage() {
+export default function QuizPage({ nonce }: QuizPageProps) {
     const { t, language } = useLanguage();
+    const { isAuthenticated } = useAuth();
+    const router = useRouter();
     const {
         dueTerms,
         submitQuizAnswer,
@@ -145,6 +153,15 @@ export default function QuizPage() {
     const quickQuizPool = getQuickQuizPool(quickQuizCategory);
     const quickQuizAvailableCount = quickQuizPool.length;
 
+    const openFavorites = () => {
+        if (isAuthenticated) {
+            router.push('/favorites');
+            return;
+        }
+
+        router.push('/profile?auth=login&next=%2Ffavorites');
+    };
+
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
         if (!isQuickQuiz && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length > 0) {
@@ -188,9 +205,6 @@ export default function QuizPage() {
         setSubmissionError(null);
 
         try {
-            // Increment session counter
-            incrementQuizAttempt();
-
             // Submit to SRS system (only for actual favorites, not quick quiz)
             if (!isQuickQuiz) {
                 await withQuizSubmissionTimeout(
@@ -203,6 +217,8 @@ export default function QuizPage() {
                 );
                 setShowSavedIndicator(true);
             }
+
+            incrementQuizAttempt();
 
             if (isCorrect) {
                 setCorrectCount(c => c + 1);
@@ -486,11 +502,15 @@ export default function QuizPage() {
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
                                     </div>
-                                    <Link href="/favorites" className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group">
+                                    <button
+                                        type="button"
+                                        onClick={openFavorites}
+                                        className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group"
+                                    >
                                         <Heart className="w-6 h-6 text-red-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{stats.totalFavorites}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
-                                    </Link>
+                                    </button>
                                 </div>
                             </div>
                         ) : null}
@@ -501,7 +521,7 @@ export default function QuizPage() {
                                 <p className="text-gray-500 text-sm mb-3">{t('quiz.orAddFavorites')}</p>
                                 <Link
                                     href="/search"
-                                    className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-medium text-white shadow-sm transition-colors hover:bg-primary-600 dark:bg-primary-400 dark:text-slate-950 dark:hover:bg-primary-300"
                                 >
                                     <span>{t('quiz.exploreWords')}</span>
                                     <ArrowRight className="w-4 h-4" />
@@ -564,7 +584,7 @@ export default function QuizPage() {
                         </button>
                         <Link
                             href="/search"
-                            className="inline-flex items-center gap-2 text-primary-500 font-medium hover:underline px-6 py-3"
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-6 py-3 font-medium text-white shadow-sm transition-colors hover:bg-primary-600 dark:bg-primary-400 dark:text-slate-950 dark:hover:bg-primary-300"
                         >
                             <span>{t('quiz.exploreWords')}</span>
                             <ArrowRight className="w-4 h-4" />
@@ -651,6 +671,7 @@ export default function QuizPage() {
     return (
         <div className="page-content px-4 py-6">
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({

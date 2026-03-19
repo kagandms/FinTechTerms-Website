@@ -4,6 +4,7 @@
 // ============================================
 
 import { Term, SRSResult } from '@/types';
+import { addUtcDays, endOfUtcDay } from '@/lib/time';
 
 /**
  * Leitner Box Intervals (in days)
@@ -24,6 +25,17 @@ export const MAX_SRS_LEVEL = 5;
  * Minimum SRS level
  */
 export const MIN_SRS_LEVEL = 1;
+
+const normalizeSrsLevel = (level: number): number => {
+    if (!Number.isFinite(level)) {
+        return MIN_SRS_LEVEL;
+    }
+
+    return Math.min(
+        MAX_SRS_LEVEL,
+        Math.max(MIN_SRS_LEVEL, Math.trunc(level))
+    );
+};
 
 /**
  * Calculate the next review schedule based on answer correctness
@@ -60,9 +72,7 @@ export function calculateNextReview(
 
     // Calculate next review date
     const intervalDays = SRS_INTERVALS[newLevel - 1] ?? SRS_INTERVALS[0] ?? 1;
-    const nextReviewDate = new Date();
-    nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
-    nextReviewDate.setHours(0, 0, 0, 0); // Reset to start of day
+    const nextReviewDate = addUtcDays(new Date(), intervalDays);
 
     return {
         newLevel,
@@ -80,8 +90,7 @@ export function calculateNextReview(
  * @returns Terms that need to be reviewed
  */
 export function getTermsDueForReview(terms: Term[], favoriteIds: string[]): Term[] {
-    const now = new Date();
-    now.setHours(23, 59, 59, 999); // End of today
+    const now = endOfUtcDay(new Date());
 
     return terms.filter(term => {
         // Only include favorited terms
@@ -148,7 +157,8 @@ export function calculateRetentionRate(timesCorrect: number, timesReviewed: numb
  * @returns Human-readable interval string
  */
 export function getIntervalDescription(level: number, language: 'tr' | 'en' | 'ru'): string {
-    const intervalDays = SRS_INTERVALS[level - 1] ?? 1;
+    const safeLevel = normalizeSrsLevel(level);
+    const intervalDays = SRS_INTERVALS[safeLevel - 1] ?? 1;
 
     const descriptions = {
         tr: {
@@ -185,13 +195,14 @@ export function getIntervalDescription(level: number, language: 'tr' | 'en' | 'r
  * @returns Mastery level string
  */
 export function getMasteryLevel(level: number, language: 'tr' | 'en' | 'ru'): string {
+    const safeLevel = normalizeSrsLevel(level);
     const levels = {
         tr: ['Yeni', 'Öğrenme', 'Geliştirme', 'Pekiştirme', 'Ustalaşmış'],
         en: ['New', 'Learning', 'Developing', 'Reviewing', 'Mastered'],
         ru: ['Новое', 'Изучение', 'Развитие', 'Повторение', 'Освоено'],
     };
 
-    return levels[language][level - 1] ?? levels[language][0] ?? '';
+    return levels[language][safeLevel - 1] ?? levels[language][0] ?? '';
 }
 
 /**
@@ -212,8 +223,7 @@ export function calculateProgressStats(
     averageRetention: number;
 } {
     const favoriteTerms = terms.filter(t => favoriteIds.includes(t.id));
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
+    const now = endOfUtcDay(new Date());
 
     const mastered = favoriteTerms.filter(t => t.srs_level >= 4).length;
     const learning = favoriteTerms.filter(t => t.srs_level < 4).length;

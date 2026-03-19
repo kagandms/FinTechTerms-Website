@@ -71,7 +71,8 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
         showAuthModal, setShowAuthModal,
         setAuthMode,
         showResetConfirm, setShowResetConfirm,
-        handleDataReset
+        handleDataReset,
+        router,
     } = authLogic;
 
     // 2. Additional Contexts
@@ -121,6 +122,15 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
         }
         return trimmedName.charAt(0).toUpperCase();
+    };
+
+    const openFavorites = () => {
+        if (isAuthenticated) {
+            router.push('/favorites');
+            return;
+        }
+
+        router.push('/profile?auth=login&next=%2Ffavorites');
     };
 
     return (
@@ -228,9 +238,13 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
                             <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
                         </div>
-                        <Link href="/favorites" className="mt-2 relative z-10 w-full px-4 py-3 bg-white text-primary-600 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-md">
+                        <button
+                            type="button"
+                            onClick={openFavorites}
+                            className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
+                        >
                             {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
-                        </Link>
+                        </button>
                     </section>
 
                     {/* Authenticated Dashboard Forms - order-3 */}
@@ -295,9 +309,13 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
                             <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
                         </div>
-                        <Link href="/favorites" className="mt-2 relative z-10 w-full px-4 py-3 bg-white text-primary-600 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all shadow-md">
+                        <button
+                            type="button"
+                            onClick={openFavorites}
+                            className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
+                        >
                             {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
-                        </Link>
+                        </button>
                     </section>
 
                     {/* Telegram Bot */}
@@ -315,7 +333,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                                 {language === 'tr' ? 'Ana ekranınıza ekleyin. Offline mod ve hızlı erişim heykecanını yaşayın.' : language === 'ru' ? 'Добавьте на главный экр. Наслаждайтесь оффлайн-режимом и быстрым доступом.' : 'Add to your home screen. Enjoy offline mode and quick access.'}
                             </p>
                         </div>
-                        <InstallButton />
+                        <InstallButton variant="prominent" />
                     </section>
                 </div>
             </div>

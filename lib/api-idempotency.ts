@@ -62,11 +62,10 @@ const getExistingReservation = async (
     return (data ?? null) as IdempotencyRow | null;
 };
 
-const interpretExistingReservation = async (
-    supabaseAdmin: ServiceRoleClient,
+const inspectExistingReservation = (
     existingReservation: IdempotencyRow,
     requestHash: string
-): Promise<IdempotencyReservation> => {
+): IdempotencyReservation => {
     if (existingReservation.request_hash !== requestHash) {
         return {
             kind: 'conflict',
@@ -91,6 +90,20 @@ const interpretExistingReservation = async (
         };
     }
 
+    return { kind: 'proceed' };
+};
+
+const interpretExistingReservation = async (
+    supabaseAdmin: ServiceRoleClient,
+    existingReservation: IdempotencyRow,
+    requestHash: string
+): Promise<IdempotencyReservation> => {
+    const inspection = inspectExistingReservation(existingReservation, requestHash);
+
+    if (inspection.kind !== 'proceed') {
+        return inspection;
+    }
+
     const { error } = await supabaseAdmin
         .from('api_idempotency_keys')
         .update({
@@ -107,6 +120,28 @@ const interpretExistingReservation = async (
     }
 
     return { kind: 'proceed' };
+};
+
+export const inspectIdempotentRequest = async ({
+    action,
+    idempotencyKey,
+    payload,
+    supabaseAdmin,
+    userId,
+}: ReservationBase): Promise<IdempotencyReservation> => {
+    const requestHash = hashPayload(payload);
+    const existingReservation = await getExistingReservation(
+        supabaseAdmin,
+        userId,
+        action,
+        idempotencyKey
+    );
+
+    if (!existingReservation) {
+        return { kind: 'proceed' };
+    }
+
+    return inspectExistingReservation(existingReservation, requestHash);
 };
 
 export const reserveIdempotentRequest = async ({

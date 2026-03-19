@@ -5,6 +5,7 @@ import PublicLocalePreferenceSync from '@/components/public-locale-preference-sy
 import PublicLocaleSwitcher from '@/components/public-locale-switcher';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { inter, jetbrainsMono } from '@/lib/fonts';
+import { getScriptNonce } from '@/lib/script-nonce';
 import { PUBLIC_LOCALES, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
@@ -64,6 +65,7 @@ export default async function LocaleLayout({
     params: Promise<{ locale: string }>;
 }) {
     const { locale: rawLocale } = await params;
+    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -103,7 +105,7 @@ export default async function LocaleLayout({
                         <main className="mt-8">{children}</main>
                     </div>
                 </div>
-                <GoogleAnalytics />
+                <GoogleAnalytics nonce={nonce} />
             </body>
         </html>
     );

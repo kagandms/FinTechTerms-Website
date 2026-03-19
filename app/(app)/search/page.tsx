@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import SearchClient from '@/app/search/SearchClient';
+import { getScriptNonce } from '@/lib/script-nonce';
 
 export const metadata: Metadata = {
     title: 'Поиск терминов',
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
     },
 };
 
-export default function SearchPage() {
-    return <SearchClient />;
+export default async function SearchPage() {
+    const nonce = await getScriptNonce();
+    return <SearchClient nonce={nonce} />;
 }

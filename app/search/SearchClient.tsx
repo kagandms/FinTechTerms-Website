@@ -19,7 +19,11 @@ import {
     type SearchFilterState,
 } from '@/lib/search-state';
 
-export default function SearchPage() {
+interface SearchPageProps {
+    nonce?: string;
+}
+
+export default function SearchPage({ nonce }: SearchPageProps) {
     const { language, t } = useLanguage();
     const { terms, isLoading, termsStatus, refreshData } = useSRS();
     const siteUrl = getSiteUrl();
@@ -105,6 +109,7 @@ export default function SearchPage() {
     return (
         <div className="page-content px-4 py-6">
             <script
+                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: JSON.stringify({

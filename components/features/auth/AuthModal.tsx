@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { AuthMode } from '@/hooks/useAuthLogic';
 import { AuthFormState } from './types';
+import { Language } from '@/types';
 import { OTPVerification } from './OTPVerification';
 import { UpdatePasswordForm } from './UpdatePasswordForm';
 import { AuthForm } from './AuthForm';
@@ -47,7 +48,7 @@ interface AuthModalProps {
 
     // Tools
     t: (key: string) => string;
-    language: string;
+    language: Language;
     showToast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void;
     logout: () => Promise<void>;
     router: AuthModalRouter;
@@ -147,6 +148,8 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                         showPassword={props.showPassword}
                         setShowPassword={props.setShowPassword}
                         resetPassword={props.resetPassword}
+                        showConfirmPassword={props.showConfirmPassword}
+                        setShowConfirmPassword={props.setShowConfirmPassword}
                         t={t}
                         language={language}
                         showToast={props.showToast}

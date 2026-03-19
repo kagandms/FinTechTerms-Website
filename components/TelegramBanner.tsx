@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ArrowUpRight, BellRing, BookOpen, Database, MessageCircle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const TELEGRAM_BOT_URL = 'https://t.me/FinTechTermsBot';
 
@@ -10,17 +11,39 @@ interface TelegramBannerProps {
     variant?: 'full' | 'compact';
 }
 
-const content = {
-    badge: 'Интеграция экосистемы',
-    title: 'Интеграция API Telegram',
-    subtitle: 'Профессиональный канал уведомлений и удалённого доступа',
-    description: 'Telegram работает как часть академической инфраструктуры FinTechTerms: уведомляет о циклах повторения, открывает быстрый доступ к терминологической базе и поддерживает синхронизацию учебных сценариев без рекламной подачи.',
-    cta: 'Открыть интеграцию',
-    features: ['SRS-уведомления', 'Термин дня', 'Удалённый доступ'],
-};
+const contentByLanguage = {
+    tr: {
+        badge: 'Ekosistem entegrasyonu',
+        title: 'Telegram API entegrasyonu',
+        subtitle: 'Bildirimler ve uzaktan erişim için profesyonel kanal',
+        description: 'Telegram, FinTechTerms akademik altyapısının bir parçası olarak çalışır: tekrar döngülerini bildirir, terim tabanına hızlı erişim açar ve reklam tonu olmadan çalışma senaryolarını destekler.',
+        cta: 'Entegrasyonu aç',
+        features: ['SRS bildirimleri', 'Günün terimi', 'Uzaktan erişim'],
+    },
+    en: {
+        badge: 'Ecosystem integration',
+        title: 'Telegram API integration',
+        subtitle: 'A professional channel for notifications and remote access',
+        description: 'Telegram operates as part of the FinTechTerms academic infrastructure: it notifies review cycles, opens fast access to the terminology base, and supports study workflows without a promotional tone.',
+        cta: 'Open integration',
+        features: ['SRS notifications', 'Term of the day', 'Remote access'],
+    },
+    ru: {
+        badge: 'Интеграция экосистемы',
+        title: 'Интеграция API Telegram',
+        subtitle: 'Профессиональный канал уведомлений и удалённого доступа',
+        description: 'Telegram работает как часть академической инфраструктуры FinTechTerms: уведомляет о циклах повторения, открывает быстрый доступ к терминологической базе и поддерживает синхронизацию учебных сценариев без рекламной подачи.',
+        cta: 'Открыть интеграцию',
+        features: ['SRS-уведомления', 'Термин дня', 'Удалённый доступ'],
+    },
+} as const;
+
 const featureIcons = [BellRing, BookOpen, Database];
 
 export default function TelegramBanner({ variant = 'full' }: TelegramBannerProps) {
+    const { language } = useLanguage();
+    const content = contentByLanguage[language] ?? contentByLanguage.en;
+
     if (variant === 'compact') {
         return (
             <a
@@ -64,15 +87,15 @@ export default function TelegramBanner({ variant = 'full' }: TelegramBannerProps
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                    {content.features.map((feat, i) => {
-                        const Icon = featureIcons[i] ?? BookOpen;
+                    {content.features.map((feature, index) => {
+                        const Icon = featureIcons[index] ?? BookOpen;
                         return (
                             <span
-                                key={feat}
+                                key={feature}
                                 className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
                             >
                                 <Icon className="w-3.5 h-3.5" />
-                                {feat}
+                                {feature}
                             </span>
                         );
                     })}

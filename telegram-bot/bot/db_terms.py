@@ -9,12 +9,18 @@ import json
 import logging
 import random
 import re
+from time import monotonic
 from typing import Any, Optional
 
 from bot.config import SUPPORTED_LANGUAGES, config
 from bot.db_client import apply_academic_quarantine, get_public_client
 
 logger = logging.getLogger(__name__)
+
+TERM_ID_CACHE_TTL_SECONDS = 15 * 60
+QUIZ_TERM_FETCH_LIMIT = 64
+_TERM_ID_CACHE: list[str] = []
+_TERM_ID_CACHE_LOADED_AT = 0.0
 
 VALID_REGIONAL_MARKETS = {"MOEX", "BIST", "GLOBAL"}
 ACADEMIC_SEARCH_FILTERS: tuple[tuple[str, dict[str, Any]], ...] = (
@@ -150,6 +156,14 @@ def build_academic_search_filters(query: str) -> list[dict[str, Any]]:
 
 async def fetch_all_terms() -> list[dict[str, Any]]:
     """Fetch all public terms from the Supabase `terms` table."""
+    return await fetch_all_terms_limited(limit=None)
+
+
+async def fetch_all_terms_limited(limit: int | None) -> list[dict[str, Any]]:
+    """Fetch public terms, optionally using a bounded candidate set for quiz flows."""
+    if limit is not None:
+        return await fetch_quiz_candidate_terms(limit=limit)
+
     def _fetch():
         return apply_academic_quarantine(
             get_public_client().table("terms").select("*")
@@ -160,6 +174,48 @@ async def fetch_all_terms() -> list[dict[str, Any]]:
         return normalize_public_terms(response.data)
     except Exception as e:
         logger.error("Failed to fetch all terms (Database Unreachable): %s", e)
+        raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
+
+
+async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list[dict[str, Any]]:
+    """Fetch a bounded random subset of public terms for quiz generation."""
+    safe_limit = max(4, min(int(limit), QUIZ_TERM_FETCH_LIMIT))
+
+    def _fetch_term_ids() -> list[str]:
+        response = apply_academic_quarantine(
+            get_public_client().table("terms").select("id")
+        ).execute()
+        return [
+            row["id"]
+            for row in (response.data or [])
+            if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
+        ]
+
+    def _fetch_terms(sample_ids: list[str]) -> list[dict[str, Any]]:
+        response = apply_academic_quarantine(
+            get_public_client()
+            .table("terms")
+            .select("id,term_en,term_ru,term_tr,definition_en,definition_ru,definition_tr,is_academic")
+            .in_("id", sample_ids)
+        ).execute()
+        return normalize_public_terms(response.data)
+
+    try:
+        global _TERM_ID_CACHE, _TERM_ID_CACHE_LOADED_AT
+
+        now = monotonic()
+        if not _TERM_ID_CACHE or (now - _TERM_ID_CACHE_LOADED_AT) > TERM_ID_CACHE_TTL_SECONDS:
+            _TERM_ID_CACHE = await asyncio.to_thread(_fetch_term_ids)
+            _TERM_ID_CACHE_LOADED_AT = now
+
+        if not _TERM_ID_CACHE:
+            return []
+
+        sample_size = min(safe_limit, len(_TERM_ID_CACHE))
+        sample_ids = random.sample(_TERM_ID_CACHE, sample_size)
+        return await asyncio.to_thread(_fetch_terms, sample_ids)
+    except Exception as e:
+        logger.error("Failed to fetch bounded quiz terms (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
 
 

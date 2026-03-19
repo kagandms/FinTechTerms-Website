@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import ProfilePageClient from '@/app/profile/ProfilePageClient';
 
@@ -72,7 +72,7 @@ jest.mock('@/components/features/profile/ProfileEditForm', () => ({
 }));
 jest.mock('@/components/InstallButton', () => ({
     __esModule: true,
-    default: () => null,
+    default: () => <div data-testid="install-button" />,
 }));
 jest.mock('@/components/profile/Heatmap', () => ({
     __esModule: true,
@@ -88,6 +88,8 @@ jest.mock('@/components/profile/SRSNotificationCard', () => ({
 }));
 
 describe('ProfilePageClient', () => {
+    const mockRouterPush = jest.fn();
+
     beforeEach(() => {
         jest.clearAllMocks();
 
@@ -103,6 +105,9 @@ describe('ProfilePageClient', () => {
             setShowResetConfirm: jest.fn(),
             handleDataReset: jest.fn(),
             logout: jest.fn(),
+            router: {
+                push: mockRouterPush,
+            },
         });
         mockUseTheme.mockReturnValue({
             theme: 'light',
@@ -179,5 +184,104 @@ describe('ProfilePageClient', () => {
                 'warning'
             );
         });
+    });
+
+    it('renders the shared install button on the profile page', () => {
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 1,
+                        correctReviews: 1,
+                    },
+                }}
+            />
+        );
+
+        expect(screen.getByTestId('install-button')).toBeInTheDocument();
+    });
+
+    it('opens favorites directly for authenticated users', () => {
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 1,
+                        correctReviews: 1,
+                    },
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getAllByRole('button', { name: /View Library/i })[0] as HTMLElement);
+
+        expect(mockRouterPush).toHaveBeenCalledWith('/favorites');
+    });
+
+    it('routes guests to login with next=/favorites', () => {
+        mockUseAuthLogic.mockReturnValue({
+            user: null,
+            isAuthenticated: false,
+            language: 'en',
+            t: (key: string) => key,
+            showAuthModal: false,
+            setShowAuthModal: jest.fn(),
+            setAuthMode: jest.fn(),
+            showResetConfirm: false,
+            setShowResetConfirm: jest.fn(),
+            handleDataReset: jest.fn(),
+            logout: jest.fn(),
+            router: {
+                push: mockRouterPush,
+            },
+        });
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: false,
+        });
+
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 0,
+                        correctReviews: 0,
+                    },
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getAllByRole('button', { name: /View Library/i })[0] as HTMLElement);
+
+        expect(mockRouterPush).toHaveBeenCalledWith('/profile?auth=login&next=%2Ffavorites');
     });
 });

@@ -9,6 +9,10 @@ interface BeforeInstallPromptEvent extends Event {
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+interface InstallButtonProps {
+    variant?: 'compact' | 'prominent';
+}
+
 const isStandaloneDisplayMode = (): boolean => {
     if (typeof window === 'undefined') {
         return false;
@@ -26,7 +30,7 @@ const canShowIOSInstallInstructions = (): boolean => {
     return isIOSDevice && !isStandaloneDisplayMode();
 };
 
-export default function InstallButton() {
+export default function InstallButton({ variant = 'compact' }: InstallButtonProps) {
     const { language } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
@@ -86,14 +90,18 @@ export default function InstallButton() {
         return null;
     }
 
+    const buttonClassName = variant === 'prominent'
+        ? 'flex items-center justify-center gap-2 rounded-xl border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-700 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20'
+        : 'flex items-center justify-center gap-2 rounded-lg border border-transparent bg-primary-600 p-1.5 text-sm font-medium text-white shadow-sm transition-colors active:scale-95 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 sm:rounded-xl sm:px-3 sm:py-2';
+
     return (
         <>
             <button
                 onClick={handleInstallClick}
-                className="flex items-center justify-center gap-2 p-1.5 sm:px-3 sm:py-2 bg-primary-600 hover:bg-primary-700 dark:bg-white/10 dark:hover:bg-white/20 text-white dark:text-white rounded-lg sm:rounded-xl transition-colors text-sm font-medium shadow-sm backdrop-blur-sm active:scale-95 border border-transparent dark:border-white/20"
+                className={buttonClassName}
             >
                 <Download className="w-4 h-4" />
-                <span className="text-xs sm:text-sm">
+                <span className={variant === 'prominent' ? 'text-sm' : 'text-xs sm:text-sm'}>
                     {language === 'tr' ? 'Yükle' : language === 'ru' ? 'Установить' : 'Install'}
                 </span>
             </button>

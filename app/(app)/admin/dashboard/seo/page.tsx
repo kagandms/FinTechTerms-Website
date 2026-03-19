@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 import { getServerEnv } from '@/lib/env';
+import { isAdminUserId } from '@/lib/admin-access';
 import { authorityTargets } from '@/data/seo/authority-targets';
 import { listPriorityTermRecords, listSeoTerms } from '@/lib/public-seo-catalog';
 
@@ -43,7 +44,7 @@ export default async function SeoDashboardPage() {
     const supabaseAuth = await createClient();
     const authState = await safeGetSupabaseUser(supabaseAuth);
 
-    if (!authState.user?.email || authState.user.email !== env.adminEmail) {
+    if (!isAdminUserId(authState.user?.id ?? null, env)) {
         redirect('/dashboard');
     }
 

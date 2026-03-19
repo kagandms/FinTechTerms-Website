@@ -70,6 +70,44 @@ describe('getTerms', () => {
         getTerms();
         expect(localStorageMock.setItem).toHaveBeenCalled();
     });
+
+    it('should preserve compatible local SRS fields when migrating cached terms to a new data version', () => {
+        const baselineTerms = getTerms();
+        const baselineTerm = baselineTerms[0];
+
+        expect(baselineTerm).toBeDefined();
+        if (!baselineTerm) {
+            throw new Error('Expected at least one baseline term.');
+        }
+
+        const staleCachedTerm = {
+            ...baselineTerm,
+            srs_level: 4,
+            next_review_date: '2099-01-01T00:00:00.000Z',
+            last_reviewed: '2026-03-18T00:00:00.000Z',
+            difficulty_score: 1.75,
+            retention_rate: 0.91,
+            times_reviewed: 12,
+            times_correct: 11,
+        };
+
+        localStorageMock.setItem('globalfinterm_terms', JSON.stringify([staleCachedTerm]));
+        localStorageMock.setItem('globalfinterm_data_version', '2026-02-01-v1');
+
+        const migratedTerms = getTerms();
+        const migratedTerm = migratedTerms.find((term) => term.id === baselineTerm.id);
+
+        expect(migratedTerm).toMatchObject({
+            id: baselineTerm.id,
+            srs_level: 4,
+            next_review_date: '2099-01-01T00:00:00.000Z',
+            last_reviewed: '2026-03-18T00:00:00.000Z',
+            difficulty_score: 1.75,
+            retention_rate: 0.91,
+            times_reviewed: 12,
+            times_correct: 11,
+        });
+    });
 });
 
 // ══════════════════════════════════════════════════════════

@@ -11,6 +11,18 @@ import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
 
+const getSafeRedirectPath = (value: string | null): string | null => {
+    if (!value) {
+        return null;
+    }
+
+    if (!value.startsWith('/') || value.startsWith('//')) {
+        return null;
+    }
+
+    return value;
+};
+
 export function useAuthLogic() {
     const supabase = getSupabaseClient();
     const {
@@ -78,6 +90,22 @@ export function useAuthLogic() {
             }
         };
     }, [isAuthenticated, isPasswordRecovery, searchParams, supabase]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            return;
+        }
+
+        const requestedAuthMode = searchParams.get('auth');
+        const requestedNextPath = getSafeRedirectPath(
+            searchParams.get('next') || searchParams.get('returnTo')
+        );
+
+        if (requestedAuthMode === 'login' || requestedNextPath) {
+            setAuthMode('login');
+            setShowAuthModal(true);
+        }
+    }, [isAuthenticated, searchParams]);
 
     useEffect(() => () => {
         if (resendCooldownIntervalRef.current) {
@@ -160,6 +188,28 @@ export function useAuthLogic() {
                 showToast(pwdCheck.message, 'error');
                 return;
             }
+
+            if (!authForm.confirmPassword) {
+                const msg = language === 'tr'
+                    ? 'Lütfen şifrenizi tekrar girin.'
+                    : language === 'ru'
+                        ? 'Пожалуйста, повторите пароль.'
+                        : 'Please confirm your password.';
+                setAuthError(msg);
+                showToast(msg, 'error');
+                return;
+            }
+
+            if (authForm.password !== authForm.confirmPassword) {
+                const msg = language === 'tr'
+                    ? 'Şifreler eşleşmiyor.'
+                    : language === 'ru'
+                        ? 'Пароли не совпадают.'
+                        : 'Passwords do not match.';
+                setAuthError(msg);
+                showToast(msg, 'error');
+                return;
+            }
         }
 
         setAuthLoading(true);
@@ -190,6 +240,9 @@ export function useAuthLogic() {
                     resetForm();
 
                     if (authMode === 'login') {
+                        const redirectTarget = getSafeRedirectPath(
+                            searchParams.get('next') || searchParams.get('returnTo')
+                        ) || '/profile';
                         showToast(
                             language === 'tr'
                                 ? 'Giriş başarılı.'
@@ -201,7 +254,7 @@ export function useAuthLogic() {
 
                         try {
                             router.refresh();
-                            router.push('/profile');
+                            router.push(redirectTarget);
                         } catch (navError: any) {
                             const navErrorMsg = getLocalizedAuthError(navError, language);
                             setAuthError(navErrorMsg);

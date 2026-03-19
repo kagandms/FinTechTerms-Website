@@ -2,10 +2,10 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-import QuizClient from '@/app/quiz/QuizClient';
-
 const mockUseLanguage = jest.fn();
 const mockUseSRS = jest.fn();
+const mockUseAuth = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock('@/contexts/LanguageContext', () => ({
     useLanguage: () => mockUseLanguage(),
@@ -13,6 +13,10 @@ jest.mock('@/contexts/LanguageContext', () => ({
 
 jest.mock('@/contexts/SRSContext', () => ({
     useSRS: () => mockUseSRS(),
+}));
+
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuth: () => mockUseAuth(),
 }));
 
 jest.mock('@/components/QuizCard', () => ({
@@ -24,6 +28,12 @@ jest.mock('@/components/QuizCard', () => ({
 
 jest.mock('@/components/SessionTracker', () => ({
     incrementQuizAttempt: jest.fn(),
+}));
+
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: mockPush,
+    }),
 }));
 
 jest.mock('next/link', () => {
@@ -79,6 +89,9 @@ describe('QuizClient quick quiz counts', () => {
             language: 'en',
             t: (key: string) => key,
         });
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+        });
 
         mockUseSRS.mockReturnValue({
             terms: [...favoriteTerms, ...otherTerms],
@@ -118,6 +131,8 @@ describe('QuizClient quick quiz counts', () => {
     });
 
     it('shows the filtered favorites-only pool count and uses the same count when the quiz starts', () => {
+        const { default: QuizClient } = require('@/app/quiz/QuizClient');
+
         render(<QuizClient />);
 
         fireEvent.click(screen.getByRole('button', { name: 'quiz.startQuickQuiz' }));

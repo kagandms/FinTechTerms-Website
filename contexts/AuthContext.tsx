@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import {
     type AuthenticatedUser,
     mapSupabaseUser,
@@ -16,6 +16,7 @@ import { logger } from '@/lib/logger';
 
 interface AuthContextType {
     user: AuthenticatedUser | null;
+    isAdmin: boolean;
     isAuthenticated: boolean;
     isLoading: boolean;
     pendingVerificationEmail: string | null;
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const supabase = getSupabaseClient();
     const supabaseAuth = React.useMemo(() => supabase.auth, [supabase]);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
     const [pendingVerificationPassword, setPendingVerificationPassword] = useState<string | null>(null);
@@ -81,6 +83,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return null;
     }, [supabaseAuth]);
 
+    const refreshCapabilities = useCallback(async (session: Session | null): Promise<void> => {
+        if (!session?.access_token) {
+            setIsAdmin(false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/capabilities', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                setIsAdmin(false);
+                return;
+            }
+
+            const payload = await response.json();
+            setIsAdmin(payload?.isAdmin === true);
+        } catch (error) {
+            logger.warn('AUTH_CAPABILITIES_FETCH_FAILED', {
+                route: 'AuthProvider',
+                error: error instanceof Error ? error : undefined,
+            });
+            setIsAdmin(false);
+        }
+    }, []);
+
     // Initialize auth state and listen for changes
     useEffect(() => {
         // Check if we have Supabase configured
@@ -90,6 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             logger.warn('Supabase not configured, running in guest-only mode', {
                 route: 'AuthProvider',
             });
+            setIsAdmin(false);
             setIsLoading(false);
             return;
         }
@@ -103,21 +138,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         route: 'AuthProvider',
                         error: sessionError,
                     });
+                    setIsAdmin(false);
                     setUser(null);
                     return;
                 }
 
                 if (!session?.user) {
+                    setIsAdmin(false);
                     setUser(null);
                     return;
                 }
 
                 setUser(mapSupabaseUser(session.user));
+                await refreshCapabilities(session);
             } catch (error) {
                 logger.error('AUTH_INIT_EXCEPTION', {
                     route: 'AuthProvider',
                     error: error instanceof Error ? error : undefined,
                 });
+                setIsAdmin(false);
                 setUser(null);
             } finally {
                 setIsLoading(false);
@@ -135,11 +174,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (!session?.user) {
+                setIsAdmin(false);
                 setUser(null);
                 return;
             }
 
             setUser(mapSupabaseUser(session.user));
+            await refreshCapabilities(session);
 
             // Check if user has progress, if not create it
             if (event === 'SIGNED_IN') {
@@ -158,7 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return () => {
             subscription.unsubscribe();
         };
-    }, [supabaseAuth]);
+    }, [refreshCapabilities, supabaseAuth]);
 
     /**
      * Login with email and password
@@ -180,6 +221,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (data.user) {
                 setUser(mapSupabaseUser(data.user));
+                await refreshCapabilities(data.session ?? null);
                 return { success: true };
             }
 
@@ -191,7 +233,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return { success: false, error: 'Login failed' };
         }
-    }, [supabaseAuth]);
+    }, [refreshCapabilities, supabaseAuth]);
 
     /**
      * Register a new user with OTP verification
@@ -297,6 +339,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setUser(mapSupabaseUser(resolvedUser ?? data.user));
                 setPendingVerificationEmail(null);
                 setPendingVerificationPassword(null);
+                await refreshCapabilities(data.session ?? null);
                 return { success: true };
             }
 
@@ -308,7 +351,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return { success: false, error: 'Verification failed' };
         }
-    }, [pendingVerificationPassword, supabaseAuth, waitForActiveSessionUser]);
+    }, [pendingVerificationPassword, refreshCapabilities, supabaseAuth, waitForActiveSessionUser]);
 
     /**
      * Resend OTP code
@@ -485,6 +528,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             await fetch('/api/auth/signout', { method: 'POST' });
 
             // 2. Optimistic Logout: Clear state immediately
+            setIsAdmin(false);
             setUser(null);
             setPendingVerificationEmail(null);
             setPendingVerificationPassword(null);
@@ -504,6 +548,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
         } finally {
             // Always set user to null, even if signOut fails
+            setIsAdmin(false);
             setUser(null);
             // Hard reload to ensure ALL auth state is fully cleared (server-side cookies, client state, SSR cache)
             if (typeof window !== 'undefined') {
@@ -519,6 +564,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         <AuthContext.Provider
             value={{
                 user,
+                isAdmin,
                 isAuthenticated,
                 isLoading,
                 pendingVerificationEmail,

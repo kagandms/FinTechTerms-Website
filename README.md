@@ -51,7 +51,8 @@ npm run dev
 > After cloning, run `npm run dev` once before opening the project in your IDE.
 > Next.js generates `next-env.d.ts` on first run, and TypeScript tooling expects that file locally.
 
-> ⚠ **Database setup**: Always run the Supabase CLI migrations (`supabase db push`).
+> ⚠ **Database setup**: The canonical schema lives in `supabase/migrations/`, starting with `20260306000000_canonical_baseline.sql`.
+> Always apply schema changes with the migration chain (`supabase db push` for remote targets or `npm run verify:bootstrap-db` for a clean bootstrap smoke check).
 > Never manually execute SQL files from `lib/`. Those files are archived references only.
 
 Repo-level maintenance scripts such as `scripts/run_schema_update.py` read
@@ -92,6 +93,12 @@ the web app and repo-level scripts, and `telegram-bot/.env` for the bot.
 # Unit tests (Jest)
 npx jest --verbose
 
+# Type-check
+npx tsc --noEmit
+
+# Clean bootstrap DB smoke (requires psql and BOOTSTRAP_DB_URL or DATABASE_URL)
+npm run verify:bootstrap-db
+
 # E2E tests (Playwright)
 npx playwright test
 npm run test:e2e:guest
@@ -106,6 +113,8 @@ Set them in local `.env.local` for `npx playwright test`, and in GitHub Actions
 as repository secrets for `.github/workflows/e2e.yml`.
 
 Preview release verification uses:
+- `npm run validate:release-env`
+- `npm run verify:bootstrap-db`
 - `npm run verify:release-db`
 - `npm run test:e2e:guest`
 - `npm run test:e2e:auth`
@@ -120,11 +129,19 @@ Optional production observability is wired through Sentry. Set
 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` in CI only if you want
 source-map upload.
 
+Production-safe API throttling can use Upstash Redis. If
+`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured, the
+write-path rate limiters run against the shared Redis backend; otherwise the app
+falls back to an in-memory limiter intended only for development or single-node
+setups.
+
 ## 📚 Documentation
 
 - **[ADR.md](docs/ADR.md)** — Architecture Decision Records
+- **[DATABASE.md](docs/DATABASE.md)** — Canonical schema, runtime tables, and migration workflow
 - **[SECURITY.md](docs/SECURITY.md)** — Threat model & security documentation
 - **[OPERATIONS.md](docs/OPERATIONS.md)** — Deploy, rollback, and incident runbook
+- **[PRODUCTION_READINESS_DOSSIER_2026-03-19.md](docs/PRODUCTION_READINESS_DOSSIER_2026-03-19.md)** — Current production-readiness status, blockers, and sign-off matrix
 
 ## 🔧 Tech Stack
 
@@ -133,7 +150,7 @@ source-map upload.
 | Frontend | Next.js 16, React 18, TypeScript |
 | Styling | Tailwind CSS, CSS Variables, Dark Mode |
 | Backend | Supabase (PostgreSQL + Auth + RLS) |
-| Bot | python-telegram-bot, gTTS |
+| Bot | python-telegram-bot, edge-tts |
 | Testing | Jest, Playwright, pytest |
 | CI/CD | GitHub Actions, Vercel |
 | PWA | Workbox, Service Worker |

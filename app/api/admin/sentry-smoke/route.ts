@@ -9,6 +9,7 @@ import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { getServerEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { isAdminUserId } from '@/lib/admin-access';
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
             });
         }
 
-        if (!env.adminEmail || user.email !== env.adminEmail) {
+        if (!isAdminUserId(user.id, env)) {
             return errorResponse({
                 status: 403,
                 code: 'FORBIDDEN',

@@ -1,4 +1,42 @@
 import { chromium } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const loadLocalEnv = () => {
+    const candidateFiles = [
+        path.resolve(process.cwd(), '.env.local'),
+        path.resolve(process.cwd(), '.env'),
+    ];
+
+    for (const candidateFile of candidateFiles) {
+        if (!fs.existsSync(candidateFile)) {
+            continue;
+        }
+
+        const content = fs.readFileSync(candidateFile, 'utf8');
+        for (const rawLine of content.split(/\r?\n/)) {
+            const line = rawLine.trim();
+            if (!line || line.startsWith('#')) {
+                continue;
+            }
+
+            const separatorIndex = line.indexOf('=');
+            if (separatorIndex === -1) {
+                continue;
+            }
+
+            const key = line.slice(0, separatorIndex).trim();
+            if (!key || process.env[key]) {
+                continue;
+            }
+
+            const rawValue = line.slice(separatorIndex + 1).trim();
+            process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+        }
+    }
+};
+
+loadLocalEnv();
 
 const requiredEnv = (name) => {
     const value = process.env[name]?.trim();
@@ -13,7 +51,6 @@ const requiredEnv = (name) => {
 const optionalEnv = (name) => process.env[name]?.trim() || null;
 
 const stagingBaseUrl = requiredEnv('STAGING_BASE_URL').replace(/\/$/, '');
-const adminEmail = optionalEnv('ADMIN_EMAIL');
 const smokeAuthEmail = optionalEnv('SMOKE_AUTH_EMAIL') || optionalEnv('E2E_AUTH_EMAIL');
 const smokeAuthPassword = optionalEnv('SMOKE_AUTH_PASSWORD') || optionalEnv('E2E_AUTH_PASSWORD');
 const sentrySmokeEmail = optionalEnv('SENTRY_SMOKE_EMAIL') || smokeAuthEmail;
@@ -145,12 +182,8 @@ const runAuthenticatedSmoke = async (page) => {
 };
 
 const runSentrySmoke = async (page) => {
-    if (!adminEmail || !sentrySmokeEmail || !sentrySmokePassword) {
-        throw new Error('Admin Sentry smoke requires ADMIN_EMAIL, SENTRY_SMOKE_EMAIL, and SENTRY_SMOKE_PASSWORD.');
-    }
-
-    if (sentrySmokeEmail !== adminEmail) {
-        throw new Error('SENTRY_SMOKE_EMAIL must match ADMIN_EMAIL for the admin-only Sentry smoke route.');
+    if (!sentrySmokeEmail || !sentrySmokePassword) {
+        throw new Error('Admin Sentry smoke requires SENTRY_SMOKE_EMAIL and SENTRY_SMOKE_PASSWORD.');
     }
 
     await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);

@@ -25,12 +25,16 @@ const readConsentState = (): boolean => {
     }
 };
 
+interface GoogleAnalyticsProps {
+    nonce?: string;
+}
+
 /**
  * Google Analytics component that only loads AFTER user gives consent.
  * Checks localStorage for consent flag set by ConsentModal.
  * Compliant with GDPR/KVKK regulations.
  */
-export default function GoogleAnalytics() {
+export default function GoogleAnalytics({ nonce }: GoogleAnalyticsProps) {
     const gaId = getPublicEnv().gaId;
     const [hasConsent, setHasConsent] = useState(readConsentState);
     const syncConsentState = useCallback(() => {
@@ -64,8 +68,9 @@ export default function GoogleAnalytics() {
             <Script
                 src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
                 strategy="afterInteractive"
+                nonce={nonce}
             />
-            <Script id="google-analytics" strategy="afterInteractive">
+            <Script id="google-analytics" strategy="afterInteractive" nonce={nonce}>
                 {`
                     window.dataLayer = window.dataLayer || [];
                     function gtag(){dataLayer.push(arguments);}

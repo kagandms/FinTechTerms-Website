@@ -7,8 +7,45 @@ on:
     branches: [main]
 
 jobs:
+  bootstrap-db-smoke:
+    name: Bootstrap DB Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fintechterms
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fintechterms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations to a clean bootstrap database
+        env:
+          BOOTSTRAP_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/fintechterms
+        run: bash scripts/verify-bootstrap-db.sh
+
   lint-test-build:
     name: Lint, Test & Build
+    needs: bootstrap-db-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -49,6 +86,7 @@ jobs:
 
   bot-tests:
     name: Telegram Bot Tests
+    needs: bootstrap-db-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

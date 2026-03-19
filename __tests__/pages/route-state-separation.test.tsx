@@ -3,10 +3,10 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FavoritesClient from '@/app/favorites/FavoritesClient';
 import SearchClient from '@/app/search/SearchClient';
-import QuizClient from '@/app/quiz/QuizClient';
 
 const mockUseLanguage = jest.fn();
 const mockUseSRS = jest.fn();
+const mockUseAuth = jest.fn();
 const mockUseSearchParams = jest.fn();
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -17,6 +17,10 @@ jest.mock('@/contexts/LanguageContext', () => ({
 
 jest.mock('@/contexts/SRSContext', () => ({
     useSRS: () => mockUseSRS(),
+}));
+
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuth: () => mockUseAuth(),
 }));
 
 jest.mock('@/components/SmartCard', () => ({
@@ -161,6 +165,9 @@ describe('Route state separation', () => {
             language: 'ru',
             t: (key: string) => translationMap[key] ?? key,
         });
+        mockUseAuth.mockReturnValue({
+            isAuthenticated: true,
+        });
         mockUseSRS.mockReturnValue(createSrsState());
     });
 
@@ -191,6 +198,8 @@ describe('Route state separation', () => {
     });
 
     it('shows the quiz SRS error fallback instead of zero-state messaging when progress fails', () => {
+        const { default: QuizClient } = require('@/app/quiz/QuizClient');
+
         mockUseSRS.mockReturnValue(createSrsState({
             progressStatus: 'error',
             stats: {

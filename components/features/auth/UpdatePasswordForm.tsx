@@ -6,18 +6,17 @@ import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
     authForm, setAuthForm, showPassword, setShowPassword,
     authError, setAuthError, validatePassword, updatePassword,
-    showToast, logout, onSuccess
+    showToast, logout, onSuccess, language
 }) => {
-    const lang = typeof window !== 'undefined' ? localStorage.getItem('language') || 'ru' : 'ru';
     const [isUpdating, setIsUpdating] = useState(false);
 
     const dict = {
-        title: lang === 'tr' ? 'Yeni Şifre Belirle' : lang === 'ru' ? 'Новый пароль' : 'Set New Password',
-        placeholder: lang === 'tr' ? 'Yeni Şifre' : lang === 'ru' ? 'Новый пароль' : 'New Password',
-        btnText: lang === 'tr' ? 'Şifreyi Güncelle' : lang === 'ru' ? 'Обновить пароль' : 'Update Password',
-        loading: lang === 'tr' ? 'Güncelleniyor...' : lang === 'ru' ? 'Обновление...' : 'Updating...',
-        success: lang === 'tr' ? 'Şifreniz güncellendi!' : lang === 'ru' ? 'Пароль обновлен!' : 'Password updated!',
-        error: lang === 'tr' ? 'Hata oluştu' : lang === 'ru' ? 'Ошибка' : 'Error',
+        title: language === 'tr' ? 'Yeni Şifre Belirle' : language === 'ru' ? 'Новый пароль' : 'Set New Password',
+        placeholder: language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password',
+        btnText: language === 'tr' ? 'Şifreyi Güncelle' : language === 'ru' ? 'Обновить пароль' : 'Update Password',
+        loading: language === 'tr' ? 'Güncelleniyor...' : language === 'ru' ? 'Обновление...' : 'Updating...',
+        success: language === 'tr' ? 'Şifreniz güncellendi!' : language === 'ru' ? 'Пароль обновлен!' : 'Password updated!',
+        error: language === 'tr' ? 'Hata oluştu' : language === 'ru' ? 'Ошибка' : 'Error',
     };
 
     return (
@@ -62,12 +61,12 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
                                 return;
                             }
 
-                            const errorMessage = getLocalizedAuthError(res.error, lang);
+                            const errorMessage = getLocalizedAuthError(res.error, language);
                             setAuthError(errorMessage);
                             showToast(errorMessage, 'error');
                         } catch (error: unknown) {
                             console.error('AUTH_UPDATE_PASSWORD_UI_ERROR', error);
-                            const errorMessage = getLocalizedAuthError(error, lang);
+                            const errorMessage = getLocalizedAuthError(error, language);
                             setAuthError(errorMessage);
                             showToast(errorMessage, 'error');
                         } finally {

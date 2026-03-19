@@ -7,7 +7,7 @@ from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.db_terms import fetch_all_terms, fetch_term_by_id
+from bot.db_terms import fetch_all_terms_limited, fetch_term_by_id
 from bot.i18n import t
 
 MAX_QUIZ_OPTIONS = 4
@@ -84,7 +84,7 @@ async def build_quiz(
         3. Pick 3 random wrong terms (different IDs)
         4. Build shuffled multiple-choice keyboard
     """
-    all_terms = await fetch_all_terms()
+    all_terms = await fetch_all_terms_limited(limit=MAX_QUIZ_OPTIONS * 8)
     candidates = _unique_quiz_candidates(all_terms, lang)
 
     if len(candidates) < MAX_QUIZ_OPTIONS:

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { QUIZ_TYPE_VALUES } from '@/types';
 
 const ContextTagValueSchema = z.union([
     z.string(),
@@ -92,8 +93,8 @@ export const UserSchema = z.object({
 export const QuizAttemptSchema = z.object({
     term_id: z.string().min(1, 'Term ID is required'),
     is_correct: z.boolean(),
-    response_time_ms: z.number().int().positive(),
-    quiz_type: z.enum(['daily', 'practice', 'review', 'simulation']).default('simulation'),
+    response_time_ms: z.number().int().nonnegative(),
+    quiz_type: z.enum(QUIZ_TYPE_VALUES).default('simulation'),
     anonymous_id: z.string().optional(),
     user_id: z.string().optional().nullable(),
     metadata: z.record(z.unknown()).optional(),

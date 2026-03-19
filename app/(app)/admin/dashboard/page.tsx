@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 import { getServerEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { isAdminUserId } from '@/lib/admin-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +37,11 @@ const loadDashboardQuery = async <T,>(
 
 export default async function AdminDashboard() {
     const env = getServerEnv();
-    let userEmail: string | undefined;
+    let userId: string | undefined;
     try {
         const supabaseAuth = await createClient();
         const authState = await safeGetSupabaseUser(supabaseAuth);
-        userEmail = authState.user?.email;
+        userId = authState.user?.id;
     } catch (error) {
         logger.error('ADMIN_DASHBOARD_AUTH_ERROR', {
             route: 'AdminDashboard',
@@ -50,7 +51,7 @@ export default async function AdminDashboard() {
     }
 
     // Security Gate
-    if (!userEmail || userEmail !== env.adminEmail) {
+    if (!isAdminUserId(userId ?? null, env)) {
         redirect('/dashboard');
     }
 
@@ -73,18 +74,12 @@ export default async function AdminDashboard() {
             .eq('quiz_type', 'simulation')),
         loadDashboardQuery('Fatigue analysis', async () => await supabaseAdmin
             .from('quiz_attempts')
-            .select('session_id, is_correct, created_at')
+            .select('user_id, is_correct, created_at')
             .eq('quiz_type', 'simulation')),
         loadDashboardQuery('Class distribution', async () => await supabaseAdmin
-            .from('study_sessions')
-            .select(`
-    id,
-    anonymous_id,
-    quiz_attempts (
-      is_correct
-    )
-  `)
-            .like('anonymous_id', 'bot_%')),
+            .from('quiz_attempts')
+            .select('user_id, is_correct')
+            .eq('quiz_type', 'simulation')),
     ]);
 
     return (

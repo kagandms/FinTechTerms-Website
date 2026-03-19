@@ -22,22 +22,7 @@ const nextConfig = {
                         key: 'Strict-Transport-Security',
                         value: 'max-age=31536000; includeSubDomains; preload'
                     },
-                    {
-                        key: 'Content-Security-Policy',
-                        value: [
-                            "default-src 'self'",
-                            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
-                            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-                            "font-src 'self' https://fonts.gstatic.com",
-                            "img-src 'self' data: blob: https:",
-                            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.ingest.sentry.io https://*.sentry.io",
-                            "frame-src 'none'",
-                            "object-src 'none'",
-                            "base-uri 'self'",
-                            "form-action 'self'",
-                            "worker-src 'self'",
-                        ].join('; ')
-                    },
+                    { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
                 ],
             },
         ];

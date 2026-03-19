@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import { getSupabaseClient } from './supabase';
-import { UserProgress, QuizAttempt, Term } from '@/types';
+import { QUIZ_TYPE_VALUES, UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
@@ -14,6 +14,12 @@ interface FavoriteToggleResponse {
     favorites: string[];
     isFavorite: boolean;
 }
+
+export type FavoriteToggleMutationResult =
+    | { status: 'ok'; data: FavoriteToggleResponse }
+    | { status: 'auth_expired'; message: string }
+    | { status: 'retryable'; message: string }
+    | { status: 'non_retryable'; message: string };
 
 export interface RecordQuizResult {
     userProgress: Pick<UserProgress, 'current_streak' | 'last_study_date' | 'total_words_learned' | 'updated_at'>;
@@ -34,6 +40,10 @@ export type SaveQuizAttemptResult =
     | { status: 'auth_expired'; message: string }
     | { status: 'retryable'; message: string }
     | { status: 'non_retryable'; message: string };
+
+export type UserTermSrsLoadResult =
+    | { status: 'ok'; data: Map<string, Partial<Term>> }
+    | { status: 'error'; message: string };
 
 interface StreakSummaryRow {
     current_streak: number;
@@ -84,7 +94,7 @@ const quizHistoryRowSchema = z.object({
     is_correct: z.boolean(),
     response_time_ms: z.number().finite().nonnegative(),
     created_at: z.string().min(1),
-    quiz_type: z.enum(['daily', 'practice', 'review']),
+    quiz_type: z.enum(QUIZ_TYPE_VALUES),
 }).passthrough();
 
 const userSettingsRowSchema = z.object({
@@ -106,6 +116,27 @@ const termSrsRowSchema = z.object({
     times_reviewed: z.number().int().nonnegative(),
     times_correct: z.number().int().nonnegative(),
 }).passthrough();
+
+const USER_TERM_SRS_QUERY_COLUMNS = [
+    'term_id',
+    'srs_level',
+    'next_review_date',
+    'last_reviewed',
+    'difficulty_score',
+    'retention_rate',
+    'times_reviewed',
+    'times_correct',
+].join(', ');
+
+const chunkValues = <T,>(values: readonly T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+
+    for (let index = 0; index < values.length; index += size) {
+        chunks.push(values.slice(index, index + size));
+    }
+
+    return chunks;
+};
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
@@ -336,14 +367,14 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         user_id: userId,
         favorites: parsedFavoritesData.map((row) => row.term_id),
         current_language: parsedSettingsData?.preferred_language || 'ru',
-        quiz_history: parsedQuizData.map((q) => ({
-            id: q.id,
-            term_id: q.term_id,
-            is_correct: q.is_correct,
-            response_time_ms: q.response_time_ms,
-            timestamp: q.created_at,
-            quiz_type: q.quiz_type as 'daily' | 'practice' | 'review',
-        })),
+            quiz_history: parsedQuizData.map((q) => ({
+                id: q.id,
+                term_id: q.term_id,
+                is_correct: q.is_correct,
+                response_time_ms: q.response_time_ms,
+                timestamp: q.created_at,
+                quiz_type: q.quiz_type,
+            })),
         total_words_learned: parsedProgressData?.total_words_learned ?? 0,
         current_streak: streakSummary?.current_streak ?? 0,
         last_study_date: streakSummary?.last_study_date ?? null,
@@ -366,26 +397,58 @@ export async function toggleFavoriteInSupabase(
     _userId: string,
     termId: string,
     shouldFavorite: boolean
-): Promise<FavoriteToggleResponse> {
-    const response = await fetchWithAuthRetry('/api/favorites', {
-        method: 'POST',
-        body: JSON.stringify({
-            termId,
-            shouldFavorite,
-            idempotencyKey: createIdempotencyKey(),
-        }),
-    }, 'Failed to toggle favorite.');
+): Promise<FavoriteToggleMutationResult> {
+    try {
+        const response = await fetchWithAuthRetry('/api/favorites', {
+            method: 'POST',
+            body: JSON.stringify({
+                termId,
+                shouldFavorite,
+                idempotencyKey: createIdempotencyKey(),
+            }),
+        }, 'Failed to toggle favorite.', {
+            throwOnFinalUnauthorized: false,
+        });
 
-    if (!response.ok) {
-        const message = await readApiError(response, 'Failed to toggle favorite.');
-        throw new Error(message);
+        if (response.status === 401) {
+            return {
+                status: 'auth_expired',
+                message: 'Session expired. Please sign in again to update favorites.',
+            };
+        }
+
+        if (!response.ok) {
+            const message = await readApiError(response, 'Failed to toggle favorite.');
+
+            if (response.status >= 500 || response.status === 429) {
+                return {
+                    status: 'retryable',
+                    message,
+                };
+            }
+
+            return {
+                status: 'non_retryable',
+                message,
+            };
+        }
+
+        const payload = parseResponseOrThrow(
+            favoriteToggleResponseSchema,
+            await response.json(),
+            'Favorites service returned malformed data.'
+        );
+
+        return {
+            status: 'ok',
+            data: payload,
+        };
+    } catch (error) {
+        return {
+            status: 'retryable',
+            message: error instanceof Error ? error.message : 'Failed to toggle favorite.',
+        };
     }
-
-    return parseResponseOrThrow(
-        favoriteToggleResponseSchema,
-        await response.json(),
-        'Favorites service returned malformed data.'
-    );
 }
 
 /**
@@ -482,36 +545,113 @@ export async function getTermSRSFromSupabase(
  * Get all user's SRS data for terms
  */
 export async function getAllTermSRSFromSupabase(
+    userId: string,
+    termIds: readonly string[]
+): Promise<UserTermSrsLoadResult> {
+    if (termIds.length === 0) {
+        return {
+            status: 'ok',
+            data: new Map(),
+        };
+    }
+
+    const supabase = getSupabaseClient();
+    const termIdChunks = chunkValues(Array.from(new Set(termIds)), 100);
+
+    try {
+        const chunkResults = await Promise.all(termIdChunks.map(async (termIdChunk) => {
+            const { data, error } = await supabase
+                .from('user_term_srs')
+                .select(USER_TERM_SRS_QUERY_COLUMNS)
+                .eq('user_id', userId)
+                .in('term_id', termIdChunk);
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            return parseResponseOrThrow(
+                z.array(termSrsRowSchema),
+                data ?? [],
+                'Supabase returned malformed SRS review data.'
+            );
+        }));
+
+        const parsedData = chunkResults.flat();
+
+        const srsMap = new Map<string, Partial<Term>>();
+        parsedData.forEach((row) => {
+            srsMap.set(row.term_id, {
+                srs_level: row.srs_level,
+                next_review_date: row.next_review_date,
+                last_reviewed: row.last_reviewed,
+                difficulty_score: row.difficulty_score,
+                retention_rate: row.retention_rate,
+                times_reviewed: row.times_reviewed,
+                times_correct: row.times_correct,
+            });
+        });
+
+        return {
+            status: 'ok',
+            data: srsMap,
+        };
+    } catch (error) {
+        return {
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Failed to load SRS review data.',
+        };
+    }
+}
+
+/**
+ * Get all user's SRS data without scoping. Intended for diagnostics only.
+ */
+export async function getAllTermSRSFromSupabaseUnbounded(
     userId: string
-): Promise<Map<string, Partial<Term>>> {
+): Promise<UserTermSrsLoadResult> {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from('user_term_srs')
-        .select('*')
+        .select(USER_TERM_SRS_QUERY_COLUMNS)
         .eq('user_id', userId);
 
-    if (error || !data) return new Map();
+    if (error) {
+        return {
+            status: 'error',
+            message: error.message,
+        };
+    }
 
-    const parsedData = parseResponseOrThrow(
-        z.array(termSrsRowSchema),
-        data,
-        'Supabase returned malformed SRS review data.'
-    );
-
-    const srsMap = new Map<string, Partial<Term>>();
-    parsedData.forEach((row) => {
-        srsMap.set(row.term_id, {
-            srs_level: row.srs_level,
-            next_review_date: row.next_review_date,
-            last_reviewed: row.last_reviewed,
-            difficulty_score: row.difficulty_score,
-            retention_rate: row.retention_rate,
-            times_reviewed: row.times_reviewed,
-            times_correct: row.times_correct,
+    try {
+        const parsedData = parseResponseOrThrow(
+            z.array(termSrsRowSchema),
+            data ?? [],
+            'Supabase returned malformed SRS review data.'
+        );
+        const srsMap = new Map<string, Partial<Term>>();
+        parsedData.forEach((row) => {
+            srsMap.set(row.term_id, {
+                srs_level: row.srs_level,
+                next_review_date: row.next_review_date,
+                last_reviewed: row.last_reviewed,
+                difficulty_score: row.difficulty_score,
+                retention_rate: row.retention_rate,
+                times_reviewed: row.times_reviewed,
+                times_correct: row.times_correct,
+            });
         });
-    });
 
-    return srsMap;
+        return {
+            status: 'ok',
+            data: srsMap,
+        };
+    } catch (error) {
+        return {
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Failed to load SRS review data.',
+        };
+    }
 }
 /**
  * Fetch all static terms from Supabase

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@/app/globals.css';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { inter, jetbrainsMono } from '@/lib/fonts';
+import { getScriptNonce } from '@/lib/script-nonce';
 import { getSiteUrl } from '@/lib/site-url';
 import { buildXDefaultAlternates } from '@/lib/seo-routing';
 
@@ -54,16 +55,18 @@ export const viewport: Viewport = {
     themeColor: '#0e3b5e',
 };
 
-export default function RootSurfaceLayout({
+export default async function RootSurfaceLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const nonce = await getScriptNonce();
+
     return (
         <html lang="en">
             <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-[#f5f7fb] text-slate-950`}>
                 {children}
-                <GoogleAnalytics />
+                <GoogleAnalytics nonce={nonce} />
             </body>
         </html>
     );

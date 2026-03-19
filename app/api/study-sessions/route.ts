@@ -480,7 +480,14 @@ export async function POST(request: Request) {
             });
         }
 
-        const limitCheck = studySessionRouteRateLimiter.check(ip);
+        const rateLimitKey = user?.id
+            ? `user:${user.id}`
+            : payload.action === 'start' && payload.anonymousId
+                ? `anonymous:${payload.anonymousId}`
+                : payload.action === 'start'
+                    ? `ip:${ip}`
+                    : `session:${payload.sessionId}`;
+        const limitCheck = await studySessionRouteRateLimiter.check(rateLimitKey);
         if (!limitCheck.allowed) {
             return errorResponse({
                 status: 429,

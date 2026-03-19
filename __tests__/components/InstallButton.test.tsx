@@ -67,6 +67,32 @@ describe('InstallButton', () => {
         });
     });
 
+    it('supports the prominent variant without changing install behavior', async () => {
+        const prompt = jest.fn().mockResolvedValue(undefined);
+        const userChoice = Promise.resolve({ outcome: 'accepted' as const, platform: 'web' });
+        const installEvent = new Event('beforeinstallprompt') as Event & {
+            prompt: typeof prompt;
+            userChoice: typeof userChoice;
+        };
+
+        installEvent.prompt = prompt;
+        installEvent.userChoice = userChoice;
+
+        render(<InstallButton variant="prominent" />);
+        await act(async () => {
+            window.dispatchEvent(installEvent);
+        });
+
+        const button = await screen.findByRole('button', { name: 'Install' });
+        expect(button.className).toContain('px-4');
+
+        fireEvent.click(button);
+
+        await waitFor(() => {
+            expect(prompt).toHaveBeenCalledTimes(1);
+        });
+    });
+
     it('shows iOS manual install instructions when the platform supports add-to-home-screen only', async () => {
         Object.defineProperty(window.navigator, 'userAgent', {
             configurable: true,

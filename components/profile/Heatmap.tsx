@@ -117,6 +117,7 @@ export default function Heatmap({ entries, language }: HeatmapProps) {
                 words_incorrect: 0,
                 new_words_learned: 0,
                 time_spent_seconds: 0,
+                time_spent_ms: 0,
                 session_count: 0,
                 activity_count: 0,
             }

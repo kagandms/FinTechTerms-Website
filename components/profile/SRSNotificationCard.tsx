@@ -1,4 +1,7 @@
+'use client';
+
 import { BellRing, BrainCircuit, CalendarClock } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SRSNotificationCardProps {
     dueCount: number;
@@ -6,17 +9,73 @@ interface SRSNotificationCardProps {
     variant?: 'full' | 'compact';
 }
 
-const formatReviewDate = (value: string | null | undefined): string => {
+const localeByLanguage = {
+    tr: 'tr-TR',
+    en: 'en-US',
+    ru: 'ru-RU',
+} as const;
+
+const copyByLanguage = {
+    tr: {
+        badge: 'Akademik SRS bildirimi',
+        compactTitle: 'Bir sonraki tekrar bildirimi',
+        title: 'Bir sonraki tekrar, Ebbinghaus aralıklı tekrar algoritmalarıyla planlanır.',
+        description: 'Platform; cevap ritmi, tekrar yoğunluğu ve akademik pekiştirme döngüsüne göre yeni çalışma penceresini yeniden hesaplar. Böylece arayüz, tüketici tipi seri mantığı yerine araştırma odaklı bir çalışma akışına geçer.',
+        nextWindowLabel: 'Sonraki pencere',
+        readySuffix: 'tekrar için hazır',
+        synced: 'senkronize edildi',
+        pendingFirstReview: 'ilk çalışma oturumundan sonra hesaplanacak',
+        autoUpdating: 'otomatik olarak güncelleniyor',
+        lastCalibrationLabel: 'Son kalibrasyon',
+        dueMessage: (count: number) => `Şu anda ${count} terim bir sonraki tekrar döngüsü için hazır.`,
+        syncedMessage: 'Tekrar kuyruğu senkronize edildi. Yeni pencere, bir sonraki çalışma oturumundan sonra hesaplanacak.',
+    },
+    en: {
+        badge: 'Academic SRS notification',
+        compactTitle: 'Next review notification',
+        title: 'The next review is scheduled by Ebbinghaus spaced-repetition algorithms.',
+        description: 'The platform recalculates the next review window based on answer quality, repetition density, and the academic reinforcement cycle. This keeps the interface in a research-oriented study mode instead of consumer-style streak mechanics.',
+        nextWindowLabel: 'Next window',
+        readySuffix: 'ready for review',
+        synced: 'synchronized',
+        pendingFirstReview: 'scheduled after the first study session',
+        autoUpdating: 'updating automatically',
+        lastCalibrationLabel: 'Last calibration',
+        dueMessage: (count: number) => `${count} terms are currently ready for the next review cycle.`,
+        syncedMessage: 'The review queue is synchronized. A new window will be calculated after the next study session.',
+    },
+    ru: {
+        badge: 'Академическое SRS-уведомление',
+        compactTitle: 'Уведомление о следующем повторе',
+        title: 'Следующее повторение назначается алгоритмами интервального повторения Эббингауза.',
+        description: 'Платформа пересчитывает следующее окно обзора на основе динамики ответов, плотности повторений и академического цикла закрепления терминологии. Это переводит интерфейс в исследовательский режим вместо потребительской механики серий.',
+        nextWindowLabel: 'Следующее окно',
+        readySuffix: 'к повтору',
+        synced: 'синхронизировано',
+        pendingFirstReview: 'ожидается после первой учебной сессии',
+        autoUpdating: 'обновляется автоматически',
+        lastCalibrationLabel: 'Последняя калибровка',
+        dueMessage: (count: number) => `Сейчас к следующему циклу повтора готовы ${count} терминов.`,
+        syncedMessage: 'Очередь повторения синхронизирована. Новое окно будет рассчитано после следующей учебной сессии.',
+    },
+} as const;
+
+const formatReviewDate = (
+    value: string | null | undefined,
+    locale: string,
+    fallback: string,
+    invalidFallback: string
+): string => {
     if (!value) {
-        return 'ожидается после первой учебной сессии';
+        return fallback;
     }
 
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return 'обновляется автоматически';
+        return invalidFallback;
     }
 
-    return new Intl.DateTimeFormat('ru-RU', {
+    return new Intl.DateTimeFormat(locale, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -28,10 +87,18 @@ export default function SRSNotificationCard({
     lastReviewDate,
     variant = 'full',
 }: SRSNotificationCardProps) {
+    const { language } = useLanguage();
+    const copy = copyByLanguage[language] ?? copyByLanguage.en;
+    const locale = localeByLanguage[language] ?? localeByLanguage.en;
     const statusLine = dueCount > 0
-        ? `Сейчас к следующему циклу повтора готовы ${dueCount} терминов.`
-        : 'Очередь повторения синхронизирована. Новое окно будет рассчитано после следующей учебной сессии.';
-    const lastReviewLabel = formatReviewDate(lastReviewDate);
+        ? copy.dueMessage(dueCount)
+        : copy.syncedMessage;
+    const lastReviewLabel = formatReviewDate(
+        lastReviewDate,
+        locale,
+        copy.pendingFirstReview,
+        copy.autoUpdating
+    );
 
     if (variant === 'compact') {
         return (
@@ -42,10 +109,10 @@ export default function SRSNotificationCard({
                     </div>
                     <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                            Алгоритм Эббингауза
+                            {copy.badge}
                         </p>
                         <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            SRS-уведомление о следующем повторе
+                            {copy.compactTitle}
                         </h3>
                         <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                             {statusLine}
@@ -63,16 +130,16 @@ export default function SRSNotificationCard({
             <div className="relative">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
                     <BellRing className="h-3.5 w-3.5" />
-                    Академическое SRS-уведомление
+                    {copy.badge}
                 </div>
 
                 <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="max-w-2xl">
                         <h2 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
-                            Следующее повторение назначается алгоритмами интервального повторения Эббингауза.
+                            {copy.title}
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                            Платформа рассчитывает очередное окно обзора на основе динамики ответов, плотности повторений и академического цикла закрепления терминологии. Это заменяет потребительскую механику серии и переводит интерфейс в исследовательский режим.
+                            {copy.description}
                         </p>
                     </div>
 
@@ -83,10 +150,10 @@ export default function SRSNotificationCard({
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                                    Следующее окно
+                                    {copy.nextWindowLabel}
                                 </p>
                                 <p className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-                                    {dueCount > 0 ? `${dueCount} к повтору` : 'синхронизировано'}
+                                    {dueCount > 0 ? `${dueCount} ${copy.readySuffix}` : copy.synced}
                                 </p>
                             </div>
                         </div>
@@ -94,7 +161,7 @@ export default function SRSNotificationCard({
                             {statusLine}
                         </p>
                         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                            Последняя калибровка: {lastReviewLabel}.
+                            {copy.lastCalibrationLabel}: {lastReviewLabel}.
                         </p>
                     </div>
                 </div>

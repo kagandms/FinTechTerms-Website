@@ -48,6 +48,7 @@ describe('sentry smoke route', () => {
         jest.clearAllMocks();
         mockGetServerEnv.mockReturnValue({
             adminEmail: 'admin@example.com',
+            adminUserIds: ['admin-user'],
             sentryDsn: 'https://example.ingest.sentry.io/123',
             sentryEnvironment: 'staging',
         });

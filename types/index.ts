@@ -4,6 +4,14 @@
 // ============================================
 
 export type Language = 'tr' | 'en' | 'ru';
+export type QuizType = 'daily' | 'practice' | 'review' | 'simulation' | 'telegram_bot';
+export const QUIZ_TYPE_VALUES = [
+    'daily',
+    'practice',
+    'review',
+    'simulation',
+    'telegram_bot',
+] as const satisfies readonly QuizType[];
 
 export type Category = 'Fintech' | 'Finance' | 'Technology';
 export type RegionalMarket = 'MOEX' | 'BIST' | 'GLOBAL';
@@ -213,7 +221,7 @@ export interface QuizAttempt {
     is_correct: boolean;
     response_time_ms: number;    // For analytics
     timestamp: string;
-    quiz_type: 'daily' | 'practice' | 'review';
+    quiz_type: QuizType;
 }
 
 /**

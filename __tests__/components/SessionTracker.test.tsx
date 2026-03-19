@@ -21,6 +21,7 @@ jest.mock('next/navigation', () => ({
 
 const SESSION_KEY = 'fintechterms_session';
 const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
+const PENDING_START_SESSION_KEY = 'fintechterms_pending_start_session';
 const CONSENT_KEY = 'fintechterms_research_consent';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
 
@@ -46,6 +47,10 @@ const getCurrentSessionKey = (): string | null => {
 const getCurrentPendingEndKey = (): string | null => {
     const tabId = getCurrentTabId();
     return tabId ? `${PENDING_END_SESSION_KEY}:${tabId}` : null;
+};
+const getCurrentPendingStartKey = (): string | null => {
+    const tabId = getCurrentTabId();
+    return tabId ? `${PENDING_START_SESSION_KEY}:${tabId}` : null;
 };
 
 const readStoredSession = () => {
@@ -312,5 +317,54 @@ describe('SessionTracker', () => {
         expect(JSON.parse(sessionStorage.getItem(`${SESSION_KEY}:tab_other`) || 'null')).toMatchObject({
             quizAttempts: 7,
         });
+    });
+
+    it('replays a pending start-session before creating a brand-new session', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${SESSION_KEY}:tab_test`, JSON.stringify({
+            id: null,
+            token: null,
+            startTime: 1000,
+            pageViews: 0,
+            quizAttempts: 0,
+            authMode: 'anonymous',
+            anonymousId: 'anon_123',
+        }));
+        sessionStorage.setItem(`${PENDING_START_SESSION_KEY}:tab_test`, JSON.stringify({
+            payload: {
+                action: 'start',
+                anonymousId: 'anon_123',
+                deviceType: 'desktop',
+                userAgent: 'jest',
+                consentGiven: true,
+                previous_session_id: null,
+            },
+            sessionStartTime: 1000,
+            idempotencyKey: 'pending-start-key',
+        }));
+
+        const fetchMock = jest.fn().mockResolvedValueOnce(createFetchResponse({
+            sessionId: 'session_replayed',
+            sessionToken: 'token_replayed',
+        }));
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        const replayedStartPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+        expect(replayedStartPayload).toMatchObject({
+            action: 'start',
+            idempotency_key: 'pending-start-key',
+        });
+        expect(readStoredSession()).toMatchObject({
+            id: 'session_replayed',
+            token: 'token_replayed',
+        });
+        expect(getCurrentPendingStartKey() ? sessionStorage.getItem(getCurrentPendingStartKey()!) : null).toBeNull();
     });
 });

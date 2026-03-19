@@ -15,6 +15,7 @@ import BadgeRealtimeNotifier from '@/components/profile/BadgeRealtimeNotifier';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { inter, jetbrainsMono } from '@/lib/fonts';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
+import { getScriptNonce } from '@/lib/script-nonce';
 
 export const metadata: Metadata = {
     robots: {
@@ -29,6 +30,7 @@ export default async function AppLayout({
     children: React.ReactNode;
 }) {
     const cookieStore = await cookies();
+    const nonce = await getScriptNonce();
     const htmlLanguage = normalizeLanguage(cookieStore.get('ftt-language')?.value) ?? DEFAULT_LANGUAGE;
 
     return (
@@ -55,7 +57,7 @@ export default async function AppLayout({
                         </LanguageProvider>
                     </AuthProvider>
                 </ThemeProvider>
-                <GoogleAnalytics />
+                <GoogleAnalytics nonce={nonce} />
             </body>
         </html>
     );
