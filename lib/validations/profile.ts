@@ -1,19 +1,21 @@
 import { z } from 'zod';
+import { getTranslationString } from '@/lib/i18n';
+import type { Language } from '@/types';
 
 /**
  * Creates a localized profile validation schema.
  * All error messages are displayed in the user's selected language.
  */
-export function createProfileSchema(language: 'tr' | 'en' | 'ru') {
+export function createProfileSchema(language: Language) {
     const msg = {
-        nameMin: language === 'tr' ? 'Ad en az 2 karakter olmalıdır' : language === 'ru' ? 'Имя должно содержать минимум 2 символа' : 'Name must be at least 2 characters',
-        surnameMin: language === 'tr' ? 'Soyad en az 2 karakter olmalıdır' : language === 'ru' ? 'Фамилия должна содержать минимум 2 символа' : 'Surname must be at least 2 characters',
-        birthDateInvalid: language === 'tr' ? 'Geçerli bir tarih girin (13+ yaş)' : language === 'ru' ? 'Введите корректную дату (13+ лет)' : 'Must be a valid date (13+ years old)',
-        emailInvalid: language === 'tr' ? 'Geçersiz e-posta adresi' : language === 'ru' ? 'Некорректный e-mail адрес' : 'Invalid email address',
-        currentPasswordRequired: language === 'tr' ? 'Yeni şifre belirlemek için mevcut şifre gereklidir' : language === 'ru' ? 'Для установки нового пароля требуется текущий пароль' : 'Current password is required to set a new password',
-        newPasswordRequired: language === 'tr' ? 'Yeni şifre gerekli' : language === 'ru' ? 'Новый пароль обязателен' : 'New password is required',
-        passwordStrength: language === 'tr' ? 'Şifre en az 8 karakter, 1 büyük harf, 1 küçük harf, 1 rakam, 1 sembol içermelidir' : language === 'ru' ? 'Пароль: мин. 8 символов, 1 заглавная, 1 строчная, 1 цифра, 1 символ' : 'Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol',
-        passwordsNotMatch: language === 'tr' ? 'Şifreler eşleşmiyor' : language === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match',
+        nameMin: getTranslationString(language, 'profileValidation.nameMin') ?? 'Name must be at least 2 characters',
+        surnameMin: getTranslationString(language, 'profileValidation.surnameMin') ?? 'Surname must be at least 2 characters',
+        birthDateInvalid: getTranslationString(language, 'profileValidation.birthDateInvalid') ?? 'Must be a valid date (13+ years old)',
+        emailInvalid: getTranslationString(language, 'profileValidation.emailInvalid') ?? 'Invalid email address',
+        currentPasswordRequired: getTranslationString(language, 'profileValidation.currentPasswordRequired') ?? 'Current password is required to set a new password',
+        newPasswordRequired: getTranslationString(language, 'profileValidation.newPasswordRequired') ?? 'New password is required',
+        passwordStrength: getTranslationString(language, 'profileValidation.passwordStrength') ?? 'Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol',
+        passwordsNotMatch: getTranslationString(language, 'profileValidation.passwordsNotMatch') ?? 'Passwords do not match',
     };
 
     const nullableEmailSchema = z.union([

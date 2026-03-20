@@ -9,6 +9,7 @@ import { QUIZ_TYPE_VALUES, UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
+import { logger } from '@/lib/logger';
 
 interface FavoriteToggleResponse {
     favorites: string[];
@@ -149,7 +150,10 @@ const parseResponseOrThrow = <T>(
     const result = schema.safeParse(payload);
 
     if (!result.success) {
-        console.error('[supabaseStorage]', result.error.flatten());
+        logger.error('SUPABASE_STORAGE_PARSE_FAILED', {
+            route: 'supabaseStorage',
+            validation: result.error.flatten(),
+        });
         throw new Error(errorMessage);
     }
 
@@ -325,7 +329,11 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
     ]);
 
     if (progressError || favoritesError || quizError || settingsError || streakError) {
-        console.error('[supabaseStorage]', progressError || favoritesError || quizError || settingsError || streakError);
+        logger.error('SUPABASE_STORAGE_PROGRESS_LOAD_FAILED', {
+            route: 'supabaseStorage',
+            userId,
+            error: progressError || favoritesError || quizError || settingsError || streakError || undefined,
+        });
         return null;
     }
 
@@ -383,7 +391,11 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
     });
 
     if (!result.success) {
-        console.error('[supabaseStorage]', result.error.flatten());
+        logger.error('SUPABASE_STORAGE_PROGRESS_PARSE_FAILED', {
+            route: 'supabaseStorage',
+            userId,
+            validation: result.error.flatten(),
+        });
         return null;
     }
 
@@ -675,14 +687,17 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
     let { data, error } = await runTermsQuery(true);
 
     if (isMissingAcademicColumnError(error)) {
-        console.warn(
-            '[supabaseStorage] terms.is_academic column is missing; retrying without the academic filter.'
-        );
+        logger.warn('SUPABASE_STORAGE_MISSING_ACADEMIC_COLUMN', {
+            route: 'supabaseStorage',
+        });
         ({ data, error } = await runTermsQuery(false));
     }
 
     if (error) {
-        console.error('Failed to fetch terms:', error);
+        logger.error('SUPABASE_STORAGE_FETCH_TERMS_FAILED', {
+            route: 'supabaseStorage',
+            error: error,
+        });
         throw error;
     }
 
@@ -705,7 +720,11 @@ export async function getTermById(termId: string): Promise<Partial<Term> | null>
     if (error) {
         // If error is "PGRST116" (no rows), return null
         if (error.code === 'PGRST116') return null;
-        console.error('Failed to fetch term:', error);
+        logger.error('SUPABASE_STORAGE_FETCH_TERM_FAILED', {
+            route: 'supabaseStorage',
+            termId,
+            error,
+        });
         return null;
     }
 

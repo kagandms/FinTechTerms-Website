@@ -12,6 +12,7 @@
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { getSupabaseClient } from '@/lib/supabase';
 import { Term } from '@/types';
+import { logger } from '@/lib/logger';
 
 export interface PaginationOptions {
     /** 1-indexed page number */
@@ -81,14 +82,17 @@ export async function fetchTermsPaginated(
     let { data, error, count } = await buildQuery(true);
 
     if (isMissingAcademicColumnError(error)) {
-        console.warn(
-            '[Pagination] terms.is_academic column is missing; retrying without the academic filter.'
-        );
+        logger.warn('PAGINATION_MISSING_ACADEMIC_COLUMN', {
+            route: 'fetchTermsPaginated',
+        });
         ({ data, error, count } = await buildQuery(false));
     }
 
     if (error) {
-        console.error('[Pagination] Supabase query failed:', error.message);
+        logger.error('PAGINATION_QUERY_FAILED', {
+            route: 'fetchTermsPaginated',
+            error: new Error(error.message),
+        });
         return {
             data: [],
             page,

@@ -87,7 +87,19 @@ describe('QuizClient quick quiz counts', () => {
     beforeEach(() => {
         mockUseLanguage.mockReturnValue({
             language: 'en',
-            t: (key: string) => key,
+            t: (key: string) => ({
+                'quiz.startQuickQuiz': 'Start Quick Quiz',
+                'quiz.favoritesOnly': 'Favorites Only',
+                'categories.Finance': 'Finance',
+                'quiz.questionCount': 'Number of Questions:',
+                'quiz.title': 'Practice',
+                'quiz.categorySelect': 'Choose Category:',
+                'quiz.categoryTechnology': 'Software',
+                'quiz.categoryAll': 'All',
+                'quiz.progressSaved': 'Progress saved.',
+                'quiz.quickQuiz': 'Quick Quiz',
+                'common.home': 'Home',
+            }[key] ?? key),
         });
         mockUseAuth.mockReturnValue({
             isAuthenticated: true,
@@ -135,7 +147,7 @@ describe('QuizClient quick quiz counts', () => {
 
         render(<QuizClient />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'quiz.startQuickQuiz' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Start Quick Quiz' }));
         fireEvent.click(screen.getByRole('button', { name: 'Favorites Only' }));
         fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
 

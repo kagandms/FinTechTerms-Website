@@ -97,11 +97,7 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
     // All languages for display
     const allLanguages: Language[] = ['ru', 'en', 'tr'];
     const taxonomyLabels = getContextTagLabels(term.context_tags);
-    const pendingLabel = language === 'tr'
-        ? 'Kaydediliyor...'
-        : language === 'ru'
-            ? 'Сохраняем...'
-            : 'Saving...';
+    const pendingLabel = t('quiz.saving');
     const controlsDisabled = isPending || isAnswerLocked;
 
     return (

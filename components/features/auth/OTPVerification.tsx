@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { OTPVerificationProps } from './types';
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 import { getLocalizedAuthError } from '@/lib/auth/error-messages';
+import { formatTranslation, getTranslationString } from '@/lib/i18n';
 
 export const OTPVerification: React.FC<OTPVerificationProps> = ({
     otpCode, setOtpCode, authError, setAuthError, verifyOTP,
@@ -13,33 +14,26 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
     const [isResending, setIsResending] = useState(false);
     const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-    const title = language === 'tr' ? 'E-posta Doğrulama'
-        : language === 'ru' ? 'Подтверждение e-mail'
-            : 'Email Verification';
-
-    const description = language === 'tr'
-        ? `Lütfen e-postanıza gelen ${EMAIL_OTP_LENGTH} haneli kodu girin:`
-        : language === 'ru'
-            ? `Введите ${EMAIL_OTP_LENGTH}-значный код, отправленный на вашу почту:`
-            : `Enter the ${EMAIL_OTP_LENGTH}-digit code sent to your email:`;
-
-    const verifyLabel = language === 'tr' ? 'Doğrula'
-        : language === 'ru' ? 'Подтвердить'
-            : 'Verify';
-
-    const codeError = language === 'tr'
-        ? `${EMAIL_OTP_LENGTH} haneli doğrulama kodunu girin`
-        : language === 'ru'
-            ? `Введите ${EMAIL_OTP_LENGTH}-значный код`
-            : `Enter a ${EMAIL_OTP_LENGTH}-digit code`;
-
+    const title = getTranslationString(language, 'authOtp.title') ?? 'Email Verification';
+    const description = formatTranslation(
+        getTranslationString(language, 'authOtp.description') ?? 'Enter the {length}-digit code sent to your email:',
+        { length: EMAIL_OTP_LENGTH }
+    );
+    const verifyLabel = getTranslationString(language, 'authOtp.verify') ?? 'Verify';
+    const codeError = formatTranslation(
+        getTranslationString(language, 'authOtp.codeError') ?? 'Enter a {length}-digit code',
+        { length: EMAIL_OTP_LENGTH }
+    );
     const resendLabel = resendCooldown > 0
-        ? (language === 'tr' ? `Tekrar gönder (${resendCooldown}s)` : language === 'ru' ? `Отправить снова (${resendCooldown}с)` : `Resend (${resendCooldown}s)`)
-        : (language === 'tr' ? 'Kodu Tekrar Gönder' : language === 'ru' ? 'Отправить код снова' : 'Resend Code');
-
-    const codeSent = language === 'tr' ? '✅ Yeni doğrulama kodu gönderildi!' : language === 'ru' ? '✅ Новый код отправлен!' : '✅ New code sent!';
-    const otpSuccess = language === 'tr' ? 'Kod doğrulandı.' : language === 'ru' ? 'Код подтвержден.' : 'Code verified.';
-    const otpUnexpected = language === 'tr' ? 'Doğrulama sırasında beklenmeyen hata oluştu.' : language === 'ru' ? 'Непредвиденная ошибка при подтверждении.' : 'Unexpected verification error.';
+        ? formatTranslation(
+            getTranslationString(language, 'authOtp.resendCountdown') ?? 'Resend ({seconds}s)',
+            { seconds: resendCooldown }
+        )
+        : getTranslationString(language, 'authOtp.resend') ?? 'Resend Code';
+    const codeSent = getTranslationString(language, 'authOtp.codeSent') ?? '✅ New code sent!';
+    const otpSuccess = getTranslationString(language, 'authOtp.success') ?? 'Code verified.';
+    const otpUnexpected = getTranslationString(language, 'authOtp.unexpected') ?? 'Unexpected verification error.';
+    const missingEmail = getTranslationString(language, 'authOtp.missingEmail') ?? 'Verification email not found.';
 
     const emptyCode = () => Array.from({ length: EMAIL_OTP_LENGTH }, () => '');
     const [codeChars, setCodeChars] = useState<string[]>(
@@ -105,9 +99,8 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
 
     const handleVerify = async () => {
         if (!pendingVerificationEmail) {
-            const msg = language === 'tr' ? 'Doğrulama e-postası bulunamadı.' : language === 'ru' ? 'E-mail для подтверждения не найден.' : 'Verification email not found.';
-            setAuthError(msg);
-            showToast(msg, 'error');
+            setAuthError(missingEmail);
+            showToast(missingEmail, 'error');
             return;
         }
 
@@ -148,9 +141,8 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         if (resendCooldown > 0 || isResending) return;
 
         if (!pendingVerificationEmail) {
-            const msg = language === 'tr' ? 'Doğrulama e-postası bulunamadı.' : language === 'ru' ? 'E-mail для подтверждения не найден.' : 'Verification email not found.';
-            setAuthError(msg);
-            showToast(msg, 'error');
+            setAuthError(missingEmail);
+            showToast(missingEmail, 'error');
             return;
         }
 
@@ -229,7 +221,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
                     className="w-full py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 active:scale-[0.98] transition-all shadow-md shadow-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isVerifying
-                        ? (language === 'tr' ? 'Doğrulanıyor...' : language === 'ru' ? 'Проверка...' : 'Verifying...')
+                        ? (getTranslationString(language, 'authOtp.verifying') ?? 'Verifying...')
                         : verifyLabel}
                 </button>
 
@@ -239,7 +231,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
                     className="w-full text-sm text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white transition-colors disabled:opacity-50"
                 >
                     {isResending
-                        ? (language === 'tr' ? 'Gönderiliyor...' : language === 'ru' ? 'Отправка...' : 'Sending...')
+                        ? (getTranslationString(language, 'authOtp.sending') ?? 'Sending...')
                         : resendLabel}
                 </button>
             </div>

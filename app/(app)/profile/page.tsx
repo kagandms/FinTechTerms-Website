@@ -69,7 +69,10 @@ const loadInitialProfileData = async (): Promise<{
     const authState = await safeGetSupabaseUser(supabase);
     if (!authState.user) {
         if (authState.ghostSession && authState.message) {
-            console.warn('PROFILE_RSC_GHOST_SESSION_RECOVERED', authState.message);
+            logger.warn('PROFILE_RSC_GHOST_SESSION_RECOVERED', {
+                route: '/profile',
+                message: authState.message,
+            });
         }
 
         return {

@@ -10,6 +10,8 @@ import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getMasteryLevel } from '@/utils/srsLogic';
 import Link from 'next/link';
 import { ContextTagList, MarketBadge } from '@/components/TermTaxonomy';
+import { formatTranslation } from '@/lib/i18n';
+import { logger } from '@/lib/logger';
 import {
     Volume2,
     Heart,
@@ -75,7 +77,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         try {
             await speakText(text, lang);
         } catch (error) {
-            console.error('TTS error:', error);
+            logger.warn('SMART_CARD_TTS_FAILED', {
+                route: 'SmartCard',
+                error: error instanceof Error ? error : undefined,
+                language: lang,
+            });
         } finally {
             setIsSpeaking(false);
         }
@@ -99,11 +105,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 limitWarningTimeoutRef.current = null;
             }, 5000);
             showToast(
-                language === 'tr'
-                    ? 'Favori limiti doldu! Giriş yaparak sınırsız ekleyin.'
-                    : language === 'ru'
-                        ? 'Лимит избранного! Войдите для неограниченного добавления.'
-                        : 'Favorite limit reached! Sign in for unlimited.',
+                t('smartCard.favoriteLimitWarning'),
                 'warning'
             );
             return;
@@ -112,11 +114,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         if (!result.success) {
             showToast(
                 result.error
-                    || (language === 'tr'
-                        ? 'Favori güncellenemedi.'
-                        : language === 'ru'
-                            ? 'Не удалось обновить избранное.'
-                            : 'Unable to update favorite.'),
+                    || t('smartCard.favoriteUpdateError'),
                 result.authExpired ? 'warning' : 'error'
             );
             return;
@@ -124,8 +122,8 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
         showToast(
             result.isFavorite
-                ? (language === 'tr' ? 'Favorilere eklendi ❤️' : language === 'ru' ? 'Добавлено в избранное ❤️' : 'Added to favorites ❤️')
-                : (language === 'tr' ? 'Favorilerden çıkarıldı' : language === 'ru' ? 'Удалено из избранного' : 'Removed from favorites'),
+                ? t('smartCard.favoriteAdded')
+                : t('smartCard.favoriteRemoved'),
             result.isFavorite ? 'success' : 'info'
         );
     };
@@ -167,7 +165,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         </span>
                     ) : !isAuthenticated && favoritesRemaining < 10 && (
                         <span className="text-xs text-amber-600 dark:text-amber-300">
-                            {favoritesRemaining} {language === 'tr' ? 'hak' : language === 'ru' ? 'осталось' : 'left'}
+                            {formatTranslation(t('smartCard.favoritesRemaining'), { count: favoritesRemaining })}
                         </span>
                     )}
                 </div>
@@ -252,12 +250,12 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="w-full px-4 py-2 flex items-center justify-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                     aria-expanded={isExpanded}
-                    aria-label={isExpanded ? (language === 'tr' ? 'Daha az göster' : 'Show less') : (language === 'tr' ? 'Örnek cümleyi göster' : 'Show example')}
+                    aria-label={isExpanded ? t('smartCard.showLess') : t('smartCard.showExampleSentence')}
                 >
                     {isExpanded ? (
                         <>
                             <ChevronUp className="w-4 h-4" />
-                            <span>{language === 'tr' ? 'Daha az' : language === 'ru' ? 'Меньше' : 'Less'}</span>
+                            <span>{t('smartCard.less')}</span>
                         </>
                     ) : (
                         <>
@@ -278,9 +276,9 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         {/* Analytics Preview (for academic purposes) */}
                         {term.times_reviewed > 0 && (
                             <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                                <span>{language === 'tr' ? 'Zorluk' : language === 'ru' ? 'Сложность' : 'Difficulty'}: {term.difficulty_score.toFixed(1)}/5</span>
-                                <span>{language === 'tr' ? 'Başarı' : language === 'ru' ? 'Успех' : 'Success'}: %{Math.round(term.retention_rate * 100)}</span>
-                                <span>{language === 'tr' ? 'Tekrar' : language === 'ru' ? 'Повторов' : 'Reviews'}: {term.times_reviewed}x</span>
+                                <span>{t('smartCard.difficulty')}: {term.difficulty_score.toFixed(1)}/5</span>
+                                <span>{t('smartCard.success')}: %{Math.round(term.retention_rate * 100)}</span>
+                                <span>{t('smartCard.reviews')}: {term.times_reviewed}x</span>
                             </div>
                         )}
                     </div>

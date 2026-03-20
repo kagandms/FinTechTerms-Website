@@ -2,78 +2,35 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { AuthFormProps, AuthFormState } from './types';
 import { getLocalizedAuthError } from '@/lib/auth/error-messages';
+import { logger } from '@/lib/logger';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
     authLoading, handleAuth, authError, setAuthError,
     showPassword, setShowPassword, showConfirmPassword,
-    setShowConfirmPassword, resetPassword, showToast, language
+    setShowConfirmPassword, resetPassword, showToast, language, t
 }) => {
     const copy = {
-        tr: {
-            login: 'Giriş Yap',
-            register: 'Kayıt Ol',
-            resetPassword: 'Şifre Sıfırlama',
-            email: 'E-posta',
-            password: 'Şifre',
-            confirmPassword: 'Şifreyi Onayla',
-            name: 'Ad',
-            surname: 'Soyad',
-            birthDate: 'Doğum Tarihi',
-            loginLoading: 'Giriş yapılıyor...',
-            registerLoading: 'Hesap oluşturuluyor...',
-            resetLoading: 'Gönderiliyor...',
-            sendResetLink: 'Sıfırlama Bağlantısı Gönder',
-            forgotPassword: 'Şifreni mi unuttun?',
-            noAccount: 'Hesabın yok mu?',
-            alreadyHaveAccount: 'Zaten hesabın var mı?',
-            checkEmail: '✅ E-postanı ve spam klasörünü kontrol et',
-            showPassword: 'Şifreyi göster',
-            hidePassword: 'Şifreyi gizle',
-        },
-        en: {
-            login: 'Log In',
-            register: 'Sign Up',
-            resetPassword: 'Reset Password',
-            email: 'Email',
-            password: 'Password',
-            confirmPassword: 'Confirm Password',
-            name: 'First Name',
-            surname: 'Last Name',
-            birthDate: 'Date of Birth',
-            loginLoading: 'Signing in...',
-            registerLoading: 'Creating account...',
-            resetLoading: 'Sending...',
-            sendResetLink: 'Send Reset Link',
-            forgotPassword: 'Forgot password?',
-            noAccount: 'No account yet?',
-            alreadyHaveAccount: 'Already have an account?',
-            checkEmail: '✅ Check your inbox and spam folder',
-            showPassword: 'Show password',
-            hidePassword: 'Hide password',
-        },
-        ru: {
-            login: 'Войти',
-            register: 'Регистрация',
-            resetPassword: 'Восстановление доступа',
-            email: 'Эл. почта',
-            password: 'Пароль',
-            confirmPassword: 'Подтвердите пароль',
-            name: 'Имя',
-            surname: 'Фамилия',
-            birthDate: 'Дата рождения',
-            loginLoading: 'Выполняется вход...',
-            registerLoading: 'Создаём профиль...',
-            resetLoading: 'Отправка...',
-            sendResetLink: 'Отправить ссылку',
-            forgotPassword: 'Забыли пароль?',
-            noAccount: 'Нет аккаунта?',
-            alreadyHaveAccount: 'Уже есть аккаунт?',
-            checkEmail: '✅ Проверьте почту и папку «Спам»',
-            showPassword: 'Показать пароль',
-            hidePassword: 'Скрыть пароль',
-        },
-    }[language === 'tr' || language === 'en' ? language : 'ru'];
+        login: t('auth.login'),
+        register: t('auth.register'),
+        resetPassword: t('auth.resetPassword'),
+        email: t('auth.email'),
+        password: t('auth.password'),
+        confirmPassword: t('auth.confirmPassword'),
+        name: t('auth.firstName'),
+        surname: t('auth.lastName'),
+        birthDate: t('profileForm.birthDate'),
+        loginLoading: t('auth.loginLoading'),
+        registerLoading: t('auth.registerLoading'),
+        resetLoading: t('auth.resetLoading'),
+        sendResetLink: t('auth.sendResetLink'),
+        forgotPassword: t('auth.forgotPassword'),
+        noAccount: t('auth.noAccount'),
+        alreadyHaveAccount: t('auth.alreadyHaveAccount'),
+        checkEmail: t('auth.checkEmail'),
+        showPassword: t('auth.showPassword'),
+        hidePassword: t('auth.hidePassword'),
+    };
     const [isResetting, setIsResetting] = useState(false);
 
     const updateAuthField = (field: keyof AuthFormState, value: string) => {
@@ -240,7 +197,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                                     showToast(errorMessage, 'error');
                                 }
                             } catch (error: unknown) {
-                                console.error('AUTH_RESET_PASSWORD_UI_ERROR', error);
+                                logger.error('AUTH_RESET_PASSWORD_UI_ERROR', {
+                                    route: 'AuthForm',
+                                    error: error instanceof Error ? error : undefined,
+                                });
                                 const errorMessage = getLocalizedAuthError(error, language);
                                 setAuthError(errorMessage);
                                 showToast(errorMessage, 'error');

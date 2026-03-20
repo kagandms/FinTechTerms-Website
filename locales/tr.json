@@ -110,7 +110,14 @@
         "cardsDue": "kart bekliyor",
         "changeLanguage": "Dili Değiştir",
         "exitConfirmation": "Testi bitirip çıkmak istediğinize emin misiniz?",
-        "exitAria": "Testten çık"
+        "exitAria": "Testten çık",
+        "categorySelect": "Kategori Seçin:",
+        "favoritesOnly": "Sadece Favoriler",
+        "questionCount": "Soru Sayısı:",
+        "categoryAll": "Hepsi",
+        "categoryTechnology": "Yazılım",
+        "progressSaved": "İlerleme kaydedildi.",
+        "saving": "Kaydediliyor..."
     },
     "card": {
         "listen": "Seslendir",
@@ -167,6 +174,8 @@
         "password": "Şifre",
         "confirmPassword": "Şifreyi Onayla",
         "name": "Ad Soyad",
+        "firstName": "Ad",
+        "lastName": "Soyad",
         "nameRequired": "Ad gerekli",
         "surnameRequired": "Soyad gerekli",
         "loginSuccess": "Giriş başarılı!",
@@ -178,7 +187,13 @@
         "forgotPassword": "Şifremi Unuttum?",
         "resetPassword": "Şifreyi Sıfırla",
         "sendResetLink": "Sıfırlama Linki Gönder",
-        "passwordRequirements": "Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir sembol içermelidir."
+        "passwordRequirements": "Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir sembol içermelidir.",
+        "loginLoading": "Giriş yapılıyor...",
+        "registerLoading": "Hesap oluşturuluyor...",
+        "resetLoading": "Gönderiliyor...",
+        "checkEmail": "✅ E-postanı ve spam klasörünü kontrol et",
+        "showPassword": "Şifreyi göster",
+        "hidePassword": "Şifreyi gizle"
     },
     "authFlow": {
         "invalidBirthDate": "Geçerli bir doğum tarihi girin (13+)",
@@ -240,6 +255,65 @@
         "manualDescription": "Tarayıcı menüsünü kullanarak uygulamayı yükleyebilirsin:",
         "manualStep1": "Tarayıcı menüsünü (⋮) aç",
         "manualStep2": "\"Uygulamayı Yükle\" veya \"Ana Ekrana Ekle\"yi seç"
+    },
+    "settingsPanel": {
+        "theme": "Tema",
+        "light": "Açık",
+        "dark": "Koyu",
+        "system": "Sistem",
+        "analytics": "Analitik",
+        "methodology": "Metodoloji"
+    },
+    "resetConfirm": {
+        "title": "Dikkat!",
+        "description": "Tüm ilerlemeniz, favorileriniz ve quiz geçmişiniz silinecek. Bu işlem geri alınamaz.",
+        "cancel": "İptal",
+        "confirm": "Sıfırla"
+    },
+    "updatePassword": {
+        "title": "Yeni Şifre Belirle",
+        "placeholder": "Yeni Şifre",
+        "submit": "Şifreyi Güncelle",
+        "loading": "Güncelleniyor...",
+        "success": "Şifreniz güncellendi!",
+        "error": "Hata oluştu"
+    },
+    "authOtp": {
+        "title": "E-posta Doğrulama",
+        "description": "Lütfen e-postanıza gelen {length} haneli kodu girin:",
+        "verify": "Doğrula",
+        "codeError": "{length} haneli doğrulama kodunu girin",
+        "resendCountdown": "Tekrar gönder ({seconds}s)",
+        "resend": "Kodu Tekrar Gönder",
+        "codeSent": "✅ Yeni doğrulama kodu gönderildi!",
+        "success": "Kod doğrulandı.",
+        "unexpected": "Doğrulama sırasında beklenmeyen hata oluştu.",
+        "missingEmail": "Doğrulama e-postası bulunamadı.",
+        "verifying": "Doğrulanıyor...",
+        "sending": "Gönderiliyor..."
+    },
+    "smartCard": {
+        "favoriteLimitWarning": "Favori limiti doldu! Giriş yaparak sınırsız ekleyin.",
+        "favoriteUpdateError": "Favori güncellenemedi.",
+        "favoriteAdded": "Favorilere eklendi ❤️",
+        "favoriteRemoved": "Favorilerden çıkarıldı",
+        "favoritesRemaining": "{count} hak",
+        "showExampleSentence": "Örnek cümleyi göster",
+        "showLess": "Daha az göster",
+        "less": "Daha az",
+        "difficulty": "Zorluk",
+        "success": "Başarı",
+        "reviews": "Tekrar"
+    },
+    "profileValidation": {
+        "nameMin": "Ad en az 2 karakter olmalıdır",
+        "surnameMin": "Soyad en az 2 karakter olmalıdır",
+        "birthDateInvalid": "Geçerli bir tarih girin (13+ yaş)",
+        "emailInvalid": "Geçersiz e-posta adresi",
+        "currentPasswordRequired": "Yeni şifre belirlemek için mevcut şifre gereklidir",
+        "newPasswordRequired": "Yeni şifre gerekli",
+        "passwordStrength": "Şifre en az 8 karakter, 1 büyük harf, 1 küçük harf, 1 rakam, 1 sembol içermelidir",
+        "passwordsNotMatch": "Şifreler eşleşmiyor"
     },
     "taxonomy": {
         "market": "Bölgesel pazar",

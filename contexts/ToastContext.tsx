@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -84,7 +85,10 @@ export function ToastProvider({ children }: ToastProviderProps) {
                 JSON.stringify({ message, type })
             );
         } catch (error) {
-            console.error('TOAST_PERSIST_FAILED', error);
+            logger.error('TOAST_PERSIST_FAILED', {
+                route: 'ToastProvider',
+                error: error instanceof Error ? error : undefined,
+            });
             showToast(message, type);
         }
     }, [showToast]);
@@ -108,7 +112,10 @@ export function ToastProvider({ children }: ToastProviderProps) {
                 );
             }
         } catch (error) {
-            console.error('TOAST_RESTORE_FAILED', error);
+            logger.error('TOAST_RESTORE_FAILED', {
+                route: 'ToastProvider',
+                error: error instanceof Error ? error : undefined,
+            });
         } finally {
             window.sessionStorage.removeItem(TOAST_STORAGE_KEY);
         }

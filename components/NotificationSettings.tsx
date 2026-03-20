@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, BellOff, Clock, Check } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { logger } from '@/lib/logger';
 
 interface NotificationSettingsProps {
     language: 'tr' | 'en' | 'ru';
@@ -92,7 +93,10 @@ function readStoredConfig(): { config: NotificationConfig; error: string | null 
             error: null,
         };
     } catch (error) {
-        console.error('NOTIFICATION_SETTINGS_PARSE_ERROR', error);
+        logger.error('NOTIFICATION_SETTINGS_PARSE_ERROR', {
+            route: 'NotificationSettings',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 
     return {
@@ -110,7 +114,10 @@ function saveConfig(config: NotificationConfig): boolean {
         localStorage.setItem(NOTIFICATION_SETTINGS_STORAGE_KEY, JSON.stringify(config));
         return true;
     } catch (error) {
-        console.error('NOTIFICATION_SETTINGS_SAVE_ERROR', error);
+        logger.error('NOTIFICATION_SETTINGS_SAVE_ERROR', {
+            route: 'NotificationSettings',
+            error: error instanceof Error ? error : undefined,
+        });
         return false;
     }
 }
@@ -224,7 +231,10 @@ export default function NotificationSettings({ language }: NotificationSettingsP
                 showToast(t.denied, 'error');
             }
         } catch (error) {
-            console.error('NOTIFICATION_SETTINGS_TOGGLE_ERROR', error);
+            logger.error('NOTIFICATION_SETTINGS_TOGGLE_ERROR', {
+                route: 'NotificationSettings',
+                error: error instanceof Error ? error : undefined,
+            });
             showToast(t.permissionNeeded, 'error');
         } finally {
             setIsUpdating(false);

@@ -115,8 +115,8 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
 };
 
 const normalizeLanguage = (language: string): 'tr' | 'en' | 'ru' => {
-    if (language === 'tr' || language === 'en' || language === 'ru') {
-        return language;
+    if (['tr', 'en', 'ru'].includes(language)) {
+        return language as 'tr' | 'en' | 'ru';
     }
 
     return 'en';

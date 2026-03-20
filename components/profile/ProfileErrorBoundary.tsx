@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { Language } from '@/types';
+import { logger } from '@/lib/logger';
 
 const boundaryCopy: Record<Language, { title: string; description: string; retry: string }> = {
     tr: {
@@ -44,7 +45,11 @@ export default class ProfileErrorBoundary extends React.Component<
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('PROFILE_ERROR_BOUNDARY_CAUGHT', error, errorInfo);
+        logger.error('PROFILE_ERROR_BOUNDARY_CAUGHT', {
+            route: 'ProfileErrorBoundary',
+            error,
+            componentStack: errorInfo.componentStack,
+        });
         this.props.onError(error);
     }
 

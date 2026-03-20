@@ -404,7 +404,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-white/80 text-xs">
-                                            {language === 'tr' ? 'Kategori Seçin:' : language === 'ru' ? 'Выберите категорию:' : 'Choose Category:'}
+                                            {t('quiz.categorySelect')}
                                         </p>
                                         {canUseProgressData && stats.totalFavorites > 0 && (
                                             <button
@@ -415,16 +415,16 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                                     }`}
                                             >
                                                 <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
-                                                {language === 'tr' ? 'Sadece Favoriler' : language === 'ru' ? 'Только избранные' : 'Favorites Only'}
+                                                {t('quiz.favoritesOnly')}
                                             </button>
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
-                                            { key: 'all', label: language === 'tr' ? 'Hepsi' : language === 'ru' ? 'Все' : 'All' },
-                                            { key: 'Finance', label: language === 'tr' ? 'Finans' : language === 'ru' ? 'Финансы' : 'Finance' },
-                                            { key: 'Technology', label: language === 'tr' ? 'Yazılım' : language === 'ru' ? 'Программное обеспечение' : 'Software' },
-                                            { key: 'Fintech', label: language === 'tr' ? 'Fintek' : language === 'ru' ? 'Финтех' : 'FinTech' },
+                                            { key: 'all', label: t('quiz.categoryAll') },
+                                            { key: 'Finance', label: t('categories.Finance') },
+                                            { key: 'Technology', label: t('quiz.categoryTechnology') },
+                                            { key: 'Fintech', label: t('categories.Fintech') },
                                         ].map(cat => (
                                             <button
                                                 key={cat.key}
@@ -440,7 +440,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 /* Question Count Selection Step */
                                 <div className="space-y-2">
                                     <p className="text-white/80 text-xs mb-1">
-                                        {language === 'tr' ? 'Soru Sayısı:' : language === 'ru' ? 'Количество вопросов:' : 'Number of Questions:'}
+                                        {t('quiz.questionCount')}
                                     </p>
                                     <p className="text-white/70 text-[11px] mb-2">
                                         {stateCopy.availableQuestions}: {quickQuizAvailableCount}
@@ -743,11 +743,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
                     data-testid="quiz-saved-indicator"
                 >
-                    {language === 'tr'
-                        ? 'Ilerleme kaydedildi.'
-                        : language === 'ru'
-                            ? 'Прогресс сохранен.'
-                            : 'Progress saved.'}
+                    {t('quiz.progressSaved')}
                 </div>
             ) : null}
 

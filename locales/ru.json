@@ -110,7 +110,14 @@
         "cardsDue": "карточек к повтору",
         "changeLanguage": "Сменить язык",
         "exitConfirmation": "Вы уверены, что хотите завершить тест и выйти?",
-        "exitAria": "Выйти из теста"
+        "exitAria": "Выйти из теста",
+        "categorySelect": "Выберите категорию:",
+        "favoritesOnly": "Только избранные",
+        "questionCount": "Количество вопросов:",
+        "categoryAll": "Все",
+        "categoryTechnology": "Программное обеспечение",
+        "progressSaved": "Прогресс сохранен.",
+        "saving": "Сохраняем..."
     },
     "card": {
         "listen": "Слушать",
@@ -167,6 +174,8 @@
         "password": "Пароль",
         "confirmPassword": "Подтвердите пароль",
         "name": "Имя и фамилия",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
         "nameRequired": "Введите имя",
         "surnameRequired": "Введите фамилию",
         "loginSuccess": "Вход выполнен!",
@@ -178,7 +187,13 @@
         "forgotPassword": "Забыли пароль?",
         "resetPassword": "Сброс пароля",
         "sendResetLink": "Отправить ссылку",
-        "passwordRequirements": "Пароль должен содержать минимум 8 символов, одну заглавную букву, одну строчную, цифру и символ."
+        "passwordRequirements": "Пароль должен содержать минимум 8 символов, одну заглавную букву, одну строчную, цифру и символ.",
+        "loginLoading": "Выполняется вход...",
+        "registerLoading": "Создаём профиль...",
+        "resetLoading": "Отправка...",
+        "checkEmail": "✅ Проверьте почту и папку «Спам»",
+        "showPassword": "Показать пароль",
+        "hidePassword": "Скрыть пароль"
     },
     "authFlow": {
         "invalidBirthDate": "Введите действительную дату рождения (13+)",
@@ -240,6 +255,65 @@
         "manualDescription": "Вы можете установить приложение через меню браузера:",
         "manualStep1": "Откройте меню браузера (⋮)",
         "manualStep2": "Выберите \"Установить приложение\" или \"Добавить на гл. экран\""
+    },
+    "settingsPanel": {
+        "theme": "Тема",
+        "light": "Светлая",
+        "dark": "Тёмная",
+        "system": "Система",
+        "analytics": "Аналитика",
+        "methodology": "Методология"
+    },
+    "resetConfirm": {
+        "title": "Внимание!",
+        "description": "Весь ваш прогресс, избранное и история тестов будут удалены. Это действие необратимо.",
+        "cancel": "Отмена",
+        "confirm": "Сбросить"
+    },
+    "updatePassword": {
+        "title": "Новый пароль",
+        "placeholder": "Новый пароль",
+        "submit": "Обновить пароль",
+        "loading": "Обновление...",
+        "success": "Пароль обновлен!",
+        "error": "Ошибка"
+    },
+    "authOtp": {
+        "title": "Подтверждение e-mail",
+        "description": "Введите {length}-значный код, отправленный на вашу почту:",
+        "verify": "Подтвердить",
+        "codeError": "Введите {length}-значный код",
+        "resendCountdown": "Отправить снова ({seconds}с)",
+        "resend": "Отправить код снова",
+        "codeSent": "✅ Новый код отправлен!",
+        "success": "Код подтвержден.",
+        "unexpected": "Непредвиденная ошибка при подтверждении.",
+        "missingEmail": "E-mail для подтверждения не найден.",
+        "verifying": "Проверка...",
+        "sending": "Отправка..."
+    },
+    "smartCard": {
+        "favoriteLimitWarning": "Лимит избранного! Войдите для неограниченного добавления.",
+        "favoriteUpdateError": "Не удалось обновить избранное.",
+        "favoriteAdded": "Добавлено в избранное ❤️",
+        "favoriteRemoved": "Удалено из избранного",
+        "favoritesRemaining": "{count} осталось",
+        "showExampleSentence": "Показать пример",
+        "showLess": "Показать меньше",
+        "less": "Меньше",
+        "difficulty": "Сложность",
+        "success": "Успех",
+        "reviews": "Повторов"
+    },
+    "profileValidation": {
+        "nameMin": "Имя должно содержать минимум 2 символа",
+        "surnameMin": "Фамилия должна содержать минимум 2 символа",
+        "birthDateInvalid": "Введите корректную дату (13+ лет)",
+        "emailInvalid": "Некорректный e-mail адрес",
+        "currentPasswordRequired": "Для установки нового пароля требуется текущий пароль",
+        "newPasswordRequired": "Новый пароль обязателен",
+        "passwordStrength": "Пароль: мин. 8 символов, 1 заглавная, 1 строчная, 1 цифра, 1 символ",
+        "passwordsNotMatch": "Пароли не совпадают"
     },
     "taxonomy": {
         "market": "Региональный рынок",

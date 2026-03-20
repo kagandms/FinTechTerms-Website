@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Language } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface BadgeRealtimePayload {
     id: string;
@@ -55,7 +56,10 @@ const areAchievementNotificationsEnabled = (): boolean => {
         const parsedConfig = JSON.parse(rawConfig) as { enabled?: boolean };
         return parsedConfig.enabled !== false && Notification.permission === 'granted';
     } catch (error) {
-        console.error('BADGE_NOTIFICATION_CONFIG_PARSE_ERROR', error);
+        logger.error('BADGE_NOTIFICATION_CONFIG_PARSE_ERROR', {
+            route: 'BadgeRealtimeNotifier',
+            error: error instanceof Error ? error : undefined,
+        });
         return Notification.permission === 'granted';
     }
 };
@@ -114,7 +118,10 @@ const showBadgeNotification = async (
             });
             return;
         } catch (error) {
-            console.error('BADGE_NOTIFICATION_SERVICE_WORKER_ERROR', error);
+            logger.error('BADGE_NOTIFICATION_SERVICE_WORKER_ERROR', {
+                route: 'BadgeRealtimeNotifier',
+                error: error instanceof Error ? error : undefined,
+            });
         }
     }
 

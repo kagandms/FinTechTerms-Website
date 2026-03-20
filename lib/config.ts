@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 const PLACEHOLDER_VALUES = new Set([
     '',
     'your_anon_key_here',
@@ -16,6 +18,9 @@ export function assertRequiredEnv(): void {
     });
 
     if (missing.length > 0) {
-        console.warn(`[FinTechTerms] Missing environment variables: ${missing.join(', ')}`);
+        logger.warn('CONFIG_MISSING_ENV_VARS', {
+            route: 'assertRequiredEnv',
+            missing,
+        });
     }
 }

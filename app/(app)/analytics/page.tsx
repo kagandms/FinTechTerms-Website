@@ -134,9 +134,16 @@ export default function AnalyticsPage() {
             .slice(0, 10)
             .map(attempt => {
                 const term = terms.find(t => t.id === attempt.term_id);
+                const termNameByLanguage = term
+                    ? {
+                        tr: term.term_tr,
+                        ru: term.term_ru,
+                        en: term.term_en,
+                    }
+                    : null;
                 return {
                     ...attempt,
-                    termName: term ? (language === 'tr' ? term.term_tr : language === 'ru' ? term.term_ru : term.term_en) : copy.unknownTerm,
+                    termName: termNameByLanguage?.[language] ?? copy.unknownTerm,
                 };
             });
     }, [copy.unknownTerm, userProgress.quiz_history, terms, language]);

@@ -3,10 +3,11 @@
  * Skill: code-refactoring-refactor-clean
  *
  * M52: Centralizes repetitive Supabase error handling into a single helper.
- * Replaces scattered try-catch + console.error + return patterns.
+ * Replaces scattered try-catch + ad-hoc error logging + return patterns.
  */
 
 import { PostgrestError } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 export interface SupabaseResult<T> {
     data: T | null;
@@ -31,14 +32,22 @@ export async function handleSupabaseQuery<T>(
         const { data, error } = await queryFn();
 
         if (error) {
-            console.error(`${context}:`, error.message);
+            logger.error('SUPABASE_QUERY_FAILED', {
+                route: 'handleSupabaseQuery',
+                context,
+                error: new Error(error.message),
+            });
             return { data: null, error: error.message };
         }
 
         return { data, error: null };
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error(`${context} (exception):`, message);
+        logger.error('SUPABASE_QUERY_EXCEPTION', {
+            route: 'handleSupabaseQuery',
+            context,
+            error: err instanceof Error ? err : undefined,
+        });
         return { data: null, error: message };
     }
 }

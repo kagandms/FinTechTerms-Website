@@ -39,7 +39,6 @@ for (const screenshotRoute of SCREENSHOT_PATHS) {
             await expect(page).toHaveScreenshot(`${screenshotRoute.slug}-${theme}.png`, {
                 animations: 'disabled',
                 caret: 'hide',
-                fullPage: true,
                 maxDiffPixelRatio: 0.01,
             });
         });

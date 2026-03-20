@@ -110,7 +110,14 @@
         "cardsDue": "cards due",
         "changeLanguage": "Change Language",
         "exitConfirmation": "Are you sure you want to exit the quiz?",
-        "exitAria": "Exit quiz"
+        "exitAria": "Exit quiz",
+        "categorySelect": "Choose Category:",
+        "favoritesOnly": "Favorites Only",
+        "questionCount": "Number of Questions:",
+        "categoryAll": "All",
+        "categoryTechnology": "Software",
+        "progressSaved": "Progress saved.",
+        "saving": "Saving..."
     },
     "card": {
         "listen": "Listen",
@@ -167,6 +174,8 @@
         "password": "Password",
         "confirmPassword": "Confirm Password",
         "name": "Full Name",
+        "firstName": "First Name",
+        "lastName": "Last Name",
         "nameRequired": "Name required",
         "surnameRequired": "Surname required",
         "loginSuccess": "Login successful!",
@@ -178,7 +187,13 @@
         "forgotPassword": "Forgot Password?",
         "resetPassword": "Reset Password",
         "sendResetLink": "Send Reset Link",
-        "passwordRequirements": "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol."
+        "passwordRequirements": "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol.",
+        "loginLoading": "Signing in...",
+        "registerLoading": "Creating account...",
+        "resetLoading": "Sending...",
+        "checkEmail": "✅ Check your inbox and spam folder",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password"
     },
     "authFlow": {
         "invalidBirthDate": "Enter valid birth date (13+)",
@@ -240,6 +255,65 @@
         "manualDescription": "You can install the app using the browser menu:",
         "manualStep1": "Open browser menu (⋮)",
         "manualStep2": "Select \"Install App\" or \"Add to Home Screen\""
+    },
+    "settingsPanel": {
+        "theme": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System",
+        "analytics": "Analytics",
+        "methodology": "Methodology"
+    },
+    "resetConfirm": {
+        "title": "Warning!",
+        "description": "All your progress, favorites and quiz history will be deleted. This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Reset"
+    },
+    "updatePassword": {
+        "title": "Set New Password",
+        "placeholder": "New Password",
+        "submit": "Update Password",
+        "loading": "Updating...",
+        "success": "Password updated!",
+        "error": "Error"
+    },
+    "authOtp": {
+        "title": "Email Verification",
+        "description": "Enter the {length}-digit code sent to your email:",
+        "verify": "Verify",
+        "codeError": "Enter a {length}-digit code",
+        "resendCountdown": "Resend ({seconds}s)",
+        "resend": "Resend Code",
+        "codeSent": "✅ New code sent!",
+        "success": "Code verified.",
+        "unexpected": "Unexpected verification error.",
+        "missingEmail": "Verification email not found.",
+        "verifying": "Verifying...",
+        "sending": "Sending..."
+    },
+    "smartCard": {
+        "favoriteLimitWarning": "Favorite limit reached! Sign in for unlimited.",
+        "favoriteUpdateError": "Unable to update favorite.",
+        "favoriteAdded": "Added to favorites ❤️",
+        "favoriteRemoved": "Removed from favorites",
+        "favoritesRemaining": "{count} left",
+        "showExampleSentence": "Show example sentence",
+        "showLess": "Show less",
+        "less": "Less",
+        "difficulty": "Difficulty",
+        "success": "Success",
+        "reviews": "Reviews"
+    },
+    "profileValidation": {
+        "nameMin": "Name must be at least 2 characters",
+        "surnameMin": "Surname must be at least 2 characters",
+        "birthDateInvalid": "Must be a valid date (13+ years old)",
+        "emailInvalid": "Invalid email address",
+        "currentPasswordRequired": "Current password is required to set a new password",
+        "newPasswordRequired": "New password is required",
+        "passwordStrength": "Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol",
+        "passwordsNotMatch": "Passwords do not match"
     },
     "taxonomy": {
         "market": "Regional market",
