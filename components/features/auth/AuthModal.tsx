@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { AuthMode } from '@/hooks/useAuthLogic';
-import { AuthFormState } from './types';
+import { AuthActionResult, AuthFormState } from './types';
 import { Language } from '@/types';
 import { OTPVerification } from './OTPVerification';
 import { UpdatePasswordForm } from './UpdatePasswordForm';
@@ -31,15 +31,15 @@ interface AuthModalProps {
     pendingVerificationEmail: string | null;
     otpCode: string;
     setOtpCode: (code: string) => void;
-    verifyOTP: (email: string, code: string) => Promise<any>;
-    resendOTP: (email: string) => Promise<any>;
+    verifyOTP: (email: string, code: string) => Promise<AuthActionResult>;
+    resendOTP: (email: string) => Promise<AuthActionResult>;
     resendCooldown: number;
     startCooldown: () => void;
     cancelVerification: () => void;
 
     // Password Props
-    updatePassword: (password: string) => Promise<any>;
-    resetPassword: (email: string) => Promise<any>;
+    updatePassword: (password: string) => Promise<AuthActionResult>;
+    resetPassword: (email: string) => Promise<AuthActionResult>;
     validatePassword: (password: string) => { valid: boolean; message: string };
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;
@@ -86,10 +86,10 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
         router.refresh();
 
         showToast(
-            language === 'tr' ? 'Kayıt başarılı! 🎉' : language === 'ru' ? 'Регистрация успешна! 🎉' : 'Registration successful! 🎉',
+            t('authFlow.otpSuccess'),
             'success'
         );
-    }, [onClose, showToast, router, language, pendingVerificationEmail, cancelVerification, setAuthError]);
+    }, [cancelVerification, onClose, pendingVerificationEmail, router, setAuthError, showToast, t]);
 
     if (!props.isOpen) return null;
 
@@ -105,7 +105,7 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                 <button
                     onClick={handleModalClose}
                     className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors z-10"
-                    aria-label="Close"
+                    aria-label={t('shell.close')}
                 >
                     <X className="w-5 h-5" />
                 </button>

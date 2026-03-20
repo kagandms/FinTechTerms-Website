@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -8,20 +8,10 @@ import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
 import { getLocalizedAuthError } from '@/lib/auth/error-messages';
+import { logger } from '@/lib/logger';
+import { createEmptyAuthForm, getSafeRedirectPath } from '@/hooks/use-auth-logic-helpers';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
-
-const getSafeRedirectPath = (value: string | null): string | null => {
-    if (!value) {
-        return null;
-    }
-
-    if (!value.startsWith('/') || value.startsWith('//')) {
-        return null;
-    }
-
-    return value;
-};
 
 export function useAuthLogic() {
     const supabase = getSupabaseClient();
@@ -42,14 +32,7 @@ export function useAuthLogic() {
     const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     // Form State
-    const [authForm, setAuthForm] = useState<AuthFormState>({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-        surname: '',
-        birthDate: ''
-    });
+    const [authForm, setAuthForm] = useState<AuthFormState>(createEmptyAuthForm);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -60,6 +43,9 @@ export function useAuthLogic() {
     const [resendCooldown, setResendCooldown] = useState(0);
     const recoveryModalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const resendCooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const resetForm = useCallback(() => {
+        setAuthForm(createEmptyAuthForm());
+    }, []);
 
     // Password Recovery Detection
     useEffect(() => {
@@ -127,17 +113,10 @@ export function useAuthLogic() {
             setAuthError('');
             setOtpCode('');
             setShowAuthModal(false);
-            setAuthForm({
-                email: '',
-                password: '',
-                confirmPassword: '',
-                name: '',
-                surname: '',
-                birthDate: ''
-            });
+            resetForm();
             router.refresh();
         }
-    }, [authMode, cancelVerification, isAuthenticated, router, showAuthModal]);
+    }, [authMode, cancelVerification, isAuthenticated, resetForm, router, showAuthModal]);
 
     // Validation Helpers
     const validatePassword = (password: string): { valid: boolean; message: string } => {
@@ -145,9 +124,7 @@ export function useAuthLogic() {
         if (!strongPasswordRegex.test(password)) {
             return {
                 valid: false,
-                message: t('auth.passwordRequirements') || (language === 'tr'
-                    ? 'Şifre en az 8 karakter olmalı ve 1 büyük harf, 1 küçük harf, 1 rakam, 1 sembol içermelidir.'
-                    : 'Password must contain at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol.')
+                message: t('auth.passwordRequirements'),
             };
         }
         return { valid: true, message: '' };
@@ -160,23 +137,21 @@ export function useAuthLogic() {
         // Registration Validation
         if (authMode === 'register') {
             if (!authForm.name.trim()) {
-                const msg = t('auth.nameRequired') || 'Name required';
+                const msg = t('auth.nameRequired');
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
             }
 
             if (!authForm.surname.trim()) {
-                const msg = t('auth.surnameRequired') || 'Surname required';
+                const msg = t('auth.surnameRequired');
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
             }
 
             if (!authForm.birthDate || !isValidRegistrationBirthDate(authForm.birthDate)) {
-                const msg = language === 'tr'
-                    ? 'Geçerli bir doğum tarihi girin (13+)'
-                    : language === 'ru' ? 'Введите действительную дату рождения (13+)' : 'Enter valid birth date (13+)';
+                const msg = t('authFlow.invalidBirthDate');
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
@@ -190,22 +165,14 @@ export function useAuthLogic() {
             }
 
             if (!authForm.confirmPassword) {
-                const msg = language === 'tr'
-                    ? 'Lütfen şifrenizi tekrar girin.'
-                    : language === 'ru'
-                        ? 'Пожалуйста, повторите пароль.'
-                        : 'Please confirm your password.';
+                const msg = t('authFlow.confirmPasswordRequired');
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
             }
 
             if (authForm.password !== authForm.confirmPassword) {
-                const msg = language === 'tr'
-                    ? 'Şifreler eşleşmiyor.'
-                    : language === 'ru'
-                        ? 'Пароли не совпадают.'
-                        : 'Passwords do not match.';
+                const msg = t('authFlow.passwordsMismatch');
                 setAuthError(msg);
                 showToast(msg, 'error');
                 return;
@@ -227,14 +194,7 @@ export function useAuthLogic() {
                     setAuthError('');
                     setOtpCode('');
                     startCooldown();
-                    showToast(
-                        language === 'tr'
-                            ? 'Doğrulama kodu gönderildi.'
-                            : language === 'ru'
-                                ? 'Код подтверждения отправлен.'
-                                : 'Verification code sent.',
-                        'success'
-                    );
+                    showToast(t('authFlow.verificationSent'), 'success');
                 } else {
                     setShowAuthModal(false);
                     resetForm();
@@ -243,32 +203,23 @@ export function useAuthLogic() {
                         const redirectTarget = getSafeRedirectPath(
                             searchParams.get('next') || searchParams.get('returnTo')
                         ) || '/profile';
-                        showToast(
-                            language === 'tr'
-                                ? 'Giriş başarılı.'
-                                : language === 'ru'
-                                    ? 'Вход выполнен.'
-                                    : 'Login successful.',
-                            'success'
-                        );
+                        showToast(t('authFlow.loginSuccess'), 'success');
 
                         try {
                             router.refresh();
                             router.push(redirectTarget);
-                        } catch (navError: any) {
+                        } catch (navError: unknown) {
+                            logger.error('AUTH_LOGIN_NAVIGATION_FAILED', {
+                                route: 'useAuthLogic',
+                                error: navError instanceof Error ? navError : undefined,
+                                redirectTarget,
+                            });
                             const navErrorMsg = getLocalizedAuthError(navError, language);
                             setAuthError(navErrorMsg);
                             showToast(navErrorMsg, 'error');
                         }
                     } else {
-                        showToast(
-                            language === 'tr'
-                                ? 'Kayıt başarılı.'
-                                : language === 'ru'
-                                    ? 'Регистрация успешна.'
-                                    : 'Registration successful.',
-                            'success'
-                        );
+                        showToast(t('authFlow.registerSuccess'), 'success');
                         router.refresh();
                     }
                 }
@@ -310,10 +261,6 @@ export function useAuthLogic() {
                 return prev - 1;
             });
         }, 1000);
-    };
-
-    const resetForm = () => {
-        setAuthForm({ email: '', password: '', confirmPassword: '', name: '', surname: '', birthDate: '' });
     };
 
     return {

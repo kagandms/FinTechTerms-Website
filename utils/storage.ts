@@ -10,6 +10,7 @@ import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
 import { endOfUtcDay, startOfUtcDay } from '@/lib/time';
+import { logger } from '@/lib/logger';
 
 const STORAGE_KEYS = {
     TERMS: 'globalfinterm_terms',
@@ -56,7 +57,9 @@ const createDefaultProgress = (): UserProgress => {
 };
 
 const clearCorruptedProgress = (): UserProgress => {
-    console.warn('[storage] Corrupted progress data cleared');
+    logger.warn('STORAGE_CORRUPTED_PROGRESS_CLEARED', {
+        route: 'storage',
+    });
 
     try {
         localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
@@ -153,7 +156,10 @@ export function saveTerms(terms: Term[]): void {
     try {
         localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(filterAcademicTerms(terms)));
     } catch (error) {
-        console.error('Failed to save terms:', error);
+        logger.error('STORAGE_SAVE_TERMS_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 }
 
@@ -211,7 +217,10 @@ export function saveUserProgress(progress: UserProgress): void {
         };
         localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(updated));
     } catch (error) {
-        console.error('Failed to save user progress:', error);
+        logger.error('STORAGE_SAVE_PROGRESS_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 }
 
@@ -320,7 +329,10 @@ export function setCurrentLanguage(language: 'tr' | 'en' | 'ru'): void {
     try {
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, normalizedLanguage);
     } catch (error) {
-        console.error('Failed to save language preference:', error);
+        logger.error('STORAGE_SAVE_LANGUAGE_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 }
 
@@ -338,6 +350,9 @@ export function resetAllData(): void {
             document.cookie = `${LANGUAGE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
         }
     } catch (error) {
-        console.error('Failed to reset data:', error);
+        logger.error('STORAGE_RESET_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
     }
 }

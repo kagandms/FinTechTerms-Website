@@ -13,12 +13,21 @@ interface InstallButtonProps {
     variant?: 'compact' | 'prominent';
 }
 
+type NavigatorWithStandalone = Navigator & {
+    standalone?: boolean;
+};
+
+type WindowWithMSStream = Window & {
+    MSStream?: unknown;
+};
+
 const isStandaloneDisplayMode = (): boolean => {
     if (typeof window === 'undefined') {
         return false;
     }
 
-    return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    const navigatorWithStandalone = window.navigator as NavigatorWithStandalone;
+    return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true;
 };
 
 const canShowIOSInstallInstructions = (): boolean => {
@@ -26,12 +35,13 @@ const canShowIOSInstallInstructions = (): boolean => {
         return false;
     }
 
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const windowWithMSStream = window as WindowWithMSStream;
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && windowWithMSStream.MSStream === undefined;
     return isIOSDevice && !isStandaloneDisplayMode();
 };
 
 export default function InstallButton({ variant = 'compact' }: InstallButtonProps) {
-    const { language } = useLanguage();
+    const { t } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
@@ -104,7 +114,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
             >
                 <Download className="w-4 h-4" />
                 <span className={variant === 'prominent' ? 'text-sm' : 'text-xs sm:text-sm'}>
-                    {language === 'tr' ? 'Yükle' : language === 'ru' ? 'Установить' : 'Install'}
+                    {t('install.cta')}
                 </span>
             </button>
 
@@ -122,6 +132,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
                         <button
                             onClick={() => setShowIOSInstructions(false)}
                             className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            aria-label={t('shell.close')}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -133,31 +144,27 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
                             </div>
 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {language === 'tr' ? 'iOS\'a Nasıl Yüklenir?' : language === 'ru' ? 'Как установить на iOS?' : 'How to Install on iOS?'}
+                                {t('install.iosTitle')}
                             </h3>
 
                             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                                {language === 'tr'
-                                    ? 'Bu uygulamayı ana ekranınıza eklemek için şu adımları izleyin:'
-                                    : language === 'ru'
-                                        ? 'Чтобы добавить приложение на главный экран, выполните следующие действия:'
-                                        : 'Follow these steps to add this app to your home screen:'}
+                                {t('install.iosDescription')}
                             </p>
 
                             <div className="flex flex-col gap-3 w-full bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left text-sm">
                                 <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                                     <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">1</span>
                                     <span>
-                                        {language === 'tr' ? 'Aşağıdaki' : language === 'ru' ? 'Нажмите кнопку' : 'Tap the'}
+                                        {t('install.iosStep1Lead')}
                                         <Share className="w-4 h-4 inline mx-1 text-blue-500" />
-                                        {language === 'tr' ? 'paylaş butonuna basın' : language === 'ru' ? 'Поделиться' : 'Share button'}
+                                        {t('install.iosStep1Action')}
                                     </span>
                                 </div>
                                 <div className="w-full h-px bg-gray-200 dark:bg-gray-600/50" />
                                 <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                                     <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">2</span>
                                     <span>
-                                        {language === 'tr' ? '"Ana Ekrana Ekle"yi seçin' : language === 'ru' ? 'Выберите "На экран домой"' : 'Select "Add to Home Screen"'}
+                                        {t('install.iosStep2')}
                                         <PlusSquare className="w-4 h-4 inline mx-1 text-gray-500" />
                                     </span>
                                 </div>
@@ -178,6 +185,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
                         <button
                             onClick={() => setShowManualInstructions(false)}
                             className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            aria-label={t('shell.close')}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -188,29 +196,25 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
                             </div>
 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {language === 'tr' ? 'Uygulama Nasıl Yüklenir?' : language === 'ru' ? 'Как установить приложение?' : 'How to Install?'}
+                                {t('install.manualTitle')}
                             </h3>
 
                             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                                {language === 'tr'
-                                    ? 'Tarayıcı menüsünü kullanarak uygulamayı yükleyebilirsiniz:'
-                                    : language === 'ru'
-                                        ? 'Вы можете установить приложение через меню браузера:'
-                                        : 'You can install the app using the browser menu:'}
+                                {t('install.manualDescription')}
                             </p>
 
                             <div className="flex flex-col gap-3 w-full bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-left text-sm">
                                 <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                                     <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">1</span>
                                     <span>
-                                        {language === 'tr' ? 'Tarayıcı menüsünü (⋮) açın' : language === 'ru' ? 'Откройте меню браузера (⋮)' : 'Open browser menu (⋮)'}
+                                        {t('install.manualStep1')}
                                     </span>
                                 </div>
                                 <div className="w-full h-px bg-gray-200 dark:bg-gray-600/50" />
                                 <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
                                     <span className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-600 rounded-full shadow-sm text-xs font-bold">2</span>
                                     <span>
-                                        {language === 'tr' ? '"Uygulamayı Yükle" veya "Ana Ekrana Ekle"yi seçin' : language === 'ru' ? 'Выберите "Установить приложение" или "Добавить на гл. экран"' : 'Select "Install App" or "Add to Home Screen"'}
+                                        {t('install.manualStep2')}
                                     </span>
                                 </div>
                             </div>

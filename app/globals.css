@@ -218,6 +218,38 @@ a:focus-visible {
   -webkit-backdrop-filter: blur(10px);
 }
 
+@layer components {
+  .app-surface {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px var(--shadow-color);
+  }
+
+  .app-surface-muted {
+    background-color: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dark .app-surface-muted {
+    background-color: rgba(10, 45, 70, 0.78);
+  }
+
+  .app-border {
+    border-color: var(--border-color);
+  }
+
+  .app-text-primary {
+    color: var(--text-primary);
+  }
+
+  .app-text-secondary {
+    color: var(--text-secondary);
+  }
+}
+
 /* Mobile touch improvements */
 @media (hover: none) {
   button:active {

@@ -150,7 +150,10 @@ describe('getUserProgress', () => {
             quiz_history: [],
         });
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
-        expect(warnSpy).toHaveBeenCalledWith('[storage] Corrupted progress data cleared');
+        expect(warnSpy).toHaveBeenCalledWith(
+            'STORAGE_CORRUPTED_PROGRESS_CLEARED',
+            { route: 'storage' }
+        );
 
         warnSpy.mockRestore();
     });

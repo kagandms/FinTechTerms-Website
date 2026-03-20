@@ -1,4 +1,5 @@
 import React from 'react';
+import { getTranslationString } from '@/lib/i18n';
 import type { Language, RegionalMarket, TermContextTags } from '@/types';
 import {
     getContextTagLabels,
@@ -25,21 +26,6 @@ interface TaxonomySummaryProps {
     maxContextTags?: number;
     className?: string;
 }
-
-const summaryCopy: Record<Language, { market: string; context: string }> = {
-    en: {
-        market: 'Regional market',
-        context: 'Academic context',
-    },
-    ru: {
-        market: 'Региональный рынок',
-        context: 'Академический контекст',
-    },
-    tr: {
-        market: 'Bolgesel pazar',
-        context: 'Akademik baglam',
-    },
-};
 
 export function MarketBadge({
     market,
@@ -118,14 +104,15 @@ export function TaxonomySummary({
         return null;
     }
 
-    const copy = summaryCopy[locale] ?? summaryCopy.en;
+    const marketLabel = getTranslationString(locale, 'taxonomy.market') ?? 'Regional market';
+    const contextLabel = getTranslationString(locale, 'taxonomy.context') ?? 'Academic context';
 
     return (
         <section className={`rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/60 ${className}`}>
             {showMarket ? (
                 <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                        {copy.market}
+                        {marketLabel}
                     </p>
                     <MarketBadge market={market} size="md" showGlobal={showGlobalMarket} />
                 </div>
@@ -134,7 +121,7 @@ export function TaxonomySummary({
             {labels.length > 0 ? (
                 <div className={showMarket ? 'mt-4 border-t border-gray-200 pt-4 dark:border-gray-700' : ''}>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                        {copy.context}
+                        {contextLabel}
                     </p>
                     <ContextTagList contextTags={contextTags} maxItems={maxContextTags} />
                 </div>

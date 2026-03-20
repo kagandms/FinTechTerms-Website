@@ -14,6 +14,33 @@ const mockUseSRS = jest.fn();
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
 
+const profileTranslationMap: Record<string, string> = {
+    'profile.warningPartial': 'Some profile fields could not be loaded. Showing the latest available data.',
+    'profile.warningUnavailable': 'Profile data is temporarily unavailable.',
+    'profile.learningAnalyticsUnavailable': 'Spaced repetition analytics are temporarily unavailable.',
+    'profile.renderError': 'The profile screen hit an unexpected error.',
+    'profile.viewLibrary': 'View Library',
+    'profile.favoritesTitle': 'My Favorites',
+    'profile.savedWordsCount': '{count} words saved',
+    'profile.guestCreateTitle': 'Create Account',
+    'profile.guestCreateDescription': 'Save progress and sync devices.',
+    'profile.registerCta': 'Sign Up',
+    'profile.installTitle': 'Install App',
+    'profile.installDescription': 'Add to your home screen. Enjoy offline mode and quick access.',
+    'profile.contactTitle': 'Contact',
+    'profile.contactDescription': 'Reach out to us with questions or suggestions:',
+    'profile.footerDictionary': 'TR-EN-RU Economics & FinTech Dictionary',
+    'profile.editProfileTitle': 'Edit Profile',
+    'profile.editProfileDescription': 'Update your personal information and account settings.',
+    'profile.edit': 'Edit',
+    'profile.closeEdit': 'Close',
+    'profile.title': 'Profile',
+    'profile.guestMessage': 'Log in to save your progress.',
+    'profile.welcomeBack': 'Welcome back, {name}',
+    'auth.login': 'Sign In',
+    'auth.logout': 'Log Out',
+};
+
 jest.mock('@/hooks/useAuthLogic', () => ({
     useAuthLogic: () => mockUseAuthLogic(),
 }));
@@ -97,7 +124,7 @@ describe('ProfilePageClient', () => {
             user: { id: 'user-1', name: 'Alex Stone' },
             isAuthenticated: true,
             language: 'en',
-            t: (key: string) => key,
+            t: (key: string) => profileTranslationMap[key] ?? key,
             showAuthModal: false,
             setShowAuthModal: jest.fn(),
             setAuthMode: jest.fn(),
@@ -116,6 +143,7 @@ describe('ProfilePageClient', () => {
         mockUseLanguage.mockReturnValue({
             language: 'en',
             setLanguage: jest.fn(),
+            t: (key: string) => profileTranslationMap[key] ?? key,
         });
         mockUseSRS.mockReturnValue({
             stats: {
@@ -243,7 +271,7 @@ describe('ProfilePageClient', () => {
             user: null,
             isAuthenticated: false,
             language: 'en',
-            t: (key: string) => key,
+            t: (key: string) => profileTranslationMap[key] ?? key,
             showAuthModal: false,
             setShowAuthModal: jest.fn(),
             setAuthMode: jest.fn(),

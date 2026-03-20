@@ -10,6 +10,22 @@
         "about": "Hakkında",
         "dashboard": "Panel"
     },
+    "shell": {
+        "navAria": "Birincil gezinme",
+        "toggleTheme": "Temayı değiştir",
+        "telegramIntegration": "Telegram API entegrasyonunu aç",
+        "close": "Kapat"
+    },
+    "errors": {
+        "routeLoadTitle": "Sayfa yüklenemedi",
+        "routeLoadDescription": "Bu sayfa açılırken beklenmeyen bir sorun oluştu. Lütfen tekrar deneyin.",
+        "globalTitle": "Bir hata oluştu",
+        "globalDescription": "Beklenmeyen bir sorun meydana geldi. Lütfen tekrar deneyin.",
+        "criticalTitle": "Kritik bir hata oluştu",
+        "criticalDescription": "Uygulama beklenmeyen bir sorunla karşılaştı. Tekrar deneyin veya ana sayfaya dönün.",
+        "retry": "Tekrar Dene",
+        "home": "Ana Sayfa"
+    },
     "home": {
         "welcomeTitle": "FinTechTerms'e Hoş Geldiniz",
         "subtitle": "TR-EN-RU Ekonomi, Fintek ve Bilişim Sözlüğü",
@@ -21,7 +37,9 @@
         "addToFavorites": "Favorilere ekleyerek Pratik'te tekrar edin",
         "exploreWords": "Kelimeleri Keşfet",
         "categories": "Kategoriler",
-        "noTerms": "Henüz terim bulunamadı."
+        "noTerms": "Henüz terim bulunamadı.",
+        "openFavorites": "Favorileri aç",
+        "quickStatsDue": "Tekrara hazır"
     },
     "search": {
         "title": "Ara",
@@ -89,7 +107,10 @@
         "srsReview": "SRS Tekrar",
         "srsReviewDesc": "Aralıklı tekrar ile kartlarını gözden geçir",
         "startSrsReview": "SRS Tekrarı Başlat",
-        "cardsDue": "kart bekliyor"
+        "cardsDue": "kart bekliyor",
+        "changeLanguage": "Dili Değiştir",
+        "exitConfirmation": "Testi bitirip çıkmak istediğinize emin misiniz?",
+        "exitAria": "Testten çık"
     },
     "card": {
         "listen": "Seslendir",
@@ -116,7 +137,27 @@
         "resetData": "Verileri Sıfırla",
         "language": "Dil",
         "days": "gün",
-        "guestMessage": "İlerlemeni kaydetmek için giriş yap."
+        "guestMessage": "İlerlemeni kaydetmek için giriş yap.",
+        "welcomeBack": "Tekrar hoş geldin, {name}",
+        "guestCreateTitle": "Hesap Oluştur",
+        "guestCreateDescription": "İlerlemeni kaydet ve cihazlarını senkronize et.",
+        "registerCta": "Kayıt Ol",
+        "favoritesTitle": "Favorilerim",
+        "savedWordsCount": "{count} kelime kayıtlı",
+        "viewLibrary": "Görüntüle",
+        "editProfileTitle": "Profilini Düzenle",
+        "editProfileDescription": "Kişisel bilgilerini ve hesap ayarlarını güncelle.",
+        "edit": "Düzenle",
+        "closeEdit": "Kapat",
+        "learningAnalyticsUnavailable": "Aralıklı tekrar analitiği geçici olarak kullanılamıyor.",
+        "warningPartial": "Bazı profil alanları yüklenemedi. Son bilinen bilgiler gösteriliyor.",
+        "warningUnavailable": "Profil verileri şu anda yüklenemiyor.",
+        "renderError": "Profil ekranı beklenmeyen bir hata verdi.",
+        "installTitle": "Uygulamayı Yükle",
+        "installDescription": "Ana ekranına ekle. Çevrimdışı mod ve hızlı erişimin keyfini çıkar.",
+        "contactTitle": "İletişim",
+        "contactDescription": "Soruların veya önerilerin için bize ulaşabilirsin:",
+        "footerDictionary": "TR-EN-RU Ekonomi ve FinTech Sözlüğü"
     },
     "auth": {
         "login": "Giriş Yap",
@@ -126,6 +167,8 @@
         "password": "Şifre",
         "confirmPassword": "Şifreyi Onayla",
         "name": "Ad Soyad",
+        "nameRequired": "Ad gerekli",
+        "surnameRequired": "Soyad gerekli",
         "loginSuccess": "Giriş başarılı!",
         "registerSuccess": "Kayıt başarılı!",
         "guest": "Misafir olarak devam et",
@@ -136,6 +179,177 @@
         "resetPassword": "Şifreyi Sıfırla",
         "sendResetLink": "Sıfırlama Linki Gönder",
         "passwordRequirements": "Şifre en az 8 karakter olmalı ve en az bir büyük harf, bir küçük harf, bir rakam ve bir sembol içermelidir."
+    },
+    "authFlow": {
+        "invalidBirthDate": "Geçerli bir doğum tarihi girin (13+)",
+        "confirmPasswordRequired": "Lütfen şifrenizi tekrar girin.",
+        "passwordsMismatch": "Şifreler eşleşmiyor.",
+        "verificationSent": "Doğrulama kodu gönderildi.",
+        "loginSuccess": "Giriş başarılı.",
+        "registerSuccess": "Kayıt başarılı.",
+        "otpSuccess": "Kayıt başarılı! 🎉"
+    },
+    "profileForm": {
+        "name": "Ad",
+        "surname": "Soyad",
+        "email": "E-posta",
+        "birthDate": "Doğum Tarihi",
+        "save": "Değişiklikleri Kaydet",
+        "saving": "Kaydediliyor...",
+        "changePassword": "Şifre Değiştir",
+        "currentPassword": "Mevcut Şifre",
+        "newPassword": "Yeni Şifre",
+        "confirmNewPassword": "Yeni Şifre (Tekrar)",
+        "unknownError": "Bir hata oluştu.",
+        "profileUpdated": "Başarıyla kaydedildi",
+        "profilePartiallyUpdated": "Profil bilgileri kaydedildi, ancak yedek profil senkronizasyonu tamamlanamadı.",
+        "passwordUpdated": "Şifreniz başarıyla güncellendi!",
+        "currentPasswordError": "Mevcut şifre yanlış",
+        "authRequired": "Oturum doğrulanamadı.",
+        "profileLoadError": "Profil verileri yüklenemedi.",
+        "emailUnavailable": "Bu giriş yöntemi bir e-posta adresi paylaşmıyor.",
+        "passwordManagedByProvider": "Bu hesapta şifre Supabase e-posta girişi ile yönetilmiyor. Şifreyi bağlı sağlayıcıda değiştirin.",
+        "requestTimeout": "Profil güncelleme isteği zaman aşımına uğradı. Lütfen tekrar deneyin.",
+        "personalInfo": "Kişisel Bilgiler",
+        "cancelPasswordChange": "Şifre Değiştirmeyi İptal Et"
+    },
+    "favorites": {
+        "backToHome": "Ana Sayfaya Dön",
+        "title": "Favorilerim",
+        "mobileTitle": "Favoriler",
+        "description": "Öğrenmek için kaydettiğin tüm terimler.",
+        "loadingTitle": "Favoriler yükleniyor",
+        "loadingDescription": "Kaydedilen terimlerin getiriliyor. Lütfen bekleyin.",
+        "errorTitle": "Veri yükleme hatası",
+        "errorDescription": "Favorilerin şu anda yüklenemedi. Lütfen tekrar dene.",
+        "degradedTitle": "Kaydedilen veriler gösteriliyor",
+        "degradedDescription": "Sunucuya ulaşılamadı. Gösterilen favoriler son kaydedilen veriler olabilir.",
+        "retry": "Tekrar Dene",
+        "emptyTitle": "Henüz favori kelime yok",
+        "emptyDescription": "Kelimeleri çalışırken yıldız simgesine tıklayarak favorilerine ekleyebilirsin.",
+        "explore": "Kelimeleri Keşfet"
+    },
+    "install": {
+        "cta": "Yükle",
+        "iosTitle": "iOS'a Nasıl Yüklenir?",
+        "iosDescription": "Bu uygulamayı ana ekranına eklemek için şu adımları izle:",
+        "iosStep1Lead": "Aşağıdaki",
+        "iosStep1Action": "paylaş butonuna bas",
+        "iosStep2": "\"Ana Ekrana Ekle\"yi seç",
+        "manualTitle": "Uygulama Nasıl Yüklenir?",
+        "manualDescription": "Tarayıcı menüsünü kullanarak uygulamayı yükleyebilirsin:",
+        "manualStep1": "Tarayıcı menüsünü (⋮) aç",
+        "manualStep2": "\"Uygulamayı Yükle\" veya \"Ana Ekrana Ekle\"yi seç"
+    },
+    "taxonomy": {
+        "market": "Bölgesel pazar",
+        "context": "Akademik bağlam"
+    },
+    "analytics": {
+        "title": "Analitik",
+        "subtitle": "Öğrenme İstatistikleri",
+        "back": "Geri",
+        "overview": "Genel Bakış",
+        "totalTerms": "Toplam Terim",
+        "favorites": "Favoriler",
+        "reviewed": "Tekrar Edilen",
+        "mastered": "Ustalaşılan",
+        "categoryAnalysis": "Kategori Analizi",
+        "terms": "terim",
+        "difficulty": "Zorluk",
+        "retention": "Hatırlama",
+        "srsDistribution": "SRS Dağılımı",
+        "box": "Kutu",
+        "learningProgress": "Öğrenme İlerlemesi",
+        "streak": "Günlük Seri",
+        "days": "gün",
+        "accuracy": "Doğruluk Oranı",
+        "totalReviews": "Toplam Tekrar",
+        "avgResponseTime": "Ort. Yanıt Süresi",
+        "recentActivity": "Son Aktivite",
+        "noActivity": "Henüz aktivite yok",
+        "correct": "Doğru",
+        "wrong": "Yanlış",
+        "exportData": "Veri Dışa Aktar",
+        "forResearch": "Akademik Araştırma İçin",
+        "unknownTerm": "Bilinmiyor",
+        "srsLevels": ["Yeni", "Öğrenme", "Geliştirme", "Pekiştirme", "Ustalaşmış"]
+    },
+    "methodology": {
+        "title": "Metodoloji",
+        "subtitle": "SRS ve Leitner Sistemi",
+        "back": "Geri",
+        "intro": {
+            "title": "Aralıklı Tekrar Sistemi (SRS) Nedir?",
+            "text": "Spaced Repetition System (SRS), bilginin uzun süreli hafızaya yerleşmesini optimize eden bilimsel bir öğrenme metodolojisidir. Hermann Ebbinghaus'un \"unutma eğrisi\" araştırmasına dayanır."
+        },
+        "forgettingCurve": {
+            "title": "Unutma Eğrisi",
+            "text": "Ebbinghaus, yeni öğrenilen bilginin tekrar edilmezse hızla unutulduğunu keşfetti. Ancak stratejik zamanlarda yapılan tekrarlar, bilginin kalıcılığını dramatik şekilde artırır.",
+            "points": [
+                "1 saat sonra: %56 hatırlanır",
+                "1 gün sonra: %34 hatırlanır",
+                "1 hafta sonra: %25 hatırlanır",
+                "1 ay sonra: %21 hatırlanır"
+            ]
+        },
+        "leitner": {
+            "title": "Leitner Sistemi",
+            "text": "Sebastian Leitner tarafından 1970'lerde geliştirilen bu sistem, flashcard'ları zorluk seviyesine göre farklı kutulara ayırır.",
+            "boxLabel": "Kutu",
+            "boxes": [
+                { "level": 1, "interval": "1 gün", "desc": "Yeni veya yanlış bilinen kelimeler" },
+                { "level": 2, "interval": "3 gün", "desc": "Öğrenmeye başlanan kelimeler" },
+                { "level": 3, "interval": "1 hafta", "desc": "Öğrenme aşamasındaki kelimeler" },
+                { "level": 4, "interval": "2 hafta", "desc": "Pekiştirme aşamasındaki kelimeler" },
+                { "level": 5, "interval": "1 ay", "desc": "Ustalaşılmış kelimeler" }
+            ]
+        },
+        "algorithm": {
+            "title": "FinTechTerms Algoritması",
+            "text": "Uygulamamız, Leitner sistemini SuperMemo-2 algoritması ile güçlendirerek daha akıllı bir öğrenme deneyimi sunar.",
+            "rules": [
+                { "title": "Doğru Cevap", "desc": "Kelime bir üst kutuya yükselir" },
+                { "title": "Yanlış Cevap", "desc": "Kelime ilk kutuya geri döner" },
+                { "title": "Zorluk Skoru", "desc": "Her kelime için dinamik zorluk hesaplanır" },
+                { "title": "Hatırlama Oranı", "desc": "Kişisel başarı oranı takip edilir" }
+            ]
+        },
+        "metrics": {
+            "title": "Ölçülen Metrikler",
+            "items": [
+                { "name": "SRS Level", "desc": "Kelimenin mevcut kutu numarası (1-5)" },
+                { "name": "Difficulty Score", "desc": "Zorluk puanı (0.0 - 5.0)" },
+                { "name": "Retention Rate", "desc": "Hatırlama oranı (0% - 100%)" },
+                { "name": "Review Count", "desc": "Toplam tekrar sayısı" },
+                { "name": "Response Time", "desc": "Ortalama cevap süresi (ms)" }
+            ]
+        },
+        "academic": {
+            "title": "Akademik Temel",
+            "references": [
+                "Ebbinghaus, H. (1885). Memory: A Contribution to Experimental Psychology",
+                "Leitner, S. (1972). So lernt man lernen",
+                "Pimsleur, P. (1967). A Memory Schedule",
+                "Wozniak, P. & Gorzelanczyk, E. (1994). Optimization of Repetition Spacing"
+            ]
+        },
+        "benefits": {
+            "title": "SRS'in Avantajları",
+            "items": [
+                "Öğrenme süresini %50 oranında azaltır",
+                "Uzun vadeli hatırlamayı %80+ seviyesinde tutar",
+                "Kişiselleştirilmiş öğrenme deneyimi sunar",
+                "Bilişsel yükü optimize eder"
+            ]
+        }
+    },
+    "notFound": {
+        "badge": "Akademik katalog",
+        "title": "Sayfa bulunamadı",
+        "description": "İstenen bölüm mevcut katalog yapısında yer almıyor veya başka bir araştırma yüzeyine taşındı.",
+        "home": "Ana Sayfaya Dön",
+        "search": "Aramaya Git"
     },
     "categories": {
         "Fintech": "Fintek",

@@ -5,20 +5,9 @@ import { usePathname } from 'next/navigation';
 import { Language } from '@/types';
 import { getCurrentLanguage, setCurrentLanguage as saveLanguage } from '@/utils/storage';
 import { DEFAULT_LANGUAGE } from '@/lib/language';
-
-// Import translation files
-import trTranslations from '@/locales/tr.json';
-import enTranslations from '@/locales/en.json';
-import ruTranslations from '@/locales/ru.json';
+import { getTranslationString } from '@/lib/i18n';
 
 type TranslationKey = string;
-type Translations = typeof trTranslations;
-
-const translations: Record<Language, Translations> = {
-    tr: trTranslations,
-    en: enTranslations,
-    ru: ruTranslations,
-};
 
 interface LanguageContextType {
     language: Language;
@@ -104,32 +93,9 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
      * e.g., t('home.welcomeTitle')
      */
     const t = useCallback((key: TranslationKey): string => {
-        const keys = key.split('.');
-        const resolveNestedValue = (sourceLanguage: Language): unknown => {
-            let value: unknown = translations[sourceLanguage];
-
-            for (const part of keys) {
-                if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
-                    value = (value as Record<string, unknown>)[part];
-                } else {
-                    return undefined;
-                }
-            }
-
-            return value;
-        };
-
-        const localizedValue = resolveNestedValue(language);
-        if (typeof localizedValue === 'string' && localizedValue.trim()) {
-            return localizedValue;
-        }
-
-        const defaultFallback = resolveNestedValue(DEFAULT_LANGUAGE);
-        if (typeof defaultFallback === 'string' && defaultFallback.trim()) {
-            return defaultFallback;
-        }
-
-        return key;
+        return getTranslationString(language, key)
+            ?? getTranslationString(DEFAULT_LANGUAGE, key)
+            ?? key;
     }, [language]);
 
     return (

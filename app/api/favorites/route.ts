@@ -19,6 +19,7 @@ import {
     resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { logger } from '@/lib/logger';
 
 const FavoriteRequestSchema = z.object({
     termId: z.string().min(1, 'Term ID is required'),
@@ -54,7 +55,11 @@ const markFavoriteFailure = async (
             responseBody,
         });
     } catch (error) {
-        console.error('FAVORITES_IDEMPOTENCY_FAIL_ERROR', error);
+        logger.error('FAVORITES_IDEMPOTENCY_FAIL_ERROR', {
+            route: 'POST /api/favorites',
+            error: error instanceof Error ? error : undefined,
+            userId,
+        });
     }
 };
 
@@ -69,7 +74,10 @@ export async function POST(request: Request) {
     try {
         body = await request.json();
     } catch (error) {
-        console.error('POST_FAVORITES_INVALID_JSON', error);
+        logger.warn('POST_FAVORITES_INVALID_JSON', {
+            route: 'POST /api/favorites',
+            error: error instanceof Error ? error : undefined,
+        });
         return errorResponse({
             status: 400,
             code: 'INVALID_JSON',
@@ -82,7 +90,10 @@ export async function POST(request: Request) {
 
     const validatedData = FavoriteRequestSchema.safeParse(body);
     if (!validatedData.success) {
-        console.error('POST_FAVORITES_VALIDATION_ERROR', validatedData.error.flatten());
+        logger.warn('POST_FAVORITES_VALIDATION_ERROR', {
+            route: 'POST /api/favorites',
+            validation: validatedData.error.flatten(),
+        });
         return errorResponse({
             status: 400,
             code: 'INVALID_TERM_ID',
@@ -224,7 +235,12 @@ export async function POST(request: Request) {
             .maybeSingle();
 
         if (termError) {
-            console.error('POST_FAVORITES_TERM_LOOKUP_ERROR', termError);
+            logger.error('POST_FAVORITES_TERM_LOOKUP_ERROR', {
+                route: 'POST /api/favorites',
+                error: termError,
+                userId: user.id,
+                termId,
+            });
             await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
                 code: 'FAVORITES_UPDATE_FAILED',
                 message: 'Unable to validate term.',
@@ -267,7 +283,12 @@ export async function POST(request: Request) {
                 });
 
             if (insertError) {
-                console.error('POST_FAVORITES_INSERT_ERROR', insertError);
+                logger.error('POST_FAVORITES_INSERT_ERROR', {
+                    route: 'POST /api/favorites',
+                    error: insertError,
+                    userId: user.id,
+                    termId,
+                });
                 await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
                     code: 'FAVORITES_UPDATE_FAILED',
                     message: 'Unable to update favorites.',
@@ -289,7 +310,12 @@ export async function POST(request: Request) {
                 .eq('term_id', termId);
 
             if (deleteError) {
-                console.error('POST_FAVORITES_DELETE_ERROR', deleteError);
+                logger.error('POST_FAVORITES_DELETE_ERROR', {
+                    route: 'POST /api/favorites',
+                    error: deleteError,
+                    userId: user.id,
+                    termId,
+                });
                 await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
                     code: 'FAVORITES_UPDATE_FAILED',
                     message: 'Unable to update favorites.',
@@ -312,7 +338,11 @@ export async function POST(request: Request) {
             .order('created_at', { ascending: false });
 
         if (favoritesResponse.error) {
-            console.error('POST_FAVORITES_LIST_ERROR', favoritesResponse.error);
+            logger.error('POST_FAVORITES_LIST_ERROR', {
+                route: 'POST /api/favorites',
+                error: favoritesResponse.error,
+                userId: user.id,
+            });
             await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
                 code: 'FAVORITES_UPDATE_FAILED',
                 message: 'Unable to load updated favorites.',
@@ -345,7 +375,11 @@ export async function POST(request: Request) {
                 responseBody,
             });
         } catch (error) {
-            console.error('FAVORITES_IDEMPOTENCY_COMPLETE_ERROR', error);
+            logger.error('FAVORITES_IDEMPOTENCY_COMPLETE_ERROR', {
+                route: 'POST /api/favorites',
+                error: error instanceof Error ? error : undefined,
+                userId: user.id,
+            });
         }
 
         return successResponse(
@@ -406,7 +440,11 @@ export async function GET(request: Request) {
             .order('created_at', { ascending: false });
 
         if (response.error) {
-            console.error('GET_FAVORITES_FAILED', response.error);
+            logger.error('GET_FAVORITES_FAILED', {
+                route: 'GET /api/favorites',
+                error: response.error,
+                userId: user.id,
+            });
             return errorResponse({
                 status: 500,
                 code: 'FAVORITES_LOAD_FAILED',

@@ -8,6 +8,7 @@ import { getContextTagLabels } from '@/lib/termTaxonomy';
 import { speakText, isSpeechAvailable } from '@/utils/tts';
 import { getIntervalDescription } from '@/utils/srsLogic';
 import { useResponseTimer } from '@/hooks/useResponseTimer';
+import { logger } from '@/lib/logger';
 import { Volume2, Check, X, RotateCcw } from 'lucide-react';
 
 interface QuizCardProps {
@@ -76,7 +77,11 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
         try {
             await speakText(text, lang);
         } catch (error) {
-            console.error('TTS error:', error);
+            logger.warn('QUIZ_CARD_TTS_FAILED', {
+                route: 'QuizCard',
+                error: error instanceof Error ? error : undefined,
+                language: lang,
+            });
         } finally {
             setIsSpeaking(false);
         }
@@ -197,7 +202,7 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
 
                         {/* All 3 languages - clickable */}
                         <div className="w-full bg-gray-50 rounded-xl p-3 space-y-2">
-                            <p className="text-xs text-gray-400 mb-2">{t('card.listen')} / {language === 'tr' ? 'Dili Değiştir' : language === 'ru' ? 'Сменить язык' : 'Change Language'}</p>
+                            <p className="text-xs text-gray-400 mb-2">{t('card.listen')} / {t('quiz.changeLanguage')}</p>
                             {allLanguages.map(lang => (
                                 <div
                                     key={lang}
@@ -237,7 +242,7 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
                         {taxonomyLabels.length > 0 ? (
                             <div className="w-full mt-4">
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
-                                    {language === 'tr' ? 'Akademik baglam' : language === 'ru' ? 'Академический контекст' : 'Academic context'}
+                                    {t('taxonomy.context')}
                                 </p>
                                 <ContextTagList contextTags={term.context_tags} maxItems={4} />
                             </div>

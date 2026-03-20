@@ -10,6 +10,22 @@
         "about": "About",
         "dashboard": "Dashboard"
     },
+    "shell": {
+        "navAria": "Primary navigation",
+        "toggleTheme": "Toggle theme",
+        "telegramIntegration": "Open Telegram API integration",
+        "close": "Close"
+    },
+    "errors": {
+        "routeLoadTitle": "Page failed to load",
+        "routeLoadDescription": "An unexpected problem prevented this page from loading. Please try again.",
+        "globalTitle": "Something went wrong",
+        "globalDescription": "An unexpected error occurred. Please try again.",
+        "criticalTitle": "A critical error occurred",
+        "criticalDescription": "The application encountered an unexpected failure. Try again or return to the home page.",
+        "retry": "Try Again",
+        "home": "Home"
+    },
     "home": {
         "welcomeTitle": "Welcome to FinTechTerms",
         "subtitle": "TR-EN-RU Economics & IT Dictionary",
@@ -21,7 +37,9 @@
         "addToFavorites": "Add terms to favorites to review them in Practice",
         "exploreWords": "Explore Words",
         "categories": "Categories",
-        "noTerms": "No terms found yet."
+        "noTerms": "No terms found yet.",
+        "openFavorites": "Open favorites",
+        "quickStatsDue": "Due for review"
     },
     "search": {
         "title": "Search",
@@ -89,7 +107,10 @@
         "srsReview": "SRS Review",
         "srsReviewDesc": "Review your due flashcards with spaced repetition",
         "startSrsReview": "Start SRS Review",
-        "cardsDue": "cards due"
+        "cardsDue": "cards due",
+        "changeLanguage": "Change Language",
+        "exitConfirmation": "Are you sure you want to exit the quiz?",
+        "exitAria": "Exit quiz"
     },
     "card": {
         "listen": "Listen",
@@ -116,7 +137,27 @@
         "resetData": "Reset Data",
         "language": "Language",
         "days": "days",
-        "guestMessage": "Log in to save your progress."
+        "guestMessage": "Log in to save your progress.",
+        "welcomeBack": "Welcome back, {name}",
+        "guestCreateTitle": "Create Account",
+        "guestCreateDescription": "Save progress and sync devices.",
+        "registerCta": "Sign Up",
+        "favoritesTitle": "My Favorites",
+        "savedWordsCount": "{count} words saved",
+        "viewLibrary": "View Library",
+        "editProfileTitle": "Edit Profile",
+        "editProfileDescription": "Update your personal information and account settings.",
+        "edit": "Edit",
+        "closeEdit": "Close",
+        "learningAnalyticsUnavailable": "Spaced repetition analytics are temporarily unavailable.",
+        "warningPartial": "Some profile fields could not be loaded. Showing the latest available data.",
+        "warningUnavailable": "Profile data is temporarily unavailable.",
+        "renderError": "The profile screen hit an unexpected error.",
+        "installTitle": "Install App",
+        "installDescription": "Add to your home screen. Enjoy offline mode and quick access.",
+        "contactTitle": "Contact",
+        "contactDescription": "Reach out to us with questions or suggestions:",
+        "footerDictionary": "TR-EN-RU Economics & FinTech Dictionary"
     },
     "auth": {
         "login": "Sign In",
@@ -126,6 +167,8 @@
         "password": "Password",
         "confirmPassword": "Confirm Password",
         "name": "Full Name",
+        "nameRequired": "Name required",
+        "surnameRequired": "Surname required",
         "loginSuccess": "Login successful!",
         "registerSuccess": "Registration successful!",
         "guest": "Continue as guest",
@@ -136,6 +179,177 @@
         "resetPassword": "Reset Password",
         "sendResetLink": "Send Reset Link",
         "passwordRequirements": "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol."
+    },
+    "authFlow": {
+        "invalidBirthDate": "Enter valid birth date (13+)",
+        "confirmPasswordRequired": "Please confirm your password.",
+        "passwordsMismatch": "Passwords do not match.",
+        "verificationSent": "Verification code sent.",
+        "loginSuccess": "Login successful.",
+        "registerSuccess": "Registration successful.",
+        "otpSuccess": "Registration successful! 🎉"
+    },
+    "profileForm": {
+        "name": "First Name",
+        "surname": "Last Name",
+        "email": "Email",
+        "birthDate": "Date of Birth",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "changePassword": "Change Password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmNewPassword": "Confirm New Password",
+        "unknownError": "Something went wrong.",
+        "profileUpdated": "Successfully saved",
+        "profilePartiallyUpdated": "Profile details were saved, but the secondary profile sync did not complete.",
+        "passwordUpdated": "Password updated successfully!",
+        "currentPasswordError": "Current password incorrect",
+        "authRequired": "Session not authenticated.",
+        "profileLoadError": "Unable to load profile data.",
+        "emailUnavailable": "This sign-in method does not provide an email address.",
+        "passwordManagedByProvider": "This account does not use a Supabase email-password credential. Change the password with the linked identity provider.",
+        "requestTimeout": "Profile update timed out. Please try again.",
+        "personalInfo": "Personal Information",
+        "cancelPasswordChange": "Cancel Password Change"
+    },
+    "favorites": {
+        "backToHome": "Back to Home",
+        "title": "My Favorites",
+        "mobileTitle": "Favorites",
+        "description": "All the terms you have saved for studying.",
+        "loadingTitle": "Loading favorites",
+        "loadingDescription": "Your saved terms are being loaded. Please wait.",
+        "errorTitle": "Data loading error",
+        "errorDescription": "Favorites could not be loaded right now. Please try again.",
+        "degradedTitle": "Showing saved data",
+        "degradedDescription": "The server is unavailable. These favorites may be from your last saved session.",
+        "retry": "Try Again",
+        "emptyTitle": "No favorite terms yet",
+        "emptyDescription": "You can add words to your favorites by clicking the star icon while studying.",
+        "explore": "Explore Words"
+    },
+    "install": {
+        "cta": "Install",
+        "iosTitle": "How to Install on iOS?",
+        "iosDescription": "Follow these steps to add this app to your home screen:",
+        "iosStep1Lead": "Tap the",
+        "iosStep1Action": "Share button",
+        "iosStep2": "Select \"Add to Home Screen\"",
+        "manualTitle": "How to Install?",
+        "manualDescription": "You can install the app using the browser menu:",
+        "manualStep1": "Open browser menu (⋮)",
+        "manualStep2": "Select \"Install App\" or \"Add to Home Screen\""
+    },
+    "taxonomy": {
+        "market": "Regional market",
+        "context": "Academic context"
+    },
+    "analytics": {
+        "title": "Analytics",
+        "subtitle": "Learning Statistics",
+        "back": "Back",
+        "overview": "Overview",
+        "totalTerms": "Total Terms",
+        "favorites": "Favorites",
+        "reviewed": "Reviewed",
+        "mastered": "Mastered",
+        "categoryAnalysis": "Category Analysis",
+        "terms": "terms",
+        "difficulty": "Difficulty",
+        "retention": "Retention",
+        "srsDistribution": "SRS Distribution",
+        "box": "Box",
+        "learningProgress": "Learning Progress",
+        "streak": "Daily Streak",
+        "days": "days",
+        "accuracy": "Accuracy",
+        "totalReviews": "Total Reviews",
+        "avgResponseTime": "Avg. Response Time",
+        "recentActivity": "Recent Activity",
+        "noActivity": "No activity yet",
+        "correct": "Correct",
+        "wrong": "Wrong",
+        "exportData": "Export Data",
+        "forResearch": "For Academic Research",
+        "unknownTerm": "Unknown",
+        "srsLevels": ["New", "Learning", "Developing", "Reviewing", "Mastered"]
+    },
+    "methodology": {
+        "title": "Methodology",
+        "subtitle": "SRS and Leitner System",
+        "back": "Back",
+        "intro": {
+            "title": "What is Spaced Repetition System (SRS)?",
+            "text": "The Spaced Repetition System (SRS) is a scientifically proven learning methodology that optimizes the transfer of information to long-term memory. It is based on Hermann Ebbinghaus's \"forgetting curve\" research."
+        },
+        "forgettingCurve": {
+            "title": "The Forgetting Curve",
+            "text": "Ebbinghaus discovered that newly learned information is quickly forgotten if not reviewed. However, strategic reviews at specific intervals dramatically increase retention.",
+            "points": [
+                "After 1 hour: 56% retained",
+                "After 1 day: 34% retained",
+                "After 1 week: 25% retained",
+                "After 1 month: 21% retained"
+            ]
+        },
+        "leitner": {
+            "title": "Leitner System",
+            "text": "Developed by Sebastian Leitner in the 1970s, this system organizes flashcards into different boxes based on difficulty level.",
+            "boxLabel": "Box",
+            "boxes": [
+                { "level": 1, "interval": "1 day", "desc": "New or incorrectly answered cards" },
+                { "level": 2, "interval": "3 days", "desc": "Cards starting to be learned" },
+                { "level": 3, "interval": "1 week", "desc": "Cards in learning phase" },
+                { "level": 4, "interval": "2 weeks", "desc": "Cards in reviewing phase" },
+                { "level": 5, "interval": "1 month", "desc": "Mastered cards" }
+            ]
+        },
+        "algorithm": {
+            "title": "FinTechTerms Algorithm",
+            "text": "Our application enhances the Leitner system with the SuperMemo-2 algorithm for a smarter learning experience.",
+            "rules": [
+                { "title": "Correct Answer", "desc": "Card moves to the next box" },
+                { "title": "Wrong Answer", "desc": "Card returns to box 1" },
+                { "title": "Difficulty Score", "desc": "Dynamic difficulty calculated per term" },
+                { "title": "Retention Rate", "desc": "Personal success rate tracked" }
+            ]
+        },
+        "metrics": {
+            "title": "Measured Metrics",
+            "items": [
+                { "name": "SRS Level", "desc": "Current box number (1-5)" },
+                { "name": "Difficulty Score", "desc": "Difficulty rating (0.0 - 5.0)" },
+                { "name": "Retention Rate", "desc": "Recall rate (0% - 100%)" },
+                { "name": "Review Count", "desc": "Total number of reviews" },
+                { "name": "Response Time", "desc": "Average response time (ms)" }
+            ]
+        },
+        "academic": {
+            "title": "Academic Foundation",
+            "references": [
+                "Ebbinghaus, H. (1885). Memory: A Contribution to Experimental Psychology",
+                "Leitner, S. (1972). So lernt man lernen",
+                "Pimsleur, P. (1967). A Memory Schedule",
+                "Wozniak, P. & Gorzelanczyk, E. (1994). Optimization of Repetition Spacing"
+            ]
+        },
+        "benefits": {
+            "title": "Benefits of SRS",
+            "items": [
+                "Reduces learning time by up to 50%",
+                "Maintains long-term retention above 80%",
+                "Provides personalized learning experience",
+                "Optimizes cognitive load"
+            ]
+        }
+    },
+    "notFound": {
+        "badge": "Academic catalog",
+        "title": "Page not found",
+        "description": "The requested section does not exist in the current catalog structure or has been moved to another research surface.",
+        "home": "Back to Home",
+        "search": "Go to Search"
     },
     "categories": {
         "Fintech": "Fintech",

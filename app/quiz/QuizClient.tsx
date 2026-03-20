@@ -12,6 +12,7 @@ import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 import { createIdempotencyKey } from '@/lib/idempotency';
+import { resolveHomeHref } from '@/lib/navigation';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
@@ -654,7 +655,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             </>
                         ) : (
                             <Link
-                                href="/"
+                                href={resolveHomeHref('/quiz')}
                                 className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
                             >
                                 <span>{t('common.home')}</span>
@@ -687,16 +688,16 @@ export default function QuizPage({ nonce }: QuizPageProps) {
             {/* Header */}
             <header className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => {
-                                const confirmMsg = language === 'tr' ? 'Testi bitirip çıkmak istediğinize emin misiniz?' : language === 'ru' ? 'Вы уверены, что хотите завершить тест и выйти?' : 'Are you sure you want to exit the quiz?';
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                const confirmMsg = t('quiz.exitConfirmation');
                                 if (window.confirm(confirmMsg)) {
                                     resetToNormal();
                                 }
                             }}
                             className="p-1 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition-colors mr-1"
-                            aria-label="Exit quiz"
+                            aria-label={t('quiz.exitAria')}
                         >
                             <X className="w-5 h-5 border border-transparent rounded" />
                         </button>

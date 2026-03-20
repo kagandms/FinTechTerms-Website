@@ -45,7 +45,7 @@ const shuffleTerms = (terms: Term[]): Term[] => {
 };
 
 export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) {
-    const { t, language } = useLanguage();
+    const { t } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
     const { isAuthenticated } = useAuth();
@@ -67,24 +67,6 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
             setTheme('dark');
         }
     };
-
-    const uiCopy = {
-        tr: {
-            telegramAria: 'Telegram API entegrasyonunu aç',
-            themeAria: 'Temayı değiştir',
-            openFavorites: 'Favorileri aç',
-        },
-        en: {
-            telegramAria: 'Open Telegram API integration',
-            themeAria: 'Toggle theme',
-            openFavorites: 'Open favorites',
-        },
-        ru: {
-            telegramAria: 'Открыть интеграцию Telegram API',
-            themeAria: 'Переключить тему',
-            openFavorites: 'Открыть избранное',
-        },
-    }[language];
 
     const openFavorites = () => {
         if (isAuthenticated) {
@@ -140,7 +122,7 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 rounded-xl border border-sky-100 bg-white text-sky-600 transition-colors hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800 flex items-center justify-center"
-                        aria-label={uiCopy.telegramAria}
+                        aria-label={t('shell.telegramIntegration')}
                     >
                         <Send className="w-5 h-5" />
                     </a>
@@ -151,7 +133,7 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                         onClick={toggleTheme}
                         data-testid="theme-toggle"
                         className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
-                        aria-label={uiCopy.themeAria}
+                        aria-label={t('shell.toggleTheme')}
                     >
                         {resolvedTheme === 'dark' ? (
                             <Sun className="w-5 h-5 text-yellow-500" />
@@ -195,7 +177,7 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-3 rounded-xl border border-sky-100 bg-white text-sky-600 transition-all shadow-sm hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
-                            aria-label={uiCopy.telegramAria}
+                            aria-label={t('shell.telegramIntegration')}
                         >
                             <Send className="w-5 h-5" />
                         </a>
@@ -207,7 +189,7 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
                             className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
-                            aria-label={uiCopy.themeAria}
+                            aria-label={t('shell.toggleTheme')}
                         >
                             {resolvedTheme === 'dark' ? (
                                 <Sun className="w-5 h-5" />
@@ -235,21 +217,21 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
             {/* Quick Stats */}
             {userProgress.quiz_history.length > 0 && (
                 <section className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                    <div className="app-surface rounded-xl p-4 text-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
                                 <BrainCircuit className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                             </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.dueToday}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">К повтору</p>
+                        <p className="app-text-secondary text-xs">{t('home.quickStatsDue')}</p>
                     </div>
 
                     <button
                         type="button"
                         onClick={openFavorites}
-                        aria-label={uiCopy.openFavorites}
-                        className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block"
+                        aria-label={t('home.openFavorites')}
+                        className="app-surface rounded-xl p-4 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block"
                     >
                         <div className="flex justify-center mb-2 group-hover:scale-110 transition-transform">
                             <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
@@ -260,14 +242,14 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
                     </button>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                    <div className="app-surface rounded-xl p-4 text-center">
                         <div className="flex justify-center mb-2">
                             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
                             </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">%{userProgress.quiz_history?.length
-                            ? Math.round((userProgress.quiz_history.filter((q: any) => q.is_correct).length / userProgress.quiz_history.length) * 100)
+                            ? Math.round((userProgress.quiz_history.filter((attempt) => attempt.is_correct).length / userProgress.quiz_history.length) * 100)
                             : 0}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</p>
                     </div>

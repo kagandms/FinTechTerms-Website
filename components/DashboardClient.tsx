@@ -16,11 +16,44 @@ export interface DashboardQueryState<T> {
     data: T[];
 }
 
+interface LearningCurveRecord {
+    created_at: string;
+    is_correct: boolean;
+}
+
+interface LatencyRecord {
+    is_correct: boolean;
+    response_time_ms: number;
+}
+
+interface FatigueRecord {
+    user_id: string | null;
+    is_correct: boolean;
+    created_at: string;
+}
+
+interface DistributionRecord {
+    user_id: string | null;
+    is_correct: boolean;
+}
+
+interface GroupedLearningPoint {
+    date: string;
+    total: number;
+    correct: number;
+}
+
+interface OrderedFatiguePoint {
+    order: number;
+    total: number;
+    incorrect: number;
+}
+
 interface Props {
-    learningData: DashboardQueryState<any>;
-    latencyData: DashboardQueryState<any>;
-    fatigueRaw: DashboardQueryState<any>;
-    distributionRaw: DashboardQueryState<any>;
+    learningData: DashboardQueryState<LearningCurveRecord>;
+    latencyData: DashboardQueryState<LatencyRecord>;
+    fatigueRaw: DashboardQueryState<FatigueRecord>;
+    distributionRaw: DashboardQueryState<DistributionRecord>;
 }
 
 export default function DashboardClient({ learningData, latencyData, fatigueRaw, distributionRaw }: Props) {
@@ -28,10 +61,10 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
 
     // 1. Process Learning Curve (Group by Date)
     const learningCurve = useMemo(() => {
-        const grouped: any = {};
+        const grouped: Record<string, GroupedLearningPoint> = {};
         learningData.data.forEach(item => {
             // item.created_at is ISO string. Take YYYY-MM-DD
-            const date = item.created_at.split('T')[0];
+            const date = item.created_at.split('T')[0] ?? item.created_at;
             if (!grouped[date]) grouped[date] = { date, total: 0, correct: 0 };
             grouped[date].total++;
             if (item.is_correct) grouped[date].correct++;
@@ -39,12 +72,11 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
 
         // Sort by date and calculate %
         return Object.values(grouped)
-            // @ts-ignore
-            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .map((g: any, index) => ({
+            .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
+            .map((group, index) => ({
                 day: index + 1, // Day 1, Day 2...
-                date: g.date,
-                accuracy: (g.correct / g.total) * 100
+                date: group.date,
+                accuracy: (group.correct / group.total) * 100
             }));
     }, [learningData.data]);
 
@@ -73,13 +105,13 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     const fatigueChart = useMemo(() => {
         if (!fatigueRaw.data.length) return [];
 
-        const sessions: any = {};
+        const sessions: Record<string, FatigueRecord[]> = {};
         fatigueRaw.data.forEach(item => {
             if (!item.created_at) {
                 return;
             }
 
-            const day = item.created_at.split('T')[0];
+            const day = item.created_at.split('T')[0] ?? item.created_at;
             const userKey = item.user_id || 'anonymous';
             const sessionKey = `${userKey}:${day}`;
 
@@ -88,13 +120,13 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
         });
 
         // Sort each session by created_at and assign index
-        const statsByOrder: any = {}; // { 1: {total:0, incorrect:0}, 2: ... }
+        const statsByOrder: Record<number, OrderedFatiguePoint> = {};
 
-        Object.values(sessions).forEach((session: any) => {
+        Object.values(sessions).forEach((session) => {
             // Sort by time
-            session.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            session.sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime());
 
-            session.forEach((attempt: any, index: number) => {
+            session.forEach((attempt, index) => {
                 const order = index + 1;
                 if (order > 25) return; // Limit to 25 questions
                 if (!statsByOrder[order]) statsByOrder[order] = { order, total: 0, incorrect: 0 };
@@ -104,9 +136,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             });
         });
 
-        return Object.values(statsByOrder).map((s: any) => ({
-            order: s.order,
-            errorRate: (s.incorrect / s.total) * 100
+        return Object.values(statsByOrder).map((point) => ({
+            order: point.order,
+            errorRate: (point.incorrect / point.total) * 100
         }));
 
     }, [fatigueRaw.data]);
@@ -116,7 +148,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
         if (!distributionRaw.data.length) return [];
 
         const attemptsByUser: Record<string, { total: number; correct: number }> = {};
-        distributionRaw.data.forEach((attempt: any) => {
+        distributionRaw.data.forEach((attempt) => {
             const userKey = attempt.user_id || 'anonymous';
             if (!attemptsByUser[userKey]) {
                 attemptsByUser[userKey] = { total: 0, correct: 0 };
@@ -128,14 +160,14 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             }
         });
 
-        const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats: any) => (
+        const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats) => (
             userStats.total > 0
                 ? (userStats.correct / userStats.total) * 100
                 : 0
         ));
 
         // Binning for Bell Curve (5% intervals)
-        const bins: any = {};
+        const bins: Record<number, number> = {};
         for (let i = 0; i < 100; i += 5) bins[i] = 0;
         bins[100] = 0; // Separate bin for perfect scores
 
@@ -148,12 +180,12 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             }
         });
 
-        return Object.keys(bins).map(bin => {
-            const b = parseInt(bin);
-            if (b === 100) return { range: '100%', count: bins[bin] };
+        return Object.entries(bins).map(([binKey, count]) => {
+            const b = Number.parseInt(binKey, 10);
+            if (b === 100) return { range: '100%', count };
             return {
                 range: `${b}-${b + 5}%`,
-                count: bins[bin]
+                count,
             };
         });
     }, [distributionRaw.data]);

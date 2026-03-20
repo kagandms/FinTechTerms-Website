@@ -49,7 +49,17 @@ describe('useAuthLogic', () => {
         mockGetSession.mockResolvedValue({ data: { session: null } });
         mockUseToast.mockReturnValue({ showToast: mockShowToast });
         mockUseLanguage.mockReturnValue({
-            t: (key: string) => key,
+            t: (key: string) => ({
+                'authFlow.passwordsMismatch': 'Passwords do not match.',
+                'authFlow.loginSuccess': 'Login successful.',
+                'auth.passwordRequirements': 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a symbol.',
+                'auth.nameRequired': 'Name required',
+                'auth.surnameRequired': 'Surname required',
+                'authFlow.invalidBirthDate': 'Enter valid birth date (13+)',
+                'authFlow.confirmPasswordRequired': 'Please confirm your password.',
+                'authFlow.verificationSent': 'Verification code sent.',
+                'authFlow.registerSuccess': 'Registration successful.',
+            }[key] ?? key),
             language: 'en',
         });
         mockUseRouter.mockReturnValue({

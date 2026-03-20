@@ -15,6 +15,8 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 import { toSafeUserError } from '@/lib/errors';
+import { getTranslationString } from '@/lib/i18n';
+import { logger } from '@/lib/logger';
 
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
@@ -115,31 +117,31 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    const copy = (key: string, fallback: string): string => (
+        getTranslationString(language, key) ?? fallback
+    );
+
     const dict = {
-        name: language === 'tr' ? 'Ad' : language === 'ru' ? 'Имя' : 'First Name',
-        surname: language === 'tr' ? 'Soyad' : language === 'ru' ? 'Фамилия' : 'Last Name',
-        email: language === 'tr' ? 'E-posta' : language === 'ru' ? 'Эл. почта' : 'Email',
-        birthDate: language === 'tr' ? 'Doğum Tarihi' : language === 'ru' ? 'Дата рождения' : 'Date of Birth',
-        saveBtn: language === 'tr' ? 'Değişiklikleri Kaydet' : language === 'ru' ? 'Сохранить изменения' : 'Save Changes',
-        saving: language === 'tr' ? 'Kaydediliyor...' : language === 'ru' ? 'Сохранение...' : 'Saving...',
-        pwdTitle: language === 'tr' ? 'Şifre Değiştir' : language === 'ru' ? 'Изменить пароль' : 'Change Password',
-        pwdCurrent: language === 'tr' ? 'Mevcut Şifre' : language === 'ru' ? 'Текущий пароль' : 'Current Password',
-        pwdNew: language === 'tr' ? 'Yeni Şifre' : language === 'ru' ? 'Новый пароль' : 'New Password',
-        pwdConfirm: language === 'tr' ? 'Yeni Şifre (Tekrar)' : language === 'ru' ? 'Новый пароль (Еще раз)' : 'Confirm New Password',
-        unknownError: language === 'tr' ? 'Bir hata oluştu.' : language === 'ru' ? 'Произошла ошибка.' : 'Something went wrong.',
-        profileUpdated: language === 'tr' ? 'Başarıyla kaydedildi' : language === 'ru' ? 'Успешно сохранено' : 'Successfully saved',
-        profilePartiallyUpdated: language === 'tr'
-            ? 'Profil bilgileri kaydedildi, ancak yedek profil senkronizasyonu tamamlanamadi.'
-            : language === 'ru'
-                ? 'Данные профиля сохранены, но резервная синхронизация профиля не завершилась.'
-                : 'Profile details were saved, but the secondary profile sync did not complete.',
-        passwordUpdated: language === 'tr' ? 'Şifreniz başarıyla güncellendi!' : language === 'ru' ? 'Пароль успешно обновлён!' : 'Password updated successfully!',
-        currentPasswordError: language === 'tr' ? 'Mevcut şifre yanlış' : language === 'ru' ? 'Текущий пароль неверен' : 'Current password incorrect',
-        authRequired: language === 'tr' ? 'Oturum doğrulanamadı.' : language === 'ru' ? 'Сессия не подтверждена.' : 'Session not authenticated.',
-        profileLoadError: language === 'tr' ? 'Profil verileri yüklenemedi.' : language === 'ru' ? 'Не удалось загрузить данные профиля.' : 'Unable to load profile data.',
-        emailUnavailable: language === 'tr' ? 'Bu giris yontemi bir e-posta adresi paylasmiyor.' : language === 'ru' ? 'Этот способ входа не передает адрес электронной почты.' : 'This sign-in method does not provide an email address.',
-        passwordManagedByProvider: language === 'tr' ? 'Bu hesapta sifre Supabase e-posta girisi ile yonetilmiyor. Sifreyi bagli saglayicida degistirin.' : language === 'ru' ? 'Для этого аккаунта пароль не управляется через вход Supabase по e-mail. Измените его у подключенного провайдера.' : 'This account does not use a Supabase email-password credential. Change the password with the linked identity provider.',
-        requestTimeout: language === 'tr' ? 'Profil guncelleme istegi zaman asimina ugradi. Lutfen tekrar deneyin.' : language === 'ru' ? 'Запрос на обновление профиля превысил лимит ожидания. Повторите попытку.' : 'Profile update timed out. Please try again.',
+        name: copy('profileForm.name', 'First Name'),
+        surname: copy('profileForm.surname', 'Last Name'),
+        email: copy('profileForm.email', 'Email'),
+        birthDate: copy('profileForm.birthDate', 'Date of Birth'),
+        saveBtn: copy('profileForm.save', 'Save Changes'),
+        saving: copy('profileForm.saving', 'Saving...'),
+        pwdTitle: copy('profileForm.changePassword', 'Change Password'),
+        pwdCurrent: copy('profileForm.currentPassword', 'Current Password'),
+        pwdNew: copy('profileForm.newPassword', 'New Password'),
+        pwdConfirm: copy('profileForm.confirmNewPassword', 'Confirm New Password'),
+        unknownError: copy('profileForm.unknownError', 'Something went wrong.'),
+        profileUpdated: copy('profileForm.profileUpdated', 'Successfully saved'),
+        profilePartiallyUpdated: copy('profileForm.profilePartiallyUpdated', 'Profile details were saved, but the secondary profile sync did not complete.'),
+        passwordUpdated: copy('profileForm.passwordUpdated', 'Password updated successfully!'),
+        currentPasswordError: copy('profileForm.currentPasswordError', 'Current password incorrect'),
+        authRequired: copy('profileForm.authRequired', 'Session not authenticated.'),
+        profileLoadError: copy('profileForm.profileLoadError', 'Unable to load profile data.'),
+        emailUnavailable: copy('profileForm.emailUnavailable', 'This sign-in method does not provide an email address.'),
+        passwordManagedByProvider: copy('profileForm.passwordManagedByProvider', 'This account does not use a Supabase email-password credential. Change the password with the linked identity provider.'),
+        requestTimeout: copy('profileForm.requestTimeout', 'Profile update timed out. Please try again.'),
     };
 
     const {
@@ -188,7 +190,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             try {
                 const { data, error } = await supabase.auth.getUser();
                 if (error || !data.user) {
-                    console.warn('PROFILE_FORM_SESSION_UNAVAILABLE', error);
+                    logger.warn('PROFILE_FORM_SESSION_UNAVAILABLE', {
+                        route: 'ProfileEditForm',
+                        error: error ?? undefined,
+                    });
                     if (initialData) {
                         resetWithInitialData();
                         return;
@@ -240,7 +245,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     });
                 }
             } catch (err) {
-                console.error('PROFILE_FORM_LOAD_ERROR', err);
+                logger.error('PROFILE_FORM_LOAD_ERROR', {
+                    route: 'ProfileEditForm',
+                    error: err instanceof Error ? err : undefined,
+                });
                 if (isMounted) {
                     setCanChangePassword(false);
                     setFormError(dict.profileLoadError);
@@ -332,7 +340,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 .abortSignal(timeoutController.signal));
 
             if (profileError) {
-                console.warn('Profile table sync warning (RLS restricted):', profileError);
+                logger.warn('PROFILE_FORM_PROFILE_TABLE_SYNC_WARNING', {
+                    route: 'ProfileEditForm',
+                    error: profileError ?? undefined,
+                });
                 hasProfileSyncWarning = true;
             }
 
@@ -356,8 +367,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 router.refresh();
             });
 
-        } catch (error: any) {
-            console.error('Profile update failed:', error);
+        } catch (error: unknown) {
+            logger.error('PROFILE_FORM_SUBMIT_FAILED', {
+                route: 'ProfileEditForm',
+                error: error instanceof Error ? error : undefined,
+            });
             const timedOut = error instanceof Error && error.name === 'AbortError';
             const safeError = toSafeUserError(error);
             const detailedMessage = timedOut
@@ -375,7 +389,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                {language === 'tr' ? 'Kişisel Bilgiler' : language === 'ru' ? 'Личные данные' : 'Personal Information'}
+                {copy('profileForm.personalInfo', 'Personal Information')}
             </h2>
 
             {/* Inline Alerts */}
@@ -465,7 +479,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                         onClick={() => setShowPasswordSection(!showPasswordSection)}
                         className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 hover:underline transition-colors focus:outline-none"
                     >
-                        {showPasswordSection ? (language === 'tr' ? 'Şifre Değiştirmeyi İptal Et' : language === 'ru' ? 'Отменить изменение пароля' : 'Cancel Password Change') : dict.pwdTitle}
+                        {showPasswordSection ? copy('profileForm.cancelPasswordChange', 'Cancel Password Change') : dict.pwdTitle}
                     </button>
                 ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400">

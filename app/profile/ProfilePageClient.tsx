@@ -24,6 +24,8 @@ import InstallButton from '@/components/InstallButton';
 import Heatmap from '@/components/profile/Heatmap';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
+import { formatTranslation } from '@/lib/i18n';
+import { logger } from '@/lib/logger';
 
 interface ProfilePageClientProps {
     initialProfileData: ProfileFormInitialData | null;
@@ -32,31 +34,6 @@ interface ProfilePageClientProps {
 }
 
 export type ProfileWarningCode = 'PROFILE_DATA_PARTIAL' | 'PROFILE_DATA_LOAD_FAILED';
-
-const learningAnalyticsUnavailableCopy = {
-    tr: 'Aralıklı tekrar analitiği geçici olarak kullanılamıyor.',
-    en: 'Spaced repetition analytics are temporarily unavailable.',
-    ru: 'Аналитика интервального повторения временно недоступна.',
-};
-
-const profileWarningCopy: Record<ProfileWarningCode, Record<'tr' | 'en' | 'ru', string>> = {
-    PROFILE_DATA_PARTIAL: {
-        tr: 'Bazı profil alanları yüklenemedi. Son bilinen bilgiler gösteriliyor.',
-        en: 'Some profile fields could not be loaded. Showing the latest available data.',
-        ru: 'Часть данных профиля не загрузилась. Показаны последние доступные данные.',
-    },
-    PROFILE_DATA_LOAD_FAILED: {
-        tr: 'Profil verileri şu anda yüklenemiyor.',
-        en: 'Profile data is temporarily unavailable.',
-        ru: 'Данные профиля временно недоступны.',
-    },
-};
-
-const profileRenderErrorCopy = {
-    tr: 'Profil ekranı beklenmeyen bir hata verdi.',
-    en: 'The profile screen hit an unexpected error.',
-    ru: 'Экран профиля завершился с неожиданной ошибкой.',
-};
 
 interface ProfileContentProps {
     initialProfileData: ProfileFormInitialData | null;
@@ -132,6 +109,12 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
 
         router.push('/profile?auth=login&next=%2Ffavorites');
     };
+    const welcomeMessage = isAuthenticated
+        ? formatTranslation(t('profile.welcomeBack'), { name: user?.name ?? '' })
+        : t('profile.guestMessage');
+    const savedWordsCount = formatTranslation(t('profile.savedWordsCount'), {
+        count: stats.totalFavorites,
+    });
 
     return (
         <div className="pb-24 pt-6 px-4 max-w-7xl mx-auto">
@@ -142,10 +125,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         {t('profile.title')}
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
-                        {isAuthenticated
-                            ? (language === 'tr' ? `Hoş geldin, ${user?.name}` : language === 'ru' ? `С возвращением, ${user?.name}` : `Welcome back, ${user?.name}`)
-                            : t('profile.guestMessage')
-                        }
+                        {welcomeMessage}
                     </p>
                 </div>
 
@@ -167,10 +147,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                 <div className="mb-8 p-6 bg-primary-50 dark:bg-gray-800 rounded-2xl border border-primary-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                            {language === 'tr' ? 'Hesap Oluştur' : language === 'ru' ? 'Создать аккаунт' : 'Create Account'}
+                            {t('profile.guestCreateTitle')}
                         </h3>
                         <p className="text-gray-600 dark:text-gray-300">
-                            {language === 'tr' ? 'İlerlemeni kaydet ve her yerden eriş.' : language === 'ru' ? 'Сохраните прогресс и синхронизируйте устройства.' : 'Save progress and sync devices.'}
+                            {t('profile.guestCreateDescription')}
                         </p>
                     </div>
                     <div className="flex gap-3 w-full sm:w-auto">
@@ -179,7 +159,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             data-testid="open-auth-register"
                             className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-gray-700 text-primary-600 dark:text-white font-semibold rounded-xl border border-primary-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all active:scale-95 whitespace-nowrap"
                         >
-                            {language === 'tr' ? 'Kayıt Ol' : language === 'ru' ? 'Регистрация' : 'Sign Up'}
+                            {t('profile.registerCta')}
                         </button>
                         <button
                             onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
@@ -222,7 +202,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
 
                     {showLearningAnalyticsFallback && (
                         <section className="order-2 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)] shadow-card">
-                            {learningAnalyticsUnavailableCopy[language]}
+                            {t('profile.learningAnalyticsUnavailable')}
                         </section>
                     )}
 
@@ -235,15 +215,15 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <BookMarked className="w-8 h-8 text-white" />
                         </div>
                         <div className="z-10">
-                            <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
-                            <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
+                            <h3 className="text-xl font-bold">{t('profile.favoritesTitle')}</h3>
+                            <p className="text-white/80 text-sm mt-1">{savedWordsCount}</p>
                         </div>
                         <button
                             type="button"
                             onClick={openFavorites}
                             className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
                         >
-                            {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
+                            {t('profile.viewLibrary')}
                         </button>
                     </section>
 
@@ -254,10 +234,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                        {language === 'tr' ? 'Profilini Düzenle' : language === 'ru' ? 'Редактировать профиль' : 'Edit Profile'}
+                                        {t('profile.editProfileTitle')}
                                     </h3>
                                     <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                        {language === 'tr' ? 'Kişisel bilgilerinizi ve hesap ayarlarınızı güncelleyin.' : language === 'ru' ? 'Обновите вашу личную информацию и настройки аккаунта.' : 'Update your personal information and account settings.'}
+                                        {t('profile.editProfileDescription')}
                                     </p>
                                 </div>
                                 <button
@@ -267,8 +247,8 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                                 >
                                     <Settings className="w-4 h-4" />
                                     {isEditingProfile
-                                        ? (language === 'tr' ? 'Kapat' : language === 'ru' ? 'Закрыть' : 'Close')
-                                        : (language === 'tr' ? 'Düzenle' : language === 'ru' ? 'Редактировать' : 'Edit')}
+                                        ? t('profile.closeEdit')
+                                        : t('profile.edit')}
                                 </button>
                             </section>
 
@@ -306,15 +286,15 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <BookMarked className="w-8 h-8 text-white" />
                         </div>
                         <div className="z-10">
-                            <h3 className="text-xl font-bold">{language === 'tr' ? 'Favorilerim' : language === 'ru' ? 'Мои избранные' : 'My Favorites'}</h3>
-                            <p className="text-white/80 text-sm mt-1">{stats.totalFavorites} {language === 'tr' ? 'Kelime kayıtlı' : language === 'ru' ? 'Слов сохранено' : 'Words saved'}</p>
+                            <h3 className="text-xl font-bold">{t('profile.favoritesTitle')}</h3>
+                            <p className="text-white/80 text-sm mt-1">{savedWordsCount}</p>
                         </div>
                         <button
                             type="button"
                             onClick={openFavorites}
                             className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
                         >
-                            {language === 'tr' ? 'Görüntüle' : language === 'ru' ? 'Смотреть' : 'View Library'}
+                            {t('profile.viewLibrary')}
                         </button>
                     </section>
 
@@ -327,10 +307,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                                {language === 'tr' ? 'Uygulamayı Yükle' : language === 'ru' ? 'Установить приложение' : 'Install App'}
+                                {t('profile.installTitle')}
                             </h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {language === 'tr' ? 'Ana ekranınıza ekleyin. Offline mod ve hızlı erişim heykecanını yaşayın.' : language === 'ru' ? 'Добавьте на главный экр. Наслаждайтесь оффлайн-режимом и быстрым доступом.' : 'Add to your home screen. Enjoy offline mode and quick access.'}
+                                {t('profile.installDescription')}
                             </p>
                         </div>
                         <InstallButton variant="prominent" />
@@ -358,21 +338,17 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     onClick={authLogic.logout}
                     className="w-full py-4 text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm mt-8"
                 >
-                    {language === 'tr' ? 'Çıkış Yap' : language === 'ru' ? 'Выход' : 'Log Out'}
+                    {t('auth.logout')}
                 </button>
             )}
 
             {/* Contact Section */}
             <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mt-8">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                    {language === 'tr' ? 'İletişim' : language === 'ru' ? 'Контакты' : 'Contact'}
+                    {t('profile.contactTitle')}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    {language === 'tr'
-                        ? 'Sorularınız veya önerileriniz için bize ulaşabilirsiniz:'
-                        : language === 'ru'
-                            ? 'Свяжитесь с нами по вопросам или предложениям:'
-                            : 'Reach out to us with questions or suggestions:'}
+                    {t('profile.contactDescription')}
                 </p>
                 <a
                     href="mailto:fintechterms@mail.ru"
@@ -386,11 +362,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             <footer className="text-center text-xs text-gray-400 mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
                 <p>FinTechTerms v1.0.0</p>
                 <p className="mt-2">
-                    {language === 'tr'
-                        ? 'TR-EN-RU Ekonomi ve FinTech Sözlüğü'
-                        : language === 'ru'
-                            ? 'Словарь экономики и FinTech (RU-EN-TR)'
-                            : 'TR-EN-RU Economics & FinTech Dictionary'}
+                    {t('profile.footerDictionary')}
                 </p>
             </footer>
         </div>
@@ -404,7 +376,7 @@ export default function ProfilePageClient({
     profileWarningCode,
 }: ProfilePageClientProps) {
     const { isAuthenticated } = useAuth();
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     const { showToast } = useToast();
     const lastProfileWarningRef = useRef<ProfileWarningCode | null>(null);
     const lastLearningStatsErrorRef = useRef<string | null>(null);
@@ -414,10 +386,18 @@ export default function ProfilePageClient({
             return;
         }
 
-        console.error('PROFILE_PAGE_WARNING', profileWarningCode);
-        showToast(profileWarningCopy[profileWarningCode][language], 'warning');
+        logger.warn('PROFILE_PAGE_WARNING', {
+            route: 'ProfilePageClient',
+            warningCode: profileWarningCode,
+        });
+        showToast(
+            profileWarningCode === 'PROFILE_DATA_PARTIAL'
+                ? t('profile.warningPartial')
+                : t('profile.warningUnavailable'),
+            'warning'
+        );
         lastProfileWarningRef.current = profileWarningCode;
-    }, [language, profileWarningCode, showToast]);
+    }, [language, profileWarningCode, showToast, t]);
 
     useEffect(() => {
         if (learningStats.ok || !isAuthenticated || learningStats.error.code === 'UNAUTHORIZED') {
@@ -428,15 +408,21 @@ export default function ProfilePageClient({
             return;
         }
 
-        console.error('PROFILE_PAGE_LEARNING_ANALYTICS_FALLBACK', learningStats.error);
-        showToast(learningAnalyticsUnavailableCopy[language], 'warning');
+        logger.warn('PROFILE_PAGE_LEARNING_ANALYTICS_FALLBACK', {
+            route: 'ProfilePageClient',
+            errorCode: learningStats.error.code,
+        });
+        showToast(t('profile.learningAnalyticsUnavailable'), 'warning');
         lastLearningStatsErrorRef.current = learningStats.error.code;
-    }, [isAuthenticated, language, learningStats, showToast]);
+    }, [isAuthenticated, learningStats, showToast, t]);
 
     const handleBoundaryError = useCallback((error: Error) => {
-        console.error('PROFILE_PAGE_RENDER_ERROR', error);
-        showToast(profileRenderErrorCopy[language], 'error');
-    }, [language, showToast]);
+        logger.error('PROFILE_PAGE_RENDER_ERROR', {
+            route: 'ProfilePageClient',
+            error,
+        });
+        showToast(t('profile.renderError'), 'error');
+    }, [showToast, t]);
 
     return (
         <ProfileErrorBoundary language={language} onError={handleBoundaryError}>

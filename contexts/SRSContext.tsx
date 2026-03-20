@@ -29,6 +29,14 @@ import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { isUserProgress } from '@/lib/userProgress';
 import { useToast } from '@/contexts/ToastContext';
+import { logger } from '@/lib/logger';
+import {
+    createSafeProgress,
+    getErrorMessage,
+    hasCachedStudyData,
+    isPendingReview,
+    type PendingReview,
+} from '@/contexts/srs-context-helpers';
 
 type AsyncDataStatus = 'loading' | 'ready' | 'degraded' | 'error';
 
@@ -72,14 +80,6 @@ const SRS_SYNC_CHANNEL = 'srs_sync';
 const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
 const PENDING_REVIEW_STORAGE_KEY = 'fintechterms_pending_review';
 
-interface PendingReview {
-    reviewId: string;
-    termId: string;
-    isCorrect: boolean;
-    responseTimeMs: number;
-    idempotencyKey: string;
-}
-
 interface SrsSyncMessage {
     type: 'REVIEW_COMMITTED';
     reviewId: string;
@@ -92,50 +92,6 @@ interface SrsSyncMessage {
 interface SRSProviderProps {
     children: ReactNode;
 }
-
-const createSafeProgress = (): UserProgress => ({
-    user_id: 'guest',
-    favorites: [],
-    current_language: 'ru',
-    quiz_history: [],
-    total_words_learned: 0,
-    current_streak: 0,
-    last_study_date: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-});
-
-const getErrorMessage = (error: unknown, fallbackMessage: string): string => {
-    if (error instanceof Error && error.message.trim().length > 0) {
-        return error.message;
-    }
-
-    return fallbackMessage;
-};
-
-const hasCachedStudyData = (progress: UserProgress): boolean => (
-    progress.favorites.length > 0
-    || progress.quiz_history.length > 0
-    || progress.total_words_learned > 0
-    || progress.current_streak > 0
-    || progress.last_study_date !== null
-);
-
-const isPendingReview = (value: unknown): value is PendingReview => {
-    if (!value || typeof value !== 'object') {
-        return false;
-    }
-
-    const candidate = value as Partial<PendingReview>;
-    return (
-        typeof candidate.reviewId === 'string'
-        && typeof candidate.termId === 'string'
-        && typeof candidate.isCorrect === 'boolean'
-        && typeof candidate.responseTimeMs === 'number'
-        && Number.isFinite(candidate.responseTimeMs)
-        && typeof candidate.idempotencyKey === 'string'
-    );
-};
 
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
@@ -375,7 +331,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
             // Final safety check: if we somehow definitely have 0 terms, force reload from utils
             if (!currentTerms || currentTerms.length === 0) {
-                console.warn('[LoadData] Terms are still empty. FORCING mock data reload.');
+                logger.warn('SRS_LOAD_TERMS_EMPTY_RELOAD', {
+                    route: 'SRSProvider',
+                });
                 const { mockTerms } = await import('@/data/mockData');
                 currentTerms = filterAcademicTerms(mockTerms);
                 saveTerms(currentTerms);
@@ -425,7 +383,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
                     }
                 } catch (error) {
-                    console.error('Failed to load user data from cloud:', error);
+                    logger.error('SRS_LOAD_CLOUD_PROGRESS_FAILED', {
+                        route: 'SRSProvider',
+                        userId,
+                        error: error instanceof Error ? error : undefined,
+                    });
                     setTerms(currentTerms);
                     setUserProgress(optimisticProgress);
                     nextProgressError = getErrorMessage(error, 'Failed to load study progress from Supabase.');
@@ -442,7 +404,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
             setProgressStatus(nextProgressStatus);
         } catch (error) {
             const fallbackMessage = getErrorMessage(error, 'Failed to load study data.');
-            console.error('Unexpected SRS load error:', error);
+            logger.error('SRS_LOAD_UNEXPECTED_ERROR', {
+                route: 'SRSProvider',
+                userId,
+                error: error instanceof Error ? error : undefined,
+            });
             setTermsError(prev => prev ?? fallbackMessage);
             setProgressError(prev => prev ?? fallbackMessage);
             setTermsStatus(prev => (prev === 'ready' ? 'degraded' : 'error'));
@@ -611,7 +577,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         isFavorite: response.data.isFavorite,
                     };
                 } catch (error) {
-                    console.error('Failed to sync favorite to cloud:', error);
+                    logger.error('SRS_FAVORITE_SYNC_FAILED', {
+                        route: 'SRSProvider',
+                        userId,
+                        termId,
+                        error: error instanceof Error ? error : undefined,
+                    });
 
                     return {
                         success: false,
@@ -642,7 +613,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 isFavorite: updated.favorites.includes(termId),
             };
         } catch (error) {
-            console.error('Failed to toggle favorite:', error);
+            logger.error('SRS_FAVORITE_TOGGLE_FAILED', {
+                route: 'SRSProvider',
+                userId,
+                termId,
+                error: error instanceof Error ? error : undefined,
+            });
             return {
                 success: false,
                 limitReached: false,
@@ -788,7 +764,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
             pendingReview.responseTimeMs,
             pendingReview.reviewId
         ).catch((error) => {
-            console.error('Failed to replay pending quiz review:', error);
+            logger.error('SRS_PENDING_REVIEW_REPLAY_FAILED', {
+                route: 'SRSProvider',
+                userId,
+                error: error instanceof Error ? error : undefined,
+            });
         }).finally(() => {
             isReplayingPendingReviewRef.current = false;
         });

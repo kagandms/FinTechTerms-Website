@@ -5,7 +5,19 @@ import InstallButton from '@/components/InstallButton';
 
 jest.mock('@/contexts/LanguageContext', () => ({
     useLanguage: () => ({
-        language: 'en',
+        t: (key: string) => ({
+            'install.cta': 'Install',
+            'install.manualTitle': 'How to Install?',
+            'install.iosTitle': 'How to Install on iOS?',
+            'install.manualDescription': 'You can install the app using the browser menu:',
+            'install.iosDescription': 'Follow these steps to add this app to your home screen:',
+            'install.iosStep1Lead': 'Tap the',
+            'install.iosStep1Action': 'Share button',
+            'install.iosStep2': 'Select "Add to Home Screen"',
+            'install.manualStep1': 'Open browser menu (⋮)',
+            'install.manualStep2': 'Select "Install App" or "Add to Home Screen"',
+            'shell.close': 'Close',
+        }[key] ?? key),
     }),
 }));
 

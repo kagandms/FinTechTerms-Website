@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import Link from 'next/link';
+import { getTranslationValue } from '@/lib/i18n';
 import {
     BarChart3,
     TrendingUp,
@@ -34,104 +35,41 @@ interface SRSLevelStats {
     label: string;
 }
 
+interface AnalyticsCopy {
+    title: string;
+    subtitle: string;
+    back: string;
+    overview: string;
+    totalTerms: string;
+    favorites: string;
+    reviewed: string;
+    mastered: string;
+    categoryAnalysis: string;
+    terms: string;
+    difficulty: string;
+    retention: string;
+    srsDistribution: string;
+    box: string;
+    learningProgress: string;
+    streak: string;
+    days: string;
+    accuracy: string;
+    totalReviews: string;
+    avgResponseTime: string;
+    recentActivity: string;
+    noActivity: string;
+    correct: string;
+    wrong: string;
+    exportData: string;
+    forResearch: string;
+    unknownTerm: string;
+    srsLevels: string[];
+}
+
 export default function AnalyticsPage() {
-    const { language } = useLanguage();
+    const { language, t: translate } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
-
-    const content = {
-        tr: {
-            title: 'Analitik',
-            subtitle: 'Öğrenme İstatistikleri',
-            back: 'Geri',
-            overview: 'Genel Bakış',
-            totalTerms: 'Toplam Terim',
-            favorites: 'Favoriler',
-            reviewed: 'Tekrar Edilen',
-            mastered: 'Ustalaşılan',
-            categoryAnalysis: 'Kategori Analizi',
-            terms: 'terim',
-            difficulty: 'Zorluk',
-            retention: 'Hatırlama',
-            srsDistribution: 'SRS Dağılımı',
-            box: 'Kutu',
-            learningProgress: 'Öğrenme İlerlemesi',
-            streak: 'Günlük Seri',
-            days: 'gün',
-            accuracy: 'Doğruluk Oranı',
-            totalReviews: 'Toplam Tekrar',
-            avgResponseTime: 'Ort. Yanıt Süresi',
-            recentActivity: 'Son Aktivite',
-            noActivity: 'Henüz aktivite yok',
-            correct: 'Doğru',
-            wrong: 'Yanlış',
-            exportData: 'Veri Dışa Aktar',
-            forResearch: 'Akademik Araştırma İçin',
-            srsLevels: ['Yeni', 'Öğrenme', 'Geliştirme', 'Pekiştirme', 'Ustalaşmış'],
-            categories: { Fintech: 'Fintek', Finance: 'Finans', Technology: 'Teknoloji' },
-        },
-        en: {
-            title: 'Analytics',
-            subtitle: 'Learning Statistics',
-            back: 'Back',
-            overview: 'Overview',
-            totalTerms: 'Total Terms',
-            favorites: 'Favorites',
-            reviewed: 'Reviewed',
-            mastered: 'Mastered',
-            categoryAnalysis: 'Category Analysis',
-            terms: 'terms',
-            difficulty: 'Difficulty',
-            retention: 'Retention',
-            srsDistribution: 'SRS Distribution',
-            box: 'Box',
-            learningProgress: 'Learning Progress',
-            streak: 'Daily Streak',
-            days: 'days',
-            accuracy: 'Accuracy',
-            totalReviews: 'Total Reviews',
-            avgResponseTime: 'Avg. Response Time',
-            recentActivity: 'Recent Activity',
-            noActivity: 'No activity yet',
-            correct: 'Correct',
-            wrong: 'Wrong',
-            exportData: 'Export Data',
-            forResearch: 'For Academic Research',
-            srsLevels: ['New', 'Learning', 'Developing', 'Reviewing', 'Mastered'],
-            categories: { Fintech: 'Fintech', Finance: 'Finance', Technology: 'Technology' },
-        },
-        ru: {
-            title: 'Аналитика',
-            subtitle: 'Статистика обучения',
-            back: 'Назад',
-            overview: 'Обзор',
-            totalTerms: 'Всего терминов',
-            favorites: 'Избранное',
-            reviewed: 'Повторено',
-            mastered: 'Освоено',
-            categoryAnalysis: 'Анализ категорий',
-            terms: 'терминов',
-            difficulty: 'Сложность',
-            retention: 'Запоминание',
-            srsDistribution: 'Распределение SRS',
-            box: 'Коробка',
-            learningProgress: 'Прогресс обучения',
-            streak: 'Ежедневная серия',
-            days: 'дней',
-            accuracy: 'Точность',
-            totalReviews: 'Всего повторов',
-            avgResponseTime: 'Ср. время ответа',
-            recentActivity: 'Недавняя активность',
-            noActivity: 'Пока нет активности',
-            correct: 'Правильно',
-            wrong: 'Неправильно',
-            exportData: 'Экспорт данных',
-            forResearch: 'Для исследований',
-            srsLevels: ['Новое', 'Изучение', 'Развитие', 'Повторение', 'Освоено'],
-            categories: { Fintech: 'Финтех', Finance: 'Финансы', Technology: 'Технологии' },
-        },
-    };
-
-    const t = content[language];
+    const copy = getTranslationValue(language, 'analytics') as AnalyticsCopy;
 
     // Calculate category statistics
     const categoryStats = useMemo((): CategoryStats[] => {
@@ -152,7 +90,7 @@ export default function AnalyticsPage() {
                 : 0;
 
             return {
-                name: t.categories[cat],
+                name: translate(`categories.${cat}`),
                 count: catTerms.length,
                 avgDifficulty: Math.round(avgDifficulty * 10) / 10,
                 avgRetention: Math.round(avgRetention * 100),
@@ -160,19 +98,19 @@ export default function AnalyticsPage() {
                 color,
             };
         });
-    }, [terms, t.categories]);
+    }, [terms, translate]);
 
     // Calculate SRS level distribution
     const srsDistribution = useMemo((): SRSLevelStats[] => {
         const favoriteTerms = terms.filter(term => userProgress.favorites.includes(term.id));
-        const srsLevelLabels = t.srsLevels;
+        const srsLevelLabels = copy.srsLevels;
 
         return [1, 2, 3, 4, 5].map(level => ({
             level,
             count: favoriteTerms.filter(t => t.srs_level === level).length,
             label: srsLevelLabels[level - 1] || `Level ${level}`,
         }));
-    }, [terms, userProgress.favorites, t.srsLevels]);
+    }, [copy.srsLevels, terms, userProgress.favorites]);
 
     // Calculate quiz statistics
     const quizStats = useMemo(() => {
@@ -198,10 +136,10 @@ export default function AnalyticsPage() {
                 const term = terms.find(t => t.id === attempt.term_id);
                 return {
                     ...attempt,
-                    termName: term ? (language === 'tr' ? term.term_tr : language === 'ru' ? term.term_ru : term.term_en) : 'Unknown',
+                    termName: term ? (language === 'tr' ? term.term_tr : language === 'ru' ? term.term_ru : term.term_en) : copy.unknownTerm,
                 };
             });
-    }, [userProgress.quiz_history, terms, language]);
+    }, [copy.unknownTerm, userProgress.quiz_history, terms, language]);
 
     // Export data as JSON
     const handleExport = () => {
@@ -238,7 +176,7 @@ export default function AnalyticsPage() {
                 className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4 transition-colors"
             >
                 <ArrowLeft className="w-4 h-4" />
-                {t.back}
+                {copy.back}
             </Link>
 
             {/* Header */}
@@ -246,35 +184,35 @@ export default function AnalyticsPage() {
                 <div className="inline-flex items-center justify-center p-3 bg-primary-100 dark:bg-primary-900/30 rounded-2xl mb-3">
                     <BarChart3 className="w-8 h-8 text-primary-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{copy.title}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{copy.subtitle}</p>
             </header>
 
             {/* Overview Cards */}
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    {t.overview}
+                    {copy.overview}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <BookOpen className="w-5 h-5 text-blue-500 mb-2" />
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{terms.length}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.totalTerms}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{copy.totalTerms}</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <Award className="w-5 h-5 text-red-500 mb-2" />
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalFavorites}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.favorites}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{copy.favorites}</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <Target className="w-5 h-5 text-green-500 mb-2" />
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.mastered}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.mastered}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{copy.mastered}</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                         <TrendingUp className="w-5 h-5 text-purple-500 mb-2" />
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">%{quizStats.accuracy}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{t.accuracy}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{copy.accuracy}</p>
                     </div>
                 </div>
             </section>
@@ -282,7 +220,7 @@ export default function AnalyticsPage() {
             {/* Category Analysis */}
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    {t.categoryAnalysis}
+                    {copy.categoryAnalysis}
                 </h2>
                 <div className="space-y-3">
                     {categoryStats.map((cat) => (
@@ -295,15 +233,15 @@ export default function AnalyticsPage() {
                                     />
                                     <span className="font-semibold text-gray-900 dark:text-white">{cat.name}</span>
                                 </div>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">{cat.count} {t.terms}</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">{cat.count} {copy.terms}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <span className="text-gray-500 dark:text-gray-400">{t.difficulty}:</span>
+                                    <span className="text-gray-500 dark:text-gray-400">{copy.difficulty}:</span>
                                     <span className="ml-2 font-medium dark:text-gray-200">{cat.avgDifficulty}/5</span>
                                 </div>
                                 <div>
-                                    <span className="text-gray-500 dark:text-gray-400">{t.retention}:</span>
+                                    <span className="text-gray-500 dark:text-gray-400">{copy.retention}:</span>
                                     <span className="ml-2 font-medium dark:text-gray-200">{cat.avgRetention}%</span>
                                 </div>
                             </div>
@@ -325,7 +263,7 @@ export default function AnalyticsPage() {
             {/* SRS Distribution */}
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    {t.srsDistribution}
+                    {copy.srsDistribution}
                 </h2>
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
                     <div className="flex items-end justify-between h-32 gap-2">
@@ -355,18 +293,18 @@ export default function AnalyticsPage() {
             {/* Learning Progress */}
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    {t.learningProgress}
+                    {copy.learningProgress}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-4 text-white">
                         <Calendar className="w-5 h-5 mb-2 opacity-80" />
                         <p className="text-2xl font-bold">{userProgress.current_streak}</p>
-                        <p className="text-xs text-white/80">{t.streak} ({t.days})</p>
+                        <p className="text-xs text-white/80">{copy.streak} ({copy.days})</p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-4 text-white">
                         <Brain className="w-5 h-5 mb-2 opacity-80" />
                         <p className="text-2xl font-bold">{quizStats.total}</p>
-                        <p className="text-xs text-white/80">{t.totalReviews}</p>
+                        <p className="text-xs text-white/80">{copy.totalReviews}</p>
                     </div>
                 </div>
             </section>
@@ -374,7 +312,7 @@ export default function AnalyticsPage() {
             {/* Recent Activity */}
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    {t.recentActivity}
+                    {copy.recentActivity}
                 </h2>
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                     {recentActivity.length > 0 ? (
@@ -388,14 +326,14 @@ export default function AnalyticsPage() {
                                         </span>
                                     </div>
                                     <span className={`text-xs font-medium ${activity.is_correct ? 'text-green-600' : 'text-red-600'}`}>
-                                        {activity.is_correct ? t.correct : t.wrong}
+                                        {activity.is_correct ? copy.correct : copy.wrong}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     ) : (
                         <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-                            {t.noActivity}
+                            {copy.noActivity}
                         </div>
                     )}
                 </div>
@@ -409,8 +347,8 @@ export default function AnalyticsPage() {
                 >
                     <Download className="w-5 h-5" />
                     <div className="text-left">
-                        <p>{t.exportData}</p>
-                        <p className="text-xs text-white/70">{t.forResearch}</p>
+                        <p>{copy.exportData}</p>
+                        <p className="text-xs text-white/70">{copy.forResearch}</p>
                     </div>
                 </button>
             </section>

@@ -1,31 +1,12 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-
-const errorMessages = {
-    tr: {
-        title: 'Bir hata oluştu',
-        description: 'Beklenmeyen bir sorun meydana geldi. Lütfen tekrar deneyin.',
-        retry: 'Tekrar Dene',
-        home: 'Ana Sayfa',
-    },
-    en: {
-        title: 'Something went wrong',
-        description: 'An unexpected error occurred. Please try again.',
-        retry: 'Try Again',
-        home: 'Home',
-    },
-    ru: {
-        title: 'Произошла ошибка',
-        description: 'Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.',
-        retry: 'Повторить',
-        home: 'Главная',
-    },
-};
+import { logger } from '@/lib/logger';
+import { resolveHomeHref } from '@/lib/navigation';
 
 export default function GlobalError({
     error,
@@ -34,12 +15,16 @@ export default function GlobalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
-    const { language } = useLanguage();
-    const t = errorMessages[language] || errorMessages.en;
+    const pathname = usePathname();
+    const { t } = useLanguage();
+    const homeHref = resolveHomeHref(pathname);
 
     useEffect(() => {
-        Sentry.captureException(error);
-    }, [error]);
+        logger.error('GLOBAL_ERROR_BOUNDARY_CAUGHT', {
+            route: pathname ?? 'unknown',
+            error,
+        });
+    }, [error, pathname]);
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -48,10 +33,10 @@ export default function GlobalError({
                     <AlertTriangle className="w-8 h-8 text-red-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                    {t.title}
+                    {t('errors.globalTitle')}
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                    {t.description}
+                    {t('errors.globalDescription')}
                 </p>
                 <div className="flex gap-3 justify-center">
                     <button
@@ -59,13 +44,13 @@ export default function GlobalError({
                         className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-md"
                     >
                         <RefreshCw className="w-4 h-4" />
-                        {t.retry}
+                        {t('errors.retry')}
                     </button>
                     <Link
-                        href="/"
+                        href={homeHref}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
-                        {t.home}
+                        {t('errors.home')}
                     </Link>
                 </div>
             </div>
