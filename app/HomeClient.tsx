@@ -151,11 +151,10 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-8 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 lg:block">
-                <div className="grid gap-8 min-[1800px]:grid-cols-[minmax(0,1fr)_auto] min-[1800px]:items-start">
+            <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-7 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 lg:block">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,21rem)] lg:items-center">
                     <div className="flex min-w-0 items-center gap-8">
                         <div className="relative group shrink-0">
-                            {/* Wrapper with soft rounded corners */}
                             <Image
                                 src="/home-logo.png"
                                 alt="FinTechTerms Logo"
@@ -175,24 +174,24 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 lg:justify-end min-[1800px]:max-w-[28rem] min-[1800px]:justify-self-end">
+                    <div className="grid grid-cols-2 gap-3 lg:justify-self-end lg:w-full lg:max-w-[21rem]">
                         <a
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex shrink-0 items-center justify-center rounded-xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
+                            className="flex h-14 items-center justify-center rounded-2xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
                             aria-label={t('shell.telegramIntegration')}
                         >
                             <Send className="w-5 h-5" />
                         </a>
-                        <InstallButton variant="prominent" />
-
-                        <div className="mx-1 hidden h-10 w-px bg-gray-200 dark:bg-gray-700 lg:block"></div>
+                        <div className="[&>button]:h-14 [&>button]:w-full [&>button]:justify-center [&>[data-testid='install-button-placeholder']]:h-14 [&>[data-testid='install-button-placeholder']]:w-full">
+                            <InstallButton variant="prominent" />
+                        </div>
 
                         <button
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
-                            className="flex shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
+                            className="flex h-14 items-center justify-center rounded-2xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
                             aria-label={t('shell.toggleTheme')}
                         >
                             {resolvedTheme === 'dark' ? (
@@ -201,7 +200,9 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                                 <Moon className="w-5 h-5" />
                             )}
                         </button>
-                        <LanguageSwitcher />
+                        <div className="w-full [&>div]:w-full [&>div>button]:h-14 [&>div>button]:w-full [&>div>button]:justify-between [&>div>button]:rounded-2xl">
+                            <LanguageSwitcher />
+                        </div>
                     </div>
                 </div>
             </header>

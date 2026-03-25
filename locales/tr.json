@@ -230,6 +230,7 @@
     },
     "favorites": {
         "backToHome": "Ana Sayfaya Dön",
+        "backToProfile": "Profile Dön",
         "title": "Favorilerim",
         "mobileTitle": "Favoriler",
         "description": "Öğrenmek için kaydettiğin tüm terimler.",

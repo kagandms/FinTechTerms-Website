@@ -230,6 +230,7 @@
     },
     "favorites": {
         "backToHome": "Back to Home",
+        "backToProfile": "Back to Profile",
         "title": "My Favorites",
         "mobileTitle": "Favorites",
         "description": "All the terms you have saved for studying.",

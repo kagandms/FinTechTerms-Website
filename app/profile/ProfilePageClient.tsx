@@ -86,7 +86,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     const savedWordsCount = formatTranslation(t('profile.savedWordsCount'), {
         count: stats.totalFavorites,
     });
-    const favoritesHref = '/favorites';
+    const favoritesHref = isAuthenticated ? '/favorites?from=profile' : '/favorites';
     const profileEditorSection = isAuthenticated ? {
         title: t('profile.editProfileTitle'),
         description: t('profile.editProfileDescription'),
@@ -275,16 +275,6 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                 language={language}
             />
 
-            {/* Logout Button — always at the very bottom */}
-            {isAuthenticated && (
-                <button
-                    onClick={authLogic.logout}
-                    className="w-full py-4 text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm mt-8"
-                >
-                    {t('auth.logout')}
-                </button>
-            )}
-
             {/* Contact Section */}
             <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mt-8">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
@@ -303,11 +293,19 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             </section>
 
             <footer className="text-center text-xs text-gray-400 mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
-                <p>FinTechTerms v1.0.0</p>
-                <p className="mt-2">
+                <p>
                     {t('profile.footerDictionary')}
                 </p>
             </footer>
+
+            {isAuthenticated && (
+                <button
+                    onClick={authLogic.logout}
+                    className="mt-8 w-full rounded-2xl border border-red-100 bg-red-50 py-4 font-bold text-red-500 shadow-sm transition-colors hover:bg-red-100 dark:border-red-500 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                >
+                    {t('auth.logout')}
+                </button>
+            )}
         </div>
     );
 }

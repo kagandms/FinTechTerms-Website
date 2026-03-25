@@ -8,11 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookMarked, Loader2, RefreshCw } from 'lucide-react';
 
 export default function FavoritesClient() {
     const { t } = useLanguage();
     const { isAuthenticated } = useAuth();
+    const searchParams = useSearchParams();
     const {
         terms,
         userProgress,
@@ -20,7 +22,12 @@ export default function FavoritesClient() {
         progressStatus,
         refreshData,
     } = useSRS();
-    const homeHref = isAuthenticated ? resolveHomeHref('/favorites') : '/';
+    const backSource = searchParams.get('from');
+    const defaultBackHref = isAuthenticated ? resolveHomeHref('/favorites') : '/';
+    const backHref = backSource === 'profile' ? '/profile' : defaultBackHref;
+    const backLabel = backSource === 'profile'
+        ? t('favorites.backToProfile')
+        : t('favorites.backToHome');
 
     // Get the terms that the user has favorited
     const favoriteTerms = terms.filter(term => userProgress.favorites.includes(term.id));
@@ -34,9 +41,9 @@ export default function FavoritesClient() {
     return (
         <div className="page-content px-4 py-8 mb-20 max-w-4xl mx-auto min-h-screen">
             <header className="mb-8 hidden md:block">
-                <Link href={homeHref} className="inline-flex items-center text-sm font-medium app-text-secondary hover:text-gray-900 dark:hover:text-white transition-colors mb-4">
+                <Link href={backHref} className="inline-flex items-center text-sm font-medium app-text-secondary hover:text-gray-900 dark:hover:text-white transition-colors mb-4">
                     <ArrowLeft className="w-4 h-4 mr-1" />
-                    {t('favorites.backToHome')}
+                    {backLabel}
                 </Link>
                 <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3">
                     <BookMarked className="w-8 h-8 text-primary-500" />
@@ -48,14 +55,23 @@ export default function FavoritesClient() {
             </header>
 
             {/* Mobile Header */}
-            <header className="md:hidden flex items-center justify-between mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-500 rounded-xl">
-                        <BookMarked className="w-6 h-6" />
+            <header className="md:hidden mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
+                <Link
+                    href={backHref}
+                    className="mb-4 inline-flex items-center gap-2 text-sm font-medium app-text-secondary transition-colors hover:text-gray-900 dark:hover:text-white"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    {backLabel}
+                </Link>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-500 rounded-xl">
+                            <BookMarked className="w-6 h-6" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {t('favorites.mobileTitle')}
+                        </h1>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {t('favorites.mobileTitle')}
-                    </h1>
                 </div>
             </header>
 

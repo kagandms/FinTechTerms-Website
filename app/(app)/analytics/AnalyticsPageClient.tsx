@@ -126,9 +126,13 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
         return [1, 2, 3, 4, 5].map((level) => ({
             level,
             count: favoriteTerms.filter((term) => term.srs_level === level).length,
-                label: srsLevelLabels[level - 1] || `Level ${level}`,
+            label: srsLevelLabels[level - 1] || `Level ${level}`,
         }));
     }, [copy.srsLevels, favoriteTerms]);
+    const maxSrsCount = useMemo(
+        () => Math.max(...srsDistribution.map((entry) => entry.count), 1),
+        [srsDistribution]
+    );
 
     const quizStats = useMemo(() => {
         if (isAuthenticated) {
@@ -341,25 +345,38 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
                     {copy.srsDistribution}
                 </h2>
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-end justify-between h-32 gap-2">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                         {srsDistribution.map((level, index) => {
-                            const maxCount = Math.max(...srsDistribution.map((entry) => entry.count), 1);
-                            const height = (level.count / maxCount) * 100;
+                            const widthPercentage = level.count > 0
+                                ? Math.max(Math.round((level.count / maxSrsCount) * 100), 16)
+                                : 0;
 
                             return (
-                                <div key={level.level} className="flex-1 flex flex-col items-center gap-1">
-                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{level.count}</span>
-                                    <div
-                                        className="w-full rounded-t-lg transition-all"
-                                        style={{
-                                            height: `${Math.max(height, 4)}%`,
-                                            backgroundColor: srsColors[index],
-                                        }}
-                                    />
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 text-center leading-tight">
+                                <article
+                                    key={level.level}
+                                    className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-slate-900/40"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                                            {copy.box} {level.level}
+                                        </span>
+                                        <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                                            {level.count}
+                                        </span>
+                                    </div>
+                                    <span className="mt-3 block text-sm font-medium text-gray-700 dark:text-gray-200">
                                         {level.label}
                                     </span>
-                                </div>
+                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                        <div
+                                            className="h-full rounded-full transition-all"
+                                            style={{
+                                                width: `${widthPercentage}%`,
+                                                backgroundColor: srsColors[index],
+                                            }}
+                                        />
+                                    </div>
+                                </article>
                             );
                         })}
                     </div>

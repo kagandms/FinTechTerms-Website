@@ -254,8 +254,10 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                         const Icon = metricIcons[index] ?? Blocks;
 
                         return (
-                            <article key={metric.label} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <Icon className="mb-2 h-5 w-5 text-primary-500" />
+                            <article key={metric.label} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-200">
+                                    <Icon className="h-5 w-5" />
+                                </div>
                                 <p className="text-xs uppercase tracking-[0.16em] text-gray-400 dark:text-slate-300">
                                     {metric.label}
                                 </p>
@@ -273,7 +275,7 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                     const Icon = sectionIcons[index] ?? Network;
 
                     return (
-                        <article key={section.title} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                        <article key={section.title} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                 <div className="max-w-3xl">
                                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-300">
@@ -286,7 +288,7 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                                         {section.body}
                                     </p>
                                 </div>
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gray-900 text-white dark:bg-white dark:text-gray-900">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-sm dark:bg-primary-100 dark:text-primary-900">
                                     <Icon className="h-5 w-5" />
                                 </div>
                             </div>

@@ -61,21 +61,23 @@ export default function BottomNav() {
             <div className="max-w-lg mx-auto px-4">
                 <div className="flex items-center justify-around">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href;
+                        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                        const linkClassName = isActive
+                            ? 'text-primary-600 dark:text-primary-100'
+                            : 'app-text-secondary hover:text-gray-600 dark:hover:text-slate-100';
+                        const iconWrapperClassName = isActive
+                            ? 'bg-primary-50 shadow-sm dark:bg-white/10 dark:ring-1 dark:ring-white/10'
+                            : '';
 
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
                                 aria-current={isActive ? 'page' : undefined}
-                                className={`flex flex-col items-center justify-center py-2 px-3 min-w-[64px] transition-all duration-200 ${isActive
-                                    ? 'text-primary-500'
-                                    : 'app-text-secondary hover:text-gray-600 dark:hover:text-white'
-                                    }`}
+                                className={`flex flex-col items-center justify-center py-2 px-3 min-w-[64px] transition-all duration-200 ${linkClassName}`}
                             >
                                 <div className="relative">
-                                    <div className={`p-1 rounded-xl transition-all duration-200 ${isActive ? 'bg-primary-50' : ''
-                                        }`}>
+                                    <div className={`p-1 rounded-xl transition-all duration-200 ${iconWrapperClassName}`}>
                                         {item.icon}
                                     </div>
 
@@ -87,8 +89,7 @@ export default function BottomNav() {
                                     )}
                                 </div>
 
-                                <span className={`text-xs mt-1 font-medium ${isActive ? 'text-primary-500' : 'app-text-secondary'
-                                    }`}>
+                                <span className={`text-xs mt-1 font-medium ${linkClassName}`}>
                                     {t(item.labelKey)}
                                 </span>
                             </Link>

@@ -400,7 +400,7 @@ describe('SRSContext', () => {
         expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
     });
 
-    it('replays an auth-expired review after remount/login with the same idempotency key', async () => {
+    it('keeps the quiz moving locally when an auth-expired review is queued for replay', async () => {
         mockGetUserProgressFromSupabase
             .mockResolvedValueOnce(okProgressResult())
             .mockResolvedValue(okProgressResult({
@@ -447,7 +447,7 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('submit-error')).toHaveTextContent('Session expired. Please sign in again to save this answer.');
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
 
         expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(1);
@@ -455,7 +455,11 @@ describe('SRSContext', () => {
             id: 'review-key-1',
             term_id: 'term-1',
         });
-        expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
+        expect(mockShowToast).toHaveBeenCalledWith(
+            'Session expired. Please sign in again to save this answer.',
+            'warning'
+        );
 
         expect(JSON.parse(String(sessionStorage.getItem('fintechterms_pending_review')))).toMatchObject({
             reviewId: 'review-1',
@@ -499,7 +503,6 @@ describe('SRSContext', () => {
             term_id: 'term-1',
         });
         expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
-
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
@@ -589,7 +592,7 @@ describe('SRSContext', () => {
         expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
     });
 
-    it('persists retryable review failures and replays them when the browser comes back online', async () => {
+    it('moves forward locally when a retryable review sync is queued', async () => {
         mockSaveQuizAttemptToSupabase
             .mockResolvedValueOnce({
                 status: 'retryable',
@@ -613,10 +616,13 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('submit-error')).toHaveTextContent(
-                'Answer saved locally. It will sync when connection returns.'
-            );
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
+        expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
+        expect(mockShowToast).toHaveBeenCalledWith(
+            'Answer saved locally. It will sync when connection returns.',
+            'warning'
+        );
         expect(sessionStorage.getItem('fintechterms_pending_review')).not.toBeNull();
 
         act(() => {
@@ -625,9 +631,6 @@ describe('SRSContext', () => {
 
         await waitFor(() => {
             expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
-        });
-        await waitFor(() => {
-            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
         expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
     });

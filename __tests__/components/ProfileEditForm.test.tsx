@@ -102,8 +102,7 @@ const createSupabaseMock = (options?: {
     const abortSignal = jest.fn().mockResolvedValue({
         error: options?.profileError ?? null,
     });
-    const eq = jest.fn(() => ({ abortSignal }));
-    const update = jest.fn(() => ({ eq }));
+    const upsert = jest.fn(() => ({ abortSignal }));
 
     return {
         auth: {
@@ -113,7 +112,7 @@ const createSupabaseMock = (options?: {
             }),
             signInWithPassword: jest.fn(),
         },
-        from: jest.fn(() => ({ update, select })),
+        from: jest.fn(() => ({ upsert, select })),
     };
 };
 

@@ -473,8 +473,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             const { error: profileError } = await withTimeout(async () => await supabase
                 .from('profiles')
-                .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
-                .eq('id', authUser.id)
+                .upsert(
+                    {
+                        id: authUser.id,
+                        full_name: fullName,
+                        birth_date: normalizedBirthDate || null,
+                    },
+                    {
+                        onConflict: 'id',
+                    }
+                )
                 .abortSignal(timeoutSignal));
 
             if (profileError) {

@@ -309,7 +309,7 @@ describe('ProfilePageClient', () => {
         expect(mockSrsNotificationCard).not.toHaveBeenCalled();
     });
 
-    it('renders favorites navigation as a direct link', () => {
+    it('routes authenticated favorites navigation back through the profile flow', () => {
         render(
             <ProfilePageClient
                 initialProfileData={null}
@@ -334,7 +334,7 @@ describe('ProfilePageClient', () => {
             />
         );
 
-        expect(screen.getAllByRole('link', { name: /View Library/i })[0]).toHaveAttribute('href', '/favorites');
+        expect(screen.getAllByRole('link', { name: /View Library/i })[0]).toHaveAttribute('href', '/favorites?from=profile');
     });
 
     it('keeps the favorites link target stable for guests so proxy can redirect', () => {

@@ -241,6 +241,30 @@ export function SRSProvider({ children }: SRSProviderProps) {
         });
     }, [userId]);
 
+    const applyLocalReview = useCallback((
+        termId: string,
+        isCorrect: boolean,
+        attempt: QuizAttempt
+    ): boolean => {
+        const term = terms.find((entry) => entry.id === termId);
+        if (!term) {
+            return false;
+        }
+
+        const updatedTerm = updateTermAfterReview(term, isCorrect);
+        const updatedTerms = terms.map((entry) => (
+            entry.id === termId
+                ? updatedTerm
+                : entry
+        ));
+        updateTermInStorage(updatedTerm);
+        const updatedProgress = addQuizAttemptToStorage(attempt, userId);
+
+        setTerms(updatedTerms);
+        setUserProgress(updatedProgress);
+        return true;
+    }, [terms, userId]);
+
     const broadcastCommittedReview = useCallback((message: SrsSyncMessage) => {
         syncChannelRef.current?.postMessage(message);
 
@@ -758,19 +782,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
         };
 
         if (!isAuthenticated || !userId) {
-            const term = terms.find(t => t.id === termId);
-            if (!term) {
+            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
+            if (!didApplyLocalReview) {
                 clearPendingReview();
                 clearReviewKey(reviewId);
                 throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
             }
-
-            const updatedTerm = updateTermAfterReview(term, isCorrect);
-            const updatedTerms = updateTermInStorage(updatedTerm);
-            setTerms(updatedTerms);
-
-            const updatedProgress = addQuizAttemptToStorage(attempt, userId);
-            setUserProgress(updatedProgress);
             clearReviewKey(reviewId);
             clearPendingReview();
             return;
@@ -801,7 +818,13 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
             });
-            throw new Error(result.message);
+            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
+            if (!didApplyLocalReview) {
+                throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
+            }
+
+            showToast(result.message, 'warning');
+            return;
         }
 
         if (result.status === 'retryable') {
@@ -812,8 +835,13 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
             });
+            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
+            if (!didApplyLocalReview) {
+                throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
+            }
+
             showToast(PENDING_REVIEW_SYNC_MESSAGE, 'warning');
-            throw new Error(PENDING_REVIEW_SYNC_MESSAGE);
+            return;
         }
 
         clearPendingReview();
@@ -828,6 +856,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         getOrCreateReviewKey,
         isAuthenticated,
         persistPendingReview,
+        applyLocalReview,
         showToast,
         terms,
         userId,

@@ -167,6 +167,7 @@ describe('Route state separation', () => {
             'favorites.emptyDescription': 'Вы можете добавить слова в избранное, нажав на значок звезды во время изучения.',
             'favorites.explore': 'Изучать слова',
             'favorites.backToHome': 'Вернуться на главную',
+            'favorites.backToProfile': 'Назад в профиль',
             'favorites.title': 'Мои избранные',
             'favorites.mobileTitle': 'Избранные',
             'favorites.description': 'Все термины, которые вы сохранили для изучения.',
@@ -227,6 +228,14 @@ describe('Route state separation', () => {
 
         expect(screen.getByTestId('smart-card')).toBeInTheDocument();
         expect(screen.queryByText('Загружаем избранное')).not.toBeInTheDocument();
+    });
+
+    it('routes the favorites back link to profile when opened from the profile surface', () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams('from=profile'));
+
+        render(<FavoritesClient />);
+
+        expect(screen.getAllByRole('link', { name: /назад в профиль/i })[0]).toHaveAttribute('href', '/profile');
     });
 
     it('renders cached search terms while background sync is still loading', () => {
