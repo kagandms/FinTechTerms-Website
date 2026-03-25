@@ -1,5 +1,5 @@
 
-import { Term } from '../types';
+import type { Term, UserProgress } from '../types';
 import { terms } from './terms';
 import { createTerm } from './terms/utils';
 
@@ -8,7 +8,7 @@ export const mockTerms: Term[] = terms;
 /**
  * Default user progress state
  */
-export const defaultUserProgress: import('@/types').UserProgress = {
+export const defaultUserProgress: UserProgress = {
     user_id: 'guest_user',
     favorites: [],
     current_language: 'ru',
