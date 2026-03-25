@@ -858,7 +858,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
         persistPendingReview,
         applyLocalReview,
         showToast,
-        terms,
         userId,
     ]);
 

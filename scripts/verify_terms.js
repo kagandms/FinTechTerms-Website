@@ -3,6 +3,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const process = require('node:process');
 
 const candidateEnvFiles = [
     path.resolve(process.cwd(), '.env.local'),
@@ -172,8 +173,11 @@ async function main() {
         ...comparison,
     };
 
-    const writer = ok ? console.log : console.error;
-    writer(JSON.stringify(output, null, 2));
+    if (ok) {
+        process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+    } else {
+        console.error(JSON.stringify(output, null, 2));
+    }
 
     if (!ok) {
         process.exit(1);

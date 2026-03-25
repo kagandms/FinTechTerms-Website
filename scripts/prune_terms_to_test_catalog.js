@@ -3,6 +3,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const process = require('node:process');
 const util = require('node:util');
 
 const candidateEnvFiles = [
@@ -144,11 +145,11 @@ async function main() {
         throw countError;
     }
 
-    console.log(JSON.stringify({
+    process.stdout.write(`${JSON.stringify({
         ok: true,
         keptIds: keepIds,
         count,
-    }, null, 2));
+    }, null, 2)}\n`);
 }
 
 main().catch((error) => {
