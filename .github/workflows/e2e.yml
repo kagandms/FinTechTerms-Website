@@ -146,7 +146,7 @@ jobs:
         run: npm run validate:release-gate-env
 
       - name: Apply migrations to staging
-        run: supabase --yes db push --db-url "$SUPABASE_DB_URL"
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Verify release DB readiness
         run: npm run verify:release-db
