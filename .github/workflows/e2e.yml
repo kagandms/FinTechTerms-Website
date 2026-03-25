@@ -148,6 +148,9 @@ jobs:
       - name: Apply migrations to staging
         run: supabase db push --include-all --db-url "$SUPABASE_DB_URL"
 
+      - name: Sync repo terms to staging mirror
+        run: node scripts/sync_repo_terms.js
+
       - name: Verify release DB readiness
         run: npm run verify:release-db
 
