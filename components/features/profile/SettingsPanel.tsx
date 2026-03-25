@@ -6,9 +6,18 @@ import {
 import { Language } from '@/types';
 import { languageNames, languageFlags } from '@/contexts/LanguageContext';
 import NotificationSettings from '@/components/NotificationSettings';
-import { buildLocalePath } from '@/lib/seo-routing';
 
 import { Theme } from '@/contexts/ThemeContext';
+
+interface ProfileEditorSection {
+    readonly title: string;
+    readonly description: string;
+    readonly isOpen: boolean;
+    readonly toggleLabel: string;
+    readonly onToggle: () => void;
+    readonly content: React.ReactNode;
+    readonly toggleTestId?: string;
+}
 
 interface SettingsPanelProps {
     t: (key: string) => string;
@@ -17,6 +26,7 @@ interface SettingsPanelProps {
     theme: Theme;
     setTheme: (theme: Theme) => void;
     onResetClick: () => void;
+    profileEditorSection?: ProfileEditorSection;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -25,7 +35,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setLanguage,
     theme,
     setTheme,
-    onResetClick
+    onResetClick,
+    profileEditorSection,
 }) => {
     return (
         <section className="mb-8">
@@ -34,6 +45,36 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </h2>
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                {profileEditorSection ? (
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                                    {profileEditorSection.title}
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                    {profileEditorSection.description}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={profileEditorSection.onToggle}
+                                data-testid={profileEditorSection.toggleTestId}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                            >
+                                <ChevronRight className={`w-4 h-4 transition-transform ${profileEditorSection.isOpen ? 'rotate-90' : ''}`} />
+                                {profileEditorSection.toggleLabel}
+                            </button>
+                        </div>
+
+                        {profileEditorSection.isOpen ? (
+                            <div className="mt-5">
+                                {profileEditorSection.content}
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+
                 {/* Language Selection */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3 mb-3">
@@ -132,7 +173,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {/* About */}
                 <Link
-                    href={buildLocalePath(language, '/about')}
+                    href="/profile/about"
                     className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">
@@ -144,7 +185,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {/* Methodology */}
                 <Link
-                    href={buildLocalePath(language, '/methodology')}
+                    href="/profile/methodology"
                     className="w-full p-4 flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b border-gray-100 dark:border-gray-700"
                 >
                     <div className="flex items-center gap-3">

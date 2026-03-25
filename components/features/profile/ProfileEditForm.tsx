@@ -47,6 +47,15 @@ const buildProfileFormDefaults = (
     confirmPassword: '',
 });
 
+const hasCompleteProfileInitialData = (
+    initialData?: ProfileFormInitialData | null
+): initialData is ProfileFormInitialData => (
+    Boolean(initialData?.name.trim())
+    && Boolean(initialData?.surname.trim())
+    && Boolean(initialData?.birthDate.trim())
+    && initialData?.email !== null
+);
+
 const toDateInputValue = (value: unknown): string => {
     if (!value) return '';
 
@@ -132,9 +141,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const fallbackInitialName = initialData?.name ?? '';
+    const fallbackInitialSurname = initialData?.surname ?? '';
+    const fallbackInitialBirthDate = initialData?.birthDate ?? '';
+    const fallbackInitialEmail = initialData?.email ?? null;
+    const shouldTrustInitialData = hasCompleteProfileInitialData(initialData);
     const defaultFormValues = React.useMemo(
-        () => buildProfileFormDefaults(initialData),
-        [initialData]
+        () => buildProfileFormDefaults(shouldTrustInitialData ? initialData : null),
+        [initialData, shouldTrustInitialData]
     );
 
     const copy = (key: string, fallback: string): string => (
@@ -190,7 +204,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         };
 
         const loadProfileData = async () => {
-            if (initialData) {
+            if (shouldTrustInitialData) {
                 resetWithInitialData();
             }
 
@@ -201,9 +215,12 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                         route: 'ProfileEditForm',
                         error: error ?? undefined,
                     });
-                    if (initialData) {
+                    if (shouldTrustInitialData) {
                         resetWithInitialData();
                         return;
+                    }
+                    if (isMounted && initialData) {
+                        reset(buildProfileFormDefaults(initialData));
                     }
                     if (isMounted) {
                         setCanChangePassword(false);
@@ -218,14 +235,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     setCanChangePassword(supportsPasswordSignIn(supabaseUser));
                 }
 
-                if (initialData) {
+                if (shouldTrustInitialData) {
                     resetWithInitialData();
                     return;
                 }
 
                 let fullName = getSupabaseUserMetadataName(supabaseUser);
                 let birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(supabaseUser));
-
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('full_name, birth_date')
@@ -237,15 +253,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 if (!fullName) fullName = getSupabaseUserNameSeed(supabaseUser);
 
                 const nameParts = fullName ? fullName.split(' ') : [''];
-                const firstName = nameParts[0] || '';
-                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                const firstName = fallbackInitialName || nameParts[0] || '';
+                const lastName = fallbackInitialSurname || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+                const recoveredBirthDate = fallbackInitialBirthDate || birthDate;
+                const recoveredEmail = fallbackInitialEmail ?? supabaseUser.email ?? null;
 
                 if (isMounted) {
                     reset({
                         name: firstName,
                         surname: lastName,
-                        email: supabaseUser.email ?? null,
-                        birthDate,
+                        email: recoveredEmail,
+                        birthDate: recoveredBirthDate,
                         currentPassword: '',
                         newPassword: '',
                         confirmPassword: '',
@@ -256,6 +274,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     route: 'ProfileEditForm',
                     error: err instanceof Error ? err : undefined,
                 });
+                if (isMounted && initialData) {
+                    reset(buildProfileFormDefaults(initialData));
+                }
                 if (isMounted) {
                     setCanChangePassword(false);
                     setFormError(dict.profileLoadError);
@@ -269,7 +290,19 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         return () => {
             isMounted = false;
         };
-    }, [dict.authRequired, dict.profileLoadError, initialData, reset, showToast, supabase]);
+    }, [
+        dict.authRequired,
+        dict.profileLoadError,
+        fallbackInitialBirthDate,
+        fallbackInitialEmail,
+        fallbackInitialName,
+        fallbackInitialSurname,
+        initialData,
+        reset,
+        shouldTrustInitialData,
+        showToast,
+        supabase,
+    ]);
 
     useEffect(() => {
         if (!canChangePassword) {

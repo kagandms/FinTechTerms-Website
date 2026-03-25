@@ -38,7 +38,7 @@ function isLocalStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-03-08-v4'; // Force refresh after academic quarantine fields were added
+const DATA_VERSION = '2026-03-25-v5'; // Force refresh after the catalog was reduced to the 5-term test set
 
 const TERM_STATE_FIELDS = [
     'srs_level',

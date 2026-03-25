@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -10,9 +9,10 @@ import DailyReview from '@/components/DailyReview';
 import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
-import Image from 'next/image';
-import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import TelegramBanner from '@/components/TelegramBanner';
+import Image from 'next/image';
+import Link from 'next/link';
+import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 import { getSiteUrl } from '@/lib/site-url';
 
@@ -51,7 +51,6 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
     const { terms, userProgress, stats } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
     const { isAuthenticated } = useAuth();
-    const router = useRouter();
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
     const siteUrl = getSiteUrl();
@@ -80,15 +79,6 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
         } else {
             setTheme('dark');
         }
-    };
-
-    const openFavorites = () => {
-        if (isAuthenticated) {
-            router.push('/favorites');
-            return;
-        }
-
-        router.push('/profile?auth=login&next=%2Ffavorites');
     };
 
     return (
@@ -161,8 +151,8 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-8 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 md:block">
-                <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-8 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 lg:block">
+                <div className="grid gap-8 min-[1800px]:grid-cols-[minmax(0,1fr)_auto] min-[1800px]:items-start">
                     <div className="flex min-w-0 items-center gap-8">
                         <div className="relative group shrink-0">
                             {/* Wrapper with soft rounded corners */}
@@ -176,7 +166,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                             />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h1 className="max-w-[min(100%,42rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3.5rem,7vw,5.5rem)] font-extrabold leading-[0.88] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
+                            <h1 className="max-w-[min(100%,38rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3rem,5.2vw,4.75rem)] font-extrabold leading-[0.9] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
                                 FinTechTerms
                             </h1>
                             <p className="mt-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-500 dark:text-gray-400">
@@ -185,7 +175,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-3 xl:max-w-[28rem] xl:justify-self-end">
+                    <div className="flex flex-wrap items-center gap-3 lg:justify-end min-[1800px]:max-w-[28rem] min-[1800px]:justify-self-end">
                         <a
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
@@ -241,9 +231,8 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         <p className="app-text-secondary text-xs">{t('home.quickStatsDue')}</p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={openFavorites}
+                    <Link
+                        href="/favorites"
                         aria-label={t('home.openFavorites')}
                         className="app-surface rounded-xl p-4 text-center hover:ring-2 hover:ring-primary-500 hover:shadow-md transition-all cursor-pointer group block"
                     >
@@ -254,7 +243,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{stats.totalFavorites}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.favoriteCount')}</p>
-                    </button>
+                    </Link>
 
                     <div className="app-surface rounded-xl p-4 text-center">
                         <div className="flex justify-center mb-2">

@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
-import { useAuth } from '@/contexts/AuthContext';
 import QuizCard from '@/components/QuizCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
@@ -98,8 +96,6 @@ const stateMessages = {
 
 export default function QuizPage({ nonce }: QuizPageProps) {
     const { t, language } = useLanguage();
-    const { isAuthenticated } = useAuth();
-    const router = useRouter();
     const {
         dueTerms,
         submitQuizAnswer,
@@ -160,15 +156,6 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
     const quickQuizPool = getQuickQuizPool(quickQuizCategory);
     const quickQuizAvailableCount = quickQuizPool.length;
-
-    const openFavorites = () => {
-        if (isAuthenticated) {
-            router.push('/favorites');
-            return;
-        }
-
-        router.push('/profile?auth=login&next=%2Ffavorites');
-    };
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
@@ -520,15 +507,14 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{learningCount}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.learning')}</p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={openFavorites}
+                                    <Link
+                                        href="/favorites"
                                         className="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 text-center hover:ring-2 hover:ring-red-400 dark:hover:ring-red-500 hover:shadow-md transition-all cursor-pointer group"
                                     >
                                         <Heart className="w-6 h-6 text-red-500 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                                         <p className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{stats.totalFavorites}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('quiz.favorites')}</p>
-                                    </button>
+                                    </Link>
                                 </div>
                             </div>
                         ) : null}

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 import ProfilePageClient from '@/app/profile/ProfilePageClient';
 
@@ -14,6 +14,7 @@ const mockUseSRS = jest.fn();
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
 const mockSrsNotificationCard = jest.fn(() => <div data-testid="profile-srs-card" />);
+const mockSettingsPanel = jest.fn(() => <div data-testid="settings-panel" />);
 
 const profileTranslationMap: Record<string, string> = {
     'profile.warningPartial': 'Some profile fields could not be loaded. Showing the latest available data.',
@@ -80,7 +81,10 @@ jest.mock('@/components/features/profile/StatsGrid', () => ({
 }));
 
 jest.mock('@/components/features/profile/SettingsPanel', () => ({
-    SettingsPanel: () => <div data-testid="settings-panel" />,
+    SettingsPanel: (props: unknown) => {
+        mockSettingsPanel(props);
+        return <div data-testid="settings-panel" />;
+    },
 }));
 
 jest.mock('@/components/features/auth/AuthModal', () => ({
@@ -116,8 +120,6 @@ jest.mock('@/components/profile/SRSNotificationCard', () => ({
 }));
 
 describe('ProfilePageClient', () => {
-    const mockRouterPush = jest.fn();
-
     beforeEach(() => {
         jest.clearAllMocks();
 
@@ -134,7 +136,7 @@ describe('ProfilePageClient', () => {
             handleDataReset: jest.fn(),
             logout: jest.fn(),
             router: {
-                push: mockRouterPush,
+                push: jest.fn(),
             },
         });
         mockUseTheme.mockReturnValue({
@@ -246,6 +248,38 @@ describe('ProfilePageClient', () => {
         expect(screen.getByTestId('install-button')).toBeInTheDocument();
     });
 
+    it('passes the integrated profile editor section into settings', () => {
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 1,
+                        correctReviews: 1,
+                        accuracy: 100,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        expect(mockSettingsPanel).toHaveBeenCalledWith(expect.objectContaining({
+            profileEditorSection: expect.objectContaining({
+                toggleTestId: 'profile-edit-toggle',
+            }),
+        }));
+    });
+
     it('does not render the duplicate profile SRS notification card', () => {
         render(
             <ProfilePageClient
@@ -275,7 +309,7 @@ describe('ProfilePageClient', () => {
         expect(mockSrsNotificationCard).not.toHaveBeenCalled();
     });
 
-    it('opens favorites directly for authenticated users', () => {
+    it('renders favorites navigation as a direct link', () => {
         render(
             <ProfilePageClient
                 initialProfileData={null}
@@ -300,12 +334,10 @@ describe('ProfilePageClient', () => {
             />
         );
 
-        fireEvent.click(screen.getAllByRole('button', { name: /View Library/i })[0] as HTMLElement);
-
-        expect(mockRouterPush).toHaveBeenCalledWith('/favorites');
+        expect(screen.getAllByRole('link', { name: /View Library/i })[0]).toHaveAttribute('href', '/favorites');
     });
 
-    it('routes guests to login with next=/favorites', () => {
+    it('keeps the favorites link target stable for guests so proxy can redirect', () => {
         mockUseAuthLogic.mockReturnValue({
             user: null,
             isAuthenticated: false,
@@ -319,7 +351,7 @@ describe('ProfilePageClient', () => {
             handleDataReset: jest.fn(),
             logout: jest.fn(),
             router: {
-                push: mockRouterPush,
+                push: jest.fn(),
             },
         });
         mockUseAuth.mockReturnValue({
@@ -350,8 +382,6 @@ describe('ProfilePageClient', () => {
             />
         );
 
-        fireEvent.click(screen.getAllByRole('button', { name: /View Library/i })[0] as HTMLElement);
-
-        expect(mockRouterPush).toHaveBeenCalledWith('/profile?auth=login&next=%2Ffavorites');
+        expect(screen.getAllByRole('link', { name: /View Library/i })[0]).toHaveAttribute('href', '/favorites');
     });
 });

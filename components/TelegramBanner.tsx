@@ -15,10 +15,10 @@ const contentByLanguage = {
     tr: {
         badge: 'Ekosistem entegrasyonu',
         title: 'FinTechTerms Telegram botu',
-        subtitle: 'Bildirimler ve hizli terim erisimi icin net kanal',
-        description: 'Telegram botu tekrar hatirlatmalari gonderir, terimlere hizli erisim saglar ve uygulama disinda da calisma akisini surdurur.',
-        cta: 'Botu ac',
-        features: ['Tekrar bildirimleri', 'Gunun terimi', 'Hizli erisim'],
+        subtitle: 'Bildirimler ve hızlı terim erişimi için net kanal',
+        description: 'Telegram botu tekrar hatırlatmaları gönderir, terimlere hızlı erişim sağlar ve uygulama dışında da çalışma akışını sürdürür.',
+        cta: 'Botu aç',
+        features: ['Tekrar bildirimleri', 'Günün terimi', 'Hızlı erişim'],
     },
     en: {
         badge: 'Ecosystem integration',

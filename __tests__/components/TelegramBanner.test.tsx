@@ -32,5 +32,6 @@ describe('TelegramBanner', () => {
 
         expect(screen.getByText('Ekosistem entegrasyonu')).toBeInTheDocument();
         expect(screen.getByText('FinTechTerms Telegram botu')).toBeInTheDocument();
+        expect(screen.getByText('Bildirimler ve hızlı terim erişimi için net kanal')).toBeInTheDocument();
     });
 });

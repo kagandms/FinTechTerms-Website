@@ -193,6 +193,35 @@ describe('ProfileEditForm submit flow', () => {
         });
     });
 
+    it('hydrates profile fields from the authenticated fallback when server initial data is incomplete', async () => {
+        mockGetSupabaseClient.mockReturnValue(createSupabaseMock({
+            profileLoadData: {
+                full_name: 'Alex Stone',
+                birth_date: '2000-01-01',
+            },
+        }));
+
+        render(
+            <ProfileEditForm
+                language="en"
+                initialData={{
+                    userId: 'user-1',
+                    name: '',
+                    surname: '',
+                    email: null,
+                    birthDate: '',
+                }}
+            />
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('profile-name')).toHaveValue('Alex');
+            expect(screen.getByTestId('profile-surname')).toHaveValue('Stone');
+            expect(screen.getByTestId('profile-birth-date')).toHaveValue('2000-01-01');
+            expect(screen.getByDisplayValue('alex@example.com')).toBeInTheDocument();
+        });
+    });
+
     it('keeps metadata failures as hard errors', async () => {
         mockGetSupabaseClient.mockReturnValue(createSupabaseMock({
             metadataError: {

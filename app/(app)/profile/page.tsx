@@ -52,6 +52,15 @@ const splitName = (fullName: string) => {
     };
 };
 
+const hasCompleteProfileInitialData = (
+    value: ProfileFormInitialData | null
+): value is ProfileFormInitialData => (
+    Boolean(value?.name.trim())
+    && Boolean(value?.surname.trim())
+    && Boolean(value?.birthDate.trim())
+    && value?.email !== null
+);
+
 const loadInitialProfileData = async (): Promise<{
     data: ProfileFormInitialData | null;
     warningCode: ProfileWarningCode | null;
@@ -114,14 +123,16 @@ const loadInitialProfileData = async (): Promise<{
 
     const { name, surname } = splitName(fullName);
 
+    const resolvedData: ProfileFormInitialData = {
+        userId: user.id,
+        email: user.email ?? null,
+        name,
+        surname,
+        birthDate,
+    };
+
     return {
-        data: {
-            userId: user.id,
-            email: user.email ?? null,
-            name,
-            surname,
-            birthDate,
-        },
+        data: hasCompleteProfileInitialData(resolvedData) ? resolvedData : null,
         warningCode,
     };
 };

@@ -8,7 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { Settings, BookMarked, Mail } from 'lucide-react';
+import { BookMarked, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 // Feature Components
@@ -48,7 +48,6 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
         setAuthMode,
         showResetConfirm, setShowResetConfirm,
         handleDataReset,
-        router,
     } = authLogic;
 
     // 2. Additional Contexts
@@ -81,20 +80,24 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
         return trimmedName.charAt(0).toUpperCase();
     };
 
-    const openFavorites = () => {
-        if (isAuthenticated) {
-            router.push('/favorites');
-            return;
-        }
-
-        router.push('/profile?auth=login&next=%2Ffavorites');
-    };
     const welcomeMessage = isAuthenticated
         ? formatTranslation(t('profile.welcomeBack'), { name: user?.name ?? '' })
         : t('profile.guestMessage');
     const savedWordsCount = formatTranslation(t('profile.savedWordsCount'), {
         count: stats.totalFavorites,
     });
+    const favoritesHref = '/favorites';
+    const profileEditorSection = isAuthenticated ? {
+        title: t('profile.editProfileTitle'),
+        description: t('profile.editProfileDescription'),
+        isOpen: isEditingProfile,
+        toggleLabel: isEditingProfile
+            ? t('profile.closeEdit')
+            : t('profile.edit'),
+        onToggle: () => setIsEditingProfile((value) => !value),
+        toggleTestId: 'profile-edit-toggle',
+        content: <ProfileEditForm language={language} initialData={initialProfileData} />,
+    } : undefined;
 
     return (
         <div className="pb-24 pt-6 px-4 max-w-7xl mx-auto">
@@ -194,47 +197,13 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <h3 className="text-xl font-bold">{t('profile.favoritesTitle')}</h3>
                             <p className="text-white/80 text-sm mt-1">{savedWordsCount}</p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={openFavorites}
+                        <Link
+                            href={favoritesHref}
                             className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
                         >
                             {t('profile.viewLibrary')}
-                        </button>
+                        </Link>
                     </section>
-
-                    {/* Authenticated Dashboard Forms - order-3 */}
-                    {isAuthenticated && (
-                        <div className="grid grid-cols-1 gap-6 order-4 mt-8 lg:mt-0">
-                            {/* Profile Edit Action */}
-                            <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                        {t('profile.editProfileTitle')}
-                                    </h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                        {t('profile.editProfileDescription')}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setIsEditingProfile(!isEditingProfile)}
-                                    data-testid="profile-edit-toggle"
-                                    className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-xl transition-all flex items-center gap-2 whitespace-nowrap"
-                                >
-                                    <Settings className="w-4 h-4" />
-                                    {isEditingProfile
-                                        ? t('profile.closeEdit')
-                                        : t('profile.edit')}
-                                </button>
-                            </section>
-
-                            {isEditingProfile && (
-                                <section className="animate-fade-in">
-                                    <ProfileEditForm language={language} initialData={initialProfileData} />
-                                </section>
-                            )}
-                        </div>
-                    )}
 
                     <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8 order-5">
                         {/* App Settings Panel */}
@@ -245,6 +214,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             theme={theme}
                             setTheme={setTheme}
                             onResetClick={() => setShowResetConfirm(true)}
+                            profileEditorSection={profileEditorSection}
                         />
                     </div>
 
@@ -265,13 +235,12 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                             <h3 className="text-xl font-bold">{t('profile.favoritesTitle')}</h3>
                             <p className="text-white/80 text-sm mt-1">{savedWordsCount}</p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={openFavorites}
+                        <Link
+                            href={favoritesHref}
                             className="mt-2 relative z-10 w-full rounded-xl bg-white px-4 py-3 font-bold text-primary-600 shadow-md transition-all hover:bg-gray-50 active:scale-95"
                         >
                             {t('profile.viewLibrary')}
-                        </button>
+                        </Link>
                     </section>
 
                     {/* Telegram Bot */}
