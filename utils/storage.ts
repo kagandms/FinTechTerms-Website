@@ -14,9 +14,15 @@ import { logger } from '@/lib/logger';
 
 const STORAGE_KEYS = {
     TERMS: 'globalfinterm_terms',
-    USER_PROGRESS: 'globalfinterm_user_progress',
+    USER_PROGRESS_LEGACY: 'globalfinterm_user_progress',
+    USER_PROGRESS_PREFIX: 'globalfinterm_user_progress',
     LANGUAGE: 'globalfinterm_language',
 } as const;
+
+const GUEST_PROGRESS_SCOPE = 'guest';
+const GUEST_PROGRESS_USER_IDS = new Set(['guest', 'guest_user']);
+const MAX_LOCAL_QUIZ_HISTORY = 500;
+const MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY = 100;
 
 /**
  * Check if localStorage is available
@@ -44,11 +50,31 @@ const TERM_STATE_FIELDS = [
     'times_correct',
 ] as const;
 
-const createDefaultProgress = (): UserProgress => {
+const isGuestProgressUserId = (userId: string | null | undefined): boolean => (
+    !userId || GUEST_PROGRESS_USER_IDS.has(userId)
+);
+
+const resolveProgressScopeUserId = (userId: string | null | undefined): string | null => (
+    isGuestProgressUserId(userId) ? null : (userId ?? null)
+);
+
+const getProgressStorageKey = (userId: string | null | undefined): string => {
+    const scopeUserId = resolveProgressScopeUserId(userId);
+
+    if (!scopeUserId) {
+        return `${STORAGE_KEYS.USER_PROGRESS_PREFIX}:${GUEST_PROGRESS_SCOPE}`;
+    }
+
+    return `${STORAGE_KEYS.USER_PROGRESS_PREFIX}:auth:${scopeUserId}`;
+};
+
+const createDefaultProgress = (userId?: string | null): UserProgress => {
     const now = new Date().toISOString();
+    const scopeUserId = resolveProgressScopeUserId(userId);
 
     return {
         ...defaultUserProgress,
+        user_id: scopeUserId ?? defaultUserProgress.user_id,
         favorites: [...defaultUserProgress.favorites],
         quiz_history: [...defaultUserProgress.quiz_history],
         created_at: now,
@@ -56,18 +82,33 @@ const createDefaultProgress = (): UserProgress => {
     };
 };
 
-const clearCorruptedProgress = (): UserProgress => {
+const clampQuizHistory = (history: readonly QuizAttempt[]): QuizAttempt[] => (
+    history.slice(-MAX_LOCAL_QUIZ_HISTORY)
+);
+
+const isQuotaExceededError = (error: unknown): boolean => (
+    error instanceof DOMException
+    && (
+        error.name === 'QuotaExceededError'
+        || error.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    )
+);
+
+const clearCorruptedProgress = (userId?: string | null): UserProgress => {
     logger.warn('STORAGE_CORRUPTED_PROGRESS_CLEARED', {
         route: 'storage',
     });
 
+    const progressKey = getProgressStorageKey(userId);
+
     try {
-        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
+        localStorage.removeItem(progressKey);
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
     } catch {
         // localStorage is unavailable or already cleared.
     }
 
-    return createDefaultProgress();
+    return createDefaultProgress(userId);
 };
 
 const parseStoredTerms = (stored: string | null): Term[] => {
@@ -110,6 +151,48 @@ const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[]
             ...preservedState,
         };
     });
+};
+
+const migrateLegacyUserProgress = (userId?: string | null): void => {
+    const legacyProgress = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+    if (!legacyProgress) {
+        return;
+    }
+
+    const scopeUserId = resolveProgressScopeUserId(userId);
+
+    try {
+        const parsedProgress = JSON.parse(legacyProgress) as unknown;
+        const result = userProgressSchema.safeParse(parsedProgress);
+
+        if (!result.success) {
+            localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+            return;
+        }
+
+        const legacyUserId = resolveProgressScopeUserId(result.data.user_id);
+        const guestProgressKey = getProgressStorageKey(null);
+        const authProgressKey = legacyUserId ? getProgressStorageKey(legacyUserId) : null;
+
+        if (!legacyUserId) {
+            if (!localStorage.getItem(guestProgressKey)) {
+                localStorage.setItem(guestProgressKey, JSON.stringify({
+                    ...result.data,
+                    user_id: defaultUserProgress.user_id,
+                }));
+            }
+            localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+            return;
+        }
+
+        if (scopeUserId && scopeUserId === legacyUserId && authProgressKey && !localStorage.getItem(authProgressKey)) {
+            localStorage.setItem(authProgressKey, JSON.stringify(result.data));
+        }
+
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+    } catch {
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+    }
 };
 
 /**
@@ -181,11 +264,14 @@ export function updateTerm(updatedTerm: Term): Term[] {
 /**
  * Get user progress from storage
  */
-export function getUserProgress(): UserProgress {
-    if (!isLocalStorageAvailable()) return createDefaultProgress();
+export function getUserProgress(userId?: string | null): UserProgress {
+    if (!isLocalStorageAvailable()) return createDefaultProgress(userId);
 
     try {
-        const stored = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
+        migrateLegacyUserProgress(userId);
+
+        const progressKey = getProgressStorageKey(userId);
+        const stored = localStorage.getItem(progressKey);
         if (stored) {
             const parsed = JSON.parse(stored) as unknown;
             const result = userProgressSchema.safeParse(parsed);
@@ -194,28 +280,60 @@ export function getUserProgress(): UserProgress {
                 return result.data;
             }
 
-            return clearCorruptedProgress();
+            return clearCorruptedProgress(userId);
         }
-        const newProgress = createDefaultProgress();
-        localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(newProgress));
+        const newProgress = createDefaultProgress(userId);
+        localStorage.setItem(progressKey, JSON.stringify(newProgress));
         return newProgress;
     } catch {
-        return clearCorruptedProgress();
+        return clearCorruptedProgress(userId);
     }
 }
 
 /**
  * Save user progress to storage
  */
-export function saveUserProgress(progress: UserProgress): void {
+export function saveUserProgress(progress: UserProgress, userId?: string | null): void {
     if (!isLocalStorageAvailable()) return;
 
     try {
-        const updated = {
+        const scopeUserId = resolveProgressScopeUserId(userId ?? progress.user_id);
+        let updated = {
             ...progress,
+            quiz_history: clampQuizHistory(progress.quiz_history),
+            user_id: scopeUserId ?? defaultUserProgress.user_id,
             updated_at: new Date().toISOString(),
         };
-        localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(updated));
+        const progressKey = getProgressStorageKey(scopeUserId);
+
+        while (true) {
+            try {
+                localStorage.setItem(
+                    progressKey,
+                    JSON.stringify(updated)
+                );
+                break;
+            } catch (error) {
+                if (!isQuotaExceededError(error) || updated.quiz_history.length <= MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY) {
+                    throw error;
+                }
+
+                const nextHistorySize = Math.max(
+                    MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY,
+                    Math.floor(updated.quiz_history.length / 2)
+                );
+                updated = {
+                    ...updated,
+                    quiz_history: updated.quiz_history.slice(-nextHistorySize),
+                };
+                logger.warn('STORAGE_PROGRESS_PRUNED_FOR_QUOTA', {
+                    route: 'storage',
+                    retainedQuizHistory: updated.quiz_history.length,
+                });
+            }
+        }
+
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
     } catch (error) {
         logger.error('STORAGE_SAVE_PROGRESS_FAILED', {
             route: 'storage',
@@ -227,8 +345,8 @@ export function saveUserProgress(progress: UserProgress): void {
 /**
  * Toggle a term as favorite
  */
-export function toggleFavorite(termId: string): UserProgress {
-    const progress = getUserProgress();
+export function toggleFavorite(termId: string, userId?: string | null): UserProgress {
+    const progress = getUserProgress(userId);
     const newFavorites = [...progress.favorites];
     const index = newFavorites.indexOf(termId);
 
@@ -239,41 +357,48 @@ export function toggleFavorite(termId: string): UserProgress {
     }
 
     const updated = { ...progress, favorites: newFavorites };
-    saveUserProgress(updated);
+    saveUserProgress(updated, userId);
     return updated;
 }
 
 /**
  * Add a quiz attempt to history
  */
-export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
-    const progress = getUserProgress();
-    progress.quiz_history.push(attempt);
+export function addQuizAttempt(attempt: QuizAttempt, userId?: string | null): UserProgress {
+    const progress = getUserProgress(userId);
+    const nextQuizHistory = clampQuizHistory([
+        ...progress.quiz_history,
+        attempt,
+    ]);
+    const updatedProgress: UserProgress = {
+        ...progress,
+        quiz_history: nextQuizHistory,
+    };
 
     // Update streak
     const today = startOfUtcDay(new Date()).getTime();
-    const lastStudy = progress.last_study_date
-        ? startOfUtcDay(progress.last_study_date).getTime()
+    const lastStudy = updatedProgress.last_study_date
+        ? startOfUtcDay(updatedProgress.last_study_date).getTime()
         : null;
 
     if (lastStudy !== today) {
         const yesterday = startOfUtcDay(new Date(Date.now() - (24 * 60 * 60 * 1000))).getTime();
 
         if (lastStudy === yesterday) {
-            progress.current_streak += 1;
+            updatedProgress.current_streak += 1;
         } else {
-            progress.current_streak = 1;
+            updatedProgress.current_streak = 1;
         }
-        progress.last_study_date = endOfUtcDay(new Date()).toISOString();
+        updatedProgress.last_study_date = endOfUtcDay(new Date()).toISOString();
     }
 
     // Update words learned count
     if (attempt.is_correct) {
         const term = getTerms().find(t => t.id === attempt.term_id);
         if (term && term.srs_level >= 4) {
-            progress.total_words_learned = Math.max(
-                progress.total_words_learned,
-                progress.favorites.filter(id => {
+            updatedProgress.total_words_learned = Math.max(
+                updatedProgress.total_words_learned,
+                updatedProgress.favorites.filter(id => {
                     const t = getTerms().find(tm => tm.id === id);
                     return t && t.srs_level >= 4;
                 }).length
@@ -281,8 +406,8 @@ export function addQuizAttempt(attempt: QuizAttempt): UserProgress {
         }
     }
 
-    saveUserProgress(progress);
-    return progress;
+    saveUserProgress(updatedProgress, userId);
+    return updatedProgress;
 }
 
 /**
@@ -344,13 +469,55 @@ export function resetAllData(): void {
 
     try {
         localStorage.removeItem(STORAGE_KEYS.TERMS);
-        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
         localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
+        const progressKeys: string[] = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (key?.startsWith(`${STORAGE_KEYS.USER_PROGRESS_PREFIX}:`)) {
+                progressKeys.push(key);
+            }
+        }
+        progressKeys.forEach((key) => {
+            localStorage.removeItem(key);
+        });
         if (typeof document !== 'undefined') {
             document.cookie = `${LANGUAGE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
         }
     } catch (error) {
         logger.error('STORAGE_RESET_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+}
+
+/**
+ * Remove the scoped progress cache for a specific user (or guest scope).
+ */
+export function clearStoredUserProgress(userId?: string | null): void {
+    if (!isLocalStorageAvailable()) return;
+
+    try {
+        localStorage.removeItem(getProgressStorageKey(userId));
+    } catch (error) {
+        logger.error('STORAGE_CLEAR_PROGRESS_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+}
+
+/**
+ * Remove the deprecated global progress cache key after migration.
+ */
+export function clearLegacyUserProgress(): void {
+    if (!isLocalStorageAvailable()) return;
+
+    try {
+        localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+    } catch (error) {
+        logger.error('STORAGE_CLEAR_LEGACY_PROGRESS_FAILED', {
             route: 'storage',
             error: error instanceof Error ? error : undefined,
         });

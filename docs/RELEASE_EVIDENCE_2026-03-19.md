@@ -1,5 +1,11 @@
 # Release Evidence — 2026-03-19
 
+> Historical snapshot.
+> This document preserves the release-gate state as of 2026-03-19.
+> Current active commands have since been split into `npm run validate:runtime-env`
+> and `npm run validate:release-gate-env`; any `validate:release-env` references
+> below should be read as historical evidence, not current operator guidance.
+
 ## Summary
 
 This evidence run validated the local codebase hardening changes and the bootstrap database migration chain. Local quality gates passed. Remote/staging gates remain blocked by missing or malformed runtime secrets in the current environment.

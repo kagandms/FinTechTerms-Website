@@ -17,10 +17,12 @@ import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 import { getSiteUrl } from '@/lib/site-url';
 
 import { Term } from '@/types';
+import type { LearningStatsActionResult } from '@/types/gamification';
 
 interface HomeClientProps {
     initialTerms?: Term[];
     nonce?: string;
+    learningStats?: LearningStatsActionResult | null;
 }
 
 const pickInitialTerms = (terms: Term[]): Term[] => terms.slice(0, 3);
@@ -44,7 +46,7 @@ const shuffleTerms = (terms: Term[]): Term[] => {
     return nextTerms;
 };
 
-export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) {
+export default function HomePage({ initialTerms = [], nonce, learningStats = null }: HomeClientProps) {
     const { t } = useLanguage();
     const { terms, userProgress, stats } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
@@ -53,6 +55,18 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
     const siteUrl = getSiteUrl();
+    const exactAccuracy = isAuthenticated && learningStats?.ok
+        ? learningStats.data.accuracy
+        : null;
+    const guestAccuracy = userProgress.quiz_history.length > 0
+        ? Math.round((userProgress.quiz_history.filter((attempt) => attempt.is_correct).length / userProgress.quiz_history.length) * 100)
+        : 0;
+    const accuracyLabel = isAuthenticated
+        ? (exactAccuracy === null ? '—' : `%${exactAccuracy}`)
+        : `%${guestAccuracy}`;
+    const shouldShowQuickStats = isAuthenticated
+        ? Boolean(learningStats?.ok && (learningStats.data.totalReviews ?? 0) > 0)
+        : userProgress.quiz_history.length > 0;
     const recentTerms = React.useMemo<Term[]>(() => (
         displayTerms.length <= 3
             ? pickInitialTerms(displayTerms)
@@ -215,7 +229,7 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
             </section>
 
             {/* Quick Stats */}
-            {userProgress.quiz_history.length > 0 && (
+            {shouldShowQuickStats && (
                 <section className="grid grid-cols-3 gap-3 mb-6">
                     <div className="app-surface rounded-xl p-4 text-center">
                         <div className="flex justify-center mb-2">
@@ -248,9 +262,9 @@ export default function HomePage({ initialTerms = [], nonce }: HomeClientProps) 
                                 <TrendingUp className="w-5 h-5 text-green-500" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">%{userProgress.quiz_history?.length
-                            ? Math.round((userProgress.quiz_history.filter((attempt) => attempt.is_correct).length / userProgress.quiz_history.length) * 100)
-                            : 0}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {accuracyLabel}
+                        </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</p>
                     </div>
                 </section>

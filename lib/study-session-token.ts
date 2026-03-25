@@ -1,13 +1,49 @@
 import 'server-only';
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { getServerEnv } from '@/lib/env';
 
-const STUDY_SESSION_TOKEN_LENGTH = 32;
+const TEST_STUDY_SESSION_TOKEN_SECRET = 'test-study-session-token-secret';
 
-const encodeHex = (buffer: Buffer): string => buffer.toString('hex');
+const normalizeTokenPart = (
+    value: string,
+    fieldName: string
+): string => {
+    const normalizedValue = value.trim();
 
-export const createStudySessionToken = (): string => (
-    encodeHex(randomBytes(STUDY_SESSION_TOKEN_LENGTH))
+    if (normalizedValue.length === 0) {
+        throw new Error(`${fieldName} is required to generate a study-session token.`);
+    }
+
+    return normalizedValue;
+};
+
+const getStudySessionTokenSecret = (): string => {
+    const env = getServerEnv();
+
+    if (env.studySessionTokenSecret) {
+        return env.studySessionTokenSecret;
+    }
+
+    if (process.env.NODE_ENV === 'test') {
+        return TEST_STUDY_SESSION_TOKEN_SECRET;
+    }
+
+    throw new Error(
+        'Study session token generation requires STUDY_SESSION_TOKEN_SECRET.'
+    );
+};
+
+export const createStudySessionToken = (
+    sessionId: string,
+    idempotencyKey: string
+): string => (
+    createHmac('sha256', getStudySessionTokenSecret())
+        .update([
+            normalizeTokenPart(sessionId, 'sessionId'),
+            normalizeTokenPart(idempotencyKey, 'idempotencyKey'),
+        ].join(':'))
+        .digest('base64url')
 );
 
 export const hashStudySessionToken = (token: string): string => createHash('sha256')

@@ -105,7 +105,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const router = useRouter();
 
     const [showPasswordSection, setShowPasswordSection] = useState(false);
-    const [isPending, setIsPending] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'profile' | 'password' | null>(null);
     const [canChangePassword, setCanChangePassword] = useState(false);
 
     // UI Alerts
@@ -132,6 +132,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         pwdCurrent: copy('profileForm.currentPassword', 'Current Password'),
         pwdNew: copy('profileForm.newPassword', 'New Password'),
         pwdConfirm: copy('profileForm.confirmNewPassword', 'Confirm New Password'),
+        pwdSaveBtn: copy('profileForm.updatePassword', 'Update Password'),
         unknownError: copy('profileForm.unknownError', 'Something went wrong.'),
         profileUpdated: copy('profileForm.profileUpdated', 'Successfully saved'),
         profilePartiallyUpdated: copy('profileForm.profilePartiallyUpdated', 'Profile details were saved, but the secondary profile sync did not complete.'),
@@ -147,9 +148,11 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const {
         control,
         register,
-        handleSubmit,
         reset,
-        formState: { errors, isSubmitting },
+        trigger,
+        getValues,
+        setValue,
+        formState: { errors },
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(createProfileSchema(language)),
         values: {
@@ -270,8 +273,32 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         }
     }, [canChangePassword]);
 
-    const onSubmit = async (data: ProfileFormValues) => {
-        setIsPending(true);
+    const resetPasswordFields = () => {
+        setValue('currentPassword', '');
+        setValue('newPassword', '');
+        setValue('confirmPassword', '');
+    };
+
+    const loadAuthenticatedUser = async (
+        withTimeout: <T,>(operation: () => Promise<T>) => Promise<T>
+    ) => {
+        const { data: userResultData, error: userError } = await withTimeout(() => supabase.auth.getUser());
+
+        if (userError || !userResultData?.user) {
+            throw userError || new Error(dict.authRequired);
+        }
+
+        return userResultData.user;
+    };
+
+    const runTimedAction = async (
+        action: 'profile' | 'password',
+        operation: (
+            withTimeout: <T,>(callback: () => Promise<T>) => Promise<T>,
+            timeoutSignal: AbortSignal
+        ) => Promise<void>
+    ) => {
+        setPendingAction(action);
         setFormSuccess(null);
         setFormWarning(null);
         setFormError(null);
@@ -286,58 +313,54 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 operation,
                 dict.requestTimeout
             );
+            await operation(withTimeout, timeoutController.signal);
 
-            const { data: userResultData, error: userError } = await withTimeout(() => supabase.auth.getUser());
+        } catch (error: unknown) {
+            logger.error('PROFILE_FORM_SUBMIT_FAILED', {
+                route: 'ProfileEditForm',
+                error: error instanceof Error ? error : undefined,
+            });
+            const timedOut = error instanceof Error && error.name === 'AbortError';
+            const safeError = toSafeUserError(error);
+            const detailedMessage = timedOut
+                ? dict.requestTimeout
+                : safeError.message || dict.unknownError;
+            setFormWarning(null);
+            setFormError(detailedMessage);
+            showToast(detailedMessage, 'error');
+        } finally {
+            globalThis.clearTimeout(timeoutId);
+            setPendingAction(null);
+        }
+    };
 
-            if (userError || !userResultData?.user) {
-                throw userError || new Error(dict.authRequired);
-            }
+    const handleProfileSubmit = async () => {
+        const isValid = await trigger(['name', 'surname', 'birthDate', 'email']);
+        if (!isValid) {
+            return;
+        }
 
-            const authUser = userResultData.user;
-            const fullName = `${data.name.trim()} ${data.surname.trim()}`.trim();
-            const normalizedBirthDate = toDateInputValue(data.birthDate);
+        const formValues = getValues();
+
+        await runTimedAction('profile', async (withTimeout, timeoutSignal) => {
+            const authUser = await loadAuthenticatedUser(withTimeout);
+            const fullName = `${formValues.name.trim()} ${formValues.surname.trim()}`.trim();
+            const normalizedBirthDate = toDateInputValue(formValues.birthDate);
             let hasProfileSyncWarning = false;
 
-            if (showPasswordSection && data.newPassword) {
-                if (!supportsPasswordSignIn(authUser)) {
-                    throw new Error(dict.passwordManagedByProvider);
-                }
-
-                const passwordAccountEmail = authUser.email ?? data.email;
-                if (!passwordAccountEmail) {
-                    throw new Error(dict.emailUnavailable);
-                }
-
-                const { error: reauthError } = await withTimeout(() => supabase.auth.signInWithPassword({
-                    email: passwordAccountEmail,
-                    password: data.currentPassword || '',
-                }));
-
-                if (reauthError) throw new Error(dict.currentPasswordError);
-            }
-
-            // 1. Update auth metadata first because it is the primary profile source.
             const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
                 data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
             }));
 
-            if (metadataError) throw metadataError;
-
-            // 2. Optional password update after re-auth validation succeeds.
-            if (showPasswordSection && data.newPassword) {
-                const { error: passwordError } = await withTimeout(() => supabase.auth.updateUser({ password: data.newPassword }));
-                if (passwordError) throw passwordError;
-
-                setShowPasswordSection(false);
-                showToast(dict.passwordUpdated, 'success');
+            if (metadataError) {
+                throw metadataError;
             }
 
-            // 3. Keep profiles table in sync when allowed, but do not downgrade the canonical write.
             const { error: profileError } = await withTimeout(async () => await supabase
                 .from('profiles')
                 .update({ full_name: fullName, birth_date: normalizedBirthDate || null })
                 .eq('id', authUser.id)
-                .abortSignal(timeoutController.signal));
+                .abortSignal(timeoutSignal));
 
             if (profileError) {
                 logger.warn('PROFILE_FORM_PROFILE_TABLE_SYNC_WARNING', {
@@ -355,39 +378,58 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 showToastAfterRefresh(dict.profileUpdated, 'success');
             }
 
-            // Soft reset to update values instantly
-            reset({
-                ...data,
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: '',
-            });
-
             startTransition(() => {
                 router.refresh();
             });
+        });
+    };
 
-        } catch (error: unknown) {
-            logger.error('PROFILE_FORM_SUBMIT_FAILED', {
-                route: 'ProfileEditForm',
-                error: error instanceof Error ? error : undefined,
-            });
-            const timedOut = error instanceof Error && error.name === 'AbortError';
-            const safeError = toSafeUserError(error);
-            const detailedMessage = timedOut
-                ? dict.requestTimeout
-                : safeError.message || dict.unknownError;
-            setFormWarning(null);
-            setFormError(detailedMessage);
-            showToast(detailedMessage, 'error');
-        } finally {
-            globalThis.clearTimeout(timeoutId);
-            setIsPending(false);
+    const handlePasswordSubmit = async () => {
+        const isValid = await trigger(['currentPassword', 'newPassword', 'confirmPassword', 'email']);
+        if (!isValid) {
+            return;
         }
+
+        const formValues = getValues();
+
+        await runTimedAction('password', async (withTimeout) => {
+            const authUser = await loadAuthenticatedUser(withTimeout);
+
+            if (!supportsPasswordSignIn(authUser)) {
+                throw new Error(dict.passwordManagedByProvider);
+            }
+
+            const passwordAccountEmail = authUser.email ?? formValues.email;
+            if (!passwordAccountEmail) {
+                throw new Error(dict.emailUnavailable);
+            }
+
+            const { error: reauthError } = await withTimeout(() => supabase.auth.signInWithPassword({
+                email: passwordAccountEmail,
+                password: formValues.currentPassword || '',
+            }));
+
+            if (reauthError) {
+                throw new Error(dict.currentPasswordError);
+            }
+
+            const { error: passwordError } = await withTimeout(() => supabase.auth.updateUser({
+                password: formValues.newPassword,
+            }));
+
+            if (passwordError) {
+                throw passwordError;
+            }
+
+            resetPasswordFields();
+            setShowPasswordSection(false);
+            setFormSuccess(dict.passwordUpdated);
+            showToast(dict.passwordUpdated, 'success');
+        });
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <form onSubmit={(event) => event.preventDefault()} className="space-y-5 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                 {copy('profileForm.personalInfo', 'Personal Information')}
             </h2>
@@ -496,6 +538,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                             <input
                                 {...register('currentPassword')}
                                 type={showCurrentPassword ? 'text' : 'password'}
+                                aria-label={dict.pwdCurrent}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.currentPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
@@ -511,6 +554,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                             <input
                                 {...register('newPassword')}
                                 type={showNewPassword ? 'text' : 'password'}
+                                aria-label={dict.pwdNew}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.newPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
@@ -526,6 +570,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                             <input
                                 {...register('confirmPassword')}
                                 type={showConfirmPassword ? 'text' : 'password'}
+                                aria-label={dict.pwdConfirm}
                                 className={`w-full pl-4 pr-10 py-2 border rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${errors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                             />
                             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
@@ -534,17 +579,41 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                         </div>
                         {errors.confirmPassword && <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message}</p>}
                     </div>
+
+                    <div className="flex justify-end pt-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void handlePasswordSubmit();
+                            }}
+                            disabled={pendingAction !== null}
+                            data-testid="profile-password-save"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-primary-500/20"
+                        >
+                            {pendingAction === 'password' ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    {dict.saving}
+                                </>
+                            ) : (
+                                dict.pwdSaveBtn
+                            )}
+                        </button>
+                    </div>
                 </div>
             )}
 
             <div className="pt-2 flex justify-end">
                 <button
-                    type="submit"
-                    disabled={isSubmitting || isPending}
+                    type="button"
+                    onClick={() => {
+                        void handleProfileSubmit();
+                    }}
+                    disabled={pendingAction !== null}
                     data-testid="profile-save"
                     className="flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md shadow-primary-500/20"
                 >
-                    {(isSubmitting || isPending) ? (
+                    {pendingAction === 'profile' ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
                             {dict.saving}

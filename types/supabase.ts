@@ -563,6 +563,25 @@ export interface Database {
                     activity_count: number
                 }[]
             }
+            get_user_quiz_metrics: {
+                Args: {
+                    p_user_id?: string
+                }
+                Returns: {
+                    total_reviews: number
+                    correct_reviews: number
+                    avg_response_time_ms: number | null
+                }[]
+            }
+            get_user_streak_summary: {
+                Args: {
+                    p_user_id?: string
+                }
+                Returns: {
+                    current_streak: number
+                    last_study_date: string | null
+                }[]
+            }
             increment_daily_learning_log: {
                 Args: {
                     p_log_date?: string
@@ -586,6 +605,30 @@ export interface Database {
                     created_at: string
                     updated_at: string
                 }
+            }
+            toggle_user_favorite: {
+                Args: {
+                    p_user_id: string
+                    p_term_id: string
+                    p_should_favorite: boolean
+                }
+                Returns: {
+                    success: boolean
+                    termId: string
+                    isFavorite: boolean
+                    favorites: string[]
+                }
+            }
+            update_study_session_metrics: {
+                Args: {
+                    p_session_id: string
+                    p_duration_seconds: number
+                    p_page_views: number
+                    p_quiz_attempts: number
+                    p_end_session: boolean
+                    p_ended_at?: string | null
+                }
+                Returns: undefined
             }
         }
         Enums: {

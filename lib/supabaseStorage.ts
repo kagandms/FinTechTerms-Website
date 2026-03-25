@@ -46,6 +46,27 @@ export type UserTermSrsLoadResult =
     | { status: 'ok'; data: Map<string, Partial<Term>> }
     | { status: 'error'; message: string };
 
+export type UserProgressLoadMissingSegment =
+    | 'user_progress'
+    | 'favorites'
+    | 'recent_quiz_history'
+    | 'user_settings'
+    | 'streak_summary';
+
+export type UserProgressLoadResult =
+    | { status: 'ok'; data: UserProgress }
+    | {
+        status: 'partial';
+        data: UserProgress;
+        missing: UserProgressLoadMissingSegment[];
+        message: string;
+    }
+    | {
+        status: 'error';
+        missing: UserProgressLoadMissingSegment[];
+        message: string;
+    };
+
 interface StreakSummaryRow {
     current_streak: number;
     last_study_date: string | null;
@@ -129,6 +150,15 @@ const USER_TERM_SRS_QUERY_COLUMNS = [
     'times_correct',
 ].join(', ');
 
+const RECENT_QUIZ_HISTORY_LIMIT = 100;
+const USER_PROGRESS_SEGMENTS: readonly UserProgressLoadMissingSegment[] = [
+    'user_progress',
+    'favorites',
+    'recent_quiz_history',
+    'user_settings',
+    'streak_summary',
+] as const;
+
 const chunkValues = <T,>(values: readonly T[], size: number): T[][] => {
     const chunks: T[][] = [];
 
@@ -141,6 +171,14 @@ const chunkValues = <T,>(values: readonly T[], size: number): T[][] => {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+
+const USER_PROGRESS_SEGMENT_LABELS: Record<UserProgressLoadMissingSegment, string> = {
+    user_progress: 'progress summary',
+    favorites: 'favorites',
+    recent_quiz_history: 'recent quiz history',
+    user_settings: 'user settings',
+    streak_summary: 'streak summary',
+};
 
 const parseResponseOrThrow = <T>(
     schema: z.ZodType<T>,
@@ -160,12 +198,69 @@ const parseResponseOrThrow = <T>(
     return result.data;
 };
 
+const safeParseResponse = <T>(
+    schema: z.ZodType<T>,
+    payload: unknown
+): T | null => {
+    const result = schema.safeParse(payload);
+
+    if (!result.success) {
+        return null;
+    }
+
+    return result.data;
+};
+
+const buildUserProgressLoadMessage = (
+    missingSegments: readonly UserProgressLoadMissingSegment[]
+): string => {
+    const labels = missingSegments.map((segment) => USER_PROGRESS_SEGMENT_LABELS[segment]);
+
+    return `Study progress loaded with gaps: ${labels.join(', ')}.`;
+};
+
 const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
     try {
         const payload = await response.json();
         return payload?.message || payload?.error || fallbackMessage;
     } catch {
         return fallbackMessage;
+    }
+};
+
+const readApiFailure = async (
+    response: Response,
+    fallbackMessage: string
+): Promise<{ message: string; retryable: boolean }> => {
+    try {
+        const payload = await response.json();
+        const message = typeof payload?.message === 'string'
+            ? payload.message
+            : (
+                payload?.error
+                && typeof payload.error === 'object'
+                && 'message' in payload.error
+                && typeof payload.error.message === 'string'
+            )
+                ? payload.error.message
+                : (
+                    typeof payload?.error === 'string'
+                        ? payload.error
+                        : fallbackMessage
+                );
+        const retryable = typeof payload?.retryable === 'boolean'
+            ? payload.retryable
+            : response.status >= 500 || response.status === 429;
+
+        return {
+            message,
+            retryable,
+        };
+    } catch {
+        return {
+            message: fallbackMessage,
+            retryable: response.status >= 500 || response.status === 429,
+        };
     }
 };
 
@@ -294,16 +389,16 @@ const fetchWithAuthRetry = async (
 /**
  * Fetch user progress from Supabase
  */
-export async function getUserProgressFromSupabase(userId: string): Promise<UserProgress | null> {
+export async function getUserProgressFromSupabase(userId: string): Promise<UserProgressLoadResult> {
     const supabase = getSupabaseClient();
 
     const [
-        { data: progressData, error: progressError },
-        { data: favoritesData, error: favoritesError },
-        { data: quizData, error: quizError },
-        { data: settingsData, error: settingsError },
-        { data: streakData, error: streakError },
-    ] = await Promise.all([
+        progressResult,
+        favoritesResult,
+        quizHistoryResult,
+        settingsResult,
+        streakResult,
+    ] = await Promise.allSettled([
         supabase
             .from('user_progress')
             .select('*')
@@ -319,7 +414,7 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(100),
+            .limit(RECENT_QUIZ_HISTORY_LIMIT),
         supabase
             .from('user_settings')
             .select('preferred_language')
@@ -328,44 +423,156 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         supabase.rpc('get_user_streak_summary'),
     ]);
 
-    if (progressError || favoritesError || quizError || settingsError || streakError) {
-        logger.error('SUPABASE_STORAGE_PROGRESS_LOAD_FAILED', {
-            route: 'supabaseStorage',
-            userId,
-            error: progressError || favoritesError || quizError || settingsError || streakError || undefined,
-        });
-        return null;
-    }
+    const missingSegments = new Set<UserProgressLoadMissingSegment>();
 
-    const parsedProgressData = progressData
-        ? parseResponseOrThrow(
+    const getFulfilledData = <T,>(
+        segment: UserProgressLoadMissingSegment,
+        settledResult: PromiseSettledResult<{ data: T | null; error: { message?: string | null } | null }>
+    ): T | null => {
+        if (settledResult.status === 'rejected') {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_REJECTED', {
+                route: 'supabaseStorage',
+                userId,
+                segment,
+                error: settledResult.reason instanceof Error ? settledResult.reason : undefined,
+            });
+            missingSegments.add(segment);
+            return null;
+        }
+
+        if (settledResult.value.error) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment,
+                error: new Error(settledResult.value.error.message ?? 'Unknown Supabase error'),
+            });
+            missingSegments.add(segment);
+            return null;
+        }
+
+        return settledResult.value.data;
+    };
+
+    const parsedProgressData = (() => {
+        const payload = getFulfilledData('user_progress', progressResult);
+        if (!payload) {
+            return null;
+        }
+
+        const parsed = safeParseResponse(
             userProgressRowSchema,
-            progressData,
-            'Supabase returned malformed study progress data.'
-        )
-        : null;
-    const parsedFavoritesData = parseResponseOrThrow(
-        z.array(favoriteRowSchema),
-        favoritesData || [],
-        'Supabase returned malformed favorites data.'
-    );
-    const parsedQuizData = parseResponseOrThrow(
-        z.array(quizHistoryRowSchema),
-        quizData || [],
-        'Supabase returned malformed quiz history data.'
-    );
-    const parsedSettingsData = settingsData
-        ? parseResponseOrThrow(
+            payload
+        );
+
+        if (!parsed) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment: 'user_progress',
+            });
+            missingSegments.add('user_progress');
+            return null;
+        }
+
+        return parsed;
+    })();
+
+    const parsedFavoritesData = (() => {
+        const payload = getFulfilledData('favorites', favoritesResult);
+        if (!payload) {
+            return [];
+        }
+
+        const parsed = safeParseResponse(
+            z.array(favoriteRowSchema),
+            payload
+        );
+
+        if (!parsed) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment: 'favorites',
+            });
+            missingSegments.add('favorites');
+            return [];
+        }
+
+        return parsed;
+    })();
+
+    const parsedQuizData = (() => {
+        const payload = getFulfilledData('recent_quiz_history', quizHistoryResult);
+        if (!payload) {
+            return [];
+        }
+
+        const parsed = safeParseResponse(
+            z.array(quizHistoryRowSchema),
+            payload
+        );
+
+        if (!parsed) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment: 'recent_quiz_history',
+            });
+            missingSegments.add('recent_quiz_history');
+            return [];
+        }
+
+        return parsed;
+    })();
+
+    const parsedSettingsData = (() => {
+        const payload = getFulfilledData('user_settings', settingsResult);
+        if (!payload) {
+            return null;
+        }
+
+        const parsed = safeParseResponse(
             userSettingsRowSchema,
-            settingsData,
-            'Supabase returned malformed user settings data.'
-        )
-        : null;
-    const parsedStreakData = parseResponseOrThrow(
-        z.array(streakSummaryRowSchema),
-        Array.isArray(streakData) ? streakData : [],
-        'Supabase returned malformed streak data.'
-    );
+            payload
+        );
+
+        if (!parsed) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment: 'user_settings',
+            });
+            missingSegments.add('user_settings');
+            return null;
+        }
+
+        return parsed;
+    })();
+
+    const parsedStreakData = (() => {
+        const payload = getFulfilledData('streak_summary', streakResult);
+        if (!payload) {
+            return [];
+        }
+
+        const parsed = safeParseResponse(
+            z.array(streakSummaryRowSchema),
+            Array.isArray(payload) ? payload : []
+        );
+
+        if (!parsed) {
+            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
+                route: 'supabaseStorage',
+                userId,
+                segment: 'streak_summary',
+            });
+            missingSegments.add('streak_summary');
+            return [];
+        }
+
+        return parsed;
+    })();
 
     const createdAt = parsedProgressData?.created_at || new Date().toISOString();
     const updatedAt = parsedProgressData?.updated_at || createdAt;
@@ -375,14 +582,14 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         user_id: userId,
         favorites: parsedFavoritesData.map((row) => row.term_id),
         current_language: parsedSettingsData?.preferred_language || 'ru',
-            quiz_history: parsedQuizData.map((q) => ({
-                id: q.id,
-                term_id: q.term_id,
-                is_correct: q.is_correct,
-                response_time_ms: q.response_time_ms,
-                timestamp: q.created_at,
-                quiz_type: q.quiz_type,
-            })),
+        quiz_history: parsedQuizData.map((q) => ({
+            id: q.id,
+            term_id: q.term_id,
+            is_correct: q.is_correct,
+            response_time_ms: q.response_time_ms,
+            timestamp: q.created_at,
+            quiz_type: q.quiz_type,
+        })),
         total_words_learned: parsedProgressData?.total_words_learned ?? 0,
         current_streak: streakSummary?.current_streak ?? 0,
         last_study_date: streakSummary?.last_study_date ?? null,
@@ -396,10 +603,34 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
             userId,
             validation: result.error.flatten(),
         });
-        return null;
+        return {
+            status: 'error',
+            missing: [...USER_PROGRESS_SEGMENTS],
+            message: 'Supabase returned malformed study progress data.',
+        };
     }
 
-    return result.data;
+    if (missingSegments.size === 0) {
+        return {
+            status: 'ok',
+            data: result.data,
+        };
+    }
+
+    if (missingSegments.size === USER_PROGRESS_SEGMENTS.length) {
+        return {
+            status: 'error',
+            missing: [...missingSegments],
+            message: 'Unable to load study progress from Supabase.',
+        };
+    }
+
+    return {
+        status: 'partial',
+        data: result.data,
+        missing: [...missingSegments],
+        message: buildUserProgressLoadMessage([...missingSegments]),
+    };
 }
 
 /**
@@ -430,9 +661,12 @@ export async function toggleFavoriteInSupabase(
         }
 
         if (!response.ok) {
-            const message = await readApiError(response, 'Failed to toggle favorite.');
+            const { message, retryable } = await readApiFailure(
+                response,
+                'Failed to toggle favorite.'
+            );
 
-            if (response.status >= 500 || response.status === 429) {
+            if (retryable) {
                 return {
                     status: 'retryable',
                     message,
@@ -492,9 +726,12 @@ export async function saveQuizAttemptToSupabase(
         }
 
         if (!response.ok) {
-            const message = await readApiError(response, 'Progress could not be saved. Please try again.');
+            const { message, retryable } = await readApiFailure(
+                response,
+                'Progress could not be saved. Please try again.'
+            );
 
-            if (response.status >= 500 || response.status === 429) {
+            if (retryable) {
                 return {
                     status: 'retryable',
                     message,

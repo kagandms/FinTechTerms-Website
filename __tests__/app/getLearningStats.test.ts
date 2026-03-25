@@ -21,53 +21,67 @@ jest.mock('@/lib/supabaseUtils', () => ({
     createApiError: (code: string, message: string, status: number) => mockCreateApiError(code, message, status),
 }));
 
+const createRecentAttemptsChain = (data: unknown[] = [], error: { message: string } | null = null) => {
+    const limit = jest.fn().mockResolvedValue({
+        data,
+        error,
+    });
+    const secondaryOrder = jest.fn(() => ({
+        limit,
+    }));
+    const primaryOrder = jest.fn(() => ({
+        order: secondaryOrder,
+    }));
+    const eq = jest.fn(() => ({
+        order: primaryOrder,
+    }));
+
+    return {
+        select: jest.fn(() => ({
+            eq,
+        })),
+        eq,
+        primaryOrder,
+        secondaryOrder,
+        limit,
+    };
+};
+
 describe('getLearningStats', () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    it('uses the Supabase quiz_attempts count for totalReviews', async () => {
-        const mockBadgesOrder = jest.fn().mockResolvedValue({
+    it('returns exact metrics, average response time, and recent attempts', async () => {
+        const badgesOrder = jest.fn().mockResolvedValue({
             data: [],
             error: null,
         });
-        const mockBadgesEq = jest.fn(() => ({
-            order: mockBadgesOrder,
+        const badgesEq = jest.fn(() => ({
+            order: badgesOrder,
         }));
-        const mockBadgesSelect = jest.fn(() => ({
-            eq: mockBadgesEq,
+        const badgesSelect = jest.fn(() => ({
+            eq: badgesEq,
         }));
-        const mockReviewEq = jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
-            count: 27,
-        });
-        const mockCorrectReviewEq = jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
-            count: 19,
-        });
-        const mockCorrectReviewUserEq = jest.fn(() => ({
-            eq: mockCorrectReviewEq,
-        }));
-        const mockReviewSelect = jest.fn()
-            .mockImplementationOnce(() => ({
-                eq: mockReviewEq,
-            }))
-            .mockImplementationOnce(() => ({
-                eq: mockCorrectReviewUserEq,
-            }));
+        const recentAttemptsChain = createRecentAttemptsChain([
+            {
+                id: 'attempt-1',
+                term_id: 'term-1',
+                created_at: '2026-03-11T10:00:00.000Z',
+                is_correct: true,
+                response_time_ms: 1200,
+                quiz_type: 'daily',
+            },
+        ]);
         const mockFrom = jest.fn((table: string) => {
             if (table === 'user_badges') {
                 return {
-                    select: mockBadgesSelect,
+                    select: badgesSelect,
                 };
             }
 
             if (table === 'quiz_attempts') {
-                return {
-                    select: mockReviewSelect,
-                };
+                return recentAttemptsChain;
             }
 
             throw new Error(`Unexpected table ${table}`);
@@ -83,6 +97,10 @@ describe('getLearningStats', () => {
             .mockResolvedValueOnce({
                 data: [{ current_streak: 4, last_study_date: '2026-03-11' }],
                 error: null,
+            })
+            .mockResolvedValueOnce({
+                data: [{ total_reviews: 27, correct_reviews: 19, avg_response_time_ms: 1475 }],
+                error: null,
             });
 
         mockCreateOptionalClient.mockResolvedValue({
@@ -98,13 +116,15 @@ describe('getLearningStats', () => {
         const { getLearningStats } = await import('@/app/actions/getLearningStats');
         const result = await getLearningStats();
 
+        expect(mockRpc).toHaveBeenNthCalledWith(1, 'get_user_learning_heatmap');
+        expect(mockRpc).toHaveBeenNthCalledWith(2, 'get_user_streak_summary', {
+            p_user_id: 'user-1',
+        });
+        expect(mockRpc).toHaveBeenNthCalledWith(3, 'get_user_quiz_metrics', {
+            p_user_id: 'user-1',
+        });
         expect(mockFrom).toHaveBeenCalledWith('user_badges');
         expect(mockFrom).toHaveBeenCalledWith('quiz_attempts');
-        expect(mockReviewSelect).toHaveBeenNthCalledWith(1, 'id', { count: 'exact', head: true });
-        expect(mockReviewEq).toHaveBeenCalledWith('user_id', 'user-1');
-        expect(mockReviewSelect).toHaveBeenNthCalledWith(2, 'id', { count: 'exact', head: true });
-        expect(mockCorrectReviewUserEq).toHaveBeenCalledWith('user_id', 'user-1');
-        expect(mockCorrectReviewEq).toHaveBeenCalledWith('is_correct', true);
         expect(result).toEqual({
             ok: true,
             data: {
@@ -120,52 +140,43 @@ describe('getLearningStats', () => {
                 todayActivity: 1,
                 totalReviews: 27,
                 correctReviews: 19,
+                accuracy: 70,
+                avgResponseTimeMs: 1475,
+                recentAttempts: [
+                    {
+                        id: 'attempt-1',
+                        termId: 'term-1',
+                        createdAt: '2026-03-11T10:00:00.000Z',
+                        isCorrect: true,
+                        responseTimeMs: 1200,
+                        quizType: 'daily',
+                    },
+                ],
             },
         });
     });
 
-    it('nulls review aggregates when an exact review count fails', async () => {
-        const mockBadgesOrder = jest.fn().mockResolvedValue({
+    it('returns a 500 payload when the exact quiz metrics RPC fails', async () => {
+        const badgesOrder = jest.fn().mockResolvedValue({
             data: [],
             error: null,
         });
-        const mockBadgesEq = jest.fn(() => ({
-            order: mockBadgesOrder,
+        const badgesEq = jest.fn(() => ({
+            order: badgesOrder,
         }));
-        const mockBadgesSelect = jest.fn(() => ({
-            eq: mockBadgesEq,
+        const badgesSelect = jest.fn(() => ({
+            eq: badgesEq,
         }));
-        const mockReviewEq = jest.fn().mockResolvedValue({
-            data: null,
-            error: { message: 'count failed' },
-            count: null,
-        });
-        const mockCorrectReviewEq = jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
-            count: 11,
-        });
-        const mockCorrectReviewUserEq = jest.fn(() => ({
-            eq: mockCorrectReviewEq,
-        }));
-        const mockReviewSelect = jest.fn()
-            .mockImplementationOnce(() => ({
-                eq: mockReviewEq,
-            }))
-            .mockImplementationOnce(() => ({
-                eq: mockCorrectReviewUserEq,
-            }));
+        const recentAttemptsChain = createRecentAttemptsChain();
         const mockFrom = jest.fn((table: string) => {
             if (table === 'user_badges') {
                 return {
-                    select: mockBadgesSelect,
+                    select: badgesSelect,
                 };
             }
 
             if (table === 'quiz_attempts') {
-                return {
-                    select: mockReviewSelect,
-                };
+                return recentAttemptsChain;
             }
 
             throw new Error(`Unexpected table ${table}`);
@@ -178,6 +189,10 @@ describe('getLearningStats', () => {
             .mockResolvedValueOnce({
                 data: [{ current_streak: 1, last_study_date: '2026-03-11' }],
                 error: null,
+            })
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: 'metrics failed' },
             });
 
         mockCreateOptionalClient.mockResolvedValue({
@@ -194,17 +209,11 @@ describe('getLearningStats', () => {
         const result = await getLearningStats();
 
         expect(result).toEqual({
-            ok: true,
-            data: {
-                heatmap: [{ log_date: '2026-03-11', activity_count: 1 }],
-                currentStreak: 1,
-                lastStudyDate: '2026-03-11',
-                badges: [],
-                activeDays: 1,
-                totalActivity: 1,
-                todayActivity: 1,
-                totalReviews: null,
-                correctReviews: null,
+            ok: false,
+            error: {
+                code: 'LEARNING_STATS_UNAVAILABLE',
+                message: 'Unable to load learning stats.',
+                status: 500,
             },
         });
     });

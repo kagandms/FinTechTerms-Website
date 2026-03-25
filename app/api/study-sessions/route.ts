@@ -15,14 +15,17 @@ import {
     reserveEphemeralIdempotentRequest,
 } from '@/lib/ephemeral-idempotency';
 import { logger } from '@/lib/logger';
-import { studySessionRouteRateLimiter } from '@/lib/rate-limiter';
+import {
+    isRateLimiterUnavailable,
+    studySessionRouteRateLimiter,
+} from '@/lib/rate-limiter';
 import {
     createStudySessionToken,
     hashStudySessionToken,
     isStudySessionTokenMatch,
 } from '@/lib/study-session-token';
 import { createServiceRoleClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
-import { hasConfiguredServiceRoleEnv } from '@/lib/env';
+import { hasConfiguredStudySessionEnv } from '@/lib/env';
 
 const StartSessionSchema = z.object({
     action: z.literal('start'),
@@ -87,11 +90,6 @@ interface StudySessionRow {
     session_token_hash: string | null;
 }
 
-const buildMonotonicNumericFilter = (
-    column: 'duration_seconds' | 'page_views' | 'quiz_attempts',
-    nextValue: number
-): string => `${column}.is.null,${column}.lt.${nextValue}`;
-
 const buildScopedIdempotencyKey = (
     ip: string,
     payload: SessionAction,
@@ -102,11 +100,8 @@ const buildScopedIdempotencyKey = (
             return `user:${userId}`;
         }
 
-        if (payload.anonymousId) {
-            return `anonymous:${payload.anonymousId}`;
-        }
-
-        return `ip:${ip}`;
+        // Never trust caller-supplied anonymous identifiers for abuse control.
+        return `anonymous-ip:${ip}`;
     }
 
     if (userId) {
@@ -238,11 +233,12 @@ const findExistingStartedSession = async (
     return data as Pick<StudySessionRow, 'id'> | null;
 };
 
-const rotateSessionToken = async (
+const buildStartSessionResponse = async (
     supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    sessionId: string
+    sessionId: string,
+    idempotencyKey: string
 ): Promise<StartSessionResponseBody> => {
-    const sessionToken = createStudySessionToken();
+    const sessionToken = createStudySessionToken(sessionId, idempotencyKey);
     const { error } = await supabaseAdmin
         .from('study_sessions')
         .update({
@@ -310,7 +306,6 @@ const startStudySession = async (
     payload: StartSessionAction,
     userId: string | null
 ): Promise<StartSessionResponseBody> => {
-    const sessionToken = createStudySessionToken();
     const response = await supabaseAdmin
         .from('study_sessions')
         .insert({
@@ -318,7 +313,6 @@ const startStudySession = async (
             anonymous_id: userId ? null : payload.anonymousId ?? null,
             idempotency_key: payload.idempotency_key,
             session_start: new Date().toISOString(),
-            session_token_hash: hashStudySessionToken(sessionToken),
             device_type: payload.deviceType,
             user_agent: payload.userAgent ?? null,
             consent_given: true,
@@ -328,10 +322,11 @@ const startStudySession = async (
         .single();
 
     if (!response.error) {
-        return {
-            sessionId: response.data.id,
-            sessionToken,
-        };
+        return await buildStartSessionResponse(
+            supabaseAdmin,
+            response.data.id,
+            payload.idempotency_key
+        );
     }
 
     if (response.error.code === '23505') {
@@ -342,7 +337,11 @@ const startStudySession = async (
         );
 
         if (existingSession?.id) {
-            return await rotateSessionToken(supabaseAdmin, existingSession.id);
+            return await buildStartSessionResponse(
+                supabaseAdmin,
+                existingSession.id,
+                payload.idempotency_key
+            );
         }
     }
 
@@ -353,42 +352,16 @@ const updateStudySession = async (
     supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
     payload: SessionFollowUpAction
 ): Promise<void> => {
-    const monotonicUpdates = [
-        {
-            column: 'duration_seconds' as const,
-            value: payload.durationSeconds,
-        },
-        {
-            column: 'page_views' as const,
-            value: payload.pageViews,
-        },
-        {
-            column: 'quiz_attempts' as const,
-            value: payload.quizAttempts,
-        },
-    ];
-
-    for (const update of monotonicUpdates) {
-        const { error } = await supabaseAdmin
-            .from('study_sessions')
-            .update({ [update.column]: update.value })
-            .eq('id', payload.sessionId)
-            .or(buildMonotonicNumericFilter(update.column, update.value));
-
-        if (error) {
-            throw error;
-        }
-    }
-
-    if (payload.action !== 'end') {
-        return;
-    }
-
-    const { error } = await supabaseAdmin
-        .from('study_sessions')
-        .update({ session_end: new Date().toISOString() })
-        .eq('id', payload.sessionId)
-        .is('session_end', null);
+    const { error } = await supabaseAdmin.rpc('update_study_session_metrics', {
+        p_session_id: payload.sessionId,
+        p_duration_seconds: payload.durationSeconds,
+        p_page_views: payload.pageViews,
+        p_quiz_attempts: payload.quizAttempts,
+        p_end_session: payload.action === 'end',
+        p_ended_at: payload.action === 'end'
+            ? new Date().toISOString()
+            : null,
+    });
 
     if (error) {
         throw error;
@@ -440,7 +413,7 @@ export async function POST(request: Request) {
     const payload = validatedData.data;
 
     try {
-        if (!hasConfiguredServiceRoleEnv()) {
+        if (!hasConfiguredStudySessionEnv()) {
             return errorResponse({
                 status: 503,
                 code: 'STUDY_SESSION_DISABLED',
@@ -482,12 +455,21 @@ export async function POST(request: Request) {
 
         const rateLimitKey = user?.id
             ? `user:${user.id}`
-            : payload.action === 'start' && payload.anonymousId
-                ? `anonymous:${payload.anonymousId}`
-                : payload.action === 'start'
-                    ? `ip:${ip}`
-                    : `session:${payload.sessionId}`;
+            : payload.action === 'start'
+                ? `anonymous-ip:${ip}`
+                : `session:${payload.sessionId}`;
         const limitCheck = await studySessionRouteRateLimiter.check(rateLimitKey);
+        if (isRateLimiterUnavailable(limitCheck)) {
+            return errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Rate limiting is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: STUDY_SESSION_RATE_LIMIT_HEADERS,
+            });
+        }
+
         if (!limitCheck.allowed) {
             return errorResponse({
                 status: 429,

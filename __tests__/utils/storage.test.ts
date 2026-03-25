@@ -138,7 +138,7 @@ describe('getUserProgress', () => {
 
     it('should clear corrupted progress and return a fresh default state', () => {
         const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        localStorageMock.setItem('globalfinterm_user_progress', JSON.stringify({
+        localStorageMock.setItem('globalfinterm_user_progress:guest', JSON.stringify({
             favorites: 'not-an-array',
         }));
 
@@ -149,13 +149,42 @@ describe('getUserProgress', () => {
             current_language: 'ru',
             quiz_history: [],
         });
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
+        expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress:guest');
         expect(warnSpy).toHaveBeenCalledWith(
             'STORAGE_CORRUPTED_PROGRESS_CLEARED',
             { route: 'storage' }
         );
 
         warnSpy.mockRestore();
+    });
+
+    it('should isolate authenticated progress from guest cache', () => {
+        localStorageMock.setItem('globalfinterm_user_progress:guest', JSON.stringify(createProgress({
+            user_id: 'guest_user',
+            current_streak: 5,
+            favorites: ['term_001'],
+        })));
+
+        const progress = getUserProgress('user_42');
+
+        expect(progress).toMatchObject({
+            user_id: 'user_42',
+            current_streak: 0,
+            favorites: [],
+        });
+    });
+
+    it('should migrate matching legacy authenticated progress into the scoped key', () => {
+        localStorageMock.setItem('globalfinterm_user_progress', JSON.stringify(createProgress({
+            user_id: 'user_99',
+            current_streak: 7,
+        })));
+
+        const progress = getUserProgress('user_99');
+
+        expect(progress.current_streak).toBe(7);
+        expect(localStorageMock.getItem('globalfinterm_user_progress')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_99')).not.toBeNull();
     });
 });
 
@@ -230,6 +259,35 @@ describe('addQuizAttempt', () => {
         const progress = addQuizAttempt(attempt);
         expect(progress.last_study_date).not.toBeNull();
     });
+
+    it('should keep only the latest 500 quiz attempts in local progress', () => {
+        const seedHistory = Array.from({ length: 500 }, (_, index) => ({
+            id: `attempt_${index}`,
+            term_id: `term_${index}`,
+            is_correct: true,
+            response_time_ms: 1000,
+            timestamp: new Date().toISOString(),
+            quiz_type: 'daily' as const,
+        }));
+
+        saveUserProgress(createProgress({
+            user_id: 'guest_user',
+            quiz_history: seedHistory,
+        }));
+
+        const progress = addQuizAttempt({
+            id: 'attempt_latest',
+            term_id: 'term_latest',
+            is_correct: true,
+            response_time_ms: 900,
+            timestamp: new Date().toISOString(),
+            quiz_type: 'daily' as const,
+        });
+
+        expect(progress.quiz_history).toHaveLength(500);
+        expect(progress.quiz_history[0]?.id).toBe('attempt_1');
+        expect(progress.quiz_history[499]?.id).toBe('attempt_latest');
+    });
 });
 
 // ══════════════════════════════════════════════════════════
@@ -259,6 +317,7 @@ describe('resetAllData', () => {
     it('should clear all storage keys', () => {
         getTerms(); // Initialize
         getUserProgress();
+        saveUserProgress(createProgress({ user_id: 'user_7', current_streak: 3 }), 'user_7');
         setCurrentLanguage('tr');
 
         resetAllData();
@@ -266,6 +325,8 @@ describe('resetAllData', () => {
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_terms');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_language');
+        expect(localStorageMock.getItem('globalfinterm_user_progress:guest')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_7')).toBeNull();
         expect(document.cookie).not.toContain(`${LANGUAGE_COOKIE_NAME}=tr`);
     });
 });

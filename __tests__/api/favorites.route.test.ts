@@ -120,4 +120,77 @@ describe('favorites route', () => {
         routeLimitSpy.mockRestore();
         writeLimitSpy.mockRestore();
     });
+
+    it('uses the authoritative favorite mutation RPC for successful writes', async () => {
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'user@example.com',
+        });
+
+        const rpc = jest.fn().mockResolvedValue({
+            data: {
+                success: true,
+                isFavorite: true,
+                termId: 'term-1',
+                favorites: ['term-1'],
+            },
+            error: null,
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-1',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            isFavorite: true,
+            termId: 'term-1',
+            favorites: ['term-1'],
+        });
+        expect(rpc).toHaveBeenCalledWith('toggle_user_favorite', {
+            p_user_id: 'user-1',
+            p_term_id: 'term-1',
+            p_should_favorite: true,
+        });
+        expect(mockCompleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'favorite_mutation',
+            userId: 'user-1',
+            statusCode: 200,
+            responseBody: body,
+        }));
+    });
+
+    it('returns 503 when the route rate limiter is unavailable', async () => {
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'user@example.com',
+        });
+        jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: true,
+        });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-1',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            retryable: true,
+        });
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
 });

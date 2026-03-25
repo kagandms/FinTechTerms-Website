@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isIP } from 'node:net';
 import { logger } from '@/lib/logger';
 
 export interface ApiErrorResponseBody {
@@ -43,21 +44,107 @@ export const createRequestId = (request?: Request): string => {
     return requestId || crypto.randomUUID();
 };
 
-export const getClientIp = (request: Request): string => {
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    if (forwardedFor) {
-        const firstIp = forwardedFor.split(',')[0]?.trim();
-        if (firstIp) {
-            return firstIp;
+const normalizeIpCandidate = (value: string | null | undefined): string | null => {
+    const trimmedValue = value?.trim();
+    if (!trimmedValue) {
+        return null;
+    }
+
+    const withoutQuotes = trimmedValue.replace(/^"+|"+$/g, '');
+    const withoutForwardedPrefix = withoutQuotes.startsWith('for=')
+        ? withoutQuotes.slice(4)
+        : withoutQuotes;
+
+    if (withoutForwardedPrefix.startsWith('[')) {
+        const closingBracketIndex = withoutForwardedPrefix.indexOf(']');
+        if (closingBracketIndex > 1) {
+            const bracketedHost = withoutForwardedPrefix.slice(1, closingBracketIndex);
+            return isIP(bracketedHost) ? bracketedHost : null;
         }
     }
 
-    const requestIp = (request as Request & { ip?: string | null }).ip?.trim();
+    const ipv4HostMatch = withoutForwardedPrefix.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
+    if (ipv4HostMatch?.[1] && isIP(ipv4HostMatch[1])) {
+        return ipv4HostMatch[1];
+    }
+
+    return isIP(withoutForwardedPrefix) ? withoutForwardedPrefix : null;
+};
+
+const getTrustedProxyHeaders = (): readonly string[] => {
+    if (process.env.VERCEL === '1' || process.env.VERCEL_URL) {
+        return ['x-real-ip'];
+    }
+
+    if (process.env.RENDER || process.env.RENDER_EXTERNAL_URL) {
+        return ['x-real-ip'];
+    }
+
+    if (process.env.FLY_APP_NAME) {
+        return ['fly-client-ip'];
+    }
+
+    if (process.env.FASTLY_HOSTNAME) {
+        return ['fastly-client-ip', 'true-client-ip'];
+    }
+
+    return [];
+};
+
+const canTrustForwardedFor = (): boolean => (
+    Boolean(process.env.VERCEL === '1' || process.env.VERCEL_URL)
+    || Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL)
+    || Boolean(process.env.FLY_APP_NAME)
+    || Boolean(process.env.FASTLY_HOSTNAME)
+);
+
+const getTrustedHeaderIp = (request: Request): string | null => {
+    const trustedHeaders = getTrustedProxyHeaders();
+
+    for (const headerName of trustedHeaders) {
+        const headerIp = normalizeIpCandidate(request.headers.get(headerName));
+        if (headerIp) {
+            return headerIp;
+        }
+    }
+
+    return null;
+};
+
+const getForwardedForIp = (request: Request): string | null => {
+    if (!canTrustForwardedFor()) {
+        return null;
+    }
+
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (!forwardedFor) {
+        return null;
+    }
+
+    const forwardedEntries = forwardedFor
+        .split(',')
+        .map((entry) => normalizeIpCandidate(entry))
+        .filter((entry): entry is string => Boolean(entry));
+
+    if (forwardedEntries.length === 0) {
+        return null;
+    }
+
+    return forwardedEntries[0] ?? null;
+};
+
+export const getClientIp = (request: Request): string => {
+    const requestIp = normalizeIpCandidate((request as Request & { ip?: string | null }).ip);
     if (requestIp) {
         return requestIp;
     }
 
-    return request.headers.get('x-real-ip')?.trim() || 'unknown';
+    const trustedHeaderIp = getTrustedHeaderIp(request);
+    if (trustedHeaderIp) {
+        return trustedHeaderIp;
+    }
+
+    return getForwardedForIp(request) || 'unknown';
 };
 
 export const getDeviceFingerprint = (request: Request): string | null => {

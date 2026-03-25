@@ -52,7 +52,7 @@ export function getSupabaseClient(): AppSupabaseClient {
     const key = env.supabaseAnonKey;
 
     if (!isConfiguredValue(url) || !isConfiguredValue(key)) {
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'production') {
             throw new Error(
                 '[FinTechTerms] NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set. ' +
                 'Copy .env.example to .env.local and fill in the values.'

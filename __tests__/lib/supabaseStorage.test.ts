@@ -130,7 +130,50 @@ describe('supabaseStorage response validation', () => {
         });
     });
 
-    it('throws a recoverable error when Supabase sends malformed study progress rows', async () => {
+    it('classifies retryable 409 quiz responses as retryable', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 409,
+            json: jest.fn().mockResolvedValue({
+                message: 'An identical request is already being processed.',
+                retryable: true,
+            }),
+        }) as typeof fetch;
+
+        const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(saveQuizAttemptToSupabase('user-1', {
+            id: 'attempt-1',
+            term_id: 'term-1',
+            is_correct: true,
+            response_time_ms: 1200,
+            timestamp: '2026-03-11T00:00:00.000Z',
+            quiz_type: 'daily',
+        })).resolves.toEqual({
+            status: 'retryable',
+            message: 'An identical request is already being processed.',
+        });
+    });
+
+    it('classifies retryable 409 favorite responses as retryable', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 409,
+            json: jest.fn().mockResolvedValue({
+                message: 'An identical request is already being processed.',
+                retryable: true,
+            }),
+        }) as typeof fetch;
+
+        const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(toggleFavoriteInSupabase('user-1', 'term-1', true)).resolves.toEqual({
+            status: 'retryable',
+            message: 'An identical request is already being processed.',
+        });
+    });
+
+    it('returns a partial progress result when only the canonical progress row is malformed', async () => {
         const maybeSingle = jest.fn().mockResolvedValue({
             data: {
                 total_words_learned: 'not-a-number',
@@ -194,8 +237,16 @@ describe('supabaseStorage response validation', () => {
         });
 
         const { getUserProgressFromSupabase } = await import('@/lib/supabaseStorage');
-        await expect(getUserProgressFromSupabase('user-1')).rejects.toThrow(
-            'Supabase returned malformed study progress data.'
-        );
+        await expect(getUserProgressFromSupabase('user-1')).resolves.toMatchObject({
+            status: 'partial',
+            missing: ['user_progress'],
+            message: 'Study progress loaded with gaps: progress summary.',
+            data: {
+                user_id: 'user-1',
+                favorites: [],
+                quiz_history: [],
+                total_words_learned: 0,
+            },
+        });
     });
 });

@@ -63,26 +63,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     // Calculated fields
     const learningStatsData = learningStats.ok ? learningStats.data : null;
     const totalReviews = learningStatsData?.totalReviews ?? (isAuthenticated ? null : 0);
-    const accuracy = (() => {
-        if (!learningStatsData) {
-            return isAuthenticated ? null : 0;
-        }
-
-        if (
-            learningStatsData.totalReviews === null
-            || learningStatsData.correctReviews === null
-        ) {
-            return isAuthenticated ? null : 0;
-        }
-
-        if (learningStatsData.totalReviews === 0) {
-            return 0;
-        }
-
-        return Math.round(
-            (learningStatsData.correctReviews / learningStatsData.totalReviews) * 100
-        );
-    })();
+    const accuracy = learningStatsData?.accuracy ?? (isAuthenticated ? null : 0);
     const showLearningAnalyticsFallback = isAuthenticated
         && !learningStats.ok
         && learningStats.error.code !== 'UNAUTHORIZED';

@@ -22,12 +22,11 @@ import {
     toggleFavoriteInSupabase,
     saveQuizAttemptToSupabase,
     getAllTermSRSFromSupabase,
-    getAllTermSRSFromSupabaseUnbounded,
+    type UserProgressLoadMissingSegment,
     type RecordQuizResult,
 } from '@/lib/supabaseStorage';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
-import { isUserProgress } from '@/lib/userProgress';
 import { useToast } from '@/contexts/ToastContext';
 import { logger } from '@/lib/logger';
 import {
@@ -35,6 +34,7 @@ import {
     getErrorMessage,
     hasCachedStudyData,
     isPendingReview,
+    mergeUserProgressSnapshot,
     type PendingReview,
 } from '@/contexts/srs-context-helpers';
 
@@ -79,6 +79,7 @@ const SRSContext = createContext<SRSContextType | undefined>(undefined);
 const SRS_SYNC_CHANNEL = 'srs_sync';
 const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
 const PENDING_REVIEW_STORAGE_KEY = 'fintechterms_pending_review';
+const PENDING_REVIEW_SYNC_MESSAGE = 'Answer saved locally. It will sync when connection returns.';
 
 interface SrsSyncMessage {
     type: 'REVIEW_COMMITTED';
@@ -92,6 +93,12 @@ interface SrsSyncMessage {
 interface SRSProviderProps {
     children: ReactNode;
 }
+
+const mergeProgressSnapshots = (
+    localProgress: UserProgress,
+    remoteProgress: UserProgress,
+    missingSegments: readonly UserProgressLoadMissingSegment[]
+): UserProgress => mergeUserProgressSnapshot(localProgress, remoteProgress, missingSegments);
 
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
@@ -116,6 +123,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const pendingReviewReplayReadyRef = useRef(false);
     const syncChannelRef = useRef<BroadcastChannel | null>(null);
     const previousAuthStateRef = useRef(isAuthenticated);
+    const loadRequestIdRef = useRef(0);
 
     const getOrCreateReviewKey = useCallback((reviewId: string): string => {
         const existingKey = reviewIdempotencyKeysRef.current[reviewId];
@@ -215,7 +223,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         });
 
         setUserProgress(prev => {
-            const baseProgress = prev ?? getLocalUserProgress();
+            const baseProgress = prev ?? getLocalUserProgress(userId);
             const reconciledProgress = {
                 ...baseProgress,
                 quiz_history: baseProgress.quiz_history.some((existingAttempt) => existingAttempt.id === attempt.id)
@@ -227,10 +235,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 updated_at: result.userProgress.updated_at,
             };
 
-            saveLocalUserProgress(reconciledProgress);
+            saveLocalUserProgress(reconciledProgress, userId);
             return reconciledProgress;
         });
-    }, []);
+    }, [userId]);
 
     const broadcastCommittedReview = useCallback((message: SrsSyncMessage) => {
         syncChannelRef.current?.postMessage(message);
@@ -284,15 +292,19 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 updated_at: syncedProgress.updated_at,
             };
 
-            saveLocalUserProgress(reconciledProgress);
+            saveLocalUserProgress(reconciledProgress, userId);
             return reconciledProgress;
         });
-    }, []);
+    }, [userId]);
 
     /**
      * Load data from appropriate source
      */
     const loadData = useCallback(async () => {
+        const requestId = loadRequestIdRef.current + 1;
+        loadRequestIdRef.current = requestId;
+        const isCurrentRequest = (): boolean => loadRequestIdRef.current === requestId;
+
         setIsLoading(true);
         setIsSyncing(true);
         setTermsStatus('loading');
@@ -315,8 +327,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
             currentTerms = filterAcademicTerms(Array.from(uniqueLocalTerms.values()));
 
             // Show cached progress immediately, then reconcile with server data when available.
-            const localProgress = getLocalUserProgress();
+            const localProgress = getLocalUserProgress(userId);
             const optimisticProgress = localProgress;
+            let resolvedProgress = optimisticProgress;
             setUserProgress(optimisticProgress);
 
             // OPTIMIZATION: Show local data IMMEDIATELY (Stale-While-Revalidate)
@@ -340,30 +353,42 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 nextTermsStatus = 'ready';
             }
 
-            setTerms(currentTerms);
-
             if (isAuthenticated && userId) {
                 try {
                     const cloudProgress = await getUserProgressFromSupabase(userId);
+                    if (!isCurrentRequest()) {
+                        return;
+                    }
 
-                    if (cloudProgress && isUserProgress(cloudProgress)) {
-                        const scopedSrsTermIds = cloudProgress.favorites.length > 0
-                            ? cloudProgress.favorites
-                            : currentTerms.map((term) => term.id);
-                        const srsData = cloudProgress.favorites.length > 0
-                            ? await getAllTermSRSFromSupabase(userId, scopedSrsTermIds)
-                            : await getAllTermSRSFromSupabaseUnbounded(userId);
+                    if (cloudProgress.status === 'ok' || cloudProgress.status === 'partial') {
+                        const mergedProgress = cloudProgress.status === 'partial'
+                            ? mergeProgressSnapshots(
+                                optimisticProgress,
+                                cloudProgress.data,
+                                cloudProgress.missing
+                            )
+                            : cloudProgress.data;
+                        const srsData = mergedProgress.favorites.length > 0
+                            ? await getAllTermSRSFromSupabase(userId, mergedProgress.favorites)
+                            : {
+                                status: 'ok' as const,
+                                data: new Map<string, Partial<Term>>(),
+                            };
+
+                        if (!isCurrentRequest()) {
+                            return;
+                        }
+
+                        resolvedProgress = mergedProgress;
 
                         if (srsData.status !== 'ok') {
-                            setTerms(currentTerms);
-                            setUserProgress(optimisticProgress);
                             nextProgressError = getErrorMessage(
                                 new Error(srsData.message),
                                 'Failed to load SRS progress from Supabase.'
                             );
-                            nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
+                            nextProgressStatus = hasCachedStudyData(mergedProgress) ? 'degraded' : 'error';
                         } else {
-                            const mergedTerms = currentTerms.map(term => {
+                            currentTerms = currentTerms.map((term) => {
                                 const override = srsData.data.get(term.id);
                                 if (override) {
                                     return { ...term, ...override };
@@ -371,15 +396,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
                                 return term;
                             });
 
-                            setTerms(mergedTerms);
-                            setUserProgress(cloudProgress);
-                            saveLocalUserProgress(cloudProgress);
-                            nextProgressStatus = 'ready';
+                            saveLocalUserProgress(mergedProgress, userId);
+                            nextProgressStatus = cloudProgress.status === 'ok' ? 'ready' : 'degraded';
+                            nextProgressError = cloudProgress.status === 'partial'
+                                ? cloudProgress.message
+                                : null;
                         }
                     } else {
-                        setTerms(currentTerms);
-                        setUserProgress(optimisticProgress);
-                        nextProgressError = 'Failed to load study progress from Supabase.';
+                        resolvedProgress = optimisticProgress;
+                        nextProgressError = cloudProgress.message;
                         nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
                     }
                 } catch (error) {
@@ -388,21 +413,32 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         userId,
                         error: error instanceof Error ? error : undefined,
                     });
-                    setTerms(currentTerms);
-                    setUserProgress(optimisticProgress);
+                    if (!isCurrentRequest()) {
+                        return;
+                    }
+                    resolvedProgress = optimisticProgress;
                     nextProgressError = getErrorMessage(error, 'Failed to load study progress from Supabase.');
                     nextProgressStatus = hasCachedStudyData(optimisticProgress) ? 'degraded' : 'error';
                 }
             } else {
-                setUserProgress(optimisticProgress);
+                resolvedProgress = optimisticProgress;
                 nextProgressStatus = 'ready';
             }
 
+            if (!isCurrentRequest()) {
+                return;
+            }
+
+            setTerms(currentTerms);
+            setUserProgress(resolvedProgress);
             setTermsError(nextTermsError);
             setProgressError(nextProgressError);
             setTermsStatus(nextTermsStatus);
             setProgressStatus(nextProgressStatus);
         } catch (error) {
+            if (!isCurrentRequest()) {
+                return;
+            }
             const fallbackMessage = getErrorMessage(error, 'Failed to load study data.');
             logger.error('SRS_LOAD_UNEXPECTED_ERROR', {
                 route: 'SRSProvider',
@@ -414,6 +450,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
             setTermsStatus(prev => (prev === 'ready' ? 'degraded' : 'error'));
             setProgressStatus(prev => (prev === 'ready' ? 'degraded' : 'error'));
         } finally {
+            if (!isCurrentRequest()) {
+                return;
+            }
             setIsLoading(false);
             setIsSyncing(false);
         }
@@ -436,6 +475,27 @@ export function SRSProvider({ children }: SRSProviderProps) {
     useEffect(() => {
         restorePendingReview();
     }, [restorePendingReview]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const handleOnline = () => {
+            if (!pendingReviewRef.current) {
+                return;
+            }
+
+            pendingReviewReplayReadyRef.current = true;
+            setPendingReviewVersion((value) => value + 1);
+        };
+
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -560,14 +620,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     }
 
                     setUserProgress(prev => {
-                        const baseProgress = prev ?? getLocalUserProgress();
+                        const baseProgress = prev ?? getLocalUserProgress(userId);
                         const reconciled = {
                             ...baseProgress,
                             favorites: response.data.favorites,
                             updated_at: new Date().toISOString(),
                         };
 
-                        saveLocalUserProgress(reconciled);
+                        saveLocalUserProgress(reconciled, userId);
                         return reconciled;
                     });
 
@@ -605,7 +665,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             }
 
             // Guest mode — local storage only
-            const updated = toggleFavoriteInStorage(termId);
+            const updated = toggleFavoriteInStorage(termId, userId);
             setUserProgress(updated);
             return {
                 success: true,
@@ -652,9 +712,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
         responseTimeMs: number = 0,
         reviewId: string
     ): Promise<void> => {
-        const term = terms.find(t => t.id === termId);
-        if (!term) return;
-
         const idempotencyKey = getOrCreateReviewKey(reviewId);
         const normalizedResponseTimeMs = Math.max(0, Math.round(responseTimeMs));
         const attempt: QuizAttempt = {
@@ -667,11 +724,18 @@ export function SRSProvider({ children }: SRSProviderProps) {
         };
 
         if (!isAuthenticated || !userId) {
+            const term = terms.find(t => t.id === termId);
+            if (!term) {
+                clearPendingReview();
+                clearReviewKey(reviewId);
+                throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
+            }
+
             const updatedTerm = updateTermAfterReview(term, isCorrect);
             const updatedTerms = updateTermInStorage(updatedTerm);
             setTerms(updatedTerms);
 
-            const updatedProgress = addQuizAttemptToStorage(attempt);
+            const updatedProgress = addQuizAttemptToStorage(attempt, userId);
             setUserProgress(updatedProgress);
             clearReviewKey(reviewId);
             clearPendingReview();
@@ -707,7 +771,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }
 
         if (result.status === 'retryable') {
-            throw new Error(result.message);
+            persistPendingReview({
+                reviewId,
+                termId,
+                isCorrect,
+                responseTimeMs: normalizedResponseTimeMs,
+                idempotencyKey,
+            });
+            showToast(PENDING_REVIEW_SYNC_MESSAGE, 'warning');
+            throw new Error(PENDING_REVIEW_SYNC_MESSAGE);
         }
 
         clearPendingReview();
@@ -731,14 +803,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
         const pendingReview = pendingReviewRef.current;
         const shouldReplayAfterAuth = authTransitionReplayReadyRef.current;
         const shouldReplayRestoredReview = pendingReviewReplayReadyRef.current;
-        const hasPendingTerm = pendingReview
-            ? terms.some((term) => term.id === pendingReview.termId)
-            : false;
         if (
             !isAuthenticated
             || isLoading
             || !pendingReview
-            || !hasPendingTerm
             || !userId
             || isReplayingPendingReviewRef.current
             || replayedPendingReviewIdRef.current === pendingReview.reviewId
@@ -772,7 +840,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }).finally(() => {
             isReplayingPendingReviewRef.current = false;
         });
-    }, [isAuthenticated, isLoading, pendingReviewVersion, showToast, submitQuizAnswer, terms, userId]);
+    }, [isAuthenticated, isLoading, pendingReviewVersion, showToast, submitQuizAnswer, userId]);
 
     useEffect(() => {
         if (!previousAuthStateRef.current && isAuthenticated) {
@@ -791,7 +859,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     }, [loadData]);
 
     // Use default progress if not yet hydrated
-    const safeProgress = userProgress ?? createSafeProgress();
+    const safeProgress = userProgress ?? createSafeProgress(userId);
 
     return (
         <SRSContext.Provider

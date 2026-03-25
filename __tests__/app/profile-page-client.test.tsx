@@ -180,6 +180,9 @@ describe('ProfilePageClient', () => {
                         todayActivity: 0,
                         totalReviews: 20,
                         correctReviews: 15,
+                        accuracy: 75,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
                     },
                 }}
             />
@@ -231,6 +234,9 @@ describe('ProfilePageClient', () => {
                         todayActivity: 0,
                         totalReviews: 1,
                         correctReviews: 1,
+                        accuracy: 100,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
                     },
                 }}
             />
@@ -256,6 +262,9 @@ describe('ProfilePageClient', () => {
                         todayActivity: 0,
                         totalReviews: 1,
                         correctReviews: 1,
+                        accuracy: 100,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
                     },
                 }}
             />
@@ -303,6 +312,9 @@ describe('ProfilePageClient', () => {
                         todayActivity: 0,
                         totalReviews: 0,
                         correctReviews: 0,
+                        accuracy: 0,
+                        avgResponseTimeMs: null,
+                        recentAttempts: [],
                     },
                 }}
             />

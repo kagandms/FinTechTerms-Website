@@ -207,4 +207,41 @@ describe('ProfileEditForm submit flow', () => {
         expect(mockRefresh).toHaveBeenCalledTimes(1);
         expect(screen.getByText('Profile details were saved, but the secondary profile sync did not complete.')).toBeInTheDocument();
     });
+
+    it('updates password through the dedicated password action without triggering a profile refresh', async () => {
+        const supabaseMock = createSupabaseMock();
+        supabaseMock.auth.signInWithPassword.mockResolvedValue({ error: null });
+        mockGetSupabaseClient.mockReturnValue(supabaseMock);
+
+        render(
+            <ProfileEditForm
+                language="en"
+                initialData={initialData}
+            />
+        );
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Change Password' })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change Password' }));
+        fireEvent.change(screen.getByLabelText('Current Password'), {
+            target: { value: 'OldPassword1!' },
+        });
+        fireEvent.change(screen.getByLabelText('New Password'), {
+            target: { value: 'NewPassword1!' },
+        });
+        fireEvent.change(screen.getByLabelText('Confirm New Password'), {
+            target: { value: 'NewPassword1!' },
+        });
+        fireEvent.click(screen.getByTestId('profile-password-save'));
+
+        await waitFor(() => {
+            expect(mockShowToast).toHaveBeenCalledWith('Password updated successfully!', 'success');
+        });
+
+        expect(supabaseMock.auth.signInWithPassword).toHaveBeenCalledTimes(1);
+        expect(supabaseMock.auth.updateUser).toHaveBeenCalledTimes(1);
+        expect(mockRefresh).not.toHaveBeenCalled();
+    });
 });

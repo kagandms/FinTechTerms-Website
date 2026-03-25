@@ -125,8 +125,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
 
     const quizOptions = [5, 10, 20, 50];
-    const masteredCount = terms.filter(t => t.srs_level >= 4).length;
-    const learningCount = terms.filter(t => t.srs_level > 0 && t.srs_level < 4).length;
+    const masteredCount = stats.mastered;
+    const learningCount = stats.learning;
     const hasBlockingTermsError = termsStatus === 'error' || (termsStatus === 'degraded' && terms.length === 0);
     const hasCachedProgressData = dueTerms.length > 0
         || userProgress.favorites.length > 0

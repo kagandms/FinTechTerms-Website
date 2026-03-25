@@ -12,7 +12,11 @@ import {
     inspectIdempotentRequest,
     reserveIdempotentRequest,
 } from '@/lib/api-idempotency';
-import { apiRouteRateLimiter, favoritesMutationRateLimiter } from '@/lib/rate-limiter';
+import {
+    apiRouteRateLimiter,
+    favoritesMutationRateLimiter,
+    isRateLimiterUnavailable,
+} from '@/lib/rate-limiter';
 import {
     createRequestScopedClient,
     createServiceRoleClient,
@@ -25,6 +29,13 @@ const FavoriteRequestSchema = z.object({
     termId: z.string().min(1, 'Term ID is required'),
     shouldFavorite: z.boolean(),
     idempotencyKey: z.string().uuid(),
+});
+
+const FavoriteMutationResponseSchema = z.object({
+    success: z.literal(true),
+    isFavorite: z.boolean(),
+    termId: z.string().min(1),
+    favorites: z.array(z.string().min(1)),
 });
 
 const GLOBAL_RATE_LIMIT_HEADERS = {
@@ -155,6 +166,18 @@ export async function POST(request: Request) {
         }
 
         const limitCheck = await apiRouteRateLimiter.check(`favorites:${ip}`);
+
+        if (isRateLimiterUnavailable(limitCheck)) {
+            return errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Rate limiting is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            });
+        }
+
         headers = {
             ...GLOBAL_RATE_LIMIT_HEADERS,
             'X-RateLimit-Remaining': limitCheck.remaining.toString(),
@@ -175,6 +198,18 @@ export async function POST(request: Request) {
         }
 
         const writeLimitCheck = await favoritesMutationRateLimiter.check(user.id);
+
+        if (isRateLimiterUnavailable(writeLimitCheck)) {
+            return errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Rate limiting is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers,
+            });
+        }
+
         const guardedHeaders = {
             ...headers,
             'X-Write-RateLimit-Limit': WRITE_RATE_LIMIT.toString(),
@@ -228,142 +263,56 @@ export async function POST(request: Request) {
             });
         }
 
-        const { data: termData, error: termError } = await supabaseAdmin
-            .from('terms')
-            .select('id')
-            .eq('id', termId)
-            .maybeSingle();
+        const { data: mutationData, error: mutationError } = await supabaseAdmin.rpc(
+            'toggle_user_favorite',
+            {
+                p_user_id: user.id,
+                p_term_id: termId,
+                p_should_favorite: shouldFavorite,
+            }
+        );
 
-        if (termError) {
-            logger.error('POST_FAVORITES_TERM_LOOKUP_ERROR', {
+        if (mutationError) {
+            logger.error('POST_FAVORITES_RPC_ERROR', {
                 route: 'POST /api/favorites',
-                error: termError,
+                error: mutationError,
                 userId: user.id,
                 termId,
             });
+
+            const isMissingTermError = mutationError.code === 'P0002'
+                || (mutationError.message || '').toLowerCase().includes('term not found');
+
+            if (isMissingTermError) {
+                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 404, {
+                    code: 'TERM_NOT_FOUND',
+                    message: 'Term not found.',
+                });
+                return errorResponse({
+                    status: 404,
+                    code: 'TERM_NOT_FOUND',
+                    message: 'Term not found.',
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
+
             await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
                 code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to validate term.',
+                message: 'Unable to update favorites.',
             });
             return errorResponse({
                 status: 500,
                 code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to validate term.',
+                message: 'Unable to update favorites.',
                 requestId,
                 retryable: true,
                 headers: guardedHeaders,
             });
         }
 
-        if (!termData) {
-            await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 404, {
-                code: 'TERM_NOT_FOUND',
-                message: 'Term not found.',
-            });
-            return errorResponse({
-                status: 404,
-                code: 'TERM_NOT_FOUND',
-                message: 'Term not found.',
-                requestId,
-                retryable: false,
-                headers: guardedHeaders,
-            });
-        }
-
-        if (shouldFavorite) {
-            const { error: insertError } = await supabaseAdmin
-                .from('user_favorites')
-                .upsert({
-                    user_id: user.id,
-                    term_id: termId,
-                    source: 'web',
-                }, {
-                    onConflict: 'user_id,term_id',
-                    ignoreDuplicates: true,
-                });
-
-            if (insertError) {
-                logger.error('POST_FAVORITES_INSERT_ERROR', {
-                    route: 'POST /api/favorites',
-                    error: insertError,
-                    userId: user.id,
-                    termId,
-                });
-                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
-                    code: 'FAVORITES_UPDATE_FAILED',
-                    message: 'Unable to update favorites.',
-                });
-                return errorResponse({
-                    status: 500,
-                    code: 'FAVORITES_UPDATE_FAILED',
-                    message: 'Unable to update favorites.',
-                    requestId,
-                    retryable: true,
-                    headers: guardedHeaders,
-                });
-            }
-        } else {
-            const { error: deleteError } = await supabaseAdmin
-                .from('user_favorites')
-                .delete()
-                .eq('user_id', user.id)
-                .eq('term_id', termId);
-
-            if (deleteError) {
-                logger.error('POST_FAVORITES_DELETE_ERROR', {
-                    route: 'POST /api/favorites',
-                    error: deleteError,
-                    userId: user.id,
-                    termId,
-                });
-                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
-                    code: 'FAVORITES_UPDATE_FAILED',
-                    message: 'Unable to update favorites.',
-                });
-                return errorResponse({
-                    status: 500,
-                    code: 'FAVORITES_UPDATE_FAILED',
-                    message: 'Unable to update favorites.',
-                    requestId,
-                    retryable: true,
-                    headers: guardedHeaders,
-                });
-            }
-        }
-
-        const favoritesResponse = await supabaseAdmin
-            .from('user_favorites')
-            .select('term_id')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-        if (favoritesResponse.error) {
-            logger.error('POST_FAVORITES_LIST_ERROR', {
-                route: 'POST /api/favorites',
-                error: favoritesResponse.error,
-                userId: user.id,
-            });
-            await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to load updated favorites.',
-            });
-            return errorResponse({
-                status: 500,
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to load updated favorites.',
-                requestId,
-                retryable: true,
-                headers: guardedHeaders,
-            });
-        }
-
-        const favorites = (favoritesResponse.data || []).map((row) => row.term_id);
-        const responseBody = {
-            success: true,
-            isFavorite: favorites.includes(termId),
-            termId,
-            favorites,
-        };
+        const responseBody = FavoriteMutationResponseSchema.parse(mutationData);
 
         try {
             await completeIdempotentRequest({
@@ -380,6 +329,7 @@ export async function POST(request: Request) {
                 error: error instanceof Error ? error : undefined,
                 userId: user.id,
             });
+            throw error;
         }
 
         return successResponse(

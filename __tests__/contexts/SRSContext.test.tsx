@@ -6,6 +6,7 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { SRSProvider, useSRS } from '@/contexts/SRSContext';
+import type { UserProgress } from '@/types';
 
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
@@ -41,7 +42,7 @@ jest.mock('@/utils/storage', () => ({
     getTerms: () => mockGetTerms(),
     saveTerms: (...args: unknown[]) => mockSaveTerms(...args),
     updateTerm: (...args: unknown[]) => mockUpdateTermInStorage(...args),
-    getUserProgress: () => mockGetUserProgress(),
+    getUserProgress: (...args: unknown[]) => mockGetUserProgress(...args),
     toggleFavorite: (...args: unknown[]) => mockToggleFavoriteInStorage(...args),
     addQuizAttempt: (...args: unknown[]) => mockAddQuizAttemptToStorage(...args),
     saveUserProgress: (...args: unknown[]) => mockSaveUserProgress(...args),
@@ -94,7 +95,7 @@ const baseTerm = {
     times_correct: 0,
 };
 
-const baseProgress = {
+const baseProgress: UserProgress = {
     user_id: 'user-1',
     favorites: ['term-1'],
     current_language: 'ru' as const,
@@ -124,6 +125,14 @@ const recordQuizResult = {
         times_correct: 1,
     },
 };
+
+const okProgressResult = (overrides?: Partial<typeof baseProgress>) => ({
+    status: 'ok' as const,
+    data: {
+        ...baseProgress,
+        ...overrides,
+    },
+});
 
 const computeDueTerms = (terms: typeof baseTerm[], favorites: string[]) => terms.filter((term) => (
     favorites.includes(term.id) && new Date(term.next_review_date).getTime() <= Date.now()
@@ -177,7 +186,7 @@ describe('SRSContext', () => {
         mockGetTerms.mockReturnValue([baseTerm]);
         mockGetUserProgress.mockReturnValue(baseProgress);
         mockFetchTermsFromSupabase.mockResolvedValue([baseTerm]);
-        mockGetUserProgressFromSupabase.mockResolvedValue(baseProgress);
+        mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult());
         mockGetAllTermSRSFromSupabase.mockResolvedValue({ status: 'ok', data: new Map() });
         mockGetAllTermSRSFromSupabaseUnbounded.mockResolvedValue({ status: 'ok', data: new Map() });
         mockCalculateProgressStats.mockImplementation((terms: typeof baseTerm[], favorites: string[]) => ({
@@ -223,15 +232,100 @@ describe('SRSContext', () => {
         });
     });
 
+    it('does not load unbounded SRS data when the authenticated user has no favorites', async () => {
+        mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult({
+            favorites: [],
+        }));
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+
+        expect(mockGetAllTermSRSFromSupabase).not.toHaveBeenCalled();
+        expect(mockGetAllTermSRSFromSupabaseUnbounded).not.toHaveBeenCalled();
+    });
+
+    it('fails closed for authenticated users when only guest progress is cached locally', async () => {
+        authState = {
+            ...authState,
+            user: { id: 'user-2' },
+        };
+        mockUseAuth.mockImplementation(() => authState);
+        mockGetUserProgress.mockImplementation((requestedUserId?: string) => {
+            if (requestedUserId === 'user-2' || typeof requestedUserId === 'undefined') {
+                return {
+                    ...baseProgress,
+                    user_id: 'user-2',
+                    favorites: [],
+                    current_streak: 0,
+                };
+            }
+
+            return {
+                ...baseProgress,
+                user_id: 'guest_user',
+                favorites: ['term-1'],
+                current_streak: 5,
+            };
+        });
+        mockGetUserProgressFromSupabase.mockRejectedValue(new Error('Supabase unavailable'));
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+        expect(mockGetUserProgress).toHaveBeenCalledWith('user-2');
+    });
+
+    it('throws a hard error for guest quiz answers when the local term is missing', async () => {
+        authState = {
+            favoriteLimit: 50,
+            isAuthenticated: false,
+            isLoading: false,
+            user: null,
+        };
+        mockUseAuth.mockImplementation(() => authState);
+        mockGetTerms.mockReturnValue([]);
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            user_id: 'guest_user',
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'answer' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('submit-error')).toHaveTextContent('QUIZ_TERM_MISSING');
+        });
+
+        expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
+    });
+
     it('replays an auth-expired review after remount/login with the same idempotency key', async () => {
         mockGetUserProgressFromSupabase
-            .mockResolvedValueOnce(baseProgress)
-            .mockResolvedValue({
-                ...baseProgress,
+            .mockResolvedValueOnce(okProgressResult())
+            .mockResolvedValue(okProgressResult({
                 current_streak: 1,
                 last_study_date: recordQuizResult.userProgress.last_study_date,
                 updated_at: recordQuizResult.userProgress.updated_at,
-            });
+            }));
         mockGetAllTermSRSFromSupabase
             .mockResolvedValueOnce({ status: 'ok', data: new Map() })
             .mockResolvedValue({
@@ -407,6 +501,49 @@ describe('SRSContext', () => {
         });
         expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
 
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
+        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+    });
+
+    it('persists retryable review failures and replays them when the browser comes back online', async () => {
+        mockSaveQuizAttemptToSupabase
+            .mockResolvedValueOnce({
+                status: 'retryable',
+                message: 'Temporary outage',
+            })
+            .mockResolvedValueOnce({
+                status: 'ok',
+                data: recordQuizResult,
+            });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'answer' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('submit-error')).toHaveTextContent(
+                'Answer saved locally. It will sync when connection returns.'
+            );
+        });
+        expect(sessionStorage.getItem('fintechterms_pending_review')).not.toBeNull();
+
+        act(() => {
+            window.dispatchEvent(new Event('online'));
+        });
+
+        await waitFor(() => {
+            expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
+        });
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });

@@ -14,7 +14,11 @@ import {
     reserveIdempotentRequest,
 } from '@/lib/api-idempotency';
 import { logger } from '@/lib/logger';
-import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
+import {
+    apiRouteRateLimiter,
+    isRateLimiterUnavailable,
+    quizMutationRateLimiter,
+} from '@/lib/rate-limiter';
 import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { QuizAttemptSchema } from '@/lib/validators';
@@ -157,6 +161,18 @@ export async function POST(request: NextRequest) {
     }
 
     const limitCheck = await apiRouteRateLimiter.check(`record-quiz:${ip}`);
+
+    if (isRateLimiterUnavailable(limitCheck)) {
+        return errorResponse({
+            status: 503,
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            message: 'Rate limiting is temporarily unavailable.',
+            requestId,
+            retryable: true,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
     const headers = {
         ...GLOBAL_RATE_LIMIT_HEADERS,
         'X-RateLimit-Remaining': limitCheck.remaining.toString(),
@@ -177,6 +193,18 @@ export async function POST(request: NextRequest) {
     }
 
     const writeLimitCheck = await quizMutationRateLimiter.check(user.id);
+
+    if (isRateLimiterUnavailable(writeLimitCheck)) {
+        return errorResponse({
+            status: 503,
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            message: 'Rate limiting is temporarily unavailable.',
+            requestId,
+            retryable: true,
+            headers,
+        });
+    }
+
     const guardedHeaders = {
         ...headers,
         'X-Write-RateLimit-Limit': WRITE_RATE_LIMIT.toString(),
@@ -303,6 +331,7 @@ export async function POST(request: NextRequest) {
                 userId: user.id,
                 error: error instanceof Error ? error : undefined,
             });
+            throw error;
         }
 
         return successResponse(

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { mockTerms } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
+import { normalizeSearchText } from '@/lib/search-normalization';
 import type { Category, RegionalMarket, Term } from '@/types';
 
 interface SearchCatalogOptions {
@@ -28,28 +29,21 @@ const normalizedCatalog = filterAcademicTerms(mockTerms).map((term) => ({
 
 const catalogById = new Map(normalizedCatalog.map((term) => [term.id, term] as const));
 
-const normalizeSearchValue = (value: string): string => (
-    value
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-);
-
 const matchesQuery = (term: Term, query: string): boolean => {
-    const normalizedQuery = normalizeSearchValue(query);
+    const normalizedQuery = normalizeSearchText(query);
 
     if (!normalizedQuery) {
         return true;
     }
 
-    const haystack = [
+    const haystack = normalizeSearchText([
         term.term_en,
         term.term_ru,
         term.term_tr,
         term.definition_en,
         term.definition_ru,
         term.definition_tr,
-    ].join(' ').toLowerCase();
+    ].join(' '));
 
     return haystack.includes(normalizedQuery);
 };

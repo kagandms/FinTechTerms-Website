@@ -129,6 +129,22 @@ jobs:
           npm ci
           npm pkg delete scripts.prepare
 
+      - name: Validate release-gate environment
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+          E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
+          SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+          SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
+        run: npm run validate:release-gate-env
+
       - name: Apply migrations to staging
         run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
 

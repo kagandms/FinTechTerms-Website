@@ -13,6 +13,7 @@ import {
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';
 
 interface AuthContextType {
     user: AuthenticatedUser | null;
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const GUEST_FAVORITE_LIMIT = 50;
 const AUTHENTICATED_FAVORITE_LIMIT = Infinity;
+const AUTH_CAPABILITIES_TIMEOUT_MS = 4_000;
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const supabase = getSupabaseClient();
     const supabaseAuth = React.useMemo(() => supabase.auth, [supabase]);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    const currentUserId = user?.id ?? null;
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
@@ -83,6 +86,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return null;
     }, [supabaseAuth]);
 
+    const fetchCapabilitiesWithTimeout = useCallback(async (accessToken: string): Promise<boolean> => {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => {
+            controller.abort();
+        }, AUTH_CAPABILITIES_TIMEOUT_MS);
+
+        try {
+            const response = await fetch('/api/auth/capabilities', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const payload = await response.json();
+            return payload?.isAdmin === true;
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
+    }, []);
+
     const refreshCapabilities = useCallback(async (session: Session | null): Promise<void> => {
         if (!session?.access_token) {
             setIsAdmin(false);
@@ -90,22 +121,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         try {
-            const response = await fetch('/api/auth/capabilities', {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                },
-                cache: 'no-store',
-            });
-
-            if (!response.ok) {
-                setIsAdmin(false);
-                return;
-            }
-
-            const payload = await response.json();
-            setIsAdmin(payload?.isAdmin === true);
+            setIsAdmin(await fetchCapabilitiesWithTimeout(session.access_token));
         } catch (error) {
             logger.warn('AUTH_CAPABILITIES_FETCH_FAILED', {
                 route: 'AuthProvider',
@@ -113,7 +129,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             setIsAdmin(false);
         }
-    }, []);
+    }, [fetchCapabilitiesWithTimeout]);
 
     // Initialize auth state and listen for changes
     useEffect(() => {
@@ -150,7 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 }
 
                 setUser(mapSupabaseUser(session.user));
-                await refreshCapabilities(session);
+                void refreshCapabilities(session);
             } catch (error) {
                 logger.error('AUTH_INIT_EXCEPTION', {
                     route: 'AuthProvider',
@@ -180,7 +196,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             setUser(mapSupabaseUser(session.user));
-            await refreshCapabilities(session);
+            void refreshCapabilities(session);
 
             // Check if user has progress, if not create it
             if (event === 'SIGNED_IN') {
@@ -221,7 +237,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (data.user) {
                 setUser(mapSupabaseUser(data.user));
-                await refreshCapabilities(data.session ?? null);
+                void refreshCapabilities(data.session ?? null);
                 return { success: true };
             }
 
@@ -339,7 +355,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setUser(mapSupabaseUser(resolvedUser ?? data.user));
                 setPendingVerificationEmail(null);
                 setPendingVerificationPassword(null);
-                await refreshCapabilities(data.session ?? null);
+                void refreshCapabilities(data.session ?? null);
                 return { success: true };
             }
 
@@ -515,7 +531,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             // Clear local storage for SRS data and ALL Supabase tokens
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('globalfinterm_user_progress');
+                if (currentUserId) {
+                    clearStoredUserProgress(currentUserId);
+                }
+                clearLegacyUserProgress();
                 // Remove all Supabase session tokens from localStorage
                 Object.keys(localStorage).forEach(key => {
                     if (key.startsWith('sb-')) {
@@ -555,7 +574,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 window.location.href = '/';
             }
         }
-    }, [supabaseAuth]);
+    }, [currentUserId, supabaseAuth]);
 
     const isAuthenticated = user !== null;
     const favoriteLimit = isAuthenticated ? AUTHENTICATED_FAVORITE_LIMIT : GUEST_FAVORITE_LIMIT;

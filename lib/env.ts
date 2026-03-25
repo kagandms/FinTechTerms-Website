@@ -31,6 +31,7 @@ export interface ServerEnv extends PublicEnv {
     readonly adminEmail: string | null;
     readonly adminUserIds: readonly string[];
     readonly serviceRoleKey: string | null;
+    readonly studySessionTokenSecret: string | null;
     readonly sentryAuthToken: string | null;
     readonly sentryOrg: string | null;
     readonly sentryProject: string | null;
@@ -214,6 +215,10 @@ export const getServerEnv = (): ServerEnv => {
             adminEmail: readOptionalValue(process.env.ADMIN_EMAIL, SERVER_PLACEHOLDER_VALUES),
             adminUserIds: readAdminUserIds(process.env.ADMIN_USER_IDS),
             serviceRoleKey: readOptionalValue(process.env.SUPABASE_SERVICE_ROLE_KEY, SERVER_PLACEHOLDER_VALUES),
+            studySessionTokenSecret: readOptionalValue(
+                process.env.STUDY_SESSION_TOKEN_SECRET,
+                new Set(['', 'your_study_session_token_secret_here'])
+            ),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),
             sentryProject: readOptionalValue(process.env.SENTRY_PROJECT, new Set([''])),
@@ -226,6 +231,10 @@ export const getServerEnv = (): ServerEnv => {
             adminEmail: readOptionalValue(process.env.ADMIN_EMAIL, SERVER_PLACEHOLDER_VALUES),
             adminUserIds: readAdminUserIds(process.env.ADMIN_USER_IDS),
             serviceRoleKey: readOptionalValue(process.env.SUPABASE_SERVICE_ROLE_KEY, SERVER_PLACEHOLDER_VALUES),
+            studySessionTokenSecret: readOptionalValue(
+                process.env.STUDY_SESSION_TOKEN_SECRET,
+                new Set(['', 'your_study_session_token_secret_here'])
+            ),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),
             sentryProject: readOptionalValue(process.env.SENTRY_PROJECT, new Set([''])),
@@ -242,3 +251,11 @@ export const hasConfiguredPublicSupabaseEnv = (
 export const hasConfiguredServiceRoleEnv = (
     env: ServerEnv = getServerEnv()
 ): boolean => Boolean(env.supabaseUrl && env.serviceRoleKey);
+
+export const hasConfiguredStudySessionEnv = (
+    env: ServerEnv = getServerEnv()
+): boolean => Boolean(
+    env.supabaseUrl
+    && env.serviceRoleKey
+    && env.studySessionTokenSecret
+);

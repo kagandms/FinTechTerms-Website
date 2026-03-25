@@ -4,11 +4,11 @@
 
 import { clearEphemeralIdempotencyReservations } from '@/lib/ephemeral-idempotency';
 import { studySessionRouteRateLimiter } from '@/lib/rate-limiter';
-import { hashStudySessionToken } from '@/lib/study-session-token';
+import { createStudySessionToken, hashStudySessionToken } from '@/lib/study-session-token';
 
 const mockResolveRequestAuthState = jest.fn();
 const mockCreateServiceRoleClient = jest.fn();
-const mockHasConfiguredServiceRoleEnv = jest.fn();
+const mockHasConfiguredStudySessionEnv = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createServiceRoleClient: () => mockCreateServiceRoleClient(),
@@ -16,7 +16,10 @@ jest.mock('@/lib/supabaseAdmin', () => ({
 }));
 
 jest.mock('@/lib/env', () => ({
-    hasConfiguredServiceRoleEnv: () => mockHasConfiguredServiceRoleEnv(),
+    hasConfiguredStudySessionEnv: () => mockHasConfiguredStudySessionEnv(),
+    getServerEnv: () => ({
+        studySessionTokenSecret: 'test-study-session-token-secret',
+    }),
 }));
 
 const createRequest = (body: Record<string, unknown>, headers?: Record<string, string>) => new Request(
@@ -46,6 +49,7 @@ const createStudySessionClient = (options?: {
     insertSingleResult?: { data: { id: string } | null; error: { code?: string } | null };
     existingSessionId?: string | null;
     updateResult?: { error: { code?: string } | null };
+    rpcResult?: { error: { code?: string; message?: string } | null };
     studySessionRow?: Record<string, unknown> | null;
 }) => {
     const insertSingle = jest.fn().mockResolvedValue(
@@ -60,17 +64,12 @@ const createStudySessionClient = (options?: {
         ),
         error: null,
     });
-    const updateOr = jest.fn().mockResolvedValue(
-        options?.updateResult ?? { error: null }
-    );
-    const updateIs = jest.fn().mockResolvedValue(
-        options?.updateResult ?? { error: null }
-    );
     const updateEq = jest.fn(() => ({
         error: options?.updateResult?.error ?? null,
-        or: updateOr,
-        is: updateIs,
     }));
+    const rpc = jest.fn().mockResolvedValue(
+        options?.rpcResult ?? { error: null }
+    );
 
     const from = jest.fn(() => ({
         insert: jest.fn(() => ({
@@ -93,12 +92,11 @@ const createStudySessionClient = (options?: {
     }));
 
     return {
-        client: { from },
+        client: { from, rpc },
         insertSingle,
         selectMaybeSingle,
         updateEq,
-        updateOr,
-        updateIs,
+        rpc,
     };
 };
 
@@ -112,7 +110,7 @@ describe('study-sessions route', () => {
         studySessionRouteRateLimiter.reset();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        mockHasConfiguredServiceRoleEnv.mockReturnValue(true);
+        mockHasConfiguredStudySessionEnv.mockReturnValue(true);
         mockResolveRequestAuthState.mockResolvedValue({
             user: null,
             hadCredentials: false,
@@ -147,7 +145,42 @@ describe('study-sessions route', () => {
         expect(insertSingle).toHaveBeenCalledTimes(1);
     });
 
-    it('returns 429 after 30 requests in the same minute from one IP', async () => {
+    it('returns 503 when the study-session runtime env is incomplete', async () => {
+        mockHasConfiguredStudySessionEnv.mockReturnValue(false);
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createRequest(createStartPayload()));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_DISABLED',
+            retryable: false,
+        });
+        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
+    });
+
+    it('returns 503 when the study-session rate limiter is unavailable', async () => {
+        jest.spyOn(studySessionRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: true,
+        });
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createRequest(createStartPayload()));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            retryable: true,
+        });
+        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
+    });
+
+    it('returns 429 after 30 anonymous start requests from one IP even when anonymousId changes', async () => {
         const { client } = createStudySessionClient();
         mockCreateServiceRoleClient.mockReturnValue(client);
 
@@ -155,12 +188,14 @@ describe('study-sessions route', () => {
 
         for (let index = 0; index < 30; index += 1) {
             const response = await POST(createRequest(createStartPayload({
+                anonymousId: `anon_${index}`,
                 idempotency_key: `550e8400-e29b-41d4-a716-4466554400${index.toString().padStart(2, '0')}`,
             })));
             expect(response.status).toBe(200);
         }
 
         const limitedResponse = await POST(createRequest(createStartPayload({
+            anonymousId: 'anon_overflow',
             idempotency_key: '550e8400-e29b-41d4-a716-446655440099',
         })));
         const limitedBody = await limitedResponse.json();
@@ -192,7 +227,7 @@ describe('study-sessions route', () => {
         });
     });
 
-    it('reissues a session token when the durable unique index rejects a duplicate start', async () => {
+    it('replays the deterministic session token when the durable unique index rejects a duplicate start', async () => {
         const { client, insertSingle, selectMaybeSingle, updateEq } = createStudySessionClient({
             insertSingleResult: {
                 data: null,
@@ -203,13 +238,17 @@ describe('study-sessions route', () => {
         mockCreateServiceRoleClient.mockReturnValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
-        const response = await POST(createRequest(createStartPayload()));
+        const payload = createStartPayload();
+        const response = await POST(createRequest(payload));
         const body = await response.json();
 
         expect(response.status).toBe(200);
         expect(body).toMatchObject({
             sessionId: 'session_existing',
-            sessionToken: expect.any(String),
+            sessionToken: createStudySessionToken(
+                'session_existing',
+                payload.idempotency_key
+            ),
         });
         expect(insertSingle).toHaveBeenCalledTimes(1);
         expect(selectMaybeSingle).toHaveBeenCalledTimes(1);
@@ -323,7 +362,7 @@ describe('study-sessions route', () => {
             ghostSession: false,
         });
 
-        const { client, updateEq, updateOr } = createStudySessionClient({
+        const { client, rpc } = createStudySessionClient({
             studySessionRow: {
                 id: '550e8400-e29b-41d4-a716-446655440001',
                 user_id: null,
@@ -347,14 +386,57 @@ describe('study-sessions route', () => {
 
         expect(response.status).toBe(200);
         expect(body).toMatchObject({ success: true });
-        expect(updateEq).toHaveBeenCalledTimes(3);
-        expect(updateOr).toHaveBeenNthCalledWith(1, 'duration_seconds.is.null,duration_seconds.lt.12');
-        expect(updateOr).toHaveBeenNthCalledWith(2, 'page_views.is.null,page_views.lt.4');
-        expect(updateOr).toHaveBeenNthCalledWith(3, 'quiz_attempts.is.null,quiz_attempts.lt.2');
+        expect(rpc).toHaveBeenCalledWith('update_study_session_metrics', {
+            p_session_id: '550e8400-e29b-41d4-a716-446655440001',
+            p_duration_seconds: 12,
+            p_page_views: 4,
+            p_quiz_attempts: 2,
+            p_end_session: false,
+            p_ended_at: null,
+        });
     });
 
-    it('returns a non-retryable disabled response when service-role env is unavailable', async () => {
-        mockHasConfiguredServiceRoleEnv.mockReturnValue(false);
+    it('returns a retryable 500 when the atomic metrics RPC fails', async () => {
+        mockResolveRequestAuthState.mockResolvedValue({
+            user: null,
+            hadCredentials: false,
+            ghostSession: false,
+        });
+
+        const { client } = createStudySessionClient({
+            rpcResult: {
+                error: { message: 'metrics update failed' },
+            },
+            studySessionRow: {
+                id: '550e8400-e29b-41d4-a716-446655440001',
+                user_id: null,
+                anonymous_id: 'anon_123',
+                session_token_hash: hashStudySessionToken('a'.repeat(32)),
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue(client);
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createRequest({
+            action: 'heartbeat',
+            sessionId: '550e8400-e29b-41d4-a716-446655440001',
+            sessionToken: 'a'.repeat(32),
+            durationSeconds: 12,
+            pageViews: 4,
+            quizAttempts: 2,
+            idempotency_key: '44444444-4444-4444-8444-444444444444',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_FAILED',
+            retryable: true,
+        });
+    });
+
+    it('returns a non-retryable disabled response when the study-session env is unavailable', async () => {
+        mockHasConfiguredStudySessionEnv.mockReturnValue(false);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest(createStartPayload()));

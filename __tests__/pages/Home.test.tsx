@@ -103,4 +103,30 @@ describe('Home Page (Client)', () => {
         render(<HomeClient />);
         expect(screen.getAllByTestId('install-button').length).toBeGreaterThan(0);
     });
+
+    it('uses exact authenticated accuracy when learning stats are provided', () => {
+        render(
+            <HomeClient
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 20,
+                        correctReviews: 15,
+                        accuracy: 75,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        expect(screen.getByText('%75')).toBeInTheDocument();
+    });
 });

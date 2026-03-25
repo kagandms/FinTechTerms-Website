@@ -1,4 +1,5 @@
 import type { Database } from '@/types/supabase';
+import type { QuizType } from '@/types';
 
 export type LearningHeatmapEntry =
     Database['public']['Functions']['get_user_learning_heatmap']['Returns'][number];
@@ -7,6 +8,15 @@ export type UserBadgeSummary = Pick<
     Database['public']['Tables']['user_badges']['Row'],
     'id' | 'badge_key' | 'badge_type' | 'streak_days' | 'unlocked_at' | 'source_log_date'
 >;
+
+export interface LearningRecentAttempt {
+    id: string;
+    termId: string;
+    createdAt: string;
+    isCorrect: boolean;
+    responseTimeMs: number;
+    quizType: QuizType;
+}
 
 export interface LearningStatsData {
     heatmap: LearningHeatmapEntry[];
@@ -18,6 +28,9 @@ export interface LearningStatsData {
     todayActivity: number;
     totalReviews: number | null;
     correctReviews: number | null;
+    accuracy: number | null;
+    avgResponseTimeMs: number | null;
+    recentAttempts: LearningRecentAttempt[];
 }
 
 export interface ActionErrorPayload {

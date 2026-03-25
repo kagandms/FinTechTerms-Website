@@ -1,4 +1,5 @@
 import { Category, Language, RegionalMarket, Term } from '@/types';
+import { normalizeSearchText } from '@/lib/search-normalization';
 
 export type SearchSortOrder = 'alpha-asc' | 'alpha-desc';
 
@@ -103,7 +104,7 @@ export const filterTermsForSearch = (
     terms: Term[],
     filterState: Pick<SearchFilterState, 'query' | 'selectedCategory' | 'selectedMarket'>
 ): Term[] => {
-    const searchQuery = filterState.query.toLowerCase().trim();
+    const searchQuery = normalizeSearchText(filterState.query);
     let filtered = terms;
 
     if (filterState.selectedCategory) {
@@ -122,12 +123,12 @@ export const filterTermsForSearch = (
     }
 
     return filtered.filter((term) => (
-        term.term_en.toLowerCase().includes(searchQuery)
-        || term.term_ru.toLowerCase().includes(searchQuery)
-        || term.term_tr.toLowerCase().includes(searchQuery)
-        || term.definition_en.toLowerCase().includes(searchQuery)
-        || term.definition_ru.toLowerCase().includes(searchQuery)
-        || term.definition_tr.toLowerCase().includes(searchQuery)
+        normalizeSearchText(term.term_en).includes(searchQuery)
+        || normalizeSearchText(term.term_ru).includes(searchQuery)
+        || normalizeSearchText(term.term_tr).includes(searchQuery)
+        || normalizeSearchText(term.definition_en).includes(searchQuery)
+        || normalizeSearchText(term.definition_ru).includes(searchQuery)
+        || normalizeSearchText(term.definition_tr).includes(searchQuery)
     ));
 };
 

@@ -95,7 +95,7 @@ const createBaseProps = (language: 'tr' | 'en' | 'ru') => ({
     showConfirmPassword: false,
     setShowConfirmPassword: jest.fn(),
     resetPassword: jest.fn(),
-    t: (key: string) => authTranslations[language][key] ?? key,
+    t: (key: string) => authTranslations[language]?.[key] ?? key,
     language,
     showToast: jest.fn(),
 });

@@ -64,8 +64,23 @@ jobs:
           npm ci
           npm pkg delete scripts.prepare
 
+      - name: Validate Runtime Environment
+        run: npm run validate:runtime-env
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://preview.fintechterms.app' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
+          STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET || 'ci-study-session-token-secret' }}
+
+      - name: Run TypeScript Check
+        run: npm run typecheck
+
       - name: Run ESLint
         run: npm run lint
+
+      - name: Verify SQL Source Guard
+        run: npm run verify:sql-sources
 
       - name: Run Unit Tests
         run: npx jest --ci --runInBand --detectOpenHandles --passWithNoTests
@@ -76,9 +91,11 @@ jobs:
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://preview.fintechterms.app' }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
           NEXT_PUBLIC_DEFAULT_LANGUAGE: ${{ vars.NEXT_PUBLIC_DEFAULT_LANGUAGE || 'ru' }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'ci' }}
+          STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET || 'ci-study-session-token-secret' }}
           SENTRY_TRACES_SAMPLE_RATE: ${{ vars.SENTRY_TRACES_SAMPLE_RATE || '0.1' }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}

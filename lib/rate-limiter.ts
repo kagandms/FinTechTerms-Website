@@ -1,10 +1,12 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { logger } from '@/lib/logger';
 
 interface RateLimiterResult {
     allowed: boolean;
     remaining: number;
     retryAfter: number;
+    unavailable?: boolean;
 }
 
 type DistributedWindow = Parameters<typeof Ratelimit.slidingWindow>[1];
@@ -13,6 +15,27 @@ interface AsyncRateLimiter {
     check(key: string): Promise<RateLimiterResult>;
     reset(): void;
 }
+
+interface RateLimiterOptions {
+    strictInProduction?: boolean;
+}
+
+const RATE_LIMITER_UNAVAILABLE_RETRY_AFTER_SECONDS = 60;
+const rateLimiterWarnings = new Set<string>();
+
+const isProductionRuntime = (): boolean => process.env.NODE_ENV === 'production';
+
+const logRateLimiterWarningOnce = (warningKey: string, message: string): void => {
+    if (rateLimiterWarnings.has(warningKey)) {
+        return;
+    }
+
+    rateLimiterWarnings.add(warningKey);
+    logger.error(message, {
+        route: 'rate-limiter',
+        retryable: true,
+    });
+};
 
 class MemoryRateLimiter implements AsyncRateLimiter {
     private timestamps: Map<string, number[]>;
@@ -49,6 +72,7 @@ class MemoryRateLimiter implements AsyncRateLimiter {
             allowed: true,
             remaining: this.limit - history.length,
             retryAfter: 0,
+            unavailable: false,
         };
     }
 
@@ -82,10 +106,18 @@ class DistributedRateLimiter implements AsyncRateLimiter {
     private readonly ratelimit: Ratelimit;
     private readonly fallback: MemoryRateLimiter;
     private readonly prefix: string;
+    private readonly strictInProduction: boolean;
 
-    constructor(prefix: string, limit: number, window: DistributedWindow, windowMs: number) {
+    constructor(
+        prefix: string,
+        limit: number,
+        window: DistributedWindow,
+        windowMs: number,
+        options: RateLimiterOptions = {}
+    ) {
         this.prefix = prefix;
         this.fallback = new MemoryRateLimiter(limit, windowMs);
+        this.strictInProduction = options.strictInProduction ?? false;
         this.ratelimit = new Ratelimit({
             redis: new Redis({
                 url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -108,8 +140,22 @@ class DistributedRateLimiter implements AsyncRateLimiter {
                 allowed: result.success,
                 remaining: result.remaining,
                 retryAfter,
+                unavailable: false,
             };
         } catch {
+            if (this.strictInProduction && isProductionRuntime()) {
+                logRateLimiterWarningOnce(
+                    `${this.prefix}:runtime-unavailable`,
+                    'RATE_LIMITER_RUNTIME_UNAVAILABLE'
+                );
+                return {
+                    allowed: false,
+                    remaining: 0,
+                    retryAfter: RATE_LIMITER_UNAVAILABLE_RETRY_AFTER_SECONDS,
+                    unavailable: true,
+                };
+            }
+
             return await this.fallback.check(key);
         }
     }
@@ -117,6 +163,30 @@ class DistributedRateLimiter implements AsyncRateLimiter {
     reset(): void {
         this.fallback.reset();
     }
+}
+
+class UnavailableRateLimiter implements AsyncRateLimiter {
+    private readonly prefix: string;
+
+    constructor(prefix: string) {
+        this.prefix = prefix;
+    }
+
+    async check(): Promise<RateLimiterResult> {
+        logRateLimiterWarningOnce(
+            `${this.prefix}:config-unavailable`,
+            'RATE_LIMITER_CONFIG_UNAVAILABLE'
+        );
+
+        return {
+            allowed: false,
+            remaining: 0,
+            retryAfter: RATE_LIMITER_UNAVAILABLE_RETRY_AFTER_SECONDS,
+            unavailable: true,
+        };
+    }
+
+    reset(): void {}
 }
 
 const hasUpstashConfig = (): boolean => (
@@ -130,17 +200,35 @@ const createRateLimiter = (
     prefix: string,
     limit: number,
     windowMs: number,
-    distributedWindow: DistributedWindow
-): AsyncRateLimiter => (
-    hasUpstashConfig()
-        ? new DistributedRateLimiter(prefix, limit, distributedWindow, windowMs)
-        : new MemoryRateLimiter(limit, windowMs)
-);
+    distributedWindow: DistributedWindow,
+    options: RateLimiterOptions = {}
+): AsyncRateLimiter => {
+    if (hasUpstashConfig()) {
+        return new DistributedRateLimiter(prefix, limit, distributedWindow, windowMs, options);
+    }
 
-export const apiRouteRateLimiter = createRateLimiter('api-route', 100, 60000, '60 s');
-export const quizMutationRateLimiter = createRateLimiter('quiz-write', 20, 10000, '10 s');
-export const favoritesMutationRateLimiter = createRateLimiter('favorite-write', 10, 10000, '10 s');
-export const studySessionRouteRateLimiter = createRateLimiter('study-session', 30, 60000, '60 s');
+    if (options.strictInProduction && isProductionRuntime()) {
+        return new UnavailableRateLimiter(prefix);
+    }
+
+    return new MemoryRateLimiter(limit, windowMs);
+};
+
+export const apiRouteRateLimiter = createRateLimiter('api-route', 100, 60000, '60 s', {
+    strictInProduction: true,
+});
+export const quizMutationRateLimiter = createRateLimiter('quiz-write', 20, 10000, '10 s', {
+    strictInProduction: true,
+});
+export const favoritesMutationRateLimiter = createRateLimiter('favorite-write', 10, 10000, '10 s', {
+    strictInProduction: true,
+});
+export const studySessionRouteRateLimiter = createRateLimiter('study-session', 30, 60000, '60 s', {
+    strictInProduction: true,
+});
 export const telegramLinkRateLimiter = createRateLimiter('telegram-link', 5, 10 * 60 * 1000, '10 m');
 
 export const globalRateLimiter = apiRouteRateLimiter;
+
+export const isRateLimiterUnavailable = (result: RateLimiterResult): boolean =>
+    result.unavailable === true;

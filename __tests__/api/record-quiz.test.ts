@@ -191,4 +191,49 @@ describe('record-quiz route', () => {
             p_response_time_ms: 0,
         }));
     });
+
+    it('does not return 200 when idempotency completion fails after the quiz write succeeds', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: { ok: true },
+            error: null,
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCompleteIdempotentRequest.mockRejectedValueOnce(new Error('idempotency completion failed'));
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(body).toMatchObject({
+            code: 'QUIZ_PERSIST_FAILED',
+            retryable: true,
+        });
+        expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'quiz_submission',
+            userId: 'user_123',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+            statusCode: 500,
+        }));
+    });
+
+    it('returns 503 when the route rate limiter is unavailable', async () => {
+        jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: true,
+        });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            retryable: true,
+        });
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
 });

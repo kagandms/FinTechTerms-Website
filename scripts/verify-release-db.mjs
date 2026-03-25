@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -82,12 +83,45 @@ if (error) {
 
 const checks = data?.checks ?? {};
 const failedChecks = Object.entries(checks).filter(([, passed]) => passed !== true);
+let termMirror = { ok: false, error: 'Term mirror verification did not run.' };
+
+try {
+    const rawOutput = execFileSync(
+        process.execPath,
+        [path.resolve(process.cwd(), 'scripts/verify_terms.js')],
+        {
+            encoding: 'utf8',
+            stdio: 'pipe',
+        }
+    );
+    termMirror = JSON.parse(rawOutput);
+} catch (error) {
+    const stderr = error instanceof Error && 'stderr' in error
+        ? String(error.stderr || '')
+        : '';
+    const stdout = error instanceof Error && 'stdout' in error
+        ? String(error.stdout || '')
+        : '';
+    const candidateOutput = stderr.trim() || stdout.trim();
+
+    try {
+        termMirror = candidateOutput
+            ? JSON.parse(candidateOutput)
+            : { ok: false, error: error instanceof Error ? error.message : 'Unknown term mirror verification failure.' };
+    } catch {
+        termMirror = {
+            ok: false,
+            error: error instanceof Error ? error.message : 'Unknown term mirror verification failure.',
+        };
+    }
+}
 
 console.log(JSON.stringify({
-    ok: failedChecks.length === 0,
+    ok: failedChecks.length === 0 && termMirror.ok === true,
     checks,
+    termMirror,
 }, null, 2));
 
-if (!data?.ok || failedChecks.length > 0) {
+if (!data?.ok || failedChecks.length > 0 || termMirror.ok !== true) {
     process.exit(1);
 }

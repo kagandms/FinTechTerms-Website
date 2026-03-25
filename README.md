@@ -94,7 +94,16 @@ the web app and repo-level scripts, and `telegram-bot/.env` for the bot.
 npx jest --verbose
 
 # Type-check
-npx tsc --noEmit
+npm run typecheck
+
+# Runtime env validation (build/start prerequisites)
+npm run validate:runtime-env
+
+# Verify that executable release surfaces never reference archived SQL sources
+npm run verify:sql-sources
+
+# Preview/staging release-gate env validation
+npm run validate:release-gate-env
 
 # Clean bootstrap DB smoke (requires psql and BOOTSTRAP_DB_URL or DATABASE_URL)
 npm run verify:bootstrap-db
@@ -113,7 +122,8 @@ Set them in local `.env.local` for `npx playwright test`, and in GitHub Actions
 as repository secrets for `.github/workflows/e2e.yml`.
 
 Preview release verification uses:
-- `npm run validate:release-env`
+- `npm run validate:runtime-env`
+- `npm run validate:release-gate-env`
 - `npm run verify:bootstrap-db`
 - `npm run verify:release-db`
 - `npm run test:e2e:guest`
@@ -124,16 +134,22 @@ If Preview Deployment Protection is enabled on Vercel, also provide
 `VERCEL_AUTOMATION_BYPASS_SECRET` so Playwright and staging smoke can access
 the protected preview URL non-interactively.
 
-Optional production observability is wired through Sentry. Set
+Production observability is wired through Sentry. Set
 `NEXT_PUBLIC_SENTRY_DSN` to enable browser/server error capture and add
 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` in CI only if you want
-source-map upload.
+source-map upload. Staging and production release verification now assume
+`NEXT_PUBLIC_SENTRY_DSN` is present.
 
-Production-safe API throttling can use Upstash Redis. If
-`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured, the
-write-path rate limiters run against the shared Redis backend; otherwise the app
-falls back to an in-memory limiter intended only for development or single-node
-setups.
+Study-session analytics require `STUDY_SESSION_TOKEN_SECRET` at runtime. This
+must be a high-entropy server secret and must never reuse the Supabase service
+role key.
+
+Production-safe API throttling requires Upstash Redis. Staging and production
+must provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the
+in-memory limiter is intended only for development and test environments.
+
+`npm run verify:release-db` now validates both database release readiness and
+the mirror integrity between the repo term corpus and `public.terms`.
 
 ## 📚 Documentation
 
