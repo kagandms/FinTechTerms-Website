@@ -5,9 +5,9 @@
 1. Confirm the rollout uses only `supabase/migrations/` as the shared schema source of truth.
 2. Do not apply `lib/*.sql` or `telegram-bot/migrations/*.sql` against preview/staging/production.
 3. Confirm runtime env includes `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `STUDY_SESSION_TOKEN_SECRET`.
-4. Confirm preview/staging gate secrets include `STAGING_BASE_URL`, `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_USER_IDS`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_SENTRY_DSN`, `E2E_AUTH_EMAIL`, `E2E_AUTH_PASSWORD`, `SENTRY_SMOKE_EMAIL`, and `SENTRY_SMOKE_PASSWORD`.
+4. Confirm preview/staging gate secrets include `STAGING_BASE_URL`, `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_USER_IDS`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_SENTRY_DSN`, `E2E_AUTH_EMAIL`, `E2E_AUTH_PASSWORD`, `E2E_SEED_SECRET`, `SENTRY_SMOKE_EMAIL`, and `SENTRY_SMOKE_PASSWORD`.
 5. Run `npm run validate:runtime-env` and stop immediately if any runtime key is missing, placeholder, or malformed.
-6. Run `npm run validate:release-gate-env` before any preview/staging release verification.
+6. Run `npm run validate:release-gate-env` before any manually dispatched preview/staging release verification.
 7. Run the clean bootstrap smoke against a disposable database with `BOOTSTRAP_DB_URL` or `DATABASE_URL` set: `npm run verify:bootstrap-db`.
 8. Run `npm run typecheck`.
 9. Run `npm run lint`.
@@ -18,7 +18,7 @@
 14. Apply migrations to staging with `supabase db push --include-all --db-url "$SUPABASE_DB_URL"` when the remote migration history predates the canonical baseline entry.
 15. Run `npm run verify:release-db` and require both DB readiness checks and repo-term mirror checks to pass.
 16. Run `PLAYWRIGHT_BASE_URL="$STAGING_BASE_URL" npm run test:e2e:guest`.
-17. Run `PLAYWRIGHT_BASE_URL="$STAGING_BASE_URL" npm run test:e2e:auth`.
+17. Run `PLAYWRIGHT_BASE_URL="$STAGING_BASE_URL" E2E_SEED_SECRET="$E2E_SEED_SECRET" npm run test:e2e:auth`.
 18. Run `STAGING_BASE_URL="$STAGING_BASE_URL" npm run smoke:staging`.
 19. Verify the admin Sentry smoke event arrives with `requestId`, `environment`, and `smoke=true`.
 20. Verify admin analytics pages render with live data and no legacy `session_id` migration fallback messaging.
@@ -39,6 +39,7 @@ Release may be signed off only when all of the following are true:
 - bootstrap DB verification is green on a disposable database
 - staging DB verification is green against the real target schema and the repo term corpus matches `public.terms`
 - guest/auth E2E and staging smoke are green
+- preview-only E2E seed secret is configured in both GitHub Actions and the preview runtime
 - staging/production write-path rate limiting is backed by Upstash Redis
 - browser/server error capture is wired through Sentry (`NEXT_PUBLIC_SENTRY_DSN`)
 - service worker runtime asset is present and registered

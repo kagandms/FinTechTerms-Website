@@ -117,9 +117,9 @@ npm run test:e2e:auth
 cd telegram-bot && python -m pytest tests/ -v
 ```
 
-The authenticated Playwright flow uses `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD`.
-Set them in local `.env.local` for `npx playwright test`, and in GitHub Actions
-as repository secrets for `.github/workflows/e2e.yml`.
+The authenticated Playwright flow uses `E2E_AUTH_EMAIL`, `E2E_AUTH_PASSWORD`,
+and `E2E_SEED_SECRET`. Set them in local `.env.local` for `npx playwright test`,
+and in GitHub Actions as repository secrets for `.github/workflows/e2e.yml`.
 
 Preview release verification uses:
 - `npm run validate:runtime-env`
@@ -129,6 +129,10 @@ Preview release verification uses:
 - `npm run test:e2e:guest`
 - `npm run test:e2e:auth`
 - `npm run smoke:staging`
+
+`Preview Release Gate` is intended to run manually via GitHub Actions
+`workflow_dispatch`. Fast code-quality checks continue to run automatically in
+`CI/CD Pipeline`.
 
 If Preview Deployment Protection is enabled on Vercel, also provide
 `VERCEL_AUTOMATION_BYPASS_SECRET` so Playwright and staging smoke can access
@@ -147,6 +151,11 @@ role key.
 Production-safe API throttling requires Upstash Redis. Staging and production
 must provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the
 in-memory limiter is intended only for development and test environments.
+
+When preview E2E or Sentry smoke runs against a Vercel preview deployment,
+mirror the GitHub Actions values into the Vercel preview runtime for:
+`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
+`ADMIN_USER_IDS`, `NEXT_PUBLIC_SENTRY_DSN`, and `E2E_SEED_SECRET`.
 
 `npm run verify:release-db` now validates both database release readiness and
 the mirror integrity between the repo term corpus and `public.terms`.

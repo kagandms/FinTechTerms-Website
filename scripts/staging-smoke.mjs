@@ -69,6 +69,15 @@ const assertCondition = (condition, message) => {
     }
 };
 
+const createBypassedContext = async (browser) => browser.newContext({
+    extraHTTPHeaders: vercelAutomationBypassSecret
+        ? {
+            'x-vercel-protection-bypass': vercelAutomationBypassSecret,
+            'x-vercel-set-bypass-cookie': 'true',
+        }
+        : undefined,
+});
+
 const grantResearchConsent = async (page) => {
     await page.addInitScript(() => {
         window.localStorage.setItem('fintechterms_research_consent', JSON.stringify({
@@ -181,6 +190,27 @@ const runAuthenticatedSmoke = async (page) => {
     recordCheck('authenticated-login', true, `Authenticated smoke login succeeded for ${smokeAuthEmail}.`);
 };
 
+const fetchWithBearer = async (page, path, token, init = {}) => (
+    await page.evaluate(async ({ routePath, bearerToken, requestInit }) => {
+        const response = await fetch(routePath, {
+            ...requestInit,
+            headers: {
+                ...(requestInit.headers || {}),
+                Authorization: `Bearer ${bearerToken}`,
+            },
+        });
+
+        return {
+            status: response.status,
+            body: await response.json(),
+        };
+    }, {
+        routePath: path,
+        bearerToken: token,
+        requestInit: init,
+    })
+);
+
 const runSentrySmoke = async (page) => {
     if (!sentrySmokeEmail || !sentrySmokePassword) {
         throw new Error('Admin Sentry smoke requires SENTRY_SMOKE_EMAIL and SENTRY_SMOKE_PASSWORD.');
@@ -189,20 +219,32 @@ const runSentrySmoke = async (page) => {
     await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);
     const accessToken = await readSupabaseAccessToken(page);
 
-    const response = await page.evaluate(async (token) => {
-        const result = await fetch('/api/admin/sentry-smoke', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-        });
+    const capabilityResponse = await fetchWithBearer(page, '/api/auth/capabilities', accessToken, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
 
-        return {
-            status: result.status,
-            body: await result.json(),
-        };
-    }, accessToken);
+    assertCondition(capabilityResponse.status === 200, `Capabilities endpoint returned ${capabilityResponse.status}.`);
+    assertCondition(
+        capabilityResponse.body?.isAdmin === true,
+        'Sentry smoke user is authenticated but not admin. Verify ADMIN_USER_IDS in the Vercel preview environment includes the SENTRY_SMOKE_EMAIL user id.'
+    );
+
+    const response = await fetchWithBearer(page, '/api/admin/sentry-smoke', accessToken, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (response.status === 503 && response.body?.code === 'SENTRY_SMOKE_DISABLED') {
+        throw new Error(
+            'Sentry smoke endpoint is disabled in the preview runtime. ' +
+            'Verify Vercel preview environment variables include NEXT_PUBLIC_SENTRY_DSN.'
+        );
+    }
 
     assertCondition(response.status === 200, `Sentry smoke endpoint returned ${response.status}.`);
     assertCondition(Boolean(response.body?.ok), 'Sentry smoke endpoint did not return ok=true.');
@@ -224,25 +266,36 @@ const printSummaryAndExit = () => {
 };
 
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({
-    extraHTTPHeaders: vercelAutomationBypassSecret
-        ? {
-            'x-vercel-protection-bypass': vercelAutomationBypassSecret,
-            'x-vercel-set-bypass-cookie': 'true',
-        }
-        : undefined,
-});
-const page = await context.newPage();
 
 try {
-    await grantResearchConsent(page);
-    await runGuestSmoke(page);
-    await runAuthenticatedSmoke(page);
-    await runSentrySmoke(page);
+    {
+        const context = await createBypassedContext(browser);
+        const page = await context.newPage();
+        await grantResearchConsent(page);
+        await runGuestSmoke(page);
+        await context.close();
+    }
+
+    if (smokeAuthEmail && smokeAuthPassword) {
+        const context = await createBypassedContext(browser);
+        const page = await context.newPage();
+        await grantResearchConsent(page);
+        await runAuthenticatedSmoke(page);
+        await context.close();
+    } else {
+        recordCheck('authenticated-smoke', true, 'Skipped because SMOKE_AUTH credentials were not provided.');
+    }
+
+    {
+        const context = await createBypassedContext(browser);
+        const page = await context.newPage();
+        await grantResearchConsent(page);
+        await runSentrySmoke(page);
+        await context.close();
+    }
 } catch (error) {
     recordCheck('staging-smoke', false, error instanceof Error ? error.message : 'Unknown staging smoke failure.');
 } finally {
-    await context.close();
     await browser.close();
     printSummaryAndExit();
 }

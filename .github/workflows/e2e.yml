@@ -2,10 +2,10 @@ name: Preview Release Gate
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+
+concurrency:
+  group: preview-release-gate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   preflight:
@@ -31,7 +31,8 @@ jobs:
           fi
 
           if [ -n "${{ secrets.E2E_AUTH_EMAIL }}" ] && \
-             [ -n "${{ secrets.E2E_AUTH_PASSWORD }}" ]; then
+             [ -n "${{ secrets.E2E_AUTH_PASSWORD }}" ] && \
+             [ -n "${{ secrets.E2E_SEED_SECRET }}" ]; then
             echo "auth_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "auth_ready=false" >> "$GITHUB_OUTPUT"
@@ -141,6 +142,7 @@ jobs:
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
           E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
+          E2E_SEED_SECRET: ${{ secrets.E2E_SEED_SECRET }}
           SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
           SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
         run: npm run validate:release-gate-env
@@ -154,14 +156,50 @@ jobs:
       - name: Verify release DB readiness
         run: npm run verify:release-db
 
+  preview-runtime-check:
+    name: Preview Runtime Check
+    needs: [preflight, migrate-and-verify]
+    if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.auth_ready == 'true' && needs.preflight.outputs.sentry_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+      E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
+      SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+      SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm pkg delete scripts.prepare
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run preview runtime check
+        run: node scripts/preview_runtime_check.mjs
+
   playwright-guest:
     name: Playwright Guest Suite
-    needs: [preflight, migrate-and-verify]
+    needs: [preflight, migrate-and-verify, preview-runtime-check]
     if: ${{ needs.preflight.outputs.core_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
       - name: Checkout
@@ -194,7 +232,7 @@ jobs:
 
   playwright-auth:
     name: Playwright Auth Suite
-    needs: [preflight, migrate-and-verify]
+    needs: [preflight, migrate-and-verify, preview-runtime-check]
     if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.auth_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -202,6 +240,8 @@ jobs:
       PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
       E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
       E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
+      E2E_SEED_SECRET: ${{ secrets.E2E_SEED_SECRET }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
       - name: Checkout
@@ -234,7 +274,7 @@ jobs:
 
   sentry-smoke:
     name: Preview Sentry Smoke
-    needs: [preflight, migrate-and-verify, playwright-guest]
+    needs: [preflight, migrate-and-verify, preview-runtime-check, playwright-guest]
     if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.sentry_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -242,15 +282,16 @@ jobs:
       STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
       SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
       SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies

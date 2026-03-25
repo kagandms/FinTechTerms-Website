@@ -44,6 +44,7 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 };
 
 const WRITE_RATE_LIMIT = 10;
+const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailable. Verify preview/staging runtime env includes UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.';
 
 const markFavoriteFailure = async (
     supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 503,
                 code: 'RATE_LIMITER_UNAVAILABLE',
-                message: 'Rate limiting is temporarily unavailable.',
+                message: RATE_LIMITER_UNAVAILABLE_MESSAGE,
                 requestId,
                 retryable: true,
                 headers: GLOBAL_RATE_LIMIT_HEADERS,
@@ -203,7 +204,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 503,
                 code: 'RATE_LIMITER_UNAVAILABLE',
-                message: 'Rate limiting is temporarily unavailable.',
+                message: RATE_LIMITER_UNAVAILABLE_MESSAGE,
                 requestId,
                 retryable: true,
                 headers,
