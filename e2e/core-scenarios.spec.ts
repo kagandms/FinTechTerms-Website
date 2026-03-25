@@ -25,7 +25,18 @@ test.describe('Core Scenarios (Visitor)', () => {
 
             const findVisibleByText = (selector: string, pattern: RegExp): HTMLElement | null => {
                 const candidates = Array.from(document.querySelectorAll(selector));
-                return candidates.find((candidate) => isVisible(candidate) && pattern.test(candidate.textContent ?? '')) ?? null;
+
+                for (const candidate of candidates) {
+                    if (!isVisible(candidate)) {
+                        continue;
+                    }
+
+                    if (pattern.test(candidate.textContent ?? '')) {
+                        return candidate;
+                    }
+                }
+
+                return null;
             };
 
             const intersects = (left: DOMRect, right: DOMRect): boolean => (

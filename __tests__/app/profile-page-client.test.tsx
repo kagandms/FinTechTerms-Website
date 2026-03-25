@@ -14,7 +14,7 @@ const mockUseSRS = jest.fn();
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
 const mockSrsNotificationCard = jest.fn(() => <div data-testid="profile-srs-card" />);
-const mockSettingsPanel = jest.fn(() => <div data-testid="settings-panel" />);
+const mockSettingsPanel = jest.fn((_props?: unknown) => <div data-testid="settings-panel" />);
 
 const profileTranslationMap: Record<string, string> = {
     'profile.warningPartial': 'Some profile fields could not be loaded. Showing the latest available data.',
