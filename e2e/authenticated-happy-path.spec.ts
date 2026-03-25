@@ -97,7 +97,21 @@ const seedFavoritesViaApi = async (page: Page, minimumCount: number) => {
                 }),
             });
 
+            let responsePayload = null;
+            try {
+                responsePayload = await response.clone().json();
+            } catch {
+                responsePayload = null;
+            }
+
             if (!response.ok && response.status !== 409) {
+                if (response.status === 503 && responsePayload?.code === 'RATE_LIMITER_UNAVAILABLE') {
+                    throw new Error(
+                        `Favorite seed failed for term ${termId} because the preview runtime rate limiter is unavailable. ` +
+                        'Verify that Vercel preview environment variables include UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
+                    );
+                }
+
                 throw new Error(`Favorite seed failed for term ${termId} with status ${response.status}.`);
             }
         }

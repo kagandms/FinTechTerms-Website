@@ -36,6 +36,7 @@ test.describe('Authentication Flows', () => {
         await expect(page.getByTestId('auth-name')).toBeVisible();
         await page.getByTestId('auth-submit').click();
 
-        await expect(page.getByText(/required|обяз|gerek/i).first()).toBeVisible();
+        await expect(page.getByTestId('auth-error')).toBeVisible();
+        await expect(page.getByTestId('auth-error')).not.toHaveText('');
     });
 });

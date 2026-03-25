@@ -179,7 +179,7 @@ jobs:
           npm pkg delete scripts.prepare
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run guest-safe Playwright suite
         run: npm run test:e2e:guest
@@ -219,7 +219,7 @@ jobs:
           npm pkg delete scripts.prepare
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run authenticated Playwright suite
         run: npm run test:e2e:auth

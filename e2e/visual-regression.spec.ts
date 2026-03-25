@@ -9,6 +9,10 @@ const SCREENSHOT_PATHS = [
     { path: '/quiz', slug: 'quiz' },
     { path: '/favorites', slug: 'favorites' },
 ] as const;
+const shouldSkipVisualRegression = Boolean(process.env.PLAYWRIGHT_BASE_URL) || process.platform !== 'darwin';
+const visualSkipReason = process.env.PLAYWRIGHT_BASE_URL
+    ? 'Visual regression baselines are not validated against external staging deployments.'
+    : 'Visual regression baselines are maintained on macOS only.';
 
 const installVisualStabilizers = async (page: Page, theme: 'light' | 'dark'): Promise<void> => {
     await page.emulateMedia({ colorScheme: theme });
@@ -27,20 +31,24 @@ const installVisualStabilizers = async (page: Page, theme: 'light' | 'dark'): Pr
     }, theme);
 };
 
-for (const screenshotRoute of SCREENSHOT_PATHS) {
-    for (const theme of ['light', 'dark'] as const) {
-        test(`${screenshotRoute.slug} matches the ${theme} visual baseline`, async ({ page }) => {
-            await installVisualStabilizers(page, theme);
-            await applyPreviewProtectionBypass(page);
-            await grantResearchConsent(page);
-            await page.goto(screenshotRoute.path, { waitUntil: 'domcontentloaded' });
-            await waitForAppReady(page);
+test.describe('visual regression baselines', () => {
+    test.skip(shouldSkipVisualRegression, visualSkipReason);
 
-            await expect(page).toHaveScreenshot(`${screenshotRoute.slug}-${theme}.png`, {
-                animations: 'disabled',
-                caret: 'hide',
-                maxDiffPixelRatio: 0.01,
+    for (const screenshotRoute of SCREENSHOT_PATHS) {
+        for (const theme of ['light', 'dark'] as const) {
+            test(`${screenshotRoute.slug} matches the ${theme} visual baseline`, async ({ page }) => {
+                await installVisualStabilizers(page, theme);
+                await applyPreviewProtectionBypass(page);
+                await grantResearchConsent(page);
+                await page.goto(screenshotRoute.path, { waitUntil: 'domcontentloaded' });
+                await waitForAppReady(page);
+
+                await expect(page).toHaveScreenshot(`${screenshotRoute.slug}-${theme}.png`, {
+                    animations: 'disabled',
+                    caret: 'hide',
+                    maxDiffPixelRatio: 0.01,
+                });
             });
-        });
+        }
     }
-}
+});

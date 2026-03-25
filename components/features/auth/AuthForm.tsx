@@ -175,7 +175,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                     </>
                 )}
 
-                {authError && <p className="text-sm text-red-500 animate-fade-in">{authError}</p>}
+                {authError && (
+                    <p
+                        data-testid="auth-error"
+                        role="alert"
+                        className="text-sm text-red-500 animate-fade-in"
+                    >
+                        {authError}
+                    </p>
+                )}
 
                 {/* Main Action Button */}
                 {authMode === 'forgot-password' ? (
