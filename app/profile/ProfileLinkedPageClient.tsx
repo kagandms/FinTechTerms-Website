@@ -42,30 +42,30 @@ interface PageCopy {
 const copyByPage: Record<ProfileLinkedPageKind, Record<'tr' | 'en' | 'ru', PageCopy>> = {
     about: {
         tr: {
-            back: 'Profile don',
-            title: 'Proje Hakkinda',
-            subtitle: 'FinTechTerms cok dilli sozluk, calisma ve kamuya acik icerik katmanini tek urunde birlestirir.',
-            overview: 'Genel bakis',
+            back: 'Profile dön',
+            title: 'Proje Hakkında',
+            subtitle: 'FinTechTerms çok dilli sözlük, çalışma ve kamuya açık içerik katmanını tek üründe birleştirir.',
+            overview: 'Genel bakış',
             metrics: [
                 { label: 'Odak', value: 'Finans + fintek + teknoloji' },
-                { label: 'Yapi', value: 'Sozluk, pratik ve profil akisi' },
-                { label: 'Standart', value: 'Kaynakli ve bakimi yapilabilir icerik' },
+                { label: 'Yapı', value: 'Sözlük, pratik ve profil akışı' },
+                { label: 'Standart', value: 'Kaynaklı ve bakımı yapılabilir içerik' },
             ],
             sections: [
                 {
-                    eyebrow: 'Urun modeli',
-                    title: 'Sozluk ve calisma altyapisi',
-                    body: 'Platform, terim katalogu ile pratik akislarini ayni urun icinde birlestirir; kullanici sadece tanimi degil, tekrar ve favori akisini da ayni yerde kullanir.',
+                    eyebrow: 'Ürün modeli',
+                    title: 'Sözlük ve çalışma altyapısı',
+                    body: 'Platform, terim kataloğu ile pratik akışlarını aynı ürün içinde birleştirir; kullanıcı sadece tanımı değil, tekrar ve favori akışını da aynı yerde kullanır.',
                 },
                 {
-                    eyebrow: 'Yayin modeli',
-                    title: 'Kamuya acik bilgi katmani',
-                    body: 'Public sayfalar arama motorlari ve kaynak gorunurlugu icin ayri korunur; uygulama ici ekranlar ise daha hizli ve odakli kullanim icin profile baglanir.',
+                    eyebrow: 'Yayın modeli',
+                    title: 'Kamuya açık bilgi katmanı',
+                    body: 'Public sayfalar arama motorları ve kaynak görünürlüğü için ayrı korunur; uygulama içi ekranlar ise daha hızlı ve odaklı kullanım için profile bağlanır.',
                 },
                 {
-                    eyebrow: 'Muhendislik modeli',
-                    title: 'Tek kod tabaninda iki deneyim',
-                    body: 'App shell, kimlik dogrulama ve ogrenme akislarini tasir; public shell, SEO ve kamusal proje sunumunu tasir. Bu ayrim tasarimsal tutarliligi koruyarak bakimi kolaylastirir.',
+                    eyebrow: 'Mühendislik modeli',
+                    title: 'Tek kod tabanında iki deneyim',
+                    body: 'App shell, kimlik doğrulama ve öğrenme akışlarını taşır; public shell, SEO ve kamusal proje sunumunu taşır. Bu ayrım tasarımsal tutarlılığı koruyarak bakımı kolaylaştırır.',
                 },
             ],
         },
@@ -128,30 +128,30 @@ const copyByPage: Record<ProfileLinkedPageKind, Record<'tr' | 'en' | 'ru', PageC
     },
     methodology: {
         tr: {
-            back: 'Profile don',
+            back: 'Profile dön',
             title: 'Metodoloji',
-            subtitle: 'FinTechTerms icerigi yazim, inceleme ve dagitim kararlarini sistemli bir editoryal akisla kurar.',
-            overview: 'Yontem ozeti',
+            subtitle: 'FinTechTerms içeriği yazım, inceleme ve dağıtım kararlarını sistemli bir editoryal akışla kurar.',
+            overview: 'Yöntem özeti',
             metrics: [
-                { label: 'Katman', value: 'Yazim, inceleme, dagitim' },
-                { label: 'Hedef', value: 'Tutarlı ve tekrar kullanilabilir icerik' },
-                { label: 'Cikti', value: 'App shell ile uyumlu bilgi bloklari' },
+                { label: 'Katman', value: 'Yazım, inceleme, dağıtım' },
+                { label: 'Hedef', value: 'Tutarlı ve tekrar kullanılabilir içerik' },
+                { label: 'Çıktı', value: 'App shell ile uyumlu bilgi blokları' },
             ],
             sections: [
                 {
-                    eyebrow: 'Yazim katmani',
-                    title: 'Terim yapisi',
-                    body: 'Her terim tanim, aciklama, baglam ve uygulama ornegi ile katmanli olarak yazilir. Bu sayede ayni veri search, card ve public sayfada tekrar kullanilabilir.',
+                    eyebrow: 'Yazım katmanı',
+                    title: 'Terim yapısı',
+                    body: 'Her terim tanım, açıklama, bağlam ve uygulama örneği ile katmanlı olarak yazılır. Bu sayede aynı veri search, card ve public sayfada tekrar kullanılabilir.',
                 },
                 {
-                    eyebrow: 'Inceleme katmani',
-                    title: 'Kalite ve dogrulama',
-                    body: 'Yayin oncesi icerik; isimlendirme, aciklama dogrulugu ve arayuzde kullanilan ozet metinler acisindan kontrol edilir. Boylesi tutarsiz ekran metinlerini azaltir.',
+                    eyebrow: 'İnceleme katmanı',
+                    title: 'Kalite ve doğrulama',
+                    body: 'Yayın öncesi içerik; isimlendirme, açıklama doğruluğu ve arayüzde kullanılan özet metinler açısından kontrol edilir. Böylesi tutarsız ekran metinlerini azaltır.',
                 },
                 {
-                    eyebrow: 'Dagitim katmani',
-                    title: 'Shell bazli sunum',
-                    body: 'Ayni icerik public shell ve app shell icinde farkli sunulur. Profile bagli sayfalar analytics ile ayni yerlesim mantigini kullanir; public sayfalar ise SEO odakli kalir.',
+                    eyebrow: 'Dağıtım katmanı',
+                    title: 'Shell bazlı sunum',
+                    body: 'Aynı içerik public shell ve app shell içinde farklı sunulur. Profile bağlı sayfalar analytics ile aynı yerleşim mantığını kullanır; public sayfalar ise SEO odaklı kalır.',
                 },
             ],
         },
@@ -231,7 +231,7 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
         <div className="page-content px-4 py-6">
             <Link
                 href="/profile"
-                className="mb-4 inline-flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="mb-4 inline-flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-700 dark:text-slate-200 dark:hover:text-white"
             >
                 <ArrowLeft className="h-4 w-4" />
                 {copy.back}
@@ -242,11 +242,11 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                     <HeaderIcon className="h-8 w-8 text-primary-500" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{copy.title}</h1>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{copy.subtitle}</p>
+                <p className="mt-2 text-sm text-gray-500 dark:text-slate-300">{copy.subtitle}</p>
             </header>
 
             <section className="mb-6">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-300">
                     {copy.overview}
                 </h2>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -256,7 +256,7 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                         return (
                             <article key={metric.label} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                                 <Icon className="mb-2 h-5 w-5 text-primary-500" />
-                                <p className="text-xs uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                                <p className="text-xs uppercase tracking-[0.16em] text-gray-400 dark:text-slate-300">
                                     {metric.label}
                                 </p>
                                 <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
@@ -276,7 +276,7 @@ export default function ProfileLinkedPageClient({ page }: ProfileLinkedPageClien
                         <article key={section.title} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                 <div className="max-w-3xl">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 dark:text-slate-300">
                                         {section.eyebrow}
                                     </p>
                                     <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">

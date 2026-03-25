@@ -4,6 +4,7 @@ import React from 'react';
 import { resolveHomeHref } from '@/lib/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useAuth } from '@/contexts/AuthContext';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import { ArrowLeft, BookMarked, Loader2, RefreshCw } from 'lucide-react';
 
 export default function FavoritesClient() {
     const { t } = useLanguage();
+    const { isAuthenticated } = useAuth();
     const {
         terms,
         userProgress,
@@ -18,7 +20,7 @@ export default function FavoritesClient() {
         progressStatus,
         refreshData,
     } = useSRS();
-    const homeHref = resolveHomeHref('/favorites');
+    const homeHref = isAuthenticated ? resolveHomeHref('/favorites') : '/';
 
     // Get the terms that the user has favorited
     const favoriteTerms = terms.filter(term => userProgress.favorites.includes(term.id));

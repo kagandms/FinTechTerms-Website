@@ -46,6 +46,7 @@ interface FavoriteToggleResult {
     isFavorite?: boolean;
     error?: string;
     authExpired?: boolean;
+    syncDeferred?: boolean;
 }
 
 interface SRSContextType {
@@ -572,6 +573,23 @@ export function SRSProvider({ children }: SRSProviderProps) {
         const optimisticFavorite = favoriteOptimisticState[termId];
         const isCurrentlyFavorite = optimisticFavorite ?? currentFavorites.includes(termId);
         const shouldFavorite = !isCurrentlyFavorite;
+        const optimisticFavorites = shouldFavorite
+            ? [...currentFavorites, termId]
+            : currentFavorites.filter((favoriteId) => favoriteId !== termId);
+
+        const persistFavorites = (favorites: string[]) => {
+            setUserProgress(prev => {
+                const baseProgress = prev ?? getLocalUserProgress(userId);
+                const reconciled = {
+                    ...baseProgress,
+                    favorites,
+                    updated_at: new Date().toISOString(),
+                };
+
+                saveLocalUserProgress(reconciled, userId);
+                return reconciled;
+            });
+        };
 
         try {
             if (favoritePendingState[termId]) {
@@ -599,20 +617,33 @@ export function SRSProvider({ children }: SRSProviderProps) {
             if (isAuthenticated && userId) {
                 setFavoritePendingState(prev => ({ ...prev, [termId]: true }));
                 setFavoriteOptimisticState(prev => ({ ...prev, [termId]: shouldFavorite }));
+                persistFavorites(optimisticFavorites);
 
                 try {
                     const response = await toggleFavoriteInSupabase(userId, termId, shouldFavorite);
                     if (response.status === 'auth_expired') {
                         return {
-                            success: false,
+                            success: true,
                             limitReached: false,
-                            isFavorite: isCurrentlyFavorite,
+                            isFavorite: shouldFavorite,
                             error: response.message,
                             authExpired: true,
+                            syncDeferred: true,
                         };
                     }
 
                     if (response.status !== 'ok') {
+                        if (response.status === 'retryable') {
+                            return {
+                                success: true,
+                                limitReached: false,
+                                isFavorite: shouldFavorite,
+                                error: response.message,
+                                syncDeferred: true,
+                            };
+                        }
+
+                        persistFavorites(currentFavorites);
                         return {
                             success: false,
                             limitReached: false,
@@ -647,10 +678,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     });
 
                     return {
-                        success: false,
+                        success: true,
                         limitReached: false,
-                        isFavorite: isCurrentlyFavorite,
+                        isFavorite: shouldFavorite,
                         error: error instanceof Error ? error.message : 'Failed to update favorite.',
+                        syncDeferred: true,
                     };
                 } finally {
                     setFavoritePendingState(prev => {

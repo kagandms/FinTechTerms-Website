@@ -295,6 +295,7 @@
     "smartCard": {
         "favoriteLimitWarning": "Лимит избранного! Войдите для неограниченного добавления.",
         "favoriteUpdateError": "Не удалось обновить избранное.",
+        "favoriteSyncDeferred": "Избранное сохранено локально. Синхронизация с сервером будет повторена в фоне.",
         "favoriteAdded": "Добавлено в избранное ❤️",
         "favoriteRemoved": "Удалено из избранного",
         "favoritesRemaining": "{count} осталось",

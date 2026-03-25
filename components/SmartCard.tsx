@@ -35,9 +35,9 @@ const categoryIcons: Record<Term['category'], React.ReactNode> = {
 };
 
 const categoryColors: Record<Term['category'], string> = {
-    Fintech: 'bg-accent-100 text-accent-700 border-accent-200',
-    Finance: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    Technology: 'bg-slate-100 text-slate-700 border-slate-200',
+    Fintech: 'bg-accent-100 text-accent-700 border-accent-200 dark:bg-amber-100 dark:text-amber-950 dark:border-amber-200',
+    Finance: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-100 dark:text-emerald-950 dark:border-emerald-200',
+    Technology: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200',
 };
 
 export default function SmartCard({ term, showFullDetails = false }: SmartCardProps) {
@@ -116,6 +116,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 result.error
                     || t('smartCard.favoriteUpdateError'),
                 result.authExpired ? 'warning' : 'error'
+            );
+            return;
+        }
+
+        if (result.syncDeferred) {
+            showToast(
+                result.error || t('smartCard.favoriteSyncDeferred'),
+                'warning'
             );
             return;
         }
@@ -223,7 +231,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         <button
                             key={lang}
                             onClick={() => handleSpeak(getTermByLang(lang), lang)}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-100 dark:border-gray-600"
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1 text-sm text-gray-500 transition-colors hover:bg-gray-100 dark:border-slate-500/70 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
                         >
                             <span className="text-xs opacity-60">{lang.toUpperCase()}</span>
                             <span className="font-medium">{getTermByLang(lang)}</span>

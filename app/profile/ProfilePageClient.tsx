@@ -159,7 +159,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                 {/* Left Column (Stats & Favorites) */}
-                <div className="lg:col-span-8 space-y-8 flex flex-col">
+                <div className="lg:col-span-8 space-y-6 flex flex-col">
                     {/* Stats Grid - Always at top */}
                     <section className="order-1">
                         <StatsGrid
@@ -171,13 +171,11 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         />
                     </section>
 
-                    {isAuthenticated && (
+                    {isAuthenticated && learningStatsData ? (
                         <section className="order-2">
-                            {learningStatsData ? (
-                                <Heatmap entries={learningStatsData.heatmap} language={language} />
-                            ) : null}
+                            <Heatmap entries={learningStatsData.heatmap} language={language} />
                         </section>
-                    )}
+                    ) : null}
 
                     {showLearningAnalyticsFallback && (
                         <section className="order-2 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)] shadow-card">
@@ -205,7 +203,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         </Link>
                     </section>
 
-                    <div className="space-y-8 mt-8 border-t border-gray-100 dark:border-gray-800 pt-8 order-5">
+                    <div className="space-y-6 border-t border-gray-100 dark:border-gray-800 pt-6 order-5">
                         {/* App Settings Panel */}
                         <SettingsPanel
                             t={t}

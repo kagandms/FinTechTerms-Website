@@ -24,6 +24,17 @@ jest.mock('@/contexts/ToastContext', () => ({
     }),
 }));
 
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuth: () => ({
+        user: {
+            id: 'user-1',
+            email: 'alex@example.com',
+            name: 'Alex Stone',
+        },
+        isAuthenticated: true,
+    }),
+}));
+
 jest.mock('next/navigation', () => ({
     useRouter: () => ({
         refresh: mockRefresh,

@@ -117,7 +117,7 @@ describe('proxy locale headers', () => {
         const { NextRequest } = await import('next/server');
         const { proxy } = await import('@/proxy');
 
-        const request = new NextRequest('https://fintechterms.app/term/term_145?lang=en', {
+        const request = new NextRequest('https://fintechterms.app/term/term_060?lang=en', {
             headers: {
                 cookie: 'ftt-language=ru',
                 'accept-language': 'tr-TR,tr;q=0.9,en;q=0.8',
@@ -127,20 +127,18 @@ describe('proxy locale headers', () => {
         const response = await proxy(request);
 
         expect(response.status).toBe(308);
-        expect(response.headers.get('location')).toBe('https://fintechterms.app/en/glossary/tokenization');
+        expect(response.headers.get('location')).toBe('https://fintechterms.app/en/glossary/open-banking');
         expect(response.headers.get('Content-Language')).toBe('en');
     });
 
-    it('redirects protected routes to profile login while preserving the intended destination', async () => {
+    it('allows favorites to stay reachable for guest local favorites', async () => {
         const { NextRequest } = await import('next/server');
         const { proxy } = await import('@/proxy');
 
         const request = new NextRequest('https://fintechterms.app/favorites?view=all');
         const response = await proxy(request);
 
-        expect(response.status).toBe(307);
-        expect(response.headers.get('location')).toBe(
-            'https://fintechterms.app/profile?auth=login&next=%2Ffavorites%3Fview%3Dall'
-        );
+        expect(response.status).toBe(200);
+        expect(response.headers.get('location')).toBeNull();
     });
 });

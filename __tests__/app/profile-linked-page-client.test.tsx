@@ -33,7 +33,17 @@ describe('ProfileLinkedPageClient', () => {
 
         render(<ProfileLinkedPageClient page="methodology" />);
 
-        expect(screen.getByRole('link', { name: /profile don/i })).toHaveAttribute('href', '/profile');
+        expect(screen.getByRole('link', { name: /profile dön/i })).toHaveAttribute('href', '/profile');
         expect(screen.getByText('Metodoloji')).toBeInTheDocument();
+        expect(screen.getByText('Yöntem özeti')).toBeInTheDocument();
+    });
+
+    it('renders Turkish characters for the about page copy', () => {
+        mockUseLanguage.mockReturnValue({ language: 'tr' });
+
+        render(<ProfileLinkedPageClient page="about" />);
+
+        expect(screen.getByText('Proje Hakkında')).toBeInTheDocument();
+        expect(screen.getByText('Genel bakış')).toBeInTheDocument();
     });
 });

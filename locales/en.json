@@ -295,6 +295,7 @@
     "smartCard": {
         "favoriteLimitWarning": "Favorite limit reached! Sign in for unlimited.",
         "favoriteUpdateError": "Unable to update favorite.",
+        "favoriteSyncDeferred": "Favorite saved locally. Server sync will retry in the background.",
         "favoriteAdded": "Added to favorites ❤️",
         "favoriteRemoved": "Removed from favorites",
         "favoritesRemaining": "{count} left",

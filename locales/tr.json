@@ -295,6 +295,7 @@
     "smartCard": {
         "favoriteLimitWarning": "Favori limiti doldu! Giriş yaparak sınırsız ekleyin.",
         "favoriteUpdateError": "Favori güncellenemedi.",
+        "favoriteSyncDeferred": "Favori yerelde kaydedildi. Sunucu senkronizasyonu arka planda yeniden denenecek.",
         "favoriteAdded": "Favorilere eklendi ❤️",
         "favoriteRemoved": "Favorilerden çıkarıldı",
         "favoritesRemaining": "{count} hak",

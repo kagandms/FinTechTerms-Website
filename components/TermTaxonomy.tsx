@@ -74,13 +74,13 @@ export function ContextTagList({
                 {visibleLabels.map((label) => (
                     <span
                         key={label}
-                        className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-gray-600 dark:bg-gray-700/60 dark:text-gray-200"
+                        className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-slate-500/70 dark:bg-slate-700 dark:text-slate-100"
                     >
                         {label}
                     </span>
                 ))}
                 {hiddenCount > 0 ? (
-                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700/60 dark:text-gray-300">
+                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-500 dark:border-slate-500/70 dark:bg-slate-700 dark:text-slate-200">
                         +{hiddenCount}
                     </span>
                 ) : null}

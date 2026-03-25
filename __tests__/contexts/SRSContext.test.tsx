@@ -139,14 +139,16 @@ const computeDueTerms = (terms: typeof baseTerm[], favorites: string[]) => terms
 ));
 
 function TestConsumer() {
-    const { dueTerms, submitQuizAnswer, userProgress } = useSRS();
+    const { dueTerms, submitQuizAnswer, userProgress, toggleFavorite } = useSRS();
     const [error, setError] = React.useState<string | null>(null);
+    const [toggleState, setToggleState] = React.useState<string | null>(null);
 
     return (
         <div>
             <div data-testid="due-count">{dueTerms.length}</div>
             <div data-testid="current-streak">{userProgress.current_streak}</div>
             <div data-testid="last-study-date">{userProgress.last_study_date ?? 'none'}</div>
+            <div data-testid="favorites-count">{userProgress.favorites.length}</div>
             <button
                 type="button"
                 onClick={() => {
@@ -157,7 +159,18 @@ function TestConsumer() {
             >
                 answer
             </button>
+            <button
+                type="button"
+                onClick={() => {
+                    void toggleFavorite('term-1').then((result) => {
+                        setToggleState(JSON.stringify(result));
+                    });
+                }}
+            >
+                favorite
+            </button>
             {error ? <div data-testid="submit-error">{error}</div> : null}
+            {toggleState ? <div data-testid="toggle-result">{toggleState}</div> : null}
         </div>
     );
 }
@@ -249,6 +262,38 @@ describe('SRSContext', () => {
 
         expect(mockGetAllTermSRSFromSupabase).not.toHaveBeenCalled();
         expect(mockGetAllTermSRSFromSupabaseUnbounded).not.toHaveBeenCalled();
+    });
+
+    it('keeps an authenticated favorite locally when server sync is retryable', async () => {
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            favorites: [],
+        });
+        mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult({
+            favorites: [],
+        }));
+        mockToggleFavoriteInSupabase.mockResolvedValue({
+            status: 'retryable',
+            message: 'Temporary failure',
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'favorite' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('1');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"success":true');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"syncDeferred":true');
+        });
     });
 
     it('persists merged favorites before SRS enrichment fails for authenticated users', async () => {

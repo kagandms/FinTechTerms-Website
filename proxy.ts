@@ -6,7 +6,7 @@ import { getPublicEnv } from '@/lib/env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
 import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 
-const PROTECTED_PATHS = ['/favorites'];
+const PROTECTED_PATHS: string[] = [];
 
 const isProtectedPath = (pathname: string): boolean => (
     PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))

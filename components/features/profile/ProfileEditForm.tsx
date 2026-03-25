@@ -12,6 +12,7 @@ import {
     getSupabaseUserNameSeed,
     supportsPasswordSignIn,
 } from '@/lib/auth/user';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 import { toSafeUserError } from '@/lib/errors';
@@ -126,6 +127,7 @@ export const runWithAbortSignal = async <T,>(
 
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
     const supabase = getSupabaseClient();
+    const { user: authenticatedUser } = useAuth();
     const { showToast, showToastAfterRefresh } = useToast();
     const router = useRouter();
 
@@ -150,6 +152,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         () => buildProfileFormDefaults(shouldTrustInitialData ? initialData : null),
         [initialData, shouldTrustInitialData]
     );
+    const fallbackUserId = initialData?.userId ?? authenticatedUser?.id ?? null;
+    const fallbackDisplayName = authenticatedUser?.name?.trim() ?? '';
+    const fallbackDisplayEmail = authenticatedUser?.email ?? null;
 
     const copy = (key: string, fallback: string): string => (
         getTranslationString(language, key) ?? fallback
@@ -208,6 +213,66 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 resetWithInitialData();
             }
 
+            const applyRecoveredProfile = async (
+                providedUserId: string | null,
+                providedName: string,
+                providedEmail: string | null
+            ): Promise<boolean> => {
+                if (!isMounted) {
+                    return false;
+                }
+
+                let recoveredFullName = providedName.trim();
+                let recoveredBirthDate = fallbackInitialBirthDate;
+
+                if (providedUserId) {
+                    try {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('full_name, birth_date')
+                            .eq('id', providedUserId)
+                            .maybeSingle();
+
+                        if (!recoveredFullName && profile?.full_name) {
+                            recoveredFullName = String(profile.full_name).trim();
+                        }
+
+                        if (!recoveredBirthDate && profile?.birth_date) {
+                            recoveredBirthDate = toDateInputValue(profile.birth_date);
+                        }
+                    } catch (error) {
+                        logger.warn('PROFILE_FORM_CONTEXT_PROFILE_FALLBACK_FAILED', {
+                            route: 'ProfileEditForm',
+                            error: error instanceof Error ? error : undefined,
+                        });
+                    }
+                }
+
+                if (!recoveredFullName) {
+                    recoveredFullName = [fallbackInitialName, fallbackInitialSurname].filter(Boolean).join(' ').trim();
+                }
+
+                const nameParts = recoveredFullName ? recoveredFullName.split(' ') : [''];
+                const firstName = fallbackInitialName || nameParts[0] || '';
+                const lastName = fallbackInitialSurname || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+                const recoveredEmail = fallbackInitialEmail ?? providedEmail ?? fallbackDisplayEmail;
+
+                if (!firstName && !lastName && !recoveredBirthDate && !recoveredEmail) {
+                    return false;
+                }
+
+                reset({
+                    name: firstName,
+                    surname: lastName,
+                    email: recoveredEmail,
+                    birthDate: recoveredBirthDate,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                });
+                return true;
+            };
+
             try {
                 const { data, error } = await supabase.auth.getUser();
                 if (error || !data.user) {
@@ -219,6 +284,16 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                         resetWithInitialData();
                         return;
                     }
+                    const recoveredFromContext = await applyRecoveredProfile(
+                        fallbackUserId,
+                        fallbackDisplayName,
+                        fallbackDisplayEmail
+                    );
+
+                    if (recoveredFromContext) {
+                        return;
+                    }
+
                     if (isMounted && initialData) {
                         reset(buildProfileFormDefaults(initialData));
                     }
@@ -297,6 +372,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         fallbackInitialEmail,
         fallbackInitialName,
         fallbackInitialSurname,
+        fallbackDisplayEmail,
+        fallbackDisplayName,
+        fallbackUserId,
         initialData,
         reset,
         shouldTrustInitialData,
