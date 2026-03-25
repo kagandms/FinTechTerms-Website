@@ -61,3 +61,4 @@
 3. Validate a clean bootstrap with `npm run verify:bootstrap-db`.
 4. Validate release invariants with `npm run verify:release-db`.
 5. Only then apply to staging/preview with `supabase db push --db-url ...`.
+6. If the remote environment is older and does not yet contain the canonical baseline migration entry in `schema_migrations`, use `supabase db push --include-all --db-url ...` so the missing baseline can be applied before later repo migrations.

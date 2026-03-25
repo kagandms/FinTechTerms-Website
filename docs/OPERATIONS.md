@@ -15,7 +15,7 @@
 11. Run `npm test -- --ci --runInBand --detectOpenHandles`.
 12. Run `npm run build`.
 13. Verify the committed PWA asset exists after build/start assumptions: `/public/sw.js` must remain present and the app must still register `/sw.js`.
-14. Apply migrations to staging with `supabase db push --db-url "$SUPABASE_DB_URL"`.
+14. Apply migrations to staging with `supabase db push --include-all --db-url "$SUPABASE_DB_URL"` when the remote migration history predates the canonical baseline entry.
 15. Run `npm run verify:release-db` and require both DB readiness checks and repo-term mirror checks to pass.
 16. Run `PLAYWRIGHT_BASE_URL="$STAGING_BASE_URL" npm run test:e2e:guest`.
 17. Run `PLAYWRIGHT_BASE_URL="$STAGING_BASE_URL" npm run test:e2e:auth`.
