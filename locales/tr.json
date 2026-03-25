@@ -13,7 +13,7 @@
     "shell": {
         "navAria": "Birincil gezinme",
         "toggleTheme": "Temayı değiştir",
-        "telegramIntegration": "Telegram API entegrasyonunu aç",
+        "telegramIntegration": "Telegram botunu aç",
         "close": "Kapat"
     },
     "errors": {

@@ -37,9 +37,25 @@ const setStandaloneMode = (value: boolean) => {
     });
 };
 
+let pendingAnimationFrame: FrameRequestCallback | null = null;
+
+const flushAnimationFrame = async () => {
+    if (!pendingAnimationFrame) {
+        return;
+    }
+
+    const callback = pendingAnimationFrame;
+    pendingAnimationFrame = null;
+
+    await act(async () => {
+        callback(16);
+    });
+};
+
 describe('InstallButton', () => {
     beforeEach(() => {
         setStandaloneMode(false);
+        pendingAnimationFrame = null;
         Object.defineProperty(window.navigator, 'userAgent', {
             configurable: true,
             value: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/123.0.0.0 Safari/537.36',
@@ -47,6 +63,19 @@ describe('InstallButton', () => {
         Object.defineProperty(window.navigator, 'standalone', {
             configurable: true,
             value: false,
+        });
+        Object.defineProperty(window, 'requestAnimationFrame', {
+            configurable: true,
+            value: jest.fn((callback: FrameRequestCallback) => {
+                pendingAnimationFrame = callback;
+                return 1;
+            }),
+        });
+        Object.defineProperty(window, 'cancelAnimationFrame', {
+            configurable: true,
+            value: jest.fn(() => {
+                pendingAnimationFrame = null;
+            }),
         });
     });
 
@@ -93,6 +122,9 @@ describe('InstallButton', () => {
         installEvent.userChoice = userChoice;
 
         render(<InstallButton variant="prominent" />);
+        expect(screen.getByTestId('install-button-placeholder')).toBeInTheDocument();
+
+        await flushAnimationFrame();
         await act(async () => {
             window.dispatchEvent(installEvent);
         });
@@ -105,6 +137,17 @@ describe('InstallButton', () => {
         await waitFor(() => {
             expect(prompt).toHaveBeenCalledTimes(1);
         });
+    });
+
+    it('holds the prominent CTA behind a placeholder until installability is evaluated', async () => {
+        render(<InstallButton variant="prominent" />);
+
+        expect(screen.getByTestId('install-button-placeholder')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Install' })).not.toBeInTheDocument();
+
+        await flushAnimationFrame();
+
+        expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument();
     });
 
     it('shows iOS manual install instructions when the platform supports add-to-home-screen only', async () => {

@@ -45,13 +45,47 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
+    const [hasEvaluatedInstallability, setHasEvaluatedInstallability] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
 
     useEffect(() => {
+        let revealFrameId: number | null = null;
+
+        const cancelRevealFrame = () => {
+            if (revealFrameId === null) {
+                return;
+            }
+
+            if (typeof window.cancelAnimationFrame === 'function') {
+                window.cancelAnimationFrame(revealFrameId);
+            } else {
+                window.clearTimeout(revealFrameId);
+            }
+
+            revealFrameId = null;
+        };
+
+        const scheduleReveal = () => {
+            cancelRevealFrame();
+
+            const reveal = () => {
+                setHasEvaluatedInstallability(true);
+                revealFrameId = null;
+            };
+
+            if (typeof window.requestAnimationFrame === 'function') {
+                revealFrameId = window.requestAnimationFrame(reveal);
+                return;
+            }
+
+            revealFrameId = window.setTimeout(reveal, 0);
+        };
+
         const syncInstallability = () => {
             setIsIOSInstallAvailable(canShowIOSInstallInstructions());
             setIsInstalled(isStandaloneDisplayMode());
+            scheduleReveal();
         };
 
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -73,6 +107,7 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         window.addEventListener('appinstalled', handleAppInstalled);
 
         return () => {
+            cancelRevealFrame();
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             window.removeEventListener('appinstalled', handleAppInstalled);
         };
@@ -103,8 +138,21 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
     }
 
     const buttonClassName = variant === 'prominent'
-        ? 'flex items-center justify-center gap-2 rounded-xl border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-700 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20'
-        : 'flex items-center justify-center gap-2 rounded-lg border border-transparent bg-primary-600 p-1.5 text-sm font-medium text-white shadow-sm transition-colors active:scale-95 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 sm:rounded-xl sm:px-3 sm:py-2';
+        ? 'min-w-[9rem] shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-xl border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-700 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20'
+        : 'shrink-0 flex items-center justify-center gap-2 rounded-lg border border-transparent bg-primary-600 p-1.5 text-sm font-medium text-white shadow-sm transition-colors active:scale-95 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 sm:rounded-xl sm:px-3 sm:py-2';
+
+    if (variant === 'prominent' && !hasEvaluatedInstallability) {
+        return (
+            <div
+                aria-hidden="true"
+                data-testid="install-button-placeholder"
+                className={`${buttonClassName} invisible pointer-events-none select-none`}
+            >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">{t('install.cta')}</span>
+            </div>
+        );
+    }
 
     return (
         <>

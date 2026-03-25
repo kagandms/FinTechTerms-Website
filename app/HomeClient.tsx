@@ -161,48 +161,48 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
 
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
-            <header className="hidden md:flex items-center justify-between mb-12 py-8 border-b border-gray-100 dark:border-[#0c3452]/50 bg-white/50 dark:bg-[#0a2d46]/80 backdrop-blur-md -mx-4 px-8 rounded-b-3xl relative z-50 shadow-sm">
-                <div className="flex items-center gap-8">
-                    <div className="relative group shrink-0">
-                        {/* Wrapper with soft rounded corners */}
-                        <Image
-                            src="/home-logo.png"
-                            alt="FinTechTerms Logo"
-                            width={160}
-                            height={144}
-                            className="w-40 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
-                            priority
-                        />
+            <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-8 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 md:block">
+                <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="flex min-w-0 items-center gap-8">
+                        <div className="relative group shrink-0">
+                            {/* Wrapper with soft rounded corners */}
+                            <Image
+                                src="/home-logo.png"
+                                alt="FinTechTerms Logo"
+                                width={160}
+                                height={144}
+                                className="w-40 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
+                                priority
+                            />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="max-w-[min(100%,42rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3.5rem,7vw,5.5rem)] font-extrabold leading-[0.88] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
+                                FinTechTerms
+                            </h1>
+                            <p className="mt-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-500 dark:text-gray-400">
+                                {t('home.subtitle')}
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex flex-col justify-center h-40">
-                        <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tighter mb-2">
-                            FinTechTerms
-                        </h1>
-                        <p className="text-lg text-gray-500 dark:text-gray-400 font-medium max-w-md leading-relaxed">
-                            {t('home.subtitle')}
-                        </p>
-                    </div>
-                </div>
 
-                <div className="flex flex-col items-end gap-4 h-40 justify-center">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-end gap-3 xl:max-w-[28rem] xl:justify-self-end">
                         <a
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-3 rounded-xl border border-sky-100 bg-white text-sky-600 transition-all shadow-sm hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
+                            className="flex shrink-0 items-center justify-center rounded-xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
                             aria-label={t('shell.telegramIntegration')}
                         >
                             <Send className="w-5 h-5" />
                         </a>
                         <InstallButton variant="prominent" />
 
-                        <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+                        <div className="mx-1 hidden h-10 w-px bg-gray-200 dark:bg-gray-700 lg:block"></div>
 
                         <button
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
-                            className="p-3 rounded-xl bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 text-gray-500 dark:text-gray-300 hover:text-yellow-500 dark:hover:text-yellow-300 transition-all border border-gray-100 dark:border-white/20 shadow-sm backdrop-blur-sm"
+                            className="flex shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
                             aria-label={t('shell.toggleTheme')}
                         >
                             {resolvedTheme === 'dark' ? (

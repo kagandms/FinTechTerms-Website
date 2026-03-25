@@ -251,6 +251,43 @@ describe('SRSContext', () => {
         expect(mockGetAllTermSRSFromSupabaseUnbounded).not.toHaveBeenCalled();
     });
 
+    it('persists merged favorites before SRS enrichment fails for authenticated users', async () => {
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            favorites: ['term-1'],
+        });
+        mockGetUserProgressFromSupabase.mockResolvedValue({
+            status: 'partial',
+            data: {
+                ...baseProgress,
+                favorites: [],
+            },
+            missing: ['favorites'],
+            message: 'Study progress loaded with gaps: favorites.',
+        });
+        mockGetAllTermSRSFromSupabase.mockResolvedValue({
+            status: 'error',
+            message: 'SRS unavailable',
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        expect(mockSaveUserProgress).toHaveBeenCalledWith(
+            expect.objectContaining({
+                favorites: ['term-1'],
+            }),
+            'user-1'
+        );
+    });
+
     it('fails closed for authenticated users when only guest progress is cached locally', async () => {
         authState = {
             ...authState,

@@ -31,6 +31,22 @@ export interface ProfileFormInitialData {
     birthDate: string;
 }
 
+interface ProfileFormDefaults extends ProfileFormValues {
+    email: string | null;
+}
+
+const buildProfileFormDefaults = (
+    initialData?: ProfileFormInitialData | null
+): ProfileFormDefaults => ({
+    name: initialData?.name || '',
+    surname: initialData?.surname || '',
+    email: initialData?.email ?? null,
+    birthDate: initialData?.birthDate || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+});
+
 const toDateInputValue = (value: unknown): string => {
     if (!value) return '';
 
@@ -116,6 +132,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const defaultFormValues = React.useMemo(
+        () => buildProfileFormDefaults(initialData),
+        [initialData]
+    );
 
     const copy = (key: string, fallback: string): string => (
         getTranslationString(language, key) ?? fallback
@@ -155,34 +175,18 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         formState: { errors },
     } = useForm<ProfileFormValues>({
         resolver: zodResolver(createProfileSchema(language)),
-        values: {
-            name: initialData?.name || '',
-            surname: initialData?.surname || '',
-            email: initialData?.email ?? null,
-            birthDate: initialData?.birthDate || '',
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: '',
-        },
+        defaultValues: defaultFormValues,
     });
 
     useEffect(() => {
         let isMounted = true;
 
         const resetWithInitialData = () => {
-            if (!initialData || !isMounted) {
+            if (!isMounted) {
                 return;
             }
 
-            reset({
-                name: initialData.name || '',
-                surname: initialData.surname || '',
-                email: initialData.email ?? null,
-                birthDate: initialData.birthDate || '',
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: '',
-            });
+            reset(buildProfileFormDefaults(initialData));
         };
 
         const loadProfileData = async () => {

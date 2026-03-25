@@ -13,7 +13,7 @@
     "shell": {
         "navAria": "Primary navigation",
         "toggleTheme": "Toggle theme",
-        "telegramIntegration": "Open Telegram API integration",
+        "telegramIntegration": "Open Telegram bot",
         "close": "Close"
     },
     "errors": {

@@ -13,6 +13,7 @@ const mockUseLanguage = jest.fn();
 const mockUseSRS = jest.fn();
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
+const mockSrsNotificationCard = jest.fn(() => <div data-testid="profile-srs-card" />);
 
 const profileTranslationMap: Record<string, string> = {
     'profile.warningPartial': 'Some profile fields could not be loaded. Showing the latest available data.',
@@ -111,7 +112,7 @@ jest.mock('@/components/profile/ProfileErrorBoundary', () => ({
 }));
 jest.mock('@/components/profile/SRSNotificationCard', () => ({
     __esModule: true,
-    default: () => null,
+    default: () => mockSrsNotificationCard(),
 }));
 
 describe('ProfilePageClient', () => {
@@ -243,6 +244,35 @@ describe('ProfilePageClient', () => {
         );
 
         expect(screen.getByTestId('install-button')).toBeInTheDocument();
+    });
+
+    it('does not render the duplicate profile SRS notification card', () => {
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 1,
+                        correctReviews: 1,
+                        accuracy: 100,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        expect(screen.queryByTestId('profile-srs-card')).not.toBeInTheDocument();
+        expect(mockSrsNotificationCard).not.toHaveBeenCalled();
     });
 
     it('opens favorites directly for authenticated users', () => {

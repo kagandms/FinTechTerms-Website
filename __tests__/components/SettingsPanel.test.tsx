@@ -24,5 +24,6 @@ describe('SettingsPanel', () => {
         );
 
         expect(screen.getByRole('link', { name: /about.viewAbout/i })).toHaveAttribute('href', '/en/about');
+        expect(screen.getByRole('link', { name: /settingsPanel.methodology/i })).toHaveAttribute('href', '/en/methodology');
     });
 });

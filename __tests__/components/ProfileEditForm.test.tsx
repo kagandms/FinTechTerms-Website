@@ -71,6 +71,9 @@ const initialData = {
 const createSupabaseMock = (options?: {
     metadataError?: { code?: string; message?: string } | null;
     profileError?: { message?: string } | null;
+    profileLoadError?: { message?: string } | null;
+    profileLoadData?: { full_name?: string | null; birth_date?: string | null } | null;
+    loadUserResponse?: SupabaseUserResponse;
 }): {
     auth: {
         getUser: jest.Mock;
@@ -79,6 +82,12 @@ const createSupabaseMock = (options?: {
     };
     from: jest.Mock;
 } => {
+    const maybeSingle = jest.fn().mockResolvedValue({
+        data: options?.profileLoadData ?? null,
+        error: options?.profileLoadError ?? null,
+    });
+    const selectEq = jest.fn(() => ({ maybeSingle }));
+    const select = jest.fn(() => ({ eq: selectEq }));
     const abortSignal = jest.fn().mockResolvedValue({
         error: options?.profileError ?? null,
     });
@@ -87,13 +96,13 @@ const createSupabaseMock = (options?: {
 
     return {
         auth: {
-            getUser: jest.fn().mockResolvedValue(baseUserResponse),
+            getUser: jest.fn().mockResolvedValue(options?.loadUserResponse ?? baseUserResponse),
             updateUser: jest.fn().mockResolvedValue({
                 error: options?.metadataError ?? null,
             }),
             signInWithPassword: jest.fn(),
         },
-        from: jest.fn(() => ({ update })),
+        from: jest.fn(() => ({ update, select })),
     };
 };
 
@@ -150,6 +159,38 @@ describe('ProfileEditForm submit flow', () => {
         expect(mockRefresh).toHaveBeenCalledTimes(1);
         expect(screen.getByText('Successfully saved')).toBeInTheDocument();
         expect(mockShowToast).not.toHaveBeenCalledWith(expect.stringContaining('secondary profile sync'), 'warning');
+    });
+
+    it('hydrates profile fields from the authenticated fallback when server initial data is missing', async () => {
+        mockGetSupabaseClient.mockReturnValue(createSupabaseMock({
+            loadUserResponse: {
+                data: {
+                    user: {
+                        ...baseUserResponse.data.user,
+                        user_metadata: {},
+                    },
+                },
+                error: null,
+            },
+            profileLoadData: {
+                full_name: 'Alex Stone',
+                birth_date: '2000-01-01',
+            },
+        }));
+
+        render(
+            <ProfileEditForm
+                language="en"
+                initialData={null}
+            />
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('profile-name')).toHaveValue('Alex');
+            expect(screen.getByTestId('profile-surname')).toHaveValue('Stone');
+            expect(screen.getByTestId('profile-birth-date')).toHaveValue('2000-01-01');
+            expect(screen.getByDisplayValue('alex@example.com')).toBeInTheDocument();
+        });
     });
 
     it('keeps metadata failures as hard errors', async () => {

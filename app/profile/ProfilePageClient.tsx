@@ -23,7 +23,6 @@ import type { LearningStatsActionResult } from '@/types/gamification';
 import InstallButton from '@/components/InstallButton';
 import Heatmap from '@/components/profile/Heatmap';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
-import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 import { formatTranslation } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 
@@ -55,7 +54,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     // 2. Additional Contexts
     const { theme, setTheme } = useTheme();
     const { setLanguage } = useLanguage();
-    const { stats, refreshData, userProgress } = useSRS();
+    const { stats, refreshData } = useSRS();
 
     // Toggle for Profile Editing
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -170,11 +169,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     </section>
 
                     {isAuthenticated && (
-                        <section className="order-2 space-y-6">
-                            <SRSNotificationCard
-                                dueCount={stats.dueToday}
-                                lastReviewDate={learningStatsData?.lastStudyDate ?? userProgress?.last_study_date}
-                            />
+                        <section className="order-2">
                             {learningStatsData ? (
                                 <Heatmap entries={learningStatsData.heatmap} language={language} />
                             ) : null}

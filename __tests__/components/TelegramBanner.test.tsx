@@ -21,8 +21,8 @@ describe('TelegramBanner', () => {
         render(<TelegramBanner variant="full" />);
 
         expect(screen.getByText('Ecosystem integration')).toBeInTheDocument();
-        expect(screen.getByText('Telegram API integration')).toBeInTheDocument();
-        expect(screen.getByText('Open integration')).toBeInTheDocument();
+        expect(screen.getByText('FinTechTerms Telegram bot')).toBeInTheDocument();
+        expect(screen.getByText('Open bot')).toBeInTheDocument();
     });
 
     it('renders Turkish copy for the compact variant', () => {
@@ -31,6 +31,6 @@ describe('TelegramBanner', () => {
         render(<TelegramBanner variant="compact" />);
 
         expect(screen.getByText('Ekosistem entegrasyonu')).toBeInTheDocument();
-        expect(screen.getByText('Telegram API entegrasyonu')).toBeInTheDocument();
+        expect(screen.getByText('FinTechTerms Telegram botu')).toBeInTheDocument();
     });
 });

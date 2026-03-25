@@ -14,7 +14,6 @@ export default function FavoritesClient() {
     const {
         terms,
         userProgress,
-        isLoading,
         termsStatus,
         progressStatus,
         refreshData,
@@ -23,6 +22,8 @@ export default function FavoritesClient() {
 
     // Get the terms that the user has favorited
     const favoriteTerms = terms.filter(term => userProgress.favorites.includes(term.id));
+    const isRouteLoading = (termsStatus === 'loading' && terms.length === 0)
+        || (progressStatus === 'loading' && favoriteTerms.length === 0);
     const hasBlockingError = termsStatus === 'error'
         || progressStatus === 'error'
         || ((termsStatus === 'degraded' || progressStatus === 'degraded') && favoriteTerms.length === 0);
@@ -57,7 +58,7 @@ export default function FavoritesClient() {
             </header>
 
             <div className="space-y-4">
-                {isLoading ? (
+                {isRouteLoading ? (
                     <DataStateCard
                         title={t('favorites.loadingTitle')}
                         description={t('favorites.loadingDescription')}

@@ -43,6 +43,8 @@ const stateMessages = {
     tr: {
         loadingTitle: 'Quiz yukleniyor',
         loadingDescription: 'Calisma verileri hazirlaniyor. Lutfen bekleyin.',
+        syncingTitle: 'Tekrar verileri senkronize ediliyor',
+        syncingDescription: 'Hizli quiz kullanilabilir. Tekrar kartlari arka planda hazirlaniyor.',
         errorTitle: 'Veri yukleme hatasi',
         errorDescription: 'Quiz verileri simdi yuklenemedi. Lutfen tekrar deneyin.',
         degradedTitle: 'Kaydedilen verilerle devam ediliyor',
@@ -59,6 +61,8 @@ const stateMessages = {
     en: {
         loadingTitle: 'Loading quiz',
         loadingDescription: 'Study data is being prepared. Please wait.',
+        syncingTitle: 'Syncing review data',
+        syncingDescription: 'Quick Quiz is available now. Review cards are still being prepared in the background.',
         errorTitle: 'Data loading error',
         errorDescription: 'Quiz data could not be loaded right now. Please try again.',
         degradedTitle: 'Continuing with saved data',
@@ -75,6 +79,8 @@ const stateMessages = {
     ru: {
         loadingTitle: 'Загружаем квиз',
         loadingDescription: 'Подготавливаем учебные данные. Пожалуйста, подождите.',
+        syncingTitle: 'Синхронизируем данные повторения',
+        syncingDescription: 'Быстрый квиз уже доступен. Карточки повтора готовятся в фоне.',
         errorTitle: 'Ошибка загрузки данных',
         errorDescription: 'Сейчас не удалось загрузить данные для квиза. Попробуйте еще раз.',
         degradedTitle: 'Показаны сохраненные данные',
@@ -100,7 +106,6 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         stats,
         terms,
         userProgress,
-        isLoading,
         termsStatus,
         progressStatus,
         refreshData,
@@ -136,6 +141,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const shouldShowProgressFallback = progressStatus === 'error' || (progressStatus === 'degraded' && !hasCachedProgressData);
     const shouldShowDegradedNotice = (termsStatus === 'degraded' && terms.length > 0)
         || (progressStatus === 'degraded' && hasCachedProgressData);
+    const isRouteLoading = termsStatus === 'loading' && terms.length === 0;
+    const showProgressSyncNotice = progressStatus === 'loading' && terms.length > 0;
 
     const getQuickQuizPool = (category: string | null) => {
         let pool = [...terms];
@@ -268,7 +275,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 {/* Header */}
                 <header className="mb-6">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
-                    {!isLoading && canUseProgressData && dueTerms.length > 0 && (
+                    {!isRouteLoading && canUseProgressData && dueTerms.length > 0 && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('quiz.chooseMode')}</p>
                     )}
                     <span className="sr-only" data-testid="due-card-count">
@@ -276,7 +283,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     </span>
                 </header>
 
-                {isLoading ? (
+                {isRouteLoading ? (
                     <DataStateCard
                         title={stateCopy.loadingTitle}
                         description={stateCopy.loadingDescription}
@@ -318,6 +325,16 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             </div>
                         ) : null}
 
+                        {showProgressSyncNotice ? (
+                            <div className="mb-4">
+                                <DataStateCard
+                                    title={stateCopy.syncingTitle}
+                                    description={stateCopy.syncingDescription}
+                                    icon={<Loader2 className="w-10 h-10 animate-spin text-primary-500" />}
+                                />
+                            </div>
+                        ) : null}
+
                         {/* Daily Streak Card - Compact */}
                         {canUseProgressData ? (
                             <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3 text-white mb-4 shadow-md">
@@ -336,7 +353,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                     )}
                                 </div>
                             </div>
-                        ) : (
+                        ) : showProgressSyncNotice ? null : (
                             <div className="mb-4">
                                 <DataStateCard
                                     tone="error"

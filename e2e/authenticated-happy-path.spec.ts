@@ -7,13 +7,14 @@ const readDueCount = async (page: Page) => {
     return Number.parseInt((text || '0').trim(), 10) || 0;
 };
 
-const navigationLabels: Record<'/' | '/quiz' | '/profile', RegExp> = {
+const navigationLabels: Record<'/' | '/quiz' | '/profile' | '/favorites', RegExp> = {
     '/': /Главная|Home/i,
     '/quiz': /Практика|Practice|Quiz/i,
     '/profile': /Профиль|Profile/i,
+    '/favorites': /Избранное|Favorites/i,
 };
 
-const navigateWithinApp = async (page: Page, href: '/' | '/quiz' | '/profile') => {
+const navigateWithinApp = async (page: Page, href: '/' | '/quiz' | '/profile' | '/favorites') => {
     const navigationLink = page.getByRole('link', { name: navigationLabels[href] }).last();
     await navigationLink.click();
     await expect(page).toHaveURL(new RegExp(`${href === '/' ? '/$' : `${href.replace('/', '\\/')}(?:\\?.*)?$`}`), {
@@ -157,6 +158,9 @@ test.describe('@auth-required Authenticated happy path', () => {
     test('favorites a term, saves a profile edit, and persists quiz progress', async ({ authenticatedPage: page }) => {
         const dueBeforeQuiz = await ensureMinimumDueCards(page, 2);
 
+        await navigateWithinApp(page, '/favorites');
+        await expect(page.getByTestId('favorite-button').first()).toBeVisible();
+
         await navigateWithinApp(page, '/profile');
         await page.getByTestId('profile-edit-toggle').click();
 
@@ -164,6 +168,7 @@ test.describe('@auth-required Authenticated happy path', () => {
         await expect(nameInput).toBeVisible();
 
         const currentName = (await nameInput.inputValue()).trim();
+        expect(currentName.length).toBeGreaterThan(0);
         const nextName = currentName === 'Playwright'
             ? 'Playwright QA'
             : 'Playwright';

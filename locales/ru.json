@@ -13,7 +13,7 @@
     "shell": {
         "navAria": "Основная навигация",
         "toggleTheme": "Переключить тему",
-        "telegramIntegration": "Открыть интеграцию Telegram API",
+        "telegramIntegration": "Открыть Telegram-бота",
         "close": "Закрыть"
     },
     "errors": {

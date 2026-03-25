@@ -368,6 +368,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
                                 cloudProgress.missing
                             )
                             : cloudProgress.data;
+
+                        saveLocalUserProgress(mergedProgress, userId);
+
                         const srsData = mergedProgress.favorites.length > 0
                             ? await getAllTermSRSFromSupabase(userId, mergedProgress.favorites)
                             : {
@@ -396,7 +399,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
                                 return term;
                             });
 
-                            saveLocalUserProgress(mergedProgress, userId);
                             nextProgressStatus = cloudProgress.status === 'ok' ? 'ready' : 'degraded';
                             nextProgressError = cloudProgress.status === 'partial'
                                 ? cloudProgress.message

@@ -170,6 +170,8 @@ describe('Route state separation', () => {
             'favorites.title': 'Мои избранные',
             'favorites.mobileTitle': 'Избранные',
             'favorites.description': 'Все термины, которые вы сохранили для изучения.',
+            'quiz.syncingTitle': 'Синхронизируем данные повторения',
+            'quiz.syncingDescription': 'Быстрый квиз уже доступен. Карточки повтора готовятся в фоне.',
             'categories.Fintech': 'Финтех',
             'categories.Finance': 'Финансы',
             'categories.Technology': 'Технологии',
@@ -211,6 +213,34 @@ describe('Route state separation', () => {
         expect(screen.queryByText('Пока нет избранных слов')).not.toBeInTheDocument();
     });
 
+    it('renders cached favorites while authenticated progress is still loading', () => {
+        mockUseSRS.mockReturnValue(createSrsState({
+            terms: [baseTerm],
+            userProgress: {
+                ...baseProgress,
+                favorites: ['term-1'],
+            },
+            progressStatus: 'loading',
+        }));
+
+        render(<FavoritesClient />);
+
+        expect(screen.getByTestId('smart-card')).toBeInTheDocument();
+        expect(screen.queryByText('Загружаем избранное')).not.toBeInTheDocument();
+    });
+
+    it('renders cached search terms while background sync is still loading', () => {
+        mockUseSRS.mockReturnValue(createSrsState({
+            terms: [baseTerm],
+            termsStatus: 'loading',
+        }));
+
+        render(<SearchClient />);
+
+        expect(screen.getByTestId('smart-card')).toBeInTheDocument();
+        expect(screen.queryByText('Загружаем словарь')).not.toBeInTheDocument();
+    });
+
     it('shows the quiz SRS error fallback instead of zero-state messaging when progress fails', () => {
         const { default: QuizClient } = require('@/app/quiz/QuizClient');
 
@@ -230,5 +260,33 @@ describe('Route state separation', () => {
         expect(screen.getByText('Данные SRS временно недоступны')).toBeInTheDocument();
         expect(screen.queryByText('quiz.orAddFavorites')).not.toBeInTheDocument();
         expect(screen.queryByText('quiz.noCards')).not.toBeInTheDocument();
+    });
+
+    it('keeps quick quiz available while progress is still syncing in the background', () => {
+        const { default: QuizClient } = require('@/app/quiz/QuizClient');
+
+        mockUseSRS.mockReturnValue(createSrsState({
+            terms: [baseTerm],
+            progressStatus: 'loading',
+            userProgress: {
+                ...baseProgress,
+                favorites: [],
+                quiz_history: [],
+                current_streak: 0,
+            },
+            stats: {
+                totalFavorites: 0,
+                mastered: 0,
+                learning: 1,
+                dueToday: 0,
+                averageRetention: 0,
+            },
+        }));
+
+        render(<QuizClient />);
+
+        expect(screen.getByText('Синхронизируем данные повторения')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'quiz.startQuickQuiz' })).toBeInTheDocument();
+        expect(screen.queryByText('Загружаем квиз')).not.toBeInTheDocument();
     });
 });

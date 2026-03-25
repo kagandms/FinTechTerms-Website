@@ -392,6 +392,8 @@ const fetchWithAuthRetry = async (
 export async function getUserProgressFromSupabase(userId: string): Promise<UserProgressLoadResult> {
     const supabase = getSupabaseClient();
 
+    await waitForAccessToken();
+
     const [
         progressResult,
         favoritesResult,

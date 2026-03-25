@@ -25,7 +25,7 @@ interface SearchPageProps {
 
 export default function SearchPage({ nonce }: SearchPageProps) {
     const { language, t } = useLanguage();
-    const { terms, isLoading, termsStatus, refreshData } = useSRS();
+    const { terms, termsStatus, refreshData } = useSRS();
     const siteUrl = getSiteUrl();
     const router = useRouter();
     const pathname = usePathname();
@@ -105,6 +105,7 @@ export default function SearchPage({ nonce }: SearchPageProps) {
     const activeMarketLabel = filterState.selectedMarket
         ? t(`search.markets.${filterState.selectedMarket as RegionalMarket}`)
         : null;
+    const isRouteLoading = termsStatus === 'loading' && terms.length === 0;
 
     return (
         <div className="page-content px-4 py-6">
@@ -133,7 +134,7 @@ export default function SearchPage({ nonce }: SearchPageProps) {
                 </p>
             </header>
 
-            {isLoading ? (
+            {isRouteLoading ? (
                 <DataStateCard
                     title={t('search.loadingTitle')}
                     description={t('search.loadingDescription')}
