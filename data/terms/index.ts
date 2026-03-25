@@ -1,5 +1,8 @@
 import { Term } from '../../types';
-import { testCatalogTerms } from './test-catalog';
+import { financeTerms } from './finance';
+import { fintechTerms } from './fintech';
+import { seoGapTerms } from './seo-gap';
+import { technologyTerms } from './technology';
 
 const assignUniqueSlugs = (catalog: readonly Term[]): Term[] => {
     const slugCounts = new Map<string, number>();
@@ -19,4 +22,9 @@ const assignUniqueSlugs = (catalog: readonly Term[]): Term[] => {
     });
 };
 
-export const terms: Term[] = assignUniqueSlugs(testCatalogTerms);
+export const terms: Term[] = assignUniqueSlugs([
+    ...financeTerms,
+    ...fintechTerms,
+    ...technologyTerms,
+    ...seoGapTerms,
+]);
