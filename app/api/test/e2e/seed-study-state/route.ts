@@ -25,6 +25,7 @@ const isPreviewLikeRuntime = (): boolean => {
     }
 
     const vercelEnv = process.env.VERCEL_ENV?.trim().toLowerCase();
+    const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
     const sentryEnvironment = (
         process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT
         || process.env.SENTRY_ENVIRONMENT
@@ -32,6 +33,7 @@ const isPreviewLikeRuntime = (): boolean => {
     ).trim().toLowerCase();
 
     return vercelEnv === 'preview'
+        || nodeEnv === 'production'
         || sentryEnvironment === 'preview'
         || sentryEnvironment === 'staging';
 };
@@ -95,8 +97,8 @@ export async function POST(request: Request) {
     if (!isRouteEnabled()) {
         return errorResponse({
             status: 404,
-            code: 'NOT_FOUND',
-            message: 'Not found.',
+            code: 'E2E_SEED_DISABLED',
+            message: 'E2E seed route is disabled. Verify E2E_SEED_SECRET is configured in the preview runtime.',
             requestId,
             retryable: false,
         });
@@ -106,8 +108,8 @@ export async function POST(request: Request) {
     if (!configuredSeedSecret) {
         return errorResponse({
             status: 404,
-            code: 'NOT_FOUND',
-            message: 'Not found.',
+            code: 'E2E_SEED_DISABLED',
+            message: 'E2E seed route is disabled. Verify E2E_SEED_SECRET is configured in the preview runtime.',
             requestId,
             retryable: false,
         });

@@ -114,7 +114,7 @@ describe('e2e seed study state route', () => {
 
         expect(response.status).toBe(404);
         expect(body).toMatchObject({
-            code: 'NOT_FOUND',
+            code: 'E2E_SEED_DISABLED',
             retryable: false,
         });
     });

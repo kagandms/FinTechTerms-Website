@@ -50,7 +50,11 @@ const seedStudyState = async (page: Page, minimumCount: number) => {
     });
 
     const payload = await response.json();
-    expect(response.ok(), JSON.stringify(payload)).toBe(true);
+    const responseSummary = JSON.stringify({
+        status: response.status(),
+        payload,
+    });
+    expect(response.ok(), responseSummary).toBe(true);
     expect(payload.seededDueTerms).toHaveLength(seededTermIds.length);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
