@@ -41,6 +41,16 @@ const createBypassedContext = async (browser) => browser.newContext({
         : undefined,
 });
 
+const grantResearchConsent = async (page) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem('fintechterms_research_consent', JSON.stringify({
+            given: true,
+            timestamp: '2026-03-11T00:00:00.000Z',
+            version: '1.0',
+        }));
+    });
+};
+
 const waitForPageSettle = async (page) => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
@@ -164,6 +174,7 @@ const runGuestCheck = async (browser) => {
     const page = await context.newPage();
 
     try {
+        await grantResearchConsent(page);
         await page.goto(`${stagingBaseUrl}/`, { waitUntil: 'domcontentloaded' });
         await waitForPageSettle(page);
         await page.locator('[data-testid="theme-toggle"]:visible').first().waitFor({ state: 'visible' });
@@ -178,6 +189,7 @@ const runFavoritesProbe = async (browser) => {
     const page = await context.newPage();
 
     try {
+        await grantResearchConsent(page);
         await loginViaProfile(page, authEmail, authPassword);
         const accessToken = await readSupabaseAccessToken(page);
 
@@ -216,6 +228,7 @@ const runSentryCapabilityProbe = async (browser) => {
     const page = await context.newPage();
 
     try {
+        await grantResearchConsent(page);
         await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);
         const accessToken = await readSupabaseAccessToken(page);
         const response = await fetchWithBearer(page, '/api/auth/capabilities', accessToken, {
