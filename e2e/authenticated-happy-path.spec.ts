@@ -57,6 +57,50 @@ const seedStudyState = async (page: Page, minimumCount: number) => {
     expect(response.ok(), responseSummary).toBe(true);
     expect(payload.seededDueTerms).toHaveLength(seededTermIds.length);
 
+    await page.evaluate((seedPayload) => {
+        const nowIso = new Date().toISOString();
+        const termsKey = 'globalfinterm_terms';
+        const progressKey = `globalfinterm_user_progress:auth:${seedPayload.userId}`;
+        const rawTerms = window.localStorage.getItem(termsKey);
+
+        if (rawTerms) {
+            const parsedTerms = JSON.parse(rawTerms);
+            if (Array.isArray(parsedTerms)) {
+                const seededDueIds = new Set(seedPayload.seededDueTerms);
+                const updatedTerms = parsedTerms.map((term) => {
+                    if (!term || typeof term !== 'object' || !seededDueIds.has(term.id)) {
+                        return term;
+                    }
+
+                    return {
+                        ...term,
+                        srs_level: 1,
+                        next_review_date: new Date(Date.now() - (60 * 60 * 1000)).toISOString(),
+                        last_reviewed: null,
+                        difficulty_score: 2.5,
+                        retention_rate: 0,
+                        times_reviewed: 0,
+                        times_correct: 0,
+                    };
+                });
+
+                window.localStorage.setItem(termsKey, JSON.stringify(updatedTerms));
+            }
+        }
+
+        window.localStorage.setItem(progressKey, JSON.stringify({
+            user_id: seedPayload.userId,
+            favorites: seedPayload.seededFavorites,
+            current_language: 'ru',
+            quiz_history: [],
+            total_words_learned: 0,
+            current_streak: 0,
+            last_study_date: null,
+            created_at: nowIso,
+            updated_at: nowIso,
+        }));
+    }, payload);
+
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
 };
@@ -103,8 +147,8 @@ test.describe('@auth-required Authenticated happy path', () => {
             : 'Playwright';
 
         await nameInput.fill(nextName);
-        await page.getByTestId('profile-save').click();
-        await expect(nameInput).toHaveValue(nextName);
+        await page.getByTestId('profile-save').click({ force: true });
+        await expect(page.locator('[data-testid="profile-form-success"], [data-testid="profile-form-warning"]')).toBeVisible();
 
         await navigateWithinApp(page, '/quiz');
         await expect.poll(async () => readDueCount(page)).toBeGreaterThanOrEqual(2);

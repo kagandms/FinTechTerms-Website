@@ -559,19 +559,28 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
             {/* Inline Alerts */}
             {formSuccess && (
-                <div className="mb-4 p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg">
+                <div
+                    data-testid="profile-form-success"
+                    className="mb-4 p-3 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg"
+                >
                     {formSuccess}
                 </div>
             )}
 
             {formWarning && (
-                <div className="mb-4 p-3 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg">
+                <div
+                    data-testid="profile-form-warning"
+                    className="mb-4 p-3 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg"
+                >
                     {formWarning}
                 </div>
             )}
 
             {formError && (
-                <div className="mb-4 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg">
+                <div
+                    data-testid="profile-form-error"
+                    className="mb-4 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg"
+                >
                     {formError}
                 </div>
             )}
