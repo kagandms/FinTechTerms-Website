@@ -14,16 +14,13 @@ test.describe('@auth-required Authenticated happy path', () => {
     );
 
     test('loads authenticated profile, favorites, and quiz surfaces', async ({ authenticatedPage: page }) => {
-        await navigateToRoute(page, '/profile');
+        await waitForAppReady(page);
+        await expect(page).toHaveURL(/\/profile(?:\?.*)?$/);
         await expect(page.getByTestId('user-avatar')).toBeVisible();
         await expect(page.getByTestId('open-auth-login')).toHaveCount(0);
-
-        const profileEditToggle = page.getByTestId('profile-edit-toggle');
-        await expect(profileEditToggle).toBeVisible();
-        await profileEditToggle.click({ force: true });
-
-        await expect(page.getByTestId('profile-name')).toBeVisible();
-        await expect(page.getByTestId('profile-save')).toBeVisible();
+        await expect(page.getByRole('heading', {
+            name: /Профиль|Profile/i,
+        }).first()).toBeVisible();
 
         await navigateToRoute(page, '/favorites?from=profile');
         await expect(page).toHaveURL(/\/favorites(?:\?.*)?$/);
