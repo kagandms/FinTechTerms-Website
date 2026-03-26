@@ -46,6 +46,19 @@ const waitForPageSettle = async (page) => {
     await page.waitForTimeout(500);
 };
 
+const readPageDebugState = async (page) => ({
+    url: page.url(),
+    title: await page.title(),
+    hasAuthModal: await page.getByTestId('auth-modal').isVisible().catch(() => false),
+    hasLoginButton: await page.getByTestId('open-auth-login').isVisible().catch(() => false),
+    hasRegisterButton: await page.getByTestId('open-auth-register').isVisible().catch(() => false),
+    hasAvatar: await page.getByTestId('user-avatar').isVisible().catch(() => false),
+    bodySnippet: (await page.locator('body').innerText().catch(() => ''))
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 300),
+});
+
 const loginViaProfile = async (page, email, password) => {
     await page.goto(`${stagingBaseUrl}/profile?auth=login`, { waitUntil: 'domcontentloaded' });
     await waitForPageSettle(page);
@@ -57,10 +70,21 @@ const loginViaProfile = async (page, email, password) => {
     const authModal = page.getByTestId('auth-modal');
 
     if (!await authModal.isVisible().catch(() => false)) {
-        await page.getByTestId('open-auth-login').click({ force: true });
+        const loginButton = page.getByTestId('open-auth-login');
+        if (await loginButton.isVisible().catch(() => false)) {
+            await loginButton.click({ force: true });
+        }
     }
 
-    await authModal.waitFor({ state: 'visible', timeout: 20_000 });
+    try {
+        await authModal.waitFor({ state: 'visible', timeout: 20_000 });
+    } catch (error) {
+        const debugState = await readPageDebugState(page);
+        throw new Error(
+            `Authentication modal did not become visible. Debug: ${JSON.stringify(debugState)}`
+        );
+    }
+
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);
     await page.getByTestId('auth-submit').click();
