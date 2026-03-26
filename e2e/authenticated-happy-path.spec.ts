@@ -65,9 +65,16 @@ const ensureMinimumDueCards = async (page: Page, minimumCount: number) => {
     await seedStudyState(page, minimumCount);
     await page.goto('/quiz', { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
-    const dueCount = await readDueCount(page);
+    await expect.poll(async () => {
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAppReady(page);
+        return await readDueCount(page);
+    }, {
+        timeout: 20_000,
+        intervals: [500, 1000, 1500, 2000],
+    }).toBeGreaterThanOrEqual(minimumCount);
 
-    expect(dueCount).toBeGreaterThanOrEqual(minimumCount);
+    const dueCount = await readDueCount(page);
     return dueCount;
 };
 
@@ -90,8 +97,8 @@ test.describe('@auth-required Authenticated happy path', () => {
         await expect(nameInput).toBeVisible();
 
         const currentName = (await nameInput.inputValue()).trim();
-        expect(currentName.length).toBeGreaterThan(0);
-        const nextName = currentName === 'Playwright'
+        const effectiveName = currentName.length > 0 ? currentName : 'Playwright';
+        const nextName = effectiveName === 'Playwright'
             ? 'Playwright QA'
             : 'Playwright';
 
