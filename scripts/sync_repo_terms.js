@@ -125,6 +125,74 @@ const mapTermsToRecords = (terms) => (
     }))
 );
 
+const BATCH_SIZE = 25;
+const MAX_SYNC_RETRIES = 5;
+const RETRYABLE_STATUS_PATTERNS = [
+    '502',
+    '503',
+    '504',
+    'bad gateway',
+    'cloudflare',
+    'gateway',
+    'temporarily unavailable',
+];
+
+const sleep = (ms) => new Promise((resolve) => {
+    setTimeout(resolve, ms);
+});
+
+const isRetryableSyncError = (error) => {
+    const message = error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase();
+
+    return RETRYABLE_STATUS_PATTERNS.some((pattern) => message.includes(pattern));
+};
+
+const upsertBatchWithRetry = async (supabase, batch, startIndex) => {
+    let attempt = 0;
+
+    while (attempt < MAX_SYNC_RETRIES) {
+        attempt += 1;
+
+        try {
+            const { error } = await supabase
+                .from('terms')
+                .upsert(mapTermsToRecords(batch), { onConflict: 'id' });
+
+            if (!error) {
+                return {
+                    ok: true,
+                    attempt,
+                };
+            }
+
+            throw error;
+        } catch (error) {
+            if (!isRetryableSyncError(error) || attempt >= MAX_SYNC_RETRIES) {
+                throw new Error(
+                    `Term sync batch starting at index ${startIndex} failed on attempt ${attempt}: ${
+                        error instanceof Error ? error.message : util.inspect(error, { depth: 5 })
+                    }`
+                );
+            }
+
+            const backoffMs = attempt * 1500;
+            console.warn(JSON.stringify({
+                ok: false,
+                retrying: true,
+                batchStart: startIndex,
+                attempt,
+                backoffMs,
+                message: error instanceof Error ? error.message : String(error),
+            }));
+            await sleep(backoffMs);
+        }
+    }
+
+    throw new Error(`Term sync batch starting at index ${startIndex} exhausted retries.`);
+};
+
 async function main() {
     loadLocalEnv();
 
@@ -143,16 +211,18 @@ async function main() {
         },
     });
 
-    const BATCH_SIZE = 100;
     for (let start = 0; start < repoTerms.length; start += BATCH_SIZE) {
         const batch = repoTerms.slice(start, start + BATCH_SIZE);
-        const { error } = await supabase
-            .from('terms')
-            .upsert(mapTermsToRecords(batch), { onConflict: 'id' });
+        const result = await upsertBatchWithRetry(supabase, batch, start);
 
-        if (error) {
-            throw error;
-        }
+        process.stdout.write(`${JSON.stringify({
+            ok: true,
+            batchStart: start,
+            batchSize: batch.length,
+            attempt: result.attempt,
+        })}\n`);
+
+        await sleep(150);
     }
 
     process.stdout.write(`${JSON.stringify({
