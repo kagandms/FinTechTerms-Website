@@ -152,7 +152,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
             {/* Desktop Header (Spacious) */}
             {/* Desktop Header (Hero Style) */}
             <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-7 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 lg:block">
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,21rem)] lg:items-center">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                     <div className="flex min-w-0 items-center gap-8">
                         <div className="relative group shrink-0">
                             <Image
@@ -165,7 +165,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                             />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h1 className="max-w-[min(100%,38rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3rem,5.2vw,4.75rem)] font-extrabold leading-[0.9] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
+                            <h1 className="max-w-[min(100%,34rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3rem,4.6vw,4.25rem)] font-extrabold leading-[0.9] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
                                 FinTechTerms
                             </h1>
                             <p className="mt-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-500 dark:text-gray-400">
@@ -174,24 +174,24 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 lg:justify-self-end lg:w-full lg:max-w-[21rem]">
+                    <div className="flex items-center justify-end gap-3 lg:justify-self-end">
                         <a
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex h-14 items-center justify-center rounded-2xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
+                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
                             aria-label={t('shell.telegramIntegration')}
                         >
                             <Send className="w-5 h-5" />
                         </a>
-                        <div className="[&>button]:h-14 [&>button]:w-full [&>button]:justify-center [&>[data-testid='install-button-placeholder']]:h-14 [&>[data-testid='install-button-placeholder']]:w-full">
+                        <div className="min-w-[8.5rem] shrink-0 [&>button]:h-14 [&>button]:w-full [&>button]:justify-center [&>[data-testid='install-button-placeholder']]:h-14 [&>[data-testid='install-button-placeholder']]:w-full">
                             <InstallButton variant="prominent" />
                         </div>
 
                         <button
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
-                            className="flex h-14 items-center justify-center rounded-2xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
+                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
                             aria-label={t('shell.toggleTheme')}
                         >
                             {resolvedTheme === 'dark' ? (
@@ -200,7 +200,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                                 <Moon className="w-5 h-5" />
                             )}
                         </button>
-                        <div className="w-full [&>div]:w-full [&>div>button]:h-14 [&>div>button]:w-full [&>div>button]:justify-between [&>div>button]:rounded-2xl">
+                        <div className="min-w-[10rem] [&>div]:w-full [&>div>button]:h-14 [&>div>button]:w-full [&>div>button]:justify-between [&>div>button]:rounded-2xl">
                             <LanguageSwitcher />
                         </div>
                     </div>
