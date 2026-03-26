@@ -47,11 +47,20 @@ const waitForPageSettle = async (page) => {
 };
 
 const loginViaProfile = async (page, email, password) => {
-    await page.goto(`${stagingBaseUrl}/profile`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${stagingBaseUrl}/profile?auth=login`, { waitUntil: 'domcontentloaded' });
     await waitForPageSettle(page);
 
-    await page.getByTestId('open-auth-login').click({ force: true });
-    await page.getByTestId('auth-modal').waitFor({ state: 'visible' });
+    if (await page.getByTestId('user-avatar').isVisible().catch(() => false)) {
+        return;
+    }
+
+    const authModal = page.getByTestId('auth-modal');
+
+    if (!await authModal.isVisible().catch(() => false)) {
+        await page.getByTestId('open-auth-login').click({ force: true });
+    }
+
+    await authModal.waitFor({ state: 'visible', timeout: 20_000 });
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);
     await page.getByTestId('auth-submit').click();
@@ -155,7 +164,7 @@ const runFavoritesProbe = async (browser) => {
             },
             body: JSON.stringify({
                 termId: 'term_001',
-                shouldFavorite: false,
+                shouldFavorite: true,
                 idempotencyKey: crypto.randomUUID(),
             }),
         });
@@ -172,7 +181,7 @@ const runFavoritesProbe = async (browser) => {
             `Preview runtime favorites probe returned ${response.status}.`
         );
 
-        recordCheck('favorites-write-probe', true, 'Authenticated favorites write path is reachable.');
+        recordCheck('favorites-write-probe', true, 'Authenticated favorites add path is reachable.');
     } finally {
         await context.close();
     }

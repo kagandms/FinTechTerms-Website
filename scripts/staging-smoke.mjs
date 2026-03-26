@@ -165,15 +165,20 @@ const runGuestSmoke = async (page) => {
 };
 
 const loginViaProfile = async (page, email, password) => {
-    await page.goto(`${stagingBaseUrl}/profile`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${stagingBaseUrl}/profile?auth=login`, { waitUntil: 'domcontentloaded' });
     await waitForPageSettle(page);
 
     if (await page.getByTestId('user-avatar').isVisible().catch(() => false)) {
         return;
     }
 
-    await page.getByTestId('open-auth-login').click({ force: true });
-    await page.getByTestId('auth-modal').waitFor({ state: 'visible' });
+    const authModal = page.getByTestId('auth-modal');
+
+    if (!await authModal.isVisible().catch(() => false)) {
+        await page.getByTestId('open-auth-login').click({ force: true });
+    }
+
+    await authModal.waitFor({ state: 'visible', timeout: 20_000 });
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);
     await page.getByTestId('auth-submit').click();

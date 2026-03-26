@@ -18,15 +18,20 @@ const getRequiredEnv = (name: string): string => {
 async function loginViaProfile(page: Page, email: string, password: string) {
     await applyPreviewProtectionBypass(page);
     await grantResearchConsent(page);
-    await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+    await page.goto('/profile?auth=login', { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
 
     if (await page.getByTestId('user-avatar').isVisible().catch(() => false)) {
         return;
     }
 
-    await page.getByTestId('open-auth-login').click({ force: true });
-    await expect(page.getByTestId('auth-modal')).toBeVisible();
+    const authModal = page.getByTestId('auth-modal');
+
+    if (!await authModal.isVisible().catch(() => false)) {
+        await page.getByTestId('open-auth-login').click({ force: true });
+    }
+
+    await expect(authModal).toBeVisible({ timeout: 20_000 });
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);
     await page.getByTestId('auth-submit').click();
