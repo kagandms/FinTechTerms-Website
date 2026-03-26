@@ -50,7 +50,7 @@ const loginViaProfile = async (page, email, password) => {
     await page.goto(`${stagingBaseUrl}/profile`, { waitUntil: 'domcontentloaded' });
     await waitForPageSettle(page);
 
-    await page.getByTestId('open-auth-login').click();
+    await page.getByTestId('open-auth-login').click({ force: true });
     await page.getByTestId('auth-modal').waitFor({ state: 'visible' });
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);

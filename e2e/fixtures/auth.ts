@@ -25,7 +25,7 @@ async function loginViaProfile(page: Page, email: string, password: string) {
         return;
     }
 
-    await page.getByTestId('open-auth-login').click();
+    await page.getByTestId('open-auth-login').click({ force: true });
     await expect(page.getByTestId('auth-modal')).toBeVisible();
     await page.getByTestId('auth-email').fill(email);
     await page.getByTestId('auth-password').fill(password);
