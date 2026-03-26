@@ -91,6 +91,8 @@ describe('getTerms', () => {
             times_correct: 11,
         };
 
+        localStorageMock.removeItem('globalfinterm_terms:guest');
+        localStorageMock.removeItem('globalfinterm_data_version:guest');
         localStorageMock.setItem('globalfinterm_terms', JSON.stringify([staleCachedTerm]));
         localStorageMock.setItem('globalfinterm_data_version', '2026-02-01-v1');
 
@@ -107,6 +109,41 @@ describe('getTerms', () => {
             times_reviewed: 12,
             times_correct: 11,
         });
+        expect(localStorageMock.getItem('globalfinterm_terms:guest')).not.toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version:guest')).toBe('2026-03-25-v5');
+        expect(localStorageMock.getItem('globalfinterm_terms')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version')).toBeNull();
+    });
+
+    it('should isolate authenticated terms from guest cached term state', () => {
+        const guestTerms = getTerms();
+        const guestFirstTerm = guestTerms[0];
+
+        expect(guestFirstTerm).toBeDefined();
+        if (!guestFirstTerm) {
+            throw new Error('Expected at least one guest term.');
+        }
+
+        saveTerms([
+            {
+                ...guestFirstTerm,
+                times_reviewed: 9,
+                times_correct: 8,
+                retention_rate: 0.89,
+            },
+            ...guestTerms.slice(1),
+        ]);
+
+        const authenticatedTerms = getTerms('user_42');
+        const authenticatedFirstTerm = authenticatedTerms.find((term) => term.id === guestFirstTerm.id);
+
+        expect(authenticatedFirstTerm).toBeDefined();
+        expect(authenticatedFirstTerm).toMatchObject({
+            id: guestFirstTerm.id,
+            times_reviewed: guestFirstTerm.times_reviewed,
+            times_correct: guestFirstTerm.times_correct,
+            retention_rate: guestFirstTerm.retention_rate,
+        });
     });
 });
 
@@ -118,7 +155,7 @@ describe('saveTerms', () => {
         const terms = getTerms();
         saveTerms(terms);
         expect(localStorageMock.setItem).toHaveBeenCalledWith(
-            'globalfinterm_terms',
+            'globalfinterm_terms:guest',
             expect.any(String)
         );
     });
@@ -316,15 +353,21 @@ describe('Language preference', () => {
 describe('resetAllData', () => {
     it('should clear all storage keys', () => {
         getTerms(); // Initialize
+        saveTerms(getTerms(), 'user_7');
         getUserProgress();
         saveUserProgress(createProgress({ user_id: 'user_7', current_streak: 3 }), 'user_7');
         setCurrentLanguage('tr');
 
         resetAllData();
 
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_terms');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress');
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_language');
+        expect(localStorageMock.getItem('globalfinterm_terms')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_terms:guest')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version:guest')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_terms:auth:user_7')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version:auth:user_7')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:guest')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_7')).toBeNull();
         expect(document.cookie).not.toContain(`${LANGUAGE_COOKIE_NAME}=tr`);

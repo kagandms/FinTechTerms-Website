@@ -13,7 +13,10 @@ import { endOfUtcDay, startOfUtcDay } from '@/lib/time';
 import { logger } from '@/lib/logger';
 
 const STORAGE_KEYS = {
-    TERMS: 'globalfinterm_terms',
+    TERMS_LEGACY: 'globalfinterm_terms',
+    TERMS_PREFIX: 'globalfinterm_terms',
+    TERMS_VERSION_LEGACY: 'globalfinterm_data_version',
+    TERMS_VERSION_PREFIX: 'globalfinterm_data_version',
     USER_PROGRESS_LEGACY: 'globalfinterm_user_progress',
     USER_PROGRESS_PREFIX: 'globalfinterm_user_progress',
     LANGUAGE: 'globalfinterm_language',
@@ -66,6 +69,26 @@ const getProgressStorageKey = (userId: string | null | undefined): string => {
     }
 
     return `${STORAGE_KEYS.USER_PROGRESS_PREFIX}:auth:${scopeUserId}`;
+};
+
+const getTermsStorageKey = (userId: string | null | undefined): string => {
+    const scopeUserId = resolveProgressScopeUserId(userId);
+
+    if (!scopeUserId) {
+        return `${STORAGE_KEYS.TERMS_PREFIX}:${GUEST_PROGRESS_SCOPE}`;
+    }
+
+    return `${STORAGE_KEYS.TERMS_PREFIX}:auth:${scopeUserId}`;
+};
+
+const getTermsVersionStorageKey = (userId: string | null | undefined): string => {
+    const scopeUserId = resolveProgressScopeUserId(userId);
+
+    if (!scopeUserId) {
+        return `${STORAGE_KEYS.TERMS_VERSION_PREFIX}:${GUEST_PROGRESS_SCOPE}`;
+    }
+
+    return `${STORAGE_KEYS.TERMS_VERSION_PREFIX}:auth:${scopeUserId}`;
 };
 
 const createDefaultProgress = (userId?: string | null): UserProgress => {
@@ -153,6 +176,11 @@ const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[]
     });
 };
 
+const clearLegacyTermsCache = (): void => {
+    localStorage.removeItem(STORAGE_KEYS.TERMS_LEGACY);
+    localStorage.removeItem(STORAGE_KEYS.TERMS_VERSION_LEGACY);
+};
+
 const migrateLegacyUserProgress = (userId?: string | null): void => {
     const legacyProgress = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
     if (!legacyProgress) {
@@ -199,31 +227,51 @@ const migrateLegacyUserProgress = (userId?: string | null): void => {
  * Get all terms from storage (or initialize with mock data)
  * Refresh cached data only when the schema version changes
  */
-export function getTerms(): Term[] {
+export function getTerms(userId?: string | null): Term[] {
     const fallbackTerms = filterAcademicTerms(mockTerms);
 
     if (!isLocalStorageAvailable()) return fallbackTerms;
 
     try {
-        const storedVersion = localStorage.getItem('globalfinterm_data_version');
-        const stored = localStorage.getItem(STORAGE_KEYS.TERMS);
+        const termsStorageKey = getTermsStorageKey(userId);
+        const versionStorageKey = getTermsVersionStorageKey(userId);
+        const isGuestScope = resolveProgressScopeUserId(userId) === null;
+        let storedVersion = localStorage.getItem(versionStorageKey);
+        let stored = localStorage.getItem(termsStorageKey);
+
+        if (!stored && isGuestScope) {
+            stored = localStorage.getItem(STORAGE_KEYS.TERMS_LEGACY);
+            storedVersion = storedVersion ?? localStorage.getItem(STORAGE_KEYS.TERMS_VERSION_LEGACY);
+        }
+
         const parsedTerms = parseStoredTerms(stored);
 
         // Refresh content schema while preserving compatible local SRS state.
         if (storedVersion !== DATA_VERSION) {
             const migratedTerms = mergeTermStudyState(fallbackTerms, parsedTerms);
-            localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(migratedTerms));
-            localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
+            localStorage.setItem(termsStorageKey, JSON.stringify(migratedTerms));
+            localStorage.setItem(versionStorageKey, DATA_VERSION);
+            if (isGuestScope) {
+                clearLegacyTermsCache();
+            }
             return migratedTerms;
         }
 
         if (parsedTerms.length > 0) {
+            localStorage.setItem(termsStorageKey, JSON.stringify(parsedTerms));
+            localStorage.setItem(versionStorageKey, storedVersion ?? DATA_VERSION);
+            if (isGuestScope) {
+                clearLegacyTermsCache();
+            }
             return filterAcademicTerms(parsedTerms);
         }
 
         // Initialize with mock data
-        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(fallbackTerms));
-        localStorage.setItem('globalfinterm_data_version', DATA_VERSION);
+        localStorage.setItem(termsStorageKey, JSON.stringify(fallbackTerms));
+        localStorage.setItem(versionStorageKey, DATA_VERSION);
+        if (isGuestScope) {
+            clearLegacyTermsCache();
+        }
         return fallbackTerms;
     } catch {
         return fallbackTerms;
@@ -233,11 +281,15 @@ export function getTerms(): Term[] {
 /**
  * Save terms to storage
  */
-export function saveTerms(terms: Term[]): void {
+export function saveTerms(terms: Term[], userId?: string | null): void {
     if (!isLocalStorageAvailable()) return;
 
     try {
-        localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(filterAcademicTerms(terms)));
+        localStorage.setItem(
+            getTermsStorageKey(userId),
+            JSON.stringify(filterAcademicTerms(terms))
+        );
+        localStorage.setItem(getTermsVersionStorageKey(userId), DATA_VERSION);
     } catch (error) {
         logger.error('STORAGE_SAVE_TERMS_FAILED', {
             route: 'storage',
@@ -249,13 +301,13 @@ export function saveTerms(terms: Term[]): void {
 /**
  * Update a single term
  */
-export function updateTerm(updatedTerm: Term): Term[] {
-    const terms = getTerms();
+export function updateTerm(updatedTerm: Term, userId?: string | null): Term[] {
+    const terms = getTerms(userId);
     const index = terms.findIndex(t => t.id === updatedTerm.id);
 
     if (index !== -1) {
         terms[index] = updatedTerm;
-        saveTerms(terms);
+        saveTerms(terms, userId);
     }
 
     return terms;
@@ -394,12 +446,12 @@ export function addQuizAttempt(attempt: QuizAttempt, userId?: string | null): Us
 
     // Update words learned count
     if (attempt.is_correct) {
-        const term = getTerms().find(t => t.id === attempt.term_id);
+        const term = getTerms(userId).find(t => t.id === attempt.term_id);
         if (term && term.srs_level >= 4) {
             updatedProgress.total_words_learned = Math.max(
                 updatedProgress.total_words_learned,
                 updatedProgress.favorites.filter(id => {
-                    const t = getTerms().find(tm => tm.id === id);
+                    const t = getTerms(userId).find(tm => tm.id === id);
                     return t && t.srs_level >= 4;
                 }).length
             );
@@ -468,17 +520,27 @@ export function resetAllData(): void {
     if (!isLocalStorageAvailable()) return;
 
     try {
-        localStorage.removeItem(STORAGE_KEYS.TERMS);
+        clearLegacyTermsCache();
         localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
         localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
         const progressKeys: string[] = [];
+        const termKeys: string[] = [];
         for (let index = 0; index < localStorage.length; index += 1) {
             const key = localStorage.key(index);
             if (key?.startsWith(`${STORAGE_KEYS.USER_PROGRESS_PREFIX}:`)) {
                 progressKeys.push(key);
             }
+            if (
+                key?.startsWith(`${STORAGE_KEYS.TERMS_PREFIX}:`)
+                || key?.startsWith(`${STORAGE_KEYS.TERMS_VERSION_PREFIX}:`)
+            ) {
+                termKeys.push(key);
+            }
         }
         progressKeys.forEach((key) => {
+            localStorage.removeItem(key);
+        });
+        termKeys.forEach((key) => {
             localStorage.removeItem(key);
         });
         if (typeof document !== 'undefined') {

@@ -1,5 +1,6 @@
 import os
 from supabase import create_client
+from destructive_target_guard import assert_safe_destructive_target
 
 
 def _require_env(name: str, fallback_name: str | None = None) -> str:
@@ -21,6 +22,7 @@ def _require_env(name: str, fallback_name: str | None = None) -> str:
 # Configuration
 SUPABASE_URL = _require_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_SERVICE_KEY = _require_env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY")
+assert_safe_destructive_target(SUPABASE_URL, "scripts/clean_data.py")
 
 def clean_data():
     print("🧹 Starting cleanup of synthetic data...")

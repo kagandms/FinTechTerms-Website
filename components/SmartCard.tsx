@@ -120,14 +120,6 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             return;
         }
 
-        if (result.syncDeferred) {
-            showToast(
-                result.error || t('smartCard.favoriteSyncDeferred'),
-                'warning'
-            );
-            return;
-        }
-
         showToast(
             result.isFavorite
                 ? t('smartCard.favoriteAdded')

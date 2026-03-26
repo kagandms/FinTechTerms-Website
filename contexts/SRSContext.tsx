@@ -46,7 +46,6 @@ interface FavoriteToggleResult {
     isFavorite?: boolean;
     error?: string;
     authExpired?: boolean;
-    syncDeferred?: boolean;
 }
 
 interface SRSContextType {
@@ -100,6 +99,21 @@ const mergeProgressSnapshots = (
     remoteProgress: UserProgress,
     missingSegments: readonly UserProgressLoadMissingSegment[]
 ): UserProgress => mergeUserProgressSnapshot(localProgress, remoteProgress, missingSegments);
+
+const buildFavoriteFailureResult = (
+    isFavorite: boolean,
+    error: string,
+    options: {
+        authExpired?: boolean;
+        limitReached?: boolean;
+    } = {}
+): FavoriteToggleResult => ({
+    success: false,
+    limitReached: options.limitReached ?? false,
+    isFavorite,
+    error,
+    authExpired: options.authExpired,
+});
 
 export function SRSProvider({ children }: SRSProviderProps) {
     const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
@@ -219,7 +233,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     : existingTerm
             ));
 
-            saveTerms(reconciledTerms);
+            saveTerms(reconciledTerms, userId);
             return reconciledTerms;
         });
 
@@ -257,7 +271,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 ? updatedTerm
                 : entry
         ));
-        updateTermInStorage(updatedTerm);
+        updateTermInStorage(updatedTerm, userId);
         const updatedProgress = addQuizAttemptToStorage(attempt, userId);
 
         setTerms(updatedTerms);
@@ -293,7 +307,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                     : existingTerm
             ));
 
-            saveTerms(reconciledTerms);
+            saveTerms(reconciledTerms, userId);
             return reconciledTerms;
         });
 
@@ -302,7 +316,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 return prev;
             }
 
-            const nextQuizHistory = prev.quiz_history.some((attempt) => attempt.id === message.reviewId)
+            const nextQuizHistory = prev.quiz_history.some((existingAttempt) => existingAttempt.id === attempt.id)
                 ? prev.quiz_history
                 : [
                     ...prev.quiz_history,
@@ -338,7 +352,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         setProgressError(null);
         try {
             // Default to local storage or mock data initially
-            let currentTerms = getTerms();
+            let currentTerms = getTerms(userId);
 
             // CLEANUP: Deduplicate local terms immediately (handle poisoned localStorage)
             const uniqueLocalTerms = new Map<string, Term>();
@@ -374,7 +388,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 });
                 const { mockTerms } = await import('@/data/mockData');
                 currentTerms = filterAcademicTerms(mockTerms);
-                saveTerms(currentTerms);
+                saveTerms(currentTerms, userId);
                 nextTermsStatus = 'ready';
             }
 
@@ -646,34 +660,22 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 try {
                     const response = await toggleFavoriteInSupabase(userId, termId, shouldFavorite);
                     if (response.status === 'auth_expired') {
-                        return {
-                            success: true,
-                            limitReached: false,
-                            isFavorite: shouldFavorite,
-                            error: response.message,
-                            authExpired: true,
-                            syncDeferred: true,
-                        };
+                        persistFavorites(currentFavorites);
+                        return buildFavoriteFailureResult(
+                            isCurrentlyFavorite,
+                            response.message,
+                            { authExpired: true }
+                        );
                     }
 
                     if (response.status !== 'ok') {
                         if (response.status === 'retryable') {
-                            return {
-                                success: true,
-                                limitReached: false,
-                                isFavorite: shouldFavorite,
-                                error: response.message,
-                                syncDeferred: true,
-                            };
+                            persistFavorites(currentFavorites);
+                            return buildFavoriteFailureResult(isCurrentlyFavorite, response.message);
                         }
 
                         persistFavorites(currentFavorites);
-                        return {
-                            success: false,
-                            limitReached: false,
-                            isFavorite: isCurrentlyFavorite,
-                            error: response.message,
-                        };
+                        return buildFavoriteFailureResult(isCurrentlyFavorite, response.message);
                     }
 
                     setUserProgress(prev => {
@@ -700,14 +702,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         termId,
                         error: error instanceof Error ? error : undefined,
                     });
+                    persistFavorites(currentFavorites);
 
-                    return {
-                        success: true,
-                        limitReached: false,
-                        isFavorite: shouldFavorite,
-                        error: error instanceof Error ? error.message : 'Failed to update favorite.',
-                        syncDeferred: true,
-                    };
+                    return buildFavoriteFailureResult(
+                        isCurrentlyFavorite,
+                        error instanceof Error ? error.message : 'Failed to update favorite.'
+                    );
                 } finally {
                     setFavoritePendingState(prev => {
                         const next = { ...prev };

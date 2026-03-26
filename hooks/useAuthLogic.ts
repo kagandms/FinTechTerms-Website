@@ -263,6 +263,18 @@ export function useAuthLogic() {
         }, 1000);
     };
 
+    const handleLogout = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+        const result = await logout();
+
+        if (!result.success) {
+            const message = getLocalizedAuthError(result.error, language);
+            setAuthError(message);
+            showToast(message, 'error');
+        }
+
+        return result;
+    }, [language, logout, showToast]);
+
     return {
         // State
         user, isAuthenticated,
@@ -281,7 +293,7 @@ export function useAuthLogic() {
         // Actions
         handleAuth,
         handleDataReset,
-        logout,
+        logout: handleLogout,
         verifyOTP,
         resendOTP,
         resetPassword,

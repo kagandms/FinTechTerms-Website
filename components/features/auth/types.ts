@@ -58,7 +58,7 @@ export interface UpdatePasswordProps extends CommonAuthProps {
     validatePassword: (password: string) => { valid: boolean; message: string };
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;
-    logout: () => Promise<void> | void;
+    logout: () => Promise<AuthActionResult> | void;
     onSuccess: () => void;
     showToast: (msg: string, type: AuthToastType) => void;
 }

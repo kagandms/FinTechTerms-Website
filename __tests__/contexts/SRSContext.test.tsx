@@ -149,6 +149,7 @@ function TestConsumer() {
             <div data-testid="current-streak">{userProgress.current_streak}</div>
             <div data-testid="last-study-date">{userProgress.last_study_date ?? 'none'}</div>
             <div data-testid="favorites-count">{userProgress.favorites.length}</div>
+            <div data-testid="quiz-history-count">{userProgress.quiz_history.length}</div>
             <button
                 type="button"
                 onClick={() => {
@@ -264,7 +265,7 @@ describe('SRSContext', () => {
         expect(mockGetAllTermSRSFromSupabaseUnbounded).not.toHaveBeenCalled();
     });
 
-    it('keeps an authenticated favorite locally when server sync is retryable', async () => {
+    it('rolls back an authenticated favorite when server sync is retryable', async () => {
         mockGetUserProgress.mockReturnValue({
             ...baseProgress,
             favorites: [],
@@ -290,9 +291,41 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'favorite' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('favorites-count')).toHaveTextContent('1');
-            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"success":true');
-            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"syncDeferred":true');
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"success":false');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"error":"Temporary failure"');
+        });
+    });
+
+    it('rolls back an authenticated favorite when the session is expired', async () => {
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            favorites: [],
+        });
+        mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult({
+            favorites: [],
+        }));
+        mockToggleFavoriteInSupabase.mockResolvedValue({
+            status: 'auth_expired',
+            message: 'Session expired. Please sign in again to update favorites.',
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'favorite' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"success":false');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"authExpired":true');
         });
     });
 
@@ -517,6 +550,18 @@ describe('SRSContext', () => {
             user: null,
         };
         mockUseAuth.mockImplementation(() => authState);
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            user_id: 'guest_user',
+            quiz_history: [{
+                id: 'attempt-1',
+                term_id: 'term-1',
+                is_correct: true,
+                response_time_ms: 0,
+                timestamp: recordQuizResult.userProgress.updated_at,
+                quiz_type: 'daily',
+            }],
+        });
 
         render(
             <SRSProvider>
@@ -535,7 +580,7 @@ describe('SRSContext', () => {
             termSrs: recordQuizResult.termSrs,
             userProgress: recordQuizResult.userProgress,
             attempt: {
-                id: 'review-2',
+                id: 'attempt-1',
                 term_id: 'term-1',
                 is_correct: true,
                 response_time_ms: 0,
@@ -554,6 +599,7 @@ describe('SRSContext', () => {
 
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('1');
         });
     });
 

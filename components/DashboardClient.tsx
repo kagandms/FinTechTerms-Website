@@ -8,6 +8,7 @@ import {
     BarChart, Bar, AreaChart, Area
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { LogOut } from 'lucide-react';
 
 export interface DashboardQueryState<T> {
@@ -58,6 +59,7 @@ interface Props {
 
 export default function DashboardClient({ learningData, latencyData, fatigueRaw, distributionRaw }: Props) {
     const { logout } = useAuth();
+    const { showToast } = useToast();
 
     // 1. Process Learning Curve (Group by Date)
     const learningCurve = useMemo(() => {
@@ -190,6 +192,14 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
         });
     }, [distributionRaw.data]);
 
+    const handleLogout = async () => {
+        const result = await logout();
+
+        if (!result.success) {
+            showToast(result.error || 'Unable to sign out. Please try again.', 'error');
+        }
+    };
+
     return (
         <div className="flex flex-col gap-12">
 
@@ -197,7 +207,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
             <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
                 <button
-                    onClick={() => logout()}
+                    onClick={() => {
+                        void handleLogout();
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                 >
                     <LogOut className="w-4 h-4" />

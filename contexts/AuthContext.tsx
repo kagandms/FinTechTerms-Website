@@ -29,9 +29,41 @@ interface AuthContextType {
     cancelVerification: () => void;
     resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
     updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
-    logout: () => Promise<void>;
+    logout: () => Promise<{ success: boolean; error?: string }>;
     favoriteLimit: number;
 }
+
+const SIGNOUT_FAILED_MESSAGE = 'Unable to sign out. Please try again.';
+
+const readSignoutRouteMessage = async (response: Response): Promise<string> => {
+    try {
+        const payload = await response.json();
+        if (payload && typeof payload.message === 'string' && payload.message.trim().length > 0) {
+            return payload.message;
+        }
+    } catch {
+        // Fall back to the generic sign-out error message.
+    }
+
+    return SIGNOUT_FAILED_MESSAGE;
+};
+
+const clearLocalAuthArtifacts = (currentUserId: string | null): void => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (currentUserId) {
+        clearStoredUserProgress(currentUserId);
+    }
+
+    clearLegacyUserProgress();
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+        }
+    });
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -499,7 +531,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     route: 'AuthProvider',
                     error,
                 });
-                setIsPasswordRecovery(false);
                 return { success: false, error: error.message };
             }
 
@@ -508,7 +539,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return { success: true };
             }
 
-            setIsPasswordRecovery(false);
             return { success: false, error: 'Beklenmeyen bir durum oluştu.' };
 
         } catch (error: unknown) {
@@ -516,7 +546,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
             });
-            setIsPasswordRecovery(false);
             if (error instanceof Error) {
                 if (error.name === 'AbortError' || error.message?.includes('aborted')) {
                     return { success: false, error: 'İşlem iptal edildi. Lütfen sayfayı yenileyip tekrar deneyin.' };
@@ -527,32 +556,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, [supabaseAuth]);
 
-    const logout = useCallback(async () => {
+    const logout = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
         try {
-            // Clear local storage for SRS data and ALL Supabase tokens
-            if (typeof window !== 'undefined') {
-                if (currentUserId) {
-                    clearStoredUserProgress(currentUserId);
-                }
-                clearLegacyUserProgress();
-                // Remove all Supabase session tokens from localStorage
-                Object.keys(localStorage).forEach(key => {
-                    if (key.startsWith('sb-')) {
-                        localStorage.removeItem(key);
-                    }
+            const response = await fetch('/api/auth/signout', { method: 'POST' });
+            if (!response.ok) {
+                logger.warn('AUTH_SIGNOUT_ROUTE_FAILED', {
+                    route: 'AuthProvider',
+                    status: response.status,
                 });
+                return {
+                    success: false,
+                    error: await readSignoutRouteMessage(response),
+                };
             }
 
-            // 1. First, tell the Next.js Server to clear all HttpOnly secure cookies
-            await fetch('/api/auth/signout', { method: 'POST' });
+            clearLocalAuthArtifacts(currentUserId);
 
-            // 2. Optimistic Logout: Clear state immediately
             setIsAdmin(false);
             setUser(null);
             setPendingVerificationEmail(null);
             setPendingVerificationPassword(null);
 
-            // 3. Tell Supabase Client to nuke session globally
             const { error } = await supabaseAuth.signOut({ scope: 'global' });
             if (error) {
                 logger.error('AUTH_SIGNOUT_ERROR', {
@@ -560,19 +584,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     error,
                 });
             }
+
+            if (typeof window !== 'undefined') {
+                window.location.href = '/';
+            }
+
+            return { success: true };
         } catch (error) {
             logger.error('AUTH_LOGOUT_EXCEPTION', {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
             });
-        } finally {
-            // Always set user to null, even if signOut fails
-            setIsAdmin(false);
-            setUser(null);
-            // Hard reload to ensure ALL auth state is fully cleared (server-side cookies, client state, SSR cache)
-            if (typeof window !== 'undefined') {
-                window.location.href = '/';
-            }
+            return {
+                success: false,
+                error: SIGNOUT_FAILED_MESSAGE,
+            };
         }
     }, [currentUserId, supabaseAuth]);
 

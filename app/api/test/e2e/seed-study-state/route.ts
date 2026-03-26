@@ -25,7 +25,6 @@ const isPreviewLikeRuntime = (): boolean => {
     }
 
     const vercelEnv = process.env.VERCEL_ENV?.trim().toLowerCase();
-    const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
     const sentryEnvironment = (
         process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT
         || process.env.SENTRY_ENVIRONMENT
@@ -33,7 +32,6 @@ const isPreviewLikeRuntime = (): boolean => {
     ).trim().toLowerCase();
 
     return vercelEnv === 'preview'
-        || nodeEnv === 'production'
         || sentryEnvironment === 'preview'
         || sentryEnvironment === 'staging';
 };

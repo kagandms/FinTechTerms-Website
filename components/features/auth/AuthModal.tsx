@@ -50,7 +50,7 @@ interface AuthModalProps {
     t: (key: string) => string;
     language: Language;
     showToast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void;
-    logout: () => Promise<void>;
+    logout: () => Promise<AuthActionResult>;
     router: AuthModalRouter;
 }
 

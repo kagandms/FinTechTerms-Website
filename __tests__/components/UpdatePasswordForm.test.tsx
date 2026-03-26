@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import { UpdatePasswordForm } from '@/components/features/auth/UpdatePasswordForm';
@@ -45,5 +45,40 @@ describe('UpdatePasswordForm', () => {
 
         expect(screen.getByText('Yeni Şifre Belirle')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Şifreyi Güncelle' })).toBeInTheDocument();
+    });
+
+    it('shows an error and does not call success handlers when updatePassword fails', async () => {
+        const updatePassword = jest.fn().mockResolvedValue({
+            success: false,
+            error: 'Session expired. Please try again.',
+        });
+        const logout = jest.fn();
+        const onSuccess = jest.fn();
+        const showToast = jest.fn();
+
+        render(<UpdatePasswordForm
+            {...createProps('en')}
+            authForm={{
+                email: '',
+                password: 'StrongPass1!',
+                confirmPassword: '',
+                name: '',
+                surname: '',
+                birthDate: '',
+            }}
+            updatePassword={updatePassword}
+            logout={logout}
+            onSuccess={onSuccess}
+            showToast={showToast}
+        />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Update Password' }));
+
+        await waitFor(() => {
+            expect(updatePassword).toHaveBeenCalledWith('StrongPass1!');
+            expect(onSuccess).not.toHaveBeenCalled();
+            expect(logout).not.toHaveBeenCalled();
+            expect(showToast).toHaveBeenCalledWith('Session expired. Please try again.', 'error');
+        });
     });
 });

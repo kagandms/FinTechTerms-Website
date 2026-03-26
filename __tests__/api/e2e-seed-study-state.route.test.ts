@@ -119,6 +119,66 @@ describe('e2e seed study state route', () => {
         });
     });
 
+    it('returns 404 in production even when the seed secret is configured', async () => {
+        process.env = {
+            ...process.env,
+            NODE_ENV: 'production',
+            E2E_SEED_SECRET: 'seed-secret',
+        };
+        delete process.env.VERCEL_ENV;
+        delete process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT;
+        delete process.env.SENTRY_ENVIRONMENT;
+
+        const { POST } = await import('@/app/api/test/e2e/seed-study-state/route');
+        const response = await POST(createRequest({
+            userEmail: 'qa@example.com',
+            favoriteTermIds: ['term_001'],
+            dueTermIds: ['term_001'],
+        }, 'seed-secret'));
+        const body = await response.json();
+
+        expect(response.status).toBe(404);
+        expect(body).toMatchObject({
+            code: 'E2E_SEED_DISABLED',
+            retryable: false,
+        });
+    });
+
+    it('allows the route in preview-like production runtimes', async () => {
+        process.env = {
+            ...process.env,
+            NODE_ENV: 'production',
+            VERCEL_ENV: 'preview',
+            E2E_SEED_SECRET: 'seed-secret',
+        };
+
+        mockListUsers.mockResolvedValue({
+            data: {
+                users: [{
+                    id: 'user-1',
+                    email: 'qa@example.com',
+                }],
+            },
+            error: null,
+        });
+
+        const { POST } = await import('@/app/api/test/e2e/seed-study-state/route');
+        const response = await POST(createRequest({
+            userEmail: 'qa@example.com',
+            favoriteTermIds: ['term_001'],
+            dueTermIds: ['term_001'],
+        }, 'seed-secret'));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({
+            ok: true,
+            userId: 'user-1',
+            seededFavorites: ['term_001'],
+            seededDueTerms: ['term_001'],
+        });
+    });
+
     it('returns 403 for an invalid seed secret', async () => {
         const { POST } = await import('@/app/api/test/e2e/seed-study-state/route');
         const response = await POST(createRequest({

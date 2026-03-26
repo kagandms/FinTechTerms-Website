@@ -147,4 +147,37 @@ describe('useAuthLogic', () => {
         expect(login).toHaveBeenCalledWith('alex@example.com', 'StrongPass1!');
         expect(mockPush).toHaveBeenCalledWith('/favorites');
     });
+
+    it('shows a toast when logout fails', async () => {
+        const logout = jest.fn().mockResolvedValue({
+            success: false,
+            error: 'Unable to sign out. Please try again.',
+        });
+        mockUseAuth.mockReturnValue({
+            user: { id: 'user-1' },
+            isAuthenticated: true,
+            login: jest.fn(),
+            register: jest.fn(),
+            logout,
+            verifyOTP: jest.fn(),
+            resendOTP: jest.fn(),
+            pendingVerificationEmail: null,
+            cancelVerification: jest.fn(),
+            resetPassword: jest.fn(),
+            updatePassword: jest.fn(),
+            isPasswordRecovery: false,
+        });
+
+        const { result } = renderHook(() => useAuthLogic());
+
+        await act(async () => {
+            await result.current.logout();
+        });
+
+        expect(logout).toHaveBeenCalledTimes(1);
+        expect(mockShowToast).toHaveBeenCalledWith(
+            'The request could not be completed right now. Please try again.',
+            'error'
+        );
+    });
 });

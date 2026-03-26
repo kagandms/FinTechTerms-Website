@@ -1,6 +1,7 @@
 
 import os
 from supabase import create_client
+from destructive_target_guard import assert_safe_destructive_target
 
 
 def _require_env(name: str, fallback_name: str | None = None) -> str:
@@ -22,6 +23,7 @@ def _require_env(name: str, fallback_name: str | None = None) -> str:
 # Use the same config as the main script
 SUPABASE_URL = _require_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_SERVICE_KEY = _require_env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY")
+assert_safe_destructive_target(SUPABASE_URL, "scripts/diagnose_db.py")
 
 def test_insert():
     print(f"Connecting to {SUPABASE_URL}...")

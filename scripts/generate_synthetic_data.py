@@ -10,6 +10,7 @@ from typing import List, Dict, Optional
 # 3rd party libs (pip install faker supabase numpy)
 from faker import Faker
 from supabase import create_client, Client
+from destructive_target_guard import assert_safe_destructive_target
 
 # ==========================================
 # CONFIGURATION
@@ -51,6 +52,8 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("❌ ERROR: Missing Supabase Credentials.")
     print("Please ensure .env.local exists in the project root with NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
     exit(1)
+
+assert_safe_destructive_target(SUPABASE_URL, "scripts/generate_synthetic_data.py")
 
 NUM_BOTS = 50
 DAYS_TO_SIMULATE = 30
