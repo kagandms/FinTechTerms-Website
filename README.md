@@ -9,7 +9,7 @@
 
 ## 🏗 Architecture
 
-This is a **monorepo** containing two applications sharing a single Supabase database:
+This is a **monorepo** containing two applications sharing a shared Supabase database:
 
 ```
 FinTechTerms Website/
