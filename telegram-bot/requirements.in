@@ -1,5 +1,6 @@
 # Install intent for the Telegram bot runtime.
 # Keep this file human-readable; refresh requirements.txt with pip-compile.
+anyio<4.13
 python-telegram-bot[ext]
 supabase
 python-dotenv
