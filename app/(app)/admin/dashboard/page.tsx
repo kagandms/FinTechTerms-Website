@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import { isAdminUserId } from '@/lib/admin-access';
 
 export const dynamic = 'force-dynamic';
+const ADMIN_SIMULATION_QUERY_LIMIT = 5000;
 
 const loadDashboardQuery = async <T,>(
     queryName: string,
@@ -67,19 +68,26 @@ export default async function AdminDashboard() {
             .from('quiz_attempts')
             .select('created_at, is_correct')
             .eq('quiz_type', 'simulation')
-            .order('created_at', { ascending: true })),
+            .order('created_at', { ascending: false })
+            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
         loadDashboardQuery('Latency analysis', async () => await supabaseAdmin
             .from('quiz_attempts')
             .select('is_correct, response_time_ms')
-            .eq('quiz_type', 'simulation')),
+            .eq('quiz_type', 'simulation')
+            .order('created_at', { ascending: false })
+            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
         loadDashboardQuery('Fatigue analysis', async () => await supabaseAdmin
             .from('quiz_attempts')
-            .select('user_id, is_correct, created_at')
-            .eq('quiz_type', 'simulation')),
+            .select('session_id, user_id, is_correct, created_at')
+            .eq('quiz_type', 'simulation')
+            .order('created_at', { ascending: false })
+            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
         loadDashboardQuery('Class distribution', async () => await supabaseAdmin
             .from('quiz_attempts')
             .select('user_id, is_correct')
-            .eq('quiz_type', 'simulation')),
+            .eq('quiz_type', 'simulation')
+            .order('created_at', { ascending: false })
+            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
     ]);
 
     return (

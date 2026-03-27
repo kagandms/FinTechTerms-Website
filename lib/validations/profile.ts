@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getTranslationString } from '@/lib/i18n';
+import { calculateAgeFromCalendarDate, getLocalCalendarDate, parseIsoCalendarDate } from '@/lib/time';
 import type { Language } from '@/types';
 
 /**
@@ -30,15 +31,10 @@ export function createProfileSchema(language: Language) {
         birthDate: z.string().optional().refine((val) => {
             if (!val || val.trim() === '') return true; // Boş/geçersiz gönderimlerde DB'ye boş gitmesine izin ver ya da bloklanmasını iptal et
 
-            const dob = new Date(val);
-            if (isNaN(dob.getTime())) return false;
+            const birthDate = parseIsoCalendarDate(val);
+            if (!birthDate) return false;
 
-            const today = new Date();
-            let age = today.getFullYear() - dob.getFullYear();
-            const m = today.getMonth() - dob.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-                age--;
-            }
+            const age = calculateAgeFromCalendarDate(birthDate, getLocalCalendarDate());
             return age >= 13 && age <= 120;
         }, msg.birthDateInvalid),
         email: nullableEmailSchema,

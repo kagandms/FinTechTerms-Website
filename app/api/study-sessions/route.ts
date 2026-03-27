@@ -22,9 +22,8 @@ import {
 import {
     createStudySessionToken,
     hashStudySessionToken,
-    isStudySessionTokenMatch,
 } from '@/lib/study-session-token';
-import { createServiceRoleClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
+import { createRequestScopedClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
 import { hasConfiguredStudySessionEnv } from '@/lib/env';
 
 const StartSessionSchema = z.object({
@@ -82,13 +81,6 @@ type SessionCacheableBody =
     | StartSessionResponseBody
     | { success: true }
     | CachedApiErrorBody;
-
-interface StudySessionRow {
-    id: string;
-    user_id: string | null;
-    anonymous_id: string | null;
-    session_token_hash: string | null;
-}
 
 const buildScopedIdempotencyKey = (
     ip: string,
@@ -166,85 +158,74 @@ const respondWithCachedError = (
     });
 };
 
-const fetchStudySession = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    sessionId: string
-): Promise<StudySessionRow | null> => {
-    const { data, error } = await supabaseAdmin
-        .from('study_sessions')
-        .select('id, user_id, anonymous_id, session_token_hash')
-        .eq('id', sessionId)
-        .maybeSingle();
+const getSessionNotFoundMessage = (payload: SessionAction): string => (
+    payload.action === 'start' && payload.previous_session_id
+        ? 'Previous study session not found.'
+        : 'Study session not found.'
+);
 
-    if (error) {
-        throw error;
+const getSessionForbiddenMessage = (payload: SessionAction): string => (
+    payload.action === 'start' && payload.previous_session_id
+        ? 'Previous study session does not belong to this requester.'
+        : 'Study session does not belong to this requester.'
+);
+
+const createSessionErrorResponse = (
+    payload: SessionAction,
+    requestId: string,
+    scope: string,
+    idempotencyKey: string,
+    error: { code?: string | null; message?: string | null }
+) => {
+    if (error.code === 'P0002') {
+        return respondWithCachedError(
+            scope,
+            idempotencyKey,
+            404,
+            buildCachedApiError(
+                requestId,
+                'STUDY_SESSION_NOT_FOUND',
+                getSessionNotFoundMessage(payload),
+                false
+            )
+        );
     }
 
-    return data as StudySessionRow | null;
+    if (error.code === '42501') {
+        return respondWithCachedError(
+            scope,
+            idempotencyKey,
+            403,
+            buildCachedApiError(
+                requestId,
+                'STUDY_SESSION_FORBIDDEN',
+                getSessionForbiddenMessage(payload),
+                false
+            )
+        );
+    }
+
+    return null;
 };
 
-const validateSessionOwnership = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    sessionId: string,
-    sessionToken: string,
-    userId: string | null
-): Promise<StudySessionRow | false | null> => {
-    const session = await fetchStudySession(supabaseAdmin, sessionId);
-
-    if (!session) {
-        return null;
-    }
-
-    if (!isStudySessionTokenMatch(session.session_token_hash, sessionToken)) {
-        return false;
-    }
-
-    if (session.user_id && session.user_id !== userId) {
-        return false;
-    }
-
-    return session;
-};
-
-const findExistingStartedSession = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    payload: StartSessionAction,
-    userId: string | null
-): Promise<Pick<StudySessionRow, 'id'> | null> => {
-    let query = supabaseAdmin
-        .from('study_sessions')
-        .select('id')
-        .eq('idempotency_key', payload.idempotency_key);
-
-    if (userId) {
-        query = query.eq('user_id', userId);
-    } else if (payload.anonymousId) {
-        query = query.eq('anonymous_id', payload.anonymousId);
-    } else {
-        return null;
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-        throw error;
-    }
-
-    return data as Pick<StudySessionRow, 'id'> | null;
-};
+const coerceSessionId = (value: unknown): string | null => (
+    typeof value === 'string' && value.length > 0
+        ? value
+        : null
+);
 
 const buildStartSessionResponse = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    sessionId: string,
-    idempotencyKey: string
+    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    payload: StartSessionAction,
+    sessionId: string
 ): Promise<StartSessionResponseBody> => {
-    const sessionToken = createStudySessionToken(sessionId, idempotencyKey);
-    const { error } = await supabaseAdmin
-        .from('study_sessions')
-        .update({
-            session_token_hash: hashStudySessionToken(sessionToken),
-        })
-        .eq('id', sessionId);
+    const sessionToken = createStudySessionToken(sessionId, payload.idempotency_key);
+    const { error } = await supabase.rpc('bind_study_session_token', {
+        p_session_id: sessionId,
+        p_idempotency_key: payload.idempotency_key,
+        p_session_token_hash: hashStudySessionToken(sessionToken),
+        p_anonymous_id: payload.anonymousId ?? null,
+    });
 
     if (error) {
         throw error;
@@ -256,104 +237,42 @@ const buildStartSessionResponse = async (
     };
 };
 
-const transferAnonymousSessionToUser = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    payload: StartSessionAction,
-    userId: string
-): Promise<'ok' | 'not_found' | 'forbidden'> => {
-    if (!payload.previous_session_id) {
-        return 'ok';
-    }
-
-    if (!payload.previous_session_token) {
-        return 'forbidden';
-    }
-
-    const existingSession = await fetchStudySession(
-        supabaseAdmin,
-        payload.previous_session_id
-    );
-
-    if (!existingSession) {
-        return 'not_found';
-    }
-
-    if (!isStudySessionTokenMatch(
-        existingSession.session_token_hash,
-        payload.previous_session_token
-    )) {
-        return 'forbidden';
-    }
-
-    if (existingSession.user_id && existingSession.user_id !== userId) {
-        return 'forbidden';
-    }
-
-    const { error } = await supabaseAdmin
-        .from('study_sessions')
-        .update({ user_id: userId })
-        .eq('id', payload.previous_session_id);
+const startStudySession = async (
+    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    payload: StartSessionAction
+): Promise<StartSessionResponseBody> => {
+    const previousSessionTokenHash = payload.previous_session_token
+        ? hashStudySessionToken(payload.previous_session_token)
+        : null;
+    const { data, error } = await supabase.rpc('start_study_session', {
+        p_anonymous_id: payload.anonymousId ?? null,
+        p_device_type: payload.deviceType,
+        p_user_agent: payload.userAgent ?? null,
+        p_consent_given: true,
+        p_idempotency_key: payload.idempotency_key,
+        p_previous_session_id: payload.previous_session_id ?? null,
+        p_previous_session_token_hash: previousSessionTokenHash,
+    });
 
     if (error) {
         throw error;
     }
 
-    return 'ok';
-};
-
-const startStudySession = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
-    payload: StartSessionAction,
-    userId: string | null
-): Promise<StartSessionResponseBody> => {
-    const response = await supabaseAdmin
-        .from('study_sessions')
-        .insert({
-            user_id: userId,
-            anonymous_id: userId ? null : payload.anonymousId ?? null,
-            idempotency_key: payload.idempotency_key,
-            session_start: new Date().toISOString(),
-            device_type: payload.deviceType,
-            user_agent: payload.userAgent ?? null,
-            consent_given: true,
-            consent_timestamp: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
-
-    if (!response.error) {
-        return await buildStartSessionResponse(
-            supabaseAdmin,
-            response.data.id,
-            payload.idempotency_key
-        );
+    const sessionId = coerceSessionId(data);
+    if (!sessionId) {
+        throw new Error('Study session start RPC returned an invalid session id.');
     }
 
-    if (response.error.code === '23505') {
-        const existingSession = await findExistingStartedSession(
-            supabaseAdmin,
-            payload,
-            userId
-        );
-
-        if (existingSession?.id) {
-            return await buildStartSessionResponse(
-                supabaseAdmin,
-                existingSession.id,
-                payload.idempotency_key
-            );
-        }
-    }
-
-    throw response.error;
+    return buildStartSessionResponse(supabase, payload, sessionId);
 };
 
 const updateStudySession = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
+    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
     payload: SessionFollowUpAction
 ): Promise<void> => {
-    const { error } = await supabaseAdmin.rpc('update_study_session_metrics', {
+    const { error } = await supabase.rpc('update_study_session_by_token', {
         p_session_id: payload.sessionId,
+        p_session_token_hash: hashStudySessionToken(payload.sessionToken),
         p_duration_seconds: payload.durationSeconds,
         p_page_views: payload.pageViews,
         p_quiz_attempts: payload.quizAttempts,
@@ -492,7 +411,16 @@ export async function POST(request: Request) {
         reservedScope = idempotencyScope;
         reservedIdempotencyKey = payload.idempotency_key;
 
-        const supabaseAdmin = createServiceRoleClient();
+        const supabase = await createRequestScopedClient(request);
+        if (!supabase) {
+            return errorResponse({
+                status: 503,
+                code: 'STUDY_SESSION_FAILED',
+                message: 'Unable to persist study session.',
+                requestId,
+                retryable: true,
+            });
+        }
         if (hadCredentials && !user) {
             return respondWithCachedError(
                 idempotencyScope,
@@ -526,89 +454,63 @@ export async function POST(request: Request) {
                 );
             }
 
-            if (user) {
-                const transferState = await transferAnonymousSessionToUser(
-                    supabaseAdmin,
-                    payload,
-                    user.id
+            try {
+                const responseBody = await startStudySession(supabase, payload);
+
+                cacheStudySessionResponse(
+                    idempotencyScope,
+                    payload.idempotency_key,
+                    200,
+                    responseBody
                 );
 
-                if (transferState === 'not_found') {
-                    return respondWithCachedError(
+                return successResponse(responseBody, requestId);
+            } catch (error) {
+                const rpcResponse = (
+                    error
+                    && typeof error === 'object'
+                    && 'code' in error
+                )
+                    ? createSessionErrorResponse(
+                        payload,
+                        requestId,
                         idempotencyScope,
                         payload.idempotency_key,
-                        404,
-                        buildCachedApiError(
-                            requestId,
-                            'STUDY_SESSION_NOT_FOUND',
-                            'Previous study session not found.',
-                            false
-                        )
-                    );
+                        error as { code?: string | null; message?: string | null }
+                    )
+                    : null;
+
+                if (rpcResponse) {
+                    return rpcResponse;
                 }
 
-                if (transferState === 'forbidden') {
-                    return respondWithCachedError(
-                        idempotencyScope,
-                        payload.idempotency_key,
-                        403,
-                        buildCachedApiError(
-                            requestId,
-                            'STUDY_SESSION_FORBIDDEN',
-                            'Previous study session does not belong to this requester.',
-                            false
-                        )
-                    );
-                }
+                throw error;
+            }
+        }
+
+        try {
+            await updateStudySession(supabase, payload);
+        } catch (error) {
+            const rpcResponse = (
+                error
+                && typeof error === 'object'
+                && 'code' in error
+            )
+                ? createSessionErrorResponse(
+                    payload,
+                    requestId,
+                    idempotencyScope,
+                    payload.idempotency_key,
+                    error as { code?: string | null; message?: string | null }
+                )
+                : null;
+
+            if (rpcResponse) {
+                return rpcResponse;
             }
 
-            const responseBody = await startStudySession(
-                supabaseAdmin,
-                payload,
-                user?.id ?? null
-            );
-
-            cacheStudySessionResponse(
-                idempotencyScope,
-                payload.idempotency_key,
-                200,
-                responseBody
-            );
-
-            return successResponse(responseBody, requestId);
+            throw error;
         }
-
-        const ownership = await validateSessionOwnership(
-            supabaseAdmin,
-            payload.sessionId,
-            payload.sessionToken,
-            user?.id ?? null
-        );
-
-        if (ownership === null) {
-            return respondWithCachedError(
-                idempotencyScope,
-                payload.idempotency_key,
-                404,
-                buildCachedApiError(requestId, 'STUDY_SESSION_NOT_FOUND', 'Study session not found.', false)
-            );
-        }
-
-        if (ownership === false) {
-            return respondWithCachedError(
-                idempotencyScope,
-                payload.idempotency_key,
-                403,
-                buildCachedApiError(
-                    requestId,
-                    'STUDY_SESSION_FORBIDDEN',
-                    'Study session does not belong to this requester.',
-                    false
-                )
-            );
-        }
-
-        await updateStudySession(supabaseAdmin, payload);
 
         const responseBody = { success: true } as const;
         cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 200, responseBody);

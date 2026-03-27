@@ -9,6 +9,7 @@ import {
 } from '@/lib/api-response';
 import {
     completeIdempotentRequest,
+    deleteIdempotentRequest,
     failIdempotentRequest,
     inspectIdempotentRequest,
     reserveIdempotentRequest,
@@ -19,7 +20,7 @@ import {
     isRateLimiterUnavailable,
     quizMutationRateLimiter,
 } from '@/lib/rate-limiter';
-import { createServiceRoleClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { QuizAttemptSchema } from '@/lib/validators';
 
@@ -35,7 +36,7 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 const WRITE_RATE_LIMIT = 20;
 
 const markQuizFailure = async (
-    routeSupabase: ReturnType<typeof createServiceRoleClient>,
+    routeSupabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
     userId: string,
     idempotencyKey: string | null,
     statusCode: number,
@@ -116,7 +117,17 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const routeSupabase = createServiceRoleClient();
+    const routeSupabase = await createRequestScopedClient(request);
+    if (!routeSupabase) {
+        return errorResponse({
+            status: 503,
+            code: 'QUIZ_PERSIST_FAILED',
+            message: 'Unable to record quiz attempt.',
+            requestId,
+            retryable: true,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
     const {
         term_id,
         is_correct,
@@ -262,8 +273,7 @@ export async function POST(request: NextRequest) {
         }
 
         const { data, error } = await routeSupabase
-            .rpc('record_study_event', {
-                p_user_id: user.id,
+            .rpc('record_my_study_event', {
                 p_term_id: term_id,
                 p_is_correct: is_correct,
                 p_response_time_ms: response_time_ms,
@@ -331,7 +341,21 @@ export async function POST(request: NextRequest) {
                 userId: user.id,
                 error: error instanceof Error ? error : undefined,
             });
-            throw error;
+            try {
+                await deleteIdempotentRequest({
+                    supabaseAdmin: routeSupabase,
+                    userId: user.id,
+                    action: 'quiz_submission',
+                    idempotencyKey,
+                });
+            } catch (cleanupError) {
+                logger.error('QUIZ_ROUTE_IDEMPOTENCY_DELETE_ERROR', {
+                    requestId,
+                    route: '/api/record-quiz',
+                    userId: user.id,
+                    error: cleanupError instanceof Error ? cleanupError : undefined,
+                });
+            }
         }
 
         return successResponse(

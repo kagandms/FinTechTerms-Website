@@ -219,6 +219,27 @@ const buildUserProgressLoadMessage = (
     return `Study progress loaded with gaps: ${labels.join(', ')}.`;
 };
 
+const withSupabaseReadTimeout = async <T,>(
+    operation: PromiseLike<T> | Promise<T>,
+    timeoutMessage = REQUEST_TIMEOUT_MESSAGE
+): Promise<T> => {
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        timeoutId = globalThis.setTimeout(() => {
+            reject(new Error(timeoutMessage));
+        }, REQUEST_TIMEOUT_MS);
+    });
+
+    try {
+        return await Promise.race([Promise.resolve(operation), timeoutPromise]);
+    } finally {
+        if (timeoutId !== undefined) {
+            globalThis.clearTimeout(timeoutId);
+        }
+    }
+};
+
 const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
     try {
         const payload = await response.json();
@@ -400,7 +421,7 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
         quizHistoryResult,
         settingsResult,
         streakResult,
-    ] = await Promise.allSettled([
+    ] = await withSupabaseReadTimeout(Promise.allSettled([
         supabase
             .from('user_progress')
             .select('*')
@@ -423,7 +444,7 @@ export async function getUserProgressFromSupabase(userId: string): Promise<UserP
             .eq('user_id', userId)
             .maybeSingle(),
         supabase.rpc('get_user_streak_summary'),
-    ]);
+    ]));
 
     const missingSegments = new Set<UserProgressLoadMissingSegment>();
 
@@ -772,12 +793,14 @@ export async function getTermSRSFromSupabase(
     termId: string
 ): Promise<Partial<Term> | null> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-        .from('user_term_srs')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('term_id', termId)
-        .single();
+    const { data, error } = await withSupabaseReadTimeout(
+        supabase
+            .from('user_term_srs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('term_id', termId)
+            .single()
+    );
 
     if (error || !data) return null;
 
@@ -810,7 +833,7 @@ export async function getAllTermSRSFromSupabase(
     const termIdChunks = chunkValues(Array.from(new Set(termIds)), 100);
 
     try {
-        const chunkResults = await Promise.all(termIdChunks.map(async (termIdChunk) => {
+        const chunkResults = await withSupabaseReadTimeout(Promise.all(termIdChunks.map(async (termIdChunk) => {
             const { data, error } = await supabase
                 .from('user_term_srs')
                 .select(USER_TERM_SRS_QUERY_COLUMNS)
@@ -826,7 +849,7 @@ export async function getAllTermSRSFromSupabase(
                 data ?? [],
                 'Supabase returned malformed SRS review data.'
             );
-        }));
+        })));
 
         const parsedData = chunkResults.flat();
 
@@ -862,10 +885,12 @@ export async function getAllTermSRSFromSupabaseUnbounded(
     userId: string
 ): Promise<UserTermSrsLoadResult> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-        .from('user_term_srs')
-        .select(USER_TERM_SRS_QUERY_COLUMNS)
-        .eq('user_id', userId);
+    const { data, error } = await withSupabaseReadTimeout(
+        supabase
+            .from('user_term_srs')
+            .select(USER_TERM_SRS_QUERY_COLUMNS)
+            .eq('user_id', userId)
+    );
 
     if (error) {
         return {
@@ -923,13 +948,13 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
         return await query;
     };
 
-    let { data, error } = await runTermsQuery(true);
+    let { data, error } = await withSupabaseReadTimeout(runTermsQuery(true));
 
     if (isMissingAcademicColumnError(error)) {
         logger.warn('SUPABASE_STORAGE_MISSING_ACADEMIC_COLUMN', {
             route: 'supabaseStorage',
         });
-        ({ data, error } = await runTermsQuery(false));
+        ({ data, error } = await withSupabaseReadTimeout(runTermsQuery(false)));
     }
 
     if (error) {
@@ -950,11 +975,13 @@ export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
  */
 export async function getTermById(termId: string): Promise<Partial<Term> | null> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-        .from('terms')
-        .select('*')
-        .eq('id', termId)
-        .single();
+    const { data, error } = await withSupabaseReadTimeout(
+        supabase
+            .from('terms')
+            .select('*')
+            .eq('id', termId)
+            .single()
+    );
 
     if (error) {
         // If error is "PGRST116" (no rows), return null

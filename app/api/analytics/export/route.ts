@@ -13,6 +13,19 @@ import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supab
  */
 export async function GET(request: Request) {
     const requestId = createRequestId(request);
+    const requestUrl = new URL(request.url);
+    const cursor = requestUrl.searchParams.get('cursor');
+    const limit = (() => {
+        const rawLimit = requestUrl.searchParams.get('limit');
+        if (!rawLimit) {
+            return undefined;
+        }
+
+        const parsedLimit = Number.parseInt(rawLimit, 10);
+        return Number.isFinite(parsedLimit) && parsedLimit > 0
+            ? parsedLimit
+            : undefined;
+    })();
 
     try {
         const user = await resolveAuthenticatedUser(request);
@@ -37,11 +50,15 @@ export async function GET(request: Request) {
             });
         }
 
-        const attempts = await loadLearningStatsExportAttempts(supabase, user.id);
+        const { attempts, nextCursor } = await loadLearningStatsExportAttempts(supabase, user.id, {
+            cursor,
+            limit,
+        });
 
         return successResponse({
             exportedAt: new Date().toISOString(),
             attempts,
+            nextCursor,
         }, requestId, {
             headers: {
                 'Cache-Control': 'no-store',

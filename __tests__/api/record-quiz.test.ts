@@ -5,14 +5,15 @@
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 
 const mockResolveAuthenticatedUser = jest.fn();
-const mockCreateServiceRoleClient = jest.fn();
+const mockCreateRequestScopedClient = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
 const mockCompleteIdempotentRequest = jest.fn();
+const mockDeleteIdempotentRequest = jest.fn();
 const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
-    createServiceRoleClient: () => mockCreateServiceRoleClient(),
+    createRequestScopedClient: (...args: unknown[]) => mockCreateRequestScopedClient(...args),
     resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
 }));
 
@@ -20,6 +21,7 @@ jest.mock('@/lib/api-idempotency', () => ({
     inspectIdempotentRequest: (...args: unknown[]) => mockInspectIdempotentRequest(...args),
     reserveIdempotentRequest: (...args: unknown[]) => mockReserveIdempotentRequest(...args),
     completeIdempotentRequest: (...args: unknown[]) => mockCompleteIdempotentRequest(...args),
+    deleteIdempotentRequest: (...args: unknown[]) => mockDeleteIdempotentRequest(...args),
     failIdempotentRequest: (...args: unknown[]) => mockFailIdempotentRequest(...args),
 }));
 
@@ -52,9 +54,11 @@ describe('record-quiz route', () => {
         quizMutationRateLimiter.reset();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user_123' });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc: jest.fn() });
         mockInspectIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockReserveIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockCompleteIdempotentRequest.mockResolvedValue(undefined);
+        mockDeleteIdempotentRequest.mockResolvedValue(undefined);
         mockFailIdempotentRequest.mockResolvedValue(undefined);
     });
 
@@ -112,7 +116,7 @@ describe('record-quiz route', () => {
 
     it('returns cached idempotent responses without calling the database RPC again', async () => {
         const rpc = jest.fn();
-        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
         mockReserveIdempotentRequest.mockResolvedValue({
             kind: 'replay',
             statusCode: 200,
@@ -142,7 +146,7 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload()) as never);
@@ -159,7 +163,7 @@ describe('record-quiz route', () => {
                 quiz_type: 'simulation',
             }),
         }));
-        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
             p_quiz_type: 'simulation',
         }));
         expect(mockCompleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
@@ -173,7 +177,7 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload({
@@ -187,34 +191,53 @@ describe('record-quiz route', () => {
             state: { ok: true },
             message: 'Recorded successfully',
         });
-        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
             p_response_time_ms: 0,
         }));
     });
 
-    it('does not return 200 when idempotency completion fails after the quiz write succeeds', async () => {
+    it('still returns 200 when idempotency completion fails after the quiz write succeeds', async () => {
         const rpc = jest.fn().mockResolvedValue({
             data: { ok: true },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
         mockCompleteIdempotentRequest.mockRejectedValueOnce(new Error('idempotency completion failed'));
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload()) as never);
         const body = await response.json();
 
-        expect(response.status).toBe(500);
-        expect(body).toMatchObject({
-            code: 'QUIZ_PERSIST_FAILED',
-            retryable: true,
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            state: { ok: true },
+            message: 'Recorded successfully',
         });
-        expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockDeleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
             action: 'quiz_submission',
             userId: 'user_123',
             idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
-            statusCode: 500,
         }));
+        expect(mockFailIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('does not use the service-role client shape for quiz writes', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: { ok: true },
+            error: null,
+        });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+
+        expect(response.status).toBe(200);
+        expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
+        expect(rpc).toHaveBeenCalledWith(
+            'record_my_study_event',
+            expect.not.objectContaining({ p_user_id: expect.anything() })
+        );
     });
 
     it('returns 503 when the route rate limiter is unavailable', async () => {

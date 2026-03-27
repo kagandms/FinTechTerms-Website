@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-response';
 import {
     completeIdempotentRequest,
+    deleteIdempotentRequest,
     failIdempotentRequest,
     inspectIdempotentRequest,
     reserveIdempotentRequest,
@@ -19,7 +20,6 @@ import {
 } from '@/lib/rate-limiter';
 import {
     createRequestScopedClient,
-    createServiceRoleClient,
     resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
@@ -47,7 +47,7 @@ const WRITE_RATE_LIMIT = 10;
 const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailable. Verify preview/staging runtime env includes UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.';
 
 const markFavoriteFailure = async (
-    supabaseAdmin: ReturnType<typeof createServiceRoleClient>,
+    supabaseAdmin: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
     userId: string,
     idempotencyKey: string | null,
     statusCode: number,
@@ -116,9 +116,6 @@ export async function POST(request: Request) {
         });
     }
 
-    const supabaseAdmin = createServiceRoleClient();
-    const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
-
     try {
         const user = await resolveAuthenticatedUser(request);
         if (!user) {
@@ -132,6 +129,19 @@ export async function POST(request: Request) {
             });
         }
         authenticatedUserId = user.id;
+        const supabaseAdmin = await createRequestScopedClient(request);
+        if (!supabaseAdmin) {
+            return errorResponse({
+                status: 503,
+                code: 'FAVORITES_UPDATE_FAILED',
+                message: 'Unable to update favorites.',
+                requestId,
+                retryable: true,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
 
         const inspection = await inspectIdempotentRequest({
             supabaseAdmin,
@@ -265,9 +275,8 @@ export async function POST(request: Request) {
         }
 
         const { data: mutationData, error: mutationError } = await supabaseAdmin.rpc(
-            'toggle_user_favorite',
+            'toggle_my_favorite',
             {
-                p_user_id: user.id,
                 p_term_id: termId,
                 p_should_favorite: shouldFavorite,
             }
@@ -330,7 +339,20 @@ export async function POST(request: Request) {
                 error: error instanceof Error ? error : undefined,
                 userId: user.id,
             });
-            throw error;
+            try {
+                await deleteIdempotentRequest({
+                    supabaseAdmin,
+                    userId: user.id,
+                    action: 'favorite_mutation',
+                    idempotencyKey,
+                });
+            } catch (cleanupError) {
+                logger.error('FAVORITES_IDEMPOTENCY_DELETE_ERROR', {
+                    route: 'POST /api/favorites',
+                    error: cleanupError instanceof Error ? cleanupError : undefined,
+                    userId: user.id,
+                });
+            }
         }
 
         return successResponse(
@@ -340,10 +362,14 @@ export async function POST(request: Request) {
         );
     } catch (error) {
         if (authenticatedUserId) {
-            await markFavoriteFailure(supabaseAdmin, authenticatedUserId, idempotencyKey, 500, {
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to update favorites.',
-            });
+            const supabaseAdmin = await createRequestScopedClient(request);
+            if (supabaseAdmin) {
+                const { idempotencyKey } = validatedData.data;
+                await markFavoriteFailure(supabaseAdmin, authenticatedUserId, idempotencyKey, 500, {
+                    code: 'FAVORITES_UPDATE_FAILED',
+                    message: 'Unable to update favorites.',
+                });
+            }
         }
 
         return handleRouteError(error, {

@@ -4,7 +4,7 @@
 
 1. Confirm the rollout uses only `supabase/migrations/` as the shared schema source of truth.
 2. Do not apply `lib/*.sql` or `telegram-bot/migrations/*.sql` against preview/staging/production.
-3. Confirm runtime env includes `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `STUDY_SESSION_TOKEN_SECRET`.
+3. Confirm runtime env includes `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STUDY_SESSION_TOKEN_SECRET`, and `ADMIN_USER_IDS`.
 4. Confirm preview/staging gate secrets include `STAGING_BASE_URL`, `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_USER_IDS`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_SENTRY_DSN`, `E2E_AUTH_EMAIL`, `E2E_AUTH_PASSWORD`, `E2E_SEED_SECRET`, `SENTRY_SMOKE_EMAIL`, and `SENTRY_SMOKE_PASSWORD`.
 5. Run `npm run validate:runtime-env` and stop immediately if any runtime key is missing, placeholder, or malformed.
 6. Run `npm run validate:release-gate-env` before any manually dispatched preview/staging release verification.

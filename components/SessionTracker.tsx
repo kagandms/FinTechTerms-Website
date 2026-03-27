@@ -91,10 +91,28 @@ interface PendingEndSessionMutation {
     idempotencyKey: string;
 }
 
+type RetryQueueDropReason = 'age' | 'capacity';
+
 const buildSessionStorageKey = (tabId: string): string => `${SESSION_KEY}:${tabId}`;
 const buildPendingStartSessionStorageKey = (tabId: string): string => `${PENDING_START_SESSION_KEY}:${tabId}`;
 const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
 const buildRetryQueueStorageKey = (tabId: string): string => `${RETRY_QUEUE_SESSION_KEY}:${tabId}`;
+
+const summarizeRetryQueueEntries = (entries: QueuedSessionMutation[]): {
+    droppedCount: number;
+    actions: SessionMutationPayload['action'][];
+    oldestQueuedAt: number | null;
+    newestQueuedAt: number | null;
+} => {
+    const queuedAtValues = entries.map((entry) => entry.queuedAt);
+
+    return {
+        droppedCount: entries.length,
+        actions: Array.from(new Set(entries.map((entry) => entry.payload.action))),
+        oldestQueuedAt: queuedAtValues.length > 0 ? Math.min(...queuedAtValues) : null,
+        newestQueuedAt: queuedAtValues.length > 0 ? Math.max(...queuedAtValues) : null,
+    };
+};
 
 const getOrCreateSessionTabId = (): string | null => {
     if (typeof window === 'undefined') {
@@ -148,6 +166,23 @@ export default function SessionTracker() {
         });
     }, []);
 
+    const logDroppedRetryQueueEntries = useCallback((
+        reason: RetryQueueDropReason,
+        entries: QueuedSessionMutation[]
+    ) => {
+        if (entries.length === 0) {
+            return;
+        }
+
+        logger.warn('SESSION_TRACKER_RETRY_QUEUE_ENTRIES_DROPPED', {
+            route: 'SessionTracker',
+            reason,
+            maxRetryQueueSize: MAX_RETRY_QUEUE_SIZE,
+            maxRetryQueueAgeMs: MAX_RETRY_QUEUE_AGE_MS,
+            ...summarizeRetryQueueEntries(entries),
+        });
+    }, []);
+
     const getCurrentTabId = useCallback((): string | null => {
         if (tabIdRef.current) {
             return tabIdRef.current;
@@ -194,14 +229,35 @@ export default function SessionTracker() {
 
             const parsed = JSON.parse(stored) as Partial<QueuedSessionMutation>[];
             const now = Date.now();
-            const queue = parsed.filter((entry): entry is QueuedSessionMutation => (
-                Boolean(entry)
-                && typeof entry === 'object'
-                && Boolean(entry.payload)
-                && typeof entry.idempotencyKey === 'string'
-                && typeof entry.queuedAt === 'number'
-                && now - entry.queuedAt <= MAX_RETRY_QUEUE_AGE_MS
-            ));
+            const expiredEntries: QueuedSessionMutation[] = [];
+            const validEntries: QueuedSessionMutation[] = [];
+
+            parsed.forEach((entry) => {
+                const isValidEntry = Boolean(entry)
+                    && typeof entry === 'object'
+                    && Boolean(entry.payload)
+                    && typeof entry.idempotencyKey === 'string'
+                    && typeof entry.queuedAt === 'number';
+
+                if (!isValidEntry) {
+                    return;
+                }
+
+                const typedEntry = entry as QueuedSessionMutation;
+                if (now - typedEntry.queuedAt > MAX_RETRY_QUEUE_AGE_MS) {
+                    expiredEntries.push(typedEntry);
+                    return;
+                }
+
+                validEntries.push(typedEntry);
+            });
+
+            logDroppedRetryQueueEntries('age', expiredEntries);
+
+            const droppedForCapacity = validEntries.slice(0, Math.max(0, validEntries.length - MAX_RETRY_QUEUE_SIZE));
+            logDroppedRetryQueueEntries('capacity', droppedForCapacity);
+
+            const queue = validEntries.slice(-MAX_RETRY_QUEUE_SIZE);
 
             retryQueueRef.current = queue;
             persistRetryQueue(queue);
@@ -210,12 +266,14 @@ export default function SessionTracker() {
             logSessionTrackerWarning('SESSION_TRACKER_RETRY_QUEUE_RESTORE_FAILED', error);
             return [];
         }
-    }, [getCurrentTabId, logSessionTrackerWarning, persistRetryQueue]);
+    }, [getCurrentTabId, logDroppedRetryQueueEntries, logSessionTrackerWarning, persistRetryQueue]);
 
     const replaceRetryQueue = useCallback((queue: QueuedSessionMutation[]) => {
+        const droppedEntries = queue.slice(0, Math.max(0, queue.length - MAX_RETRY_QUEUE_SIZE));
+        logDroppedRetryQueueEntries('capacity', droppedEntries);
         retryQueueRef.current = queue.slice(-MAX_RETRY_QUEUE_SIZE);
         persistRetryQueue(retryQueueRef.current);
-    }, [persistRetryQueue]);
+    }, [logDroppedRetryQueueEntries, persistRetryQueue]);
 
     const queueRetryableMutation = useCallback((
         entry: Omit<QueuedSessionMutation, 'queuedAt'>

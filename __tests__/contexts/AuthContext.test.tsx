@@ -11,6 +11,8 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 const mockGetSession = jest.fn();
 const mockOnAuthStateChange = jest.fn();
 const mockSignOut = jest.fn();
+const mockVerifyOtp = jest.fn();
+const mockSignInWithPassword = jest.fn();
 const mockTempSetSession = jest.fn();
 const mockTempUpdateUser = jest.fn();
 const mockCreateClient = jest.fn();
@@ -21,6 +23,8 @@ jest.mock('@/lib/supabase', () => ({
             getSession: (...args: unknown[]) => mockGetSession(...args),
             onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
             signOut: (...args: unknown[]) => mockSignOut(...args),
+            verifyOtp: (...args: unknown[]) => mockVerifyOtp(...args),
+            signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
         },
     }),
 }));
@@ -61,9 +65,10 @@ jest.mock('@supabase/supabase-js', () => ({
 }));
 
 const AuthContextConsumer = () => {
-    const { isAuthenticated, isPasswordRecovery, logout, updatePassword } = useAuth();
+    const { isAuthenticated, isPasswordRecovery, logout, updatePassword, verifyOTP } = useAuth();
     const [result, setResult] = React.useState('idle');
     const [logoutResult, setLogoutResult] = React.useState('idle');
+    const [verifyResult, setVerifyResult] = React.useState('idle');
 
     return (
         <div>
@@ -71,6 +76,7 @@ const AuthContextConsumer = () => {
             <div data-testid="recovery-state">{String(isPasswordRecovery)}</div>
             <div data-testid="update-result">{result}</div>
             <div data-testid="logout-result">{logoutResult}</div>
+            <div data-testid="verify-result">{verifyResult}</div>
             <button
                 type="button"
                 onClick={async () => {
@@ -88,6 +94,15 @@ const AuthContextConsumer = () => {
                 }}
             >
                 logout
+            </button>
+            <button
+                type="button"
+                onClick={async () => {
+                    const response = await verifyOTP('user@example.com', '123456');
+                    setVerifyResult(JSON.stringify(response));
+                }}
+            >
+                verify-otp
             </button>
         </div>
     );
@@ -126,6 +141,23 @@ describe('AuthProvider updatePassword', () => {
             },
         });
         mockSignOut.mockResolvedValue({ error: null });
+        mockVerifyOtp.mockResolvedValue({
+            data: {
+                user: {
+                    id: 'user-1',
+                    email: 'user@example.com',
+                },
+                session: null,
+            },
+            error: null,
+        });
+        mockSignInWithPassword.mockResolvedValue({
+            data: {
+                user: null,
+                session: null,
+            },
+            error: { message: 'No session' },
+        });
         mockTempSetSession.mockResolvedValue({ error: null });
         mockTempUpdateUser.mockResolvedValue({
             data: null,
@@ -215,5 +247,32 @@ describe('AuthProvider updatePassword', () => {
             expect(window.location.pathname).toBe('/profile');
             expect(mockSignOut).not.toHaveBeenCalled();
         });
+    });
+
+    it('does not mark the user authenticated when OTP verification has no session', async () => {
+        mockGetSession.mockResolvedValue({
+            data: {
+                session: null,
+            },
+            error: null,
+        });
+
+        render(
+            <AuthProvider>
+                <AuthContextConsumer />
+            </AuthProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'verify-otp' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('verify-result')).toHaveTextContent('"success":false');
+            expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
+            expect(screen.getByTestId('verify-result')).toHaveTextContent('authenticated session could not be established');
+        }, { timeout: 2500 });
     });
 });

@@ -256,6 +256,6 @@ export const hasConfiguredStudySessionEnv = (
     env: ServerEnv = getServerEnv()
 ): boolean => Boolean(
     env.supabaseUrl
-    && env.serviceRoleKey
     && env.studySessionTokenSecret
+    && env.supabaseAnonKey
 );

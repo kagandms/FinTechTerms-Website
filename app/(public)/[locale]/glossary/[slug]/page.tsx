@@ -18,6 +18,7 @@ import {
 import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { formatUtcDateForLocale } from '@/lib/time';
 import type { Contributor, Language, SourceRef, Term, Topic } from '@/types';
 
 const termCopy: Record<Language, {
@@ -334,7 +335,7 @@ export default async function SeoTermPage({
                             ) : null}
                             <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.reviewedAt}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{new Date(term.reviewed_at).toLocaleDateString(locale)}</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-600">{formatUtcDateForLocale(term.reviewed_at, locale)}</p>
                             </div>
                         </div>
                     </section>

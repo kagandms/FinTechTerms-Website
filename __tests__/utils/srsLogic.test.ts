@@ -217,6 +217,12 @@ describe('updateTermAfterReview', () => {
         expect(result.srs_level).toBe(1);
     });
 
+    it('should treat level 0 as MIN_SRS_LEVEL before advancing on a correct answer', () => {
+        const term = createMockTerm({ srs_level: 0 });
+        const result = updateTermAfterReview(term, true);
+        expect(result.srs_level).toBe(2);
+    });
+
     it('should clamp difficulty_score between 0 and 5', () => {
         const hardTerm = createMockTerm({ difficulty_score: 4.9 });
         const harder = updateTermAfterReview(hardTerm, false);

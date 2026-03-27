@@ -10,9 +10,19 @@ import { CONSENT_GRANTED_EVENT } from '@/components/ConsentModal';
 
 const mockUseAuth = jest.fn();
 const mockUsePathname = jest.fn();
+const mockLoggerWarn = jest.fn();
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => mockUseAuth(),
+}));
+
+jest.mock('@/lib/logger', () => ({
+    logger: {
+        warn: (...args: unknown[]) => mockLoggerWarn(...args),
+        error: jest.fn(),
+        info: jest.fn(),
+        debug: jest.fn(),
+    },
 }));
 
 jest.mock('next/navigation', () => ({
@@ -24,6 +34,7 @@ const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
 const PENDING_START_SESSION_KEY = 'fintechterms_pending_start_session';
 const CONSENT_KEY = 'fintechterms_research_consent';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
+const RETRY_QUEUE_SESSION_KEY = 'fintechterms_session_retry_queue';
 
 const createFetchResponse = (body: Record<string, unknown>) => ({
     ok: true,
@@ -52,6 +63,27 @@ const getCurrentPendingStartKey = (): string | null => {
     const tabId = getCurrentTabId();
     return tabId ? `${PENDING_START_SESSION_KEY}:${tabId}` : null;
 };
+const getCurrentRetryQueueKey = (): string | null => {
+    const tabId = getCurrentTabId();
+    return tabId ? `${RETRY_QUEUE_SESSION_KEY}:${tabId}` : null;
+};
+
+const createQueuedHeartbeat = (
+    idempotencyKey: string,
+    queuedAt: number
+) => ({
+    payload: {
+        action: 'heartbeat' as const,
+        sessionId: 'session_1',
+        sessionToken: 'token_1',
+        durationSeconds: 30,
+        pageViews: 2,
+        quizAttempts: 1,
+    },
+    sessionStartTime: Date.now() - 30000,
+    idempotencyKey,
+    queuedAt,
+});
 
 const readStoredSession = () => {
     const storageKey = getCurrentSessionKey();
@@ -366,5 +398,59 @@ describe('SessionTracker', () => {
             token: 'token_replayed',
         });
         expect(getCurrentPendingStartKey() ? sessionStorage.getItem(getCurrentPendingStartKey()!) : null).toBeNull();
+    });
+
+    it('logs and removes retry queue entries that expired before restore', async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-03-27T12:00:00.000Z'));
+
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`, JSON.stringify([
+            createQueuedHeartbeat('expired-heartbeat', Date.now() - ((24 * 60 * 60 * 1000) + 1)),
+        ]));
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(mockLoggerWarn).toHaveBeenCalledWith(
+                'SESSION_TRACKER_RETRY_QUEUE_ENTRIES_DROPPED',
+                expect.objectContaining({
+                    route: 'SessionTracker',
+                    reason: 'age',
+                    droppedCount: 1,
+                    actions: ['heartbeat'],
+                })
+            );
+        });
+
+        expect(getCurrentRetryQueueKey() ? sessionStorage.getItem(getCurrentRetryQueueKey()!) : null).toBeNull();
+    });
+
+    it('logs and trims retry queue entries that exceed the queue capacity on restore', async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-03-27T12:00:00.000Z'));
+
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`, JSON.stringify(
+            Array.from({ length: 51 }, (_, index) => createQueuedHeartbeat(`retry-${index}`, Date.now() - index))
+        ));
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(mockLoggerWarn).toHaveBeenCalledWith(
+                'SESSION_TRACKER_RETRY_QUEUE_ENTRIES_DROPPED',
+                expect.objectContaining({
+                    route: 'SessionTracker',
+                    reason: 'capacity',
+                    droppedCount: 1,
+                    actions: ['heartbeat'],
+                })
+            );
+        });
+
+        const storedQueue = JSON.parse(sessionStorage.getItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`) || '[]') as Array<{ idempotencyKey: string }>;
+        expect(storedQueue).toHaveLength(50);
+        expect(storedQueue.some((entry) => entry.idempotencyKey === 'retry-0')).toBe(false);
     });
 });

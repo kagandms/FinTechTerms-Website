@@ -113,7 +113,8 @@ export function getTermsDueForReview(terms: Term[], favoriteIds: string[]): Term
  * @returns Updated term with new SRS values
  */
 export function updateTermAfterReview(term: Term, isCorrect: boolean): Term {
-    const result = calculateNextReview(isCorrect, term.srs_level, term.difficulty_score);
+    const normalizedCurrentLevel = normalizeSrsLevel(term.srs_level);
+    const result = calculateNextReview(isCorrect, normalizedCurrentLevel, term.difficulty_score);
 
     // Calculate new difficulty (clamp between 0 and 5)
     const newDifficulty = Math.max(0, Math.min(5, term.difficulty_score + result.difficultyDelta));

@@ -160,6 +160,10 @@ mirror the GitHub Actions values into the Vercel preview runtime for:
 `npm run verify:release-db` now validates both database release readiness and
 the mirror integrity between the repo term corpus and `public.terms`.
 
+Runtime validation (`npm run validate:runtime-env`) assumes
+`ADMIN_USER_IDS` is present alongside the core web runtime secrets so admin
+surfaces and Sentry smoke paths do not ship half-configured.
+
 ## 📚 Documentation
 
 - **[ADR.md](docs/ADR.md)** — Architecture Decision Records

@@ -23,16 +23,19 @@ describe('analytics export route', () => {
     it('returns the authenticated user export payload', async () => {
         mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
-        mockLoadLearningStatsExportAttempts.mockResolvedValue([
-            {
-                id: 'attempt-1',
-                termId: 'term-1',
-                createdAt: '2026-03-20T10:00:00.000Z',
-                isCorrect: true,
-                responseTimeMs: 1200,
-                quizType: 'daily',
-            },
-        ]);
+        mockLoadLearningStatsExportAttempts.mockResolvedValue({
+            attempts: [
+                {
+                    id: 'attempt-1',
+                    termId: 'term-1',
+                    createdAt: '2026-03-20T10:00:00.000Z',
+                    isCorrect: true,
+                    responseTimeMs: 1200,
+                    quizType: 'daily',
+                },
+            ],
+            nextCursor: '500',
+        });
 
         const { GET } = await import('@/app/api/analytics/export/route');
         const response = await GET(new Request('http://localhost:3000/api/analytics/export'));
@@ -51,7 +54,30 @@ describe('analytics export route', () => {
                     quizType: 'daily',
                 },
             ],
+            nextCursor: '500',
         });
+    });
+
+    it('forwards cursor and limit parameters to the export loader', async () => {
+        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
+        mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
+        mockLoadLearningStatsExportAttempts.mockResolvedValue({
+            attempts: [],
+            nextCursor: null,
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?cursor=1000&limit=250'));
+
+        expect(response.status).toBe(200);
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenCalledWith(
+            { supabase: true },
+            'user-1',
+            {
+                cursor: '1000',
+                limit: 250,
+            }
+        );
     });
 
     it('returns unauthorized when there is no authenticated user', async () => {

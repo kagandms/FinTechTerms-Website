@@ -1,9 +1,9 @@
 import 'server-only';
 
 import { createHash } from 'node:crypto';
-import { createServiceRoleClient } from '@/lib/supabaseAdmin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>;
+type IdempotencyClient = SupabaseClient;
 
 type IdempotencyStatus = 'in_progress' | 'completed' | 'failed';
 
@@ -19,7 +19,7 @@ interface ReservationBase {
     action: string;
     idempotencyKey: string;
     payload: unknown;
-    supabaseAdmin: ServiceRoleClient;
+    supabaseAdmin: IdempotencyClient;
     userId: string;
 }
 
@@ -42,7 +42,7 @@ const hashPayload = (payload: unknown): string => createHash('sha256')
     .digest('hex');
 
 const getExistingReservation = async (
-    supabaseAdmin: ServiceRoleClient,
+    supabaseAdmin: IdempotencyClient,
     userId: string,
     action: string,
     idempotencyKey: string
@@ -94,7 +94,7 @@ const inspectExistingReservation = (
 };
 
 const interpretExistingReservation = async (
-    supabaseAdmin: ServiceRoleClient,
+    supabaseAdmin: IdempotencyClient,
     existingReservation: IdempotencyRow,
     requestHash: string
 ): Promise<IdempotencyReservation> => {
@@ -236,6 +236,24 @@ export const failIdempotentRequest = async ({
             response_body: responseBody,
             completed_at: new Date().toISOString(),
         })
+        .eq('user_id', userId)
+        .eq('action', action)
+        .eq('idempotency_key', idempotencyKey);
+
+    if (error) {
+        throw error;
+    }
+};
+
+export const deleteIdempotentRequest = async ({
+    action,
+    idempotencyKey,
+    supabaseAdmin,
+    userId,
+}: Omit<FinalizeReservation, 'responseBody' | 'statusCode'>): Promise<void> => {
+    const { error } = await supabaseAdmin
+        .from('api_idempotency_keys')
+        .delete()
         .eq('user_id', userId)
         .eq('action', action)
         .eq('idempotency_key', idempotencyKey);

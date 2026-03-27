@@ -59,6 +59,10 @@ describe('supabaseStorage response validation', () => {
         });
     });
 
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
     it('classifies final 401 quiz responses as auth_expired', async () => {
         global.fetch = jest.fn()
             .mockResolvedValueOnce({
@@ -249,4 +253,62 @@ describe('supabaseStorage response validation', () => {
             },
         });
     });
+
+    it('fails fast when the authenticated progress reads exceed the browser timeout budget', async () => {
+        const never = new Promise<never>(() => {});
+        const setTimeoutSpy = jest.spyOn(globalThis, 'setTimeout').mockImplementation((((callback: TimerHandler) => {
+            if (typeof callback === 'function') {
+                callback();
+            }
+
+            return 0 as unknown as ReturnType<typeof globalThis.setTimeout>;
+        }) as unknown) as typeof globalThis.setTimeout);
+        const clearTimeoutSpy = jest.spyOn(globalThis, 'clearTimeout').mockImplementation((((() => undefined) as unknown)) as typeof globalThis.clearTimeout);
+
+        mockFrom.mockImplementation((table: string) => {
+            if (table === 'user_progress' || table === 'user_settings') {
+                return {
+                    select: jest.fn(() => ({
+                        eq: jest.fn(() => ({
+                            maybeSingle: jest.fn(() => never),
+                        })),
+                    })),
+                };
+            }
+
+            if (table === 'user_favorites') {
+                return {
+                    select: jest.fn(() => ({
+                        eq: jest.fn(() => ({
+                            order: jest.fn(() => never),
+                        })),
+                    })),
+                };
+            }
+
+            if (table === 'quiz_attempts') {
+                return {
+                    select: jest.fn(() => ({
+                        eq: jest.fn(() => ({
+                            order: jest.fn(() => ({
+                                limit: jest.fn(() => never),
+                            })),
+                        })),
+                    })),
+                };
+            }
+
+            throw new Error(`Unexpected table ${table}`);
+        });
+
+        mockRpc.mockReturnValue(never);
+
+        const { getUserProgressFromSupabase } = await import('@/lib/supabaseStorage');
+        try {
+            await expect(getUserProgressFromSupabase('user-1')).rejects.toThrow('Loading is taking too long — please try again');
+        } finally {
+            setTimeoutSpy.mockRestore();
+            clearTimeoutSpy.mockRestore();
+        }
+    }, 10000);
 });

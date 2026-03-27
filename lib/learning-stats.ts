@@ -17,7 +17,8 @@ interface QuizMetricsRow {
 }
 
 const RECENT_ATTEMPTS_LIMIT = 10;
-const EXPORT_ATTEMPTS_PAGE_SIZE = 1000;
+const DEFAULT_EXPORT_ATTEMPTS_PAGE_SIZE = 500;
+const MAX_EXPORT_ATTEMPTS_PAGE_SIZE = 1000;
 
 const mapRecentAttempt = (
     attempt: Database['public']['Tables']['quiz_attempts']['Row']
@@ -124,29 +125,51 @@ export async function loadLearningStatsData(
  */
 export async function loadLearningStatsExportAttempts(
     supabase: AppSupabaseClient,
-    userId: string
-): Promise<LearningRecentAttempt[]> {
-    const attempts: LearningRecentAttempt[] = [];
-
-    for (let start = 0; ; start += EXPORT_ATTEMPTS_PAGE_SIZE) {
-        const end = start + EXPORT_ATTEMPTS_PAGE_SIZE - 1;
-        const { data, error } = await supabase
-            .from('quiz_attempts')
-            .select('id, term_id, is_correct, response_time_ms, created_at, quiz_type')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .order('id', { ascending: false })
-            .range(start, end);
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        const page = ((data ?? []) as Database['public']['Tables']['quiz_attempts']['Row'][]).map(mapRecentAttempt);
-        attempts.push(...page);
-
-        if (page.length < EXPORT_ATTEMPTS_PAGE_SIZE) {
-            return attempts;
-        }
+    userId: string,
+    options?: {
+        cursor?: string | null;
+        limit?: number;
     }
+): Promise<{
+    attempts: LearningRecentAttempt[];
+    nextCursor: string | null;
+}> {
+    const start = (() => {
+        const rawCursor = options?.cursor?.trim();
+        if (!rawCursor) {
+            return 0;
+        }
+
+        const parsedCursor = Number.parseInt(rawCursor, 10);
+        return Number.isFinite(parsedCursor) && parsedCursor >= 0
+            ? parsedCursor
+            : 0;
+    })();
+    const pageSize = Math.min(
+        Math.max(1, options?.limit ?? DEFAULT_EXPORT_ATTEMPTS_PAGE_SIZE),
+        MAX_EXPORT_ATTEMPTS_PAGE_SIZE
+    );
+    const end = start + pageSize - 1;
+
+    const { data, error } = await supabase
+        .from('quiz_attempts')
+        .select('id, term_id, is_correct, response_time_ms, created_at, quiz_type')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(start, end);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    const attempts = ((data ?? []) as Database['public']['Tables']['quiz_attempts']['Row'][]).map(mapRecentAttempt);
+    const nextCursor = attempts.length === pageSize
+        ? String(start + pageSize)
+        : null;
+
+    return {
+        attempts,
+        nextCursor,
+    };
 }

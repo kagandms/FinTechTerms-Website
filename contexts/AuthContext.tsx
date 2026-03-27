@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import {
     type AuthenticatedUser,
     mapSupabaseUser,
@@ -100,14 +100,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return false;
     });
 
-    const waitForActiveSessionUser = useCallback(async (): Promise<SupabaseUser | null> => {
+    const waitForActiveSession = useCallback(async (): Promise<Session | null> => {
         for (let attempt = 0; attempt < 5; attempt += 1) {
             const {
                 data: { session },
             } = await supabaseAuth.getSession();
 
-            if (session?.user) {
-                return session.user;
+            if (session?.user && session.access_token) {
+                return session;
             }
 
             await new Promise((resolve) => {
@@ -366,9 +366,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             if (data.user) {
-                let resolvedUser = data.session?.user ?? await waitForActiveSessionUser();
+                let resolvedSession = data.session ?? await waitForActiveSession();
+                let resolvedUser = resolvedSession?.user ?? null;
 
-                if (!resolvedUser && pendingVerificationPassword) {
+                if ((!resolvedUser || !resolvedSession) && pendingVerificationPassword) {
                     const signInResult = await supabaseAuth.signInWithPassword({
                         email,
                         password: pendingVerificationPassword,
@@ -380,14 +381,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
                             error: signInResult.error,
                         });
                     } else {
+                        resolvedSession = signInResult.data.session ?? null;
                         resolvedUser = signInResult.data.user ?? null;
                     }
                 }
 
-                setUser(mapSupabaseUser(resolvedUser ?? data.user));
+                if (!resolvedUser || !resolvedSession) {
+                    return {
+                        success: false,
+                        error: 'Verification succeeded, but an authenticated session could not be established. Please sign in.',
+                    };
+                }
+
+                setUser(mapSupabaseUser(resolvedUser));
                 setPendingVerificationEmail(null);
                 setPendingVerificationPassword(null);
-                void refreshCapabilities(data.session ?? null);
+                void refreshCapabilities(resolvedSession);
                 return { success: true };
             }
 
@@ -399,7 +408,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return { success: false, error: 'Verification failed' };
         }
-    }, [pendingVerificationPassword, refreshCapabilities, supabaseAuth, waitForActiveSessionUser]);
+    }, [pendingVerificationPassword, refreshCapabilities, supabaseAuth, waitForActiveSession]);
 
     /**
      * Resend OTP code

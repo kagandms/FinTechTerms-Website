@@ -14,6 +14,9 @@ import logging
 import os
 import sys
 
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -35,6 +38,27 @@ logger = logging.getLogger("ftt_bot")
 # Reduce noise from httpx / telegram library
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
+
+
+def configure_sentry() -> None:
+    """Initialize bot-side error capture when BOT_SENTRY_DSN is configured."""
+    from bot.config import config
+
+    if not config.sentry_dsn:
+        return
+
+    sentry_sdk.init(
+        dsn=config.sentry_dsn,
+        integrations=[
+            FlaskIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            ),
+        ],
+        send_default_pii=False,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("NODE_ENV", "production")),
+    )
 
 
 async def post_init(application: Application) -> None:
@@ -95,26 +119,27 @@ def main() -> None:
         )
 
         config.validate()
+        configure_sentry()
     except EnvironmentError as e:
         logger.critical("Configuration error: %s", e)
         sys.exit(1)
 
     # Detect Render production environment
     is_production = bool(os.environ.get("RENDER"))
-    webhook_url = os.environ.get("RENDER_EXTERNAL_URL", "")
+    should_start_healthcheck = bool(os.environ.get("PORT"))
 
     if is_production:
         logger.info("🚀 PRODUCTION MODE — Render detected")
         logger.info("   Supabase URL: %s", config.supabase_url)
-        
-        logger.info("   Starting keep_alive health check server on polling mode…")
-        # Start Flask health check in background thread for polling to bind PORT
-        from bot.keep_alive import keep_alive
-        keep_alive()
     else:
         logger.info("📡 LOCAL MODE — Development")
         logger.info("   Supabase URL: %s", config.supabase_url)
         logger.info("   Default language: %s", config.default_language)
+
+    if should_start_healthcheck:
+        logger.info("   Starting keep_alive health check server…")
+        from bot.keep_alive import keep_alive
+        keep_alive()
 
     # Build application
     app = ApplicationBuilder().token(config.bot_token).post_init(post_init).build()

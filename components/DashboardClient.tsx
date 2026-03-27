@@ -28,6 +28,7 @@ interface LatencyRecord {
 }
 
 interface FatigueRecord {
+    session_id: string | null;
     user_id: string | null;
     is_correct: boolean;
     created_at: string;
@@ -50,6 +51,61 @@ interface OrderedFatiguePoint {
     incorrect: number;
 }
 
+export const buildLearningCurveData = (records: LearningCurveRecord[]) => {
+    const grouped: Record<string, GroupedLearningPoint> = {};
+    records.forEach(item => {
+        const date = item.created_at.split('T')[0] ?? item.created_at;
+        if (!grouped[date]) grouped[date] = { date, total: 0, correct: 0 };
+        grouped[date].total++;
+        if (item.is_correct) grouped[date].correct++;
+    });
+
+    return Object.values(grouped)
+        .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
+        .map((group) => ({
+            date: group.date,
+            accuracy: (group.correct / group.total) * 100,
+        }));
+};
+
+export const buildFatigueChartData = (records: FatigueRecord[]) => {
+    if (!records.length) return [];
+
+    const sessions: Record<string, FatigueRecord[]> = {};
+    records.forEach(item => {
+        if (!item.created_at) {
+            return;
+        }
+
+        const day = item.created_at.split('T')[0] ?? item.created_at;
+        const userKey = item.user_id || 'anonymous';
+        const sessionKey = item.session_id || `${userKey}:${day}`;
+
+        if (!sessions[sessionKey]) sessions[sessionKey] = [];
+        sessions[sessionKey].push(item);
+    });
+
+    const statsByOrder: Record<number, OrderedFatiguePoint> = {};
+
+    Object.values(sessions).forEach((session) => {
+        session.sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime());
+
+        session.forEach((attempt, index) => {
+            const order = index + 1;
+            if (order > 25) return;
+            if (!statsByOrder[order]) statsByOrder[order] = { order, total: 0, incorrect: 0 };
+
+            statsByOrder[order].total++;
+            if (!attempt.is_correct) statsByOrder[order].incorrect++;
+        });
+    });
+
+    return Object.values(statsByOrder).map((point) => ({
+        order: point.order,
+        errorRate: (point.incorrect / point.total) * 100
+    }));
+};
+
 interface Props {
     learningData: DashboardQueryState<LearningCurveRecord>;
     latencyData: DashboardQueryState<LatencyRecord>;
@@ -62,25 +118,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     const { showToast } = useToast();
 
     // 1. Process Learning Curve (Group by Date)
-    const learningCurve = useMemo(() => {
-        const grouped: Record<string, GroupedLearningPoint> = {};
-        learningData.data.forEach(item => {
-            // item.created_at is ISO string. Take YYYY-MM-DD
-            const date = item.created_at.split('T')[0] ?? item.created_at;
-            if (!grouped[date]) grouped[date] = { date, total: 0, correct: 0 };
-            grouped[date].total++;
-            if (item.is_correct) grouped[date].correct++;
-        });
-
-        // Sort by date and calculate %
-        return Object.values(grouped)
-            .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
-            .map((group, index) => ({
-                day: index + 1, // Day 1, Day 2...
-                date: group.date,
-                accuracy: (group.correct / group.total) * 100
-            }));
-    }, [learningData.data]);
+    const learningCurve = useMemo(() => buildLearningCurveData(learningData.data), [learningData.data]);
 
     // 2. Process Latency (Correct vs Incorrect)
     const latencyChart = useMemo(() => {
@@ -104,46 +142,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     }, [latencyData.data]);
 
     // 3. Process Fatigue (Group by attempt order within a user-day run)
-    const fatigueChart = useMemo(() => {
-        if (!fatigueRaw.data.length) return [];
-
-        const sessions: Record<string, FatigueRecord[]> = {};
-        fatigueRaw.data.forEach(item => {
-            if (!item.created_at) {
-                return;
-            }
-
-            const day = item.created_at.split('T')[0] ?? item.created_at;
-            const userKey = item.user_id || 'anonymous';
-            const sessionKey = `${userKey}:${day}`;
-
-            if (!sessions[sessionKey]) sessions[sessionKey] = [];
-            sessions[sessionKey].push(item);
-        });
-
-        // Sort each session by created_at and assign index
-        const statsByOrder: Record<number, OrderedFatiguePoint> = {};
-
-        Object.values(sessions).forEach((session) => {
-            // Sort by time
-            session.sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime());
-
-            session.forEach((attempt, index) => {
-                const order = index + 1;
-                if (order > 25) return; // Limit to 25 questions
-                if (!statsByOrder[order]) statsByOrder[order] = { order, total: 0, incorrect: 0 };
-
-                statsByOrder[order].total++;
-                if (!attempt.is_correct) statsByOrder[order].incorrect++;
-            });
-        });
-
-        return Object.values(statsByOrder).map((point) => ({
-            order: point.order,
-            errorRate: (point.incorrect / point.total) * 100
-        }));
-
-    }, [fatigueRaw.data]);
+    const fatigueChart = useMemo(() => buildFatigueChartData(fatigueRaw.data), [fatigueRaw.data]);
 
     // 4. Process Class Distribution (Accuracy per user)
     const distributionChart = useMemo(() => {
@@ -227,7 +226,7 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={learningCurve}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="day" label={{ value: 'Day', position: 'insideBottom', offset: -5 }} />
+                                <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -5 }} />
                                 <YAxis label={{ value: 'Accuracy %', angle: -90, position: 'insideLeft' }} domain={[0, 100]} />
                                 <Tooltip />
                                 <Area type="monotone" dataKey="accuracy" stroke="#8884d8" fill="#8884d8" />

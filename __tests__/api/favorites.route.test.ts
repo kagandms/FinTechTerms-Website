@@ -8,15 +8,14 @@ export {};
 
 const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateRequestScopedClient = jest.fn();
-const mockCreateServiceRoleClient = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
 const mockCompleteIdempotentRequest = jest.fn();
+const mockDeleteIdempotentRequest = jest.fn();
 const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createRequestScopedClient: (request: Request) => mockCreateRequestScopedClient(request),
-    createServiceRoleClient: () => mockCreateServiceRoleClient(),
     resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
 }));
 
@@ -24,6 +23,7 @@ jest.mock('@/lib/api-idempotency', () => ({
     inspectIdempotentRequest: (...args: unknown[]) => mockInspectIdempotentRequest(...args),
     reserveIdempotentRequest: (...args: unknown[]) => mockReserveIdempotentRequest(...args),
     completeIdempotentRequest: (...args: unknown[]) => mockCompleteIdempotentRequest(...args),
+    deleteIdempotentRequest: (...args: unknown[]) => mockDeleteIdempotentRequest(...args),
     failIdempotentRequest: (...args: unknown[]) => mockFailIdempotentRequest(...args),
 }));
 
@@ -45,9 +45,14 @@ describe('favorites route', () => {
         jest.clearAllMocks();
         apiRouteRateLimiter.reset();
         favoritesMutationRateLimiter.reset();
+        mockCreateRequestScopedClient.mockResolvedValue({
+            rpc: jest.fn(),
+            from: jest.fn(),
+        });
         mockInspectIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockReserveIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockCompleteIdempotentRequest.mockResolvedValue(undefined);
+        mockDeleteIdempotentRequest.mockResolvedValue(undefined);
         mockFailIdempotentRequest.mockResolvedValue(undefined);
     });
 
@@ -76,7 +81,6 @@ describe('favorites route', () => {
             favorites: ['term-1', 'term-2'],
         });
         expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
-        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
     });
 
     it('replays cached POST responses before touching route or write rate limiters', async () => {
@@ -136,7 +140,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -153,8 +157,7 @@ describe('favorites route', () => {
             termId: 'term-1',
             favorites: ['term-1'],
         });
-        expect(rpc).toHaveBeenCalledWith('toggle_user_favorite', {
-            p_user_id: 'user-1',
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -192,5 +195,75 @@ describe('favorites route', () => {
             retryable: true,
         });
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('does not pass a user id through the favorite mutation RPC payload', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: {
+                success: true,
+                isFavorite: true,
+                termId: 'term-1',
+                favorites: ['term-1'],
+            },
+            error: null,
+        });
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'user@example.com',
+        });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-1',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+
+        expect(response.status).toBe(200);
+        expect(rpc).toHaveBeenCalledWith(
+            'toggle_my_favorite',
+            expect.not.objectContaining({ p_user_id: expect.anything() })
+        );
+    });
+
+    it('still returns 200 when idempotency completion fails after the favorite write succeeds', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: {
+                success: true,
+                isFavorite: true,
+                termId: 'term-1',
+                favorites: ['term-1'],
+            },
+            error: null,
+        });
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'user@example.com',
+        });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCompleteIdempotentRequest.mockRejectedValueOnce(new Error('idempotency completion failed'));
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-1',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            isFavorite: true,
+            termId: 'term-1',
+            favorites: ['term-1'],
+        });
+        expect(mockDeleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'favorite_mutation',
+            userId: 'user-1',
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        expect(mockFailIdempotentRequest).not.toHaveBeenCalled();
     });
 });

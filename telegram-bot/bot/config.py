@@ -73,6 +73,10 @@ class Config:
         default_factory=lambda: os.environ.get("REDIS_URL", "").strip()
     )
 
+    sentry_dsn: str = field(
+        default_factory=lambda: os.environ.get("BOT_SENTRY_DSN", "").strip()
+    )
+
     # Admin
     admin_user_id: int = field(
         default_factory=lambda: _get_int_env("ADMIN_USER_ID", 0)

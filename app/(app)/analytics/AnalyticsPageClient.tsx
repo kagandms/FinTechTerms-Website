@@ -211,24 +211,50 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
         setExportError(null);
 
         try {
-            const response = await fetch('/api/analytics/export', {
-                method: 'GET',
-                credentials: 'same-origin',
-                cache: 'no-store',
-            });
+            const aggregatedAttempts: unknown[] = [];
+            let nextCursor: string | null = null;
+            let exportedAt: string | null = null;
 
-            const payload = await response.json();
-            if (!response.ok) {
-                throw new Error(
-                    typeof payload?.message === 'string'
-                        ? payload.message
-                        : 'Unable to export analytics data.'
-                );
-            }
+            do {
+                const searchParams = new URLSearchParams({ limit: '500' });
+                if (nextCursor) {
+                    searchParams.set('cursor', nextCursor);
+                }
+
+                const response = await fetch(`/api/analytics/export?${searchParams.toString()}`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(
+                        typeof payload?.message === 'string'
+                            ? payload.message
+                            : 'Unable to export analytics data.'
+                    );
+                }
+
+                if (!Array.isArray(payload?.attempts)) {
+                    throw new Error('Unable to export analytics data.');
+                }
+
+                aggregatedAttempts.push(...payload.attempts);
+                exportedAt = typeof payload?.exportedAt === 'string'
+                    ? payload.exportedAt
+                    : exportedAt;
+                nextCursor = typeof payload?.nextCursor === 'string'
+                    ? payload.nextCursor
+                    : null;
+            } while (nextCursor);
 
             downloadJsonFile(
                 `fintechterms-analytics-${new Date().toISOString().split('T')[0]}.json`,
-                payload
+                {
+                    exportedAt: exportedAt ?? new Date().toISOString(),
+                    attempts: aggregatedAttempts,
+                }
             );
         } catch (error) {
             setExportError(
