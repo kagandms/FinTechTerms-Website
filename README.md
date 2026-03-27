@@ -1,6 +1,7 @@
 # FinTechTerms — Trilingual Financial Dictionary
 
 > 📖 **EN** · **TR** · **RU** — Learn finance, fintech & IT terms with SRS-powered spaced repetition.
+> Production releases are promoted from `main`; branch deployments are used for preview validation.
 
 [![CI/CD](https://github.com/kagandms/FinTechTerms-Website/actions/workflows/ci.yml/badge.svg)](https://github.com/kagandms/FinTechTerms-Website/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/demo-fintechterms.vercel.app-blue)](https://fintechterms.vercel.app)
