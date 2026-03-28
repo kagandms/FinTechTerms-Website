@@ -11,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface InstallButtonProps {
     variant?: 'compact' | 'prominent';
+    tone?: 'default' | 'hero';
 }
 
 type NavigatorWithStandalone = Navigator & {
@@ -40,7 +41,7 @@ const canShowIOSInstallInstructions = (): boolean => {
     return isIOSDevice && !isStandaloneDisplayMode();
 };
 
-export default function InstallButton({ variant = 'compact' }: InstallButtonProps) {
+export default function InstallButton({ variant = 'compact', tone = 'default' }: InstallButtonProps) {
     const { t } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
@@ -137,9 +138,17 @@ export default function InstallButton({ variant = 'compact' }: InstallButtonProp
         return null;
     }
 
-    const buttonClassName = variant === 'prominent'
-        ? 'min-w-[9rem] shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-xl border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-700 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20'
-        : 'shrink-0 flex items-center justify-center gap-2 rounded-lg border border-transparent bg-primary-600 p-1.5 text-sm font-medium text-white shadow-sm transition-colors active:scale-95 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 sm:rounded-xl sm:px-3 sm:py-2';
+    const buttonClassName = tone === 'hero'
+        ? (
+            variant === 'prominent'
+                ? 'min-w-[9rem] shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-2xl border border-[#1f5f8d] bg-[#123f65] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70'
+                : 'shrink-0 flex items-center justify-center gap-2 rounded-xl border border-[#1f5f8d] bg-[#123f65] px-3 py-2 text-sm font-medium text-white shadow-md shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70'
+        )
+        : (
+            variant === 'prominent'
+                ? 'min-w-[9rem] shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-xl border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-700 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20'
+                : 'shrink-0 flex items-center justify-center gap-2 rounded-lg border border-transparent bg-primary-600 p-1.5 text-sm font-medium text-white shadow-sm transition-colors active:scale-95 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 sm:rounded-xl sm:px-3 sm:py-2'
+        );
 
     if (variant === 'prominent' && !hasEvaluatedInstallability) {
         return (

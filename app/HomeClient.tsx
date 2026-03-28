@@ -46,6 +46,9 @@ const shuffleTerms = (terms: Term[]): Term[] => {
     return nextTerms;
 };
 
+const MOBILE_HERO_ACTION_CLASS = 'flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-[#1f5f8d] bg-[#123f65] p-2 text-white shadow-md shadow-[#0b2236]/15 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70';
+const DESKTOP_HERO_ACTION_CLASS = 'flex h-14 w-full items-center justify-center rounded-2xl border border-[#1f5f8d] bg-[#123f65] p-3 text-white shadow-lg shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70';
+
 export default function HomePage({ initialTerms = [], nonce, learningStats = null }: HomeClientProps) {
     const { t } = useLanguage();
     const { terms, userProgress, stats, quizPreview } = useSRS();
@@ -125,27 +128,27 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                         href="https://t.me/FinTechTermsBot"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 rounded-xl border border-sky-100 bg-white text-sky-600 transition-colors hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800 flex items-center justify-center"
+                        className={MOBILE_HERO_ACTION_CLASS}
                         aria-label={t('shell.telegramIntegration')}
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="w-5 h-5 text-white" />
                     </a>
                     <div className="flex items-center justify-center">
-                        <InstallButton variant="prominent" />
+                        <InstallButton variant="compact" tone="hero" />
                     </div>
                     <button
                         onClick={toggleTheme}
                         data-testid="theme-toggle"
-                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                        className={MOBILE_HERO_ACTION_CLASS}
                         aria-label={t('shell.toggleTheme')}
                     >
                         {resolvedTheme === 'dark' ? (
-                            <Sun className="w-5 h-5 text-yellow-500" />
+                            <Sun className="w-5 h-5 text-amber-300" />
                         ) : (
-                            <Moon className="w-5 h-5 text-gray-600" />
+                            <Moon className="w-5 h-5 text-white" />
                         )}
                     </button>
-                    <LanguageSwitcher />
+                    <LanguageSwitcher variant="hero" />
                 </div>
             </header>
 
@@ -177,29 +180,29 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                             href="https://t.me/FinTechTermsBot"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex h-14 w-full items-center justify-center rounded-2xl border border-sky-100 bg-white p-3 text-sky-600 shadow-sm transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-900 dark:text-sky-300 dark:hover:bg-slate-800"
+                            className={DESKTOP_HERO_ACTION_CLASS}
                             aria-label={t('shell.telegramIntegration')}
                         >
-                            <Send className="w-5 h-5" />
+                            <Send className="w-5 h-5 text-white" />
                         </a>
                         <div className="min-w-0 [&>button]:h-14 [&>button]:w-full [&>button]:justify-center [&>[data-testid='install-button-placeholder']]:h-14 [&>[data-testid='install-button-placeholder']]:w-full">
-                            <InstallButton variant="prominent" />
+                            <InstallButton variant="prominent" tone="hero" />
                         </div>
 
                         <button
                             onClick={toggleTheme}
                             data-testid="theme-toggle"
-                            className="flex h-14 w-full items-center justify-center rounded-2xl border border-gray-100 bg-white p-3 text-gray-500 shadow-sm transition-all hover:bg-gray-50 hover:text-yellow-500 dark:border-white/20 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20 dark:hover:text-yellow-300 backdrop-blur-sm"
+                            className={DESKTOP_HERO_ACTION_CLASS}
                             aria-label={t('shell.toggleTheme')}
                         >
                             {resolvedTheme === 'dark' ? (
-                                <Sun className="w-5 h-5" />
+                                <Sun className="w-5 h-5 text-amber-300" />
                             ) : (
-                                <Moon className="w-5 h-5" />
+                                <Moon className="w-5 h-5 text-white" />
                             )}
                         </button>
                         <div className="min-w-0 [&>div]:w-full [&>div>button]:h-14 [&>div>button]:w-full [&>div>button]:justify-between [&>div>button]:rounded-2xl">
-                            <LanguageSwitcher />
+                            <LanguageSwitcher variant="hero" />
                         </div>
                     </div>
                 </div>

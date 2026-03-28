@@ -147,8 +147,8 @@ const runGuestSmoke = async (page) => {
     await page.goto(`${stagingBaseUrl}/search`, { waitUntil: 'domcontentloaded' });
     await waitForPageSettle(page);
     await page.getByTestId('search-input').waitFor({ state: 'visible' });
-    await page.getByTestId('search-input').fill('3D');
-    await page.getByText(/3D/i).first().waitFor({ state: 'visible' });
+    await page.getByTestId('search-input').fill('SQL');
+    await page.getByText(/^SQL$/i).first().waitFor({ state: 'visible' });
     recordCheck('guest-search', true, 'Search input and results rendered.');
 
     await page.goto(`${stagingBaseUrl}/quiz`, { waitUntil: 'domcontentloaded' });
