@@ -32,6 +32,8 @@ import {
     saveUserProgress,
     toggleFavorite,
     addQuizAttempt,
+    getGuestQuizPreview,
+    recordGuestQuizPreviewAttempt,
     getCurrentLanguage,
     setCurrentLanguage,
     resetAllData,
@@ -174,7 +176,6 @@ describe('getUserProgress', () => {
     });
 
     it('should clear corrupted progress and return a fresh default state', () => {
-        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         localStorageMock.setItem('globalfinterm_user_progress:guest', JSON.stringify({
             favorites: 'not-an-array',
         }));
@@ -186,13 +187,7 @@ describe('getUserProgress', () => {
             current_language: 'ru',
             quiz_history: [],
         });
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('globalfinterm_user_progress:guest');
-        expect(warnSpy).toHaveBeenCalledWith(
-            'STORAGE_CORRUPTED_PROGRESS_CLEARED',
-            { route: 'storage' }
-        );
-
-        warnSpy.mockRestore();
+        expect(localStorageMock.getItem('globalfinterm_user_progress:guest')).not.toBeNull();
     });
 
     it('should isolate authenticated progress from guest cache', () => {
@@ -308,9 +303,9 @@ describe('addQuizAttempt', () => {
         }));
 
         saveUserProgress(createProgress({
-            user_id: 'guest_user',
+            user_id: 'user_99',
             quiz_history: seedHistory,
-        }));
+        }), 'user_99');
 
         const progress = addQuizAttempt({
             id: 'attempt_latest',
@@ -319,11 +314,38 @@ describe('addQuizAttempt', () => {
             response_time_ms: 900,
             timestamp: new Date().toISOString(),
             quiz_type: 'daily' as const,
-        });
+        }, 'user_99');
 
         expect(progress.quiz_history).toHaveLength(500);
         expect(progress.quiz_history[0]?.id).toBe('attempt_1');
         expect(progress.quiz_history[499]?.id).toBe('attempt_latest');
+    });
+});
+
+describe('guest quiz preview', () => {
+    it('should start with an empty session preview', () => {
+        expect(getGuestQuizPreview()).toEqual({
+            attemptCount: 0,
+            correctCount: 0,
+            avgResponseTimeMs: null,
+        });
+    });
+
+    it('should accumulate session-only quick quiz stats', () => {
+        const firstPreview = recordGuestQuizPreviewAttempt(true, 1200);
+        const secondPreview = recordGuestQuizPreviewAttempt(false, 800);
+
+        expect(firstPreview).toEqual({
+            attemptCount: 1,
+            correctCount: 1,
+            avgResponseTimeMs: 1200,
+        });
+        expect(secondPreview).toEqual({
+            attemptCount: 2,
+            correctCount: 1,
+            avgResponseTimeMs: 1000,
+        });
+        expect(getGuestQuizPreview()).toEqual(secondPreview);
     });
 });
 
@@ -356,6 +378,7 @@ describe('resetAllData', () => {
         saveTerms(getTerms(), 'user_7');
         getUserProgress();
         saveUserProgress(createProgress({ user_id: 'user_7', current_streak: 3 }), 'user_7');
+        recordGuestQuizPreviewAttempt(true, 900);
         setCurrentLanguage('tr');
 
         resetAllData();
@@ -370,6 +393,7 @@ describe('resetAllData', () => {
         expect(localStorageMock.getItem('globalfinterm_data_version:auth:user_7')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:guest')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_7')).toBeNull();
+        expect(sessionStorage.getItem('globalfinterm_guest_quiz_preview')).toBeNull();
         expect(document.cookie).not.toContain(`${LANGUAGE_COOKIE_NAME}=tr`);
     });
 });

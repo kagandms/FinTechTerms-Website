@@ -52,7 +52,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         currentExample
     } = useTermTranslation(term);
     const { toggleFavorite, isFavorite, isFavoriteUpdating, favoritesRemaining } = useSRS();
-    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { isAuthenticated, isLoading: isAuthLoading, requiresProfileCompletion } = useAuth();
     const { showToast } = useToast();
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -62,6 +62,8 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const favorite = isFavorite(term.id);
     const isPending = isFavoriteUpdating(term.id);
     const isFavoriteActionDisabled = isPending || isAuthLoading;
+    const favoriteLimitHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
+    const favoriteLimitActionLabel = requiresProfileCompletion ? t('profile.edit') : t('auth.login');
 
     useEffect(() => () => {
         if (limitWarningTimeoutRef.current) {
@@ -137,10 +139,10 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     <div>
                         <p className="text-sm text-amber-700 dark:text-amber-400">{t('card.favoriteLimit')}</p>
                         <Link
-                            href="/profile"
+                            href={favoriteLimitHref}
                             className="text-sm font-medium text-primary-500 hover:underline"
                         >
-                            {t('auth.login')} →
+                            {favoriteLimitActionLabel} →
                         </Link>
                     </div>
                 </div>

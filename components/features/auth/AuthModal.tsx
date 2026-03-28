@@ -23,6 +23,7 @@ interface AuthModalProps {
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;
     handleAuth: () => void;
+    handleGoogleAuth: () => void;
     authLoading: boolean;
     authError: string;
     setAuthError: (err: string) => void;
@@ -143,6 +144,7 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                         setAuthForm={setAuthForm}
                         authLoading={authLoading}
                         handleAuth={props.handleAuth}
+                        handleGoogleAuth={props.handleGoogleAuth}
                         authError={authError}
                         setAuthError={setAuthError}
                         showPassword={props.showPassword}

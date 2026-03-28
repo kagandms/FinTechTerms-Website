@@ -17,6 +17,8 @@ const mockGetUserProgress = jest.fn();
 const mockToggleFavoriteInStorage = jest.fn();
 const mockAddQuizAttemptToStorage = jest.fn();
 const mockSaveUserProgress = jest.fn();
+const mockGetGuestQuizPreview = jest.fn();
+const mockRecordGuestQuizPreviewAttempt = jest.fn();
 const mockGetTermsDueForReview = jest.fn();
 const mockUpdateTermAfterReview = jest.fn();
 const mockCalculateProgressStats = jest.fn();
@@ -46,6 +48,8 @@ jest.mock('@/utils/storage', () => ({
     toggleFavorite: (...args: unknown[]) => mockToggleFavoriteInStorage(...args),
     addQuizAttempt: (...args: unknown[]) => mockAddQuizAttemptToStorage(...args),
     saveUserProgress: (...args: unknown[]) => mockSaveUserProgress(...args),
+    getGuestQuizPreview: () => mockGetGuestQuizPreview(),
+    recordGuestQuizPreviewAttempt: (...args: unknown[]) => mockRecordGuestQuizPreviewAttempt(...args),
 }));
 
 jest.mock('@/utils/srsLogic', () => ({
@@ -178,9 +182,18 @@ function TestConsumer() {
 
 describe('SRSContext', () => {
     let authState: {
+        entitlements: {
+            canUseAdvancedAnalytics: boolean;
+            canUseMistakeReview: boolean;
+            canUseReviewMode: boolean;
+            canInstallPwa: boolean;
+            maxFavorites: number;
+            requiresProfileCompletion: boolean;
+        };
         favoriteLimit: number;
         isAuthenticated: boolean;
         isLoading: boolean;
+        requiresProfileCompletion: boolean;
         user: { id: string } | null;
     };
 
@@ -190,9 +203,18 @@ describe('SRSContext', () => {
         sessionStorage.clear();
 
         authState = {
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+                canUseMistakeReview: true,
+                canUseReviewMode: true,
+                canInstallPwa: true,
+                maxFavorites: Number.POSITIVE_INFINITY,
+                requiresProfileCompletion: false,
+            },
             favoriteLimit: Number.POSITIVE_INFINITY,
             isAuthenticated: true,
             isLoading: false,
+            requiresProfileCompletion: false,
             user: { id: 'user-1' },
         };
 
@@ -220,6 +242,16 @@ describe('SRSContext', () => {
         mockToggleFavoriteInSupabase.mockResolvedValue({
             status: 'ok',
             data: { favorites: ['term-1'], isFavorite: true },
+        });
+        mockGetGuestQuizPreview.mockReturnValue({
+            attemptCount: 0,
+            correctCount: 0,
+            avgResponseTimeMs: null,
+        });
+        mockRecordGuestQuizPreviewAttempt.mockReturnValue({
+            attemptCount: 1,
+            correctCount: 1,
+            avgResponseTimeMs: 1200,
         });
         mockToggleFavoriteInStorage.mockReturnValue(baseProgress);
         mockAddQuizAttemptToStorage.mockReturnValue(baseProgress);
@@ -406,9 +438,18 @@ describe('SRSContext', () => {
 
     it('throws a hard error for guest quiz answers when the local term is missing', async () => {
         authState = {
-            favoriteLimit: 50,
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+                canUseMistakeReview: false,
+                canUseReviewMode: false,
+                canInstallPwa: true,
+                maxFavorites: 15,
+                requiresProfileCompletion: false,
+            },
+            favoriteLimit: 15,
             isAuthenticated: false,
             isLoading: false,
+            requiresProfileCompletion: false,
             user: null,
         };
         mockUseAuth.mockImplementation(() => authState);
@@ -427,7 +468,7 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('submit-error')).toHaveTextContent('QUIZ_TERM_MISSING');
+            expect(screen.getByTestId('submit-error')).toHaveTextContent('Review mode is unavailable');
         });
 
         expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
@@ -544,15 +585,24 @@ describe('SRSContext', () => {
 
     it('drops a due card when another tab broadcasts a committed review through storage sync', async () => {
         authState = {
-            favoriteLimit: 50,
-            isAuthenticated: false,
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+                canUseMistakeReview: true,
+                canUseReviewMode: true,
+                canInstallPwa: true,
+                maxFavorites: Number.POSITIVE_INFINITY,
+                requiresProfileCompletion: false,
+            },
+            favoriteLimit: Number.POSITIVE_INFINITY,
+            isAuthenticated: true,
             isLoading: false,
-            user: null,
+            requiresProfileCompletion: false,
+            user: { id: 'user-1' },
         };
         mockUseAuth.mockImplementation(() => authState);
         mockGetUserProgress.mockReturnValue({
             ...baseProgress,
-            user_id: 'guest_user',
+            user_id: 'user-1',
             quiz_history: [{
                 id: 'attempt-1',
                 term_id: 'term-1',

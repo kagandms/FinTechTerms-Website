@@ -30,7 +30,12 @@ jest.mock('@/contexts/SRSContext', () => ({
             mastered: 2,
             learning: 1,
             dueToday: 1
-        }
+        },
+        quizPreview: {
+            attemptCount: 0,
+            correctCount: 0,
+            avgResponseTimeMs: null,
+        },
     })
 }));
 
@@ -43,6 +48,9 @@ jest.mock('@/contexts/ThemeContext', () => ({
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => ({
+        entitlements: {
+            canUseReviewMode: true,
+        },
         isAuthenticated: true,
     }),
 }));

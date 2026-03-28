@@ -48,24 +48,24 @@ const shuffleTerms = (terms: Term[]): Term[] => {
 
 export default function HomePage({ initialTerms = [], nonce, learningStats = null }: HomeClientProps) {
     const { t } = useLanguage();
-    const { terms, userProgress, stats } = useSRS();
+    const { terms, userProgress, stats, quizPreview } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
-    const { isAuthenticated } = useAuth();
+    const { entitlements, isAuthenticated } = useAuth();
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
     const siteUrl = getSiteUrl();
     const exactAccuracy = isAuthenticated && learningStats?.ok
         ? learningStats.data.accuracy
         : null;
-    const guestAccuracy = userProgress.quiz_history.length > 0
-        ? Math.round((userProgress.quiz_history.filter((attempt) => attempt.is_correct).length / userProgress.quiz_history.length) * 100)
+    const guestAccuracy = quizPreview.attemptCount > 0
+        ? Math.round((quizPreview.correctCount / quizPreview.attemptCount) * 100)
         : 0;
     const accuracyLabel = isAuthenticated
         ? (exactAccuracy === null ? '—' : `%${exactAccuracy}`)
         : `%${guestAccuracy}`;
     const shouldShowQuickStats = isAuthenticated
         ? Boolean(learningStats?.ok && (learningStats.data.totalReviews ?? 0) > 0)
-        : userProgress.quiz_history.length > 0;
+        : quizPreview.attemptCount > 0;
     const recentTerms = React.useMemo<Term[]>(() => (
         displayTerms.length <= 3
             ? pickInitialTerms(displayTerms)
@@ -212,12 +212,14 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                 <DailyReview />
             </section>
 
-            <section className="mb-6">
-                <SRSNotificationCard
-                    dueCount={stats.dueToday}
-                    lastReviewDate={userProgress.last_study_date}
-                />
-            </section>
+            {entitlements.canUseReviewMode ? (
+                <section className="mb-6">
+                    <SRSNotificationCard
+                        dueCount={stats.dueToday}
+                        lastReviewDate={userProgress.last_study_date}
+                    />
+                </section>
+            ) : null}
 
             {/* Quick Stats */}
             {shouldShowQuickStats && (

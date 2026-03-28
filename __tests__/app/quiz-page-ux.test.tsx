@@ -17,7 +17,13 @@ jest.mock('@/contexts/LanguageContext', () => ({
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => ({
+        entitlements: {
+            canUseAdvancedAnalytics: false,
+            canUseMistakeReview: false,
+            canUseReviewMode: false,
+        },
         isAuthenticated: false,
+        requiresProfileCompletion: false,
     }),
 }));
 
@@ -30,6 +36,12 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/contexts/SRSContext', () => ({
     useSRS: () => ({
         dueTerms: [],
+        quizPreview: {
+            attemptCount: 0,
+            correctCount: 0,
+            avgResponseTimeMs: null,
+        },
+        recordQuizPreviewAttempt: jest.fn(),
         submitQuizAnswer: jest.fn(),
         stats: {
             totalFavorites: 0,
@@ -65,12 +77,12 @@ jest.mock('next/link', () => ({
 }));
 
 describe('QuizPage UX', () => {
-    it('renders a dark-mode-safe explore words CTA when no favorites exist', () => {
+    it('shows the locked-review CTA while keeping quick quiz available for guests', () => {
         render(<QuizPage />);
 
-        const exploreLink = screen.getByRole('link', { name: /quiz.exploreWords/i });
-        expect(exploreLink.className).toContain('bg-primary-500');
-        expect(exploreLink.className).toContain('dark:bg-primary-400');
-        expect(exploreLink.className).toContain('text-white');
+        const profileLink = screen.getByRole('link', { name: /Open Profile/i });
+        expect(profileLink.className).toContain('bg-primary-500');
+        expect(profileLink.className).toContain('text-white');
+        expect(screen.getByText('quiz.startQuickQuiz')).toBeInTheDocument();
     });
 });

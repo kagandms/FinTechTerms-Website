@@ -70,6 +70,33 @@ interface AnalyticsPageClientProps {
     learningStats: LearningStatsActionResult;
 }
 
+const teaserCopyByLanguage = {
+    en: {
+        sessionAttempts: 'This session attempts',
+        sessionAccuracy: 'This session accuracy',
+        title: 'Unlock full member analytics',
+        guestDescription: 'Create an account to sync progress, export history, and unlock the full learning dashboard.',
+        memberDescription: 'Complete your profile to unlock full member analytics, exports, and review insights.',
+        cta: 'Open Profile',
+    },
+    tr: {
+        sessionAttempts: 'Bu oturum denemeleri',
+        sessionAccuracy: 'Bu oturum doğruluğu',
+        title: 'Tam üye analitiğinin kilidini aç',
+        guestDescription: 'İlerlemeni senkronize etmek, geçmişi dışa aktarmak ve tam öğrenme panelini açmak için hesap oluştur.',
+        memberDescription: 'Tam üye analitiği, dışa aktarma ve tekrar içgörüleri için profilini tamamla.',
+        cta: 'Profili Aç',
+    },
+    ru: {
+        sessionAttempts: 'Попытки в этой сессии',
+        sessionAccuracy: 'Точность в этой сессии',
+        title: 'Откройте полную аналитику участника',
+        guestDescription: 'Создайте аккаунт, чтобы синхронизировать прогресс, экспортировать историю и открыть полный учебный дашборд.',
+        memberDescription: 'Заполните профиль, чтобы открыть полную аналитику, экспорт и review-инсайты.',
+        cta: 'Открыть профиль',
+    },
+} as const;
+
 const downloadJsonFile = (filename: string, payload: unknown): void => {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -82,9 +109,11 @@ const downloadJsonFile = (filename: string, payload: unknown): void => {
 
 export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClientProps) {
     const { language, t: translate } = useLanguage();
-    const { terms, userProgress, stats } = useSRS();
-    const { isAuthenticated } = useAuth();
+    const { terms, userProgress, stats, quizPreview } = useSRS();
+    const { entitlements, isAuthenticated, requiresProfileCompletion } = useAuth();
     const copy = getTranslationValue(language, 'analytics') as AnalyticsCopy;
+    const teaserCopy = teaserCopyByLanguage[language] ?? teaserCopyByLanguage.en;
+    const isAdvancedAnalyticsEnabled = entitlements.canUseAdvancedAnalytics;
     const [isExporting, setIsExporting] = useState(false);
     const [exportError, setExportError] = useState<string | null>(null);
     const favoriteTerms = useMemo(
@@ -135,7 +164,7 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
     );
 
     const quizStats = useMemo(() => {
-        if (isAuthenticated) {
+        if (isAdvancedAnalyticsEnabled && isAuthenticated) {
             if (!learningStats.ok) {
                 return {
                     correct: null as number | null,
@@ -153,36 +182,21 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
             };
         }
 
-        const history = userProgress.quiz_history;
-        const correct = history.filter((attempt) => attempt.is_correct).length;
-        const total = history.length;
+        const total = quizPreview.attemptCount;
+        const correct = quizPreview.correctCount;
         const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-        const avgResponseTime = total > 0
-            ? Math.round(history.reduce((sum, attempt) => sum + attempt.response_time_ms, 0) / total)
-            : 0;
+        const avgResponseTime = quizPreview.avgResponseTimeMs ?? 0;
 
         return { correct, total, accuracy, avgResponseTime };
-    }, [isAuthenticated, learningStats, userProgress.quiz_history]);
+    }, [isAdvancedAnalyticsEnabled, isAuthenticated, learningStats, quizPreview]);
 
     const recentActivity = useMemo(() => {
         const recentAttempts = (() => {
-            if (isAuthenticated) {
+            if (isAdvancedAnalyticsEnabled && isAuthenticated) {
                 return learningStats.ok ? learningStats.data.recentAttempts : [];
             }
 
-            return [...userProgress.quiz_history]
-                .sort((left, right) => (
-                    new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
-                ))
-                .slice(0, 10)
-                .map((attempt) => ({
-                    id: attempt.id,
-                    termId: attempt.term_id,
-                    createdAt: attempt.timestamp,
-                    isCorrect: attempt.is_correct,
-                    responseTimeMs: attempt.response_time_ms,
-                    quizType: attempt.quiz_type,
-                }));
+            return [];
         })();
 
         return recentAttempts.map((attempt) => {
@@ -200,10 +214,10 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
                 termName: termNameByLanguage?.[language] ?? copy.unknownTerm,
             };
         });
-    }, [copy.unknownTerm, isAuthenticated, language, learningStats, terms, userProgress.quiz_history]);
+    }, [copy.unknownTerm, isAdvancedAnalyticsEnabled, isAuthenticated, language, learningStats, terms]);
 
     const handleExport = async () => {
-        if (!isAuthenticated) {
+        if (!isAdvancedAnalyticsEnabled || !isAuthenticated) {
             return;
         }
 
@@ -294,6 +308,44 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{copy.title}</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{copy.subtitle}</p>
             </header>
+
+            {!isAdvancedAnalyticsEnabled ? (
+                <>
+                    <section className="mb-6">
+                        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                            {copy.overview}
+                        </h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                                <BookOpen className="w-5 h-5 text-blue-500 mb-2" />
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{quizPreview.attemptCount}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{teaserCopy.sessionAttempts}</p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                                <TrendingUp className="w-5 h-5 text-purple-500 mb-2" />
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    {quizPreview.attemptCount > 0 ? `%${quizStats.accuracy ?? 0}` : '—'}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{teaserCopy.sessionAccuracy}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-primary-100 bg-primary-50 p-6 text-center dark:border-primary-900/40 dark:bg-primary-900/20">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{teaserCopy.title}</h2>
+                        <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            {requiresProfileCompletion ? teaserCopy.memberDescription : teaserCopy.guestDescription}
+                        </p>
+                        <Link
+                            href={requiresProfileCompletion ? '/profile?complete=1' : '/profile'}
+                            className="mt-5 inline-flex items-center justify-center rounded-xl bg-primary-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-600"
+                        >
+                            {teaserCopy.cta}
+                        </Link>
+                    </section>
+                </>
+            ) : (
+                <>
 
             <section className="mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
@@ -488,6 +540,8 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
                     <p className="mt-3 text-sm text-red-600 dark:text-red-400">{exportError}</p>
                 ) : null}
             </section>
+                </>
+            )}
         </div>
     );
 }

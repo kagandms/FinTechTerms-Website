@@ -162,7 +162,13 @@ describe('ProfilePageClient', () => {
             },
         });
         mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
+            favoriteLimit: Number.POSITIVE_INFINITY,
             isAuthenticated: true,
+            refreshMemberState: jest.fn(),
+            requiresProfileCompletion: false,
         });
     });
 
@@ -355,7 +361,13 @@ describe('ProfilePageClient', () => {
             },
         });
         mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            favoriteLimit: 15,
             isAuthenticated: false,
+            refreshMemberState: jest.fn(),
+            requiresProfileCompletion: false,
         });
 
         render(

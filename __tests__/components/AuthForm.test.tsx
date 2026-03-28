@@ -88,6 +88,7 @@ const createBaseProps = (language: 'tr' | 'en' | 'ru') => ({
     setAuthForm: jest.fn(),
     authLoading: false,
     handleAuth: jest.fn(),
+    handleGoogleAuth: jest.fn(),
     authError: '',
     setAuthError: jest.fn(),
     showPassword: false,
@@ -128,5 +129,14 @@ describe('AuthForm', () => {
         expect(props.setAuthForm).toHaveBeenCalledWith(expect.objectContaining({
             confirmPassword: 'Secret123!',
         }));
+    });
+
+    it('exposes the Google continuation action outside forgot-password mode', () => {
+        const props = createBaseProps('en');
+        render(<AuthForm {...props} />);
+
+        fireEvent.click(screen.getByTestId('auth-google-submit'));
+
+        expect(props.handleGoogleAuth).toHaveBeenCalledTimes(1);
     });
 });

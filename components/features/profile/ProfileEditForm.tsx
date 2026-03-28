@@ -22,6 +22,7 @@ import { logger } from '@/lib/logger';
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
     initialData?: ProfileFormInitialData | null;
+    onProfileSaved?: () => Promise<void> | void;
 }
 
 export interface ProfileFormInitialData {
@@ -125,7 +126,7 @@ export const runWithAbortSignal = async <T,>(
     });
 };
 
-export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData }) => {
+export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData, onProfileSaved }) => {
     const supabase = getSupabaseClient();
     const { user: authenticatedUser } = useAuth();
     const { showToast, showToastAfterRefresh } = useToast();
@@ -500,6 +501,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 setFormSuccess(dict.profileUpdated);
                 showToastAfterRefresh(dict.profileUpdated, 'success');
             }
+
+            await onProfileSaved?.();
 
             startTransition(() => {
                 router.refresh();

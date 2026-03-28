@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useAuth } from '@/contexts/AuthContext';
 import QuizCard from '@/components/QuizCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
@@ -55,6 +56,13 @@ const stateMessages = {
         noQuestionsAvailable: 'Bu filtre icin uygun soru yok.',
         noQuestionsTooltip: 'Bu filtre icin soru bulunmadigi icin quiz baslatilamiyor.',
         retry: 'Tekrar Dene',
+        reviewLockedTitle: 'Tam SRS tekrarı üyelik gerektirir',
+        reviewLockedDescription: 'Hızlı quiz kullanılabilir. Kalıcı aralıklı tekrar planı için hesap oluşturun veya profilinizi tamamlayın.',
+        reviewLockedCta: 'Profili Aç',
+        mistakeReviewTitle: 'Hata tekrarı',
+        mistakeReviewDescription: 'Yakın zamanda yanlış cevapladığınız terimleri tekrar çalışın.',
+        noMistakeReviewTitle: 'Hata tekrar kuyruğu boş',
+        noMistakeReviewDescription: 'Yanlış cevaplanan terim yok. Önce hızlı quiz çözerek bu modu doldurun.',
     },
     en: {
         loadingTitle: 'Loading quiz',
@@ -73,6 +81,13 @@ const stateMessages = {
         noQuestionsAvailable: 'No questions match this filter.',
         noQuestionsTooltip: 'Start Quiz is disabled because there are no matching questions.',
         retry: 'Try Again',
+        reviewLockedTitle: 'Full SRS review requires membership',
+        reviewLockedDescription: 'Quick Quiz is available now. Create an account or complete your profile to unlock permanent spaced repetition.',
+        reviewLockedCta: 'Open Profile',
+        mistakeReviewTitle: 'Mistake review',
+        mistakeReviewDescription: 'Revisit the terms you answered incorrectly most recently.',
+        noMistakeReviewTitle: 'Mistake review queue is empty',
+        noMistakeReviewDescription: 'There are no recent incorrect answers yet. Use Quick Quiz first to build this queue.',
     },
     ru: {
         loadingTitle: 'Загружаем квиз',
@@ -91,13 +106,23 @@ const stateMessages = {
         noQuestionsAvailable: 'Для этого фильтра нет доступных вопросов.',
         noQuestionsTooltip: 'Кнопка запуска отключена, потому что подходящих вопросов нет.',
         retry: 'Повторить',
+        reviewLockedTitle: 'Полный SRS-режим доступен только участникам',
+        reviewLockedDescription: 'Быстрый квиз доступен уже сейчас. Создайте аккаунт или заполните профиль, чтобы открыть постоянное интервальное повторение.',
+        reviewLockedCta: 'Открыть профиль',
+        mistakeReviewTitle: 'Повтор ошибок',
+        mistakeReviewDescription: 'Повторите термины, на которые вы недавно ответили неправильно.',
+        noMistakeReviewTitle: 'Очередь повторения ошибок пуста',
+        noMistakeReviewDescription: 'Пока нет недавних неправильных ответов. Сначала пройдите быстрый квиз.',
     },
 } as const;
 
 export default function QuizPage({ nonce }: QuizPageProps) {
     const { t, language } = useLanguage();
+    const { entitlements, requiresProfileCompletion } = useAuth();
     const {
         dueTerms,
+        quizPreview,
+        recordQuizPreviewAttempt,
         submitQuizAnswer,
         stats,
         terms,
@@ -113,6 +138,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [isComplete, setIsComplete] = useState(false);
     const [sessionTerms, setSessionTerms] = useState<typeof dueTerms>([]);
     const [isQuickQuiz, setIsQuickQuiz] = useState(false);
+    const [isMistakeReview, setIsMistakeReview] = useState(false);
     const [showQuizOptions, setShowQuizOptions] = useState(false);
     const [hasChosenMode, setHasChosenMode] = useState(false);
     const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
@@ -128,17 +154,32 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const quizOptions = [5, 10, 20, 50];
     const masteredCount = stats.mastered;
     const learningCount = stats.learning;
+    const canUseReviewMode = entitlements.canUseReviewMode;
     const hasBlockingTermsError = termsStatus === 'error' || (termsStatus === 'degraded' && terms.length === 0);
     const hasCachedProgressData = dueTerms.length > 0
         || userProgress.favorites.length > 0
         || userProgress.quiz_history.length > 0
         || userProgress.current_streak > 0;
-    const canUseProgressData = progressStatus === 'ready' || (progressStatus === 'degraded' && hasCachedProgressData);
-    const shouldShowProgressFallback = progressStatus === 'error' || (progressStatus === 'degraded' && !hasCachedProgressData);
-    const shouldShowDegradedNotice = (termsStatus === 'degraded' && terms.length > 0)
-        || (progressStatus === 'degraded' && hasCachedProgressData);
+    const canUseProgressData = canUseReviewMode
+        && (progressStatus === 'ready' || (progressStatus === 'degraded' && hasCachedProgressData));
+    const shouldShowProgressFallback = canUseReviewMode
+        && (progressStatus === 'error' || (progressStatus === 'degraded' && !hasCachedProgressData));
+    const shouldShowDegradedNotice = canUseReviewMode
+        && ((termsStatus === 'degraded' && terms.length > 0)
+            || (progressStatus === 'degraded' && hasCachedProgressData));
     const isRouteLoading = termsStatus === 'loading' && terms.length === 0;
-    const showProgressSyncNotice = progressStatus === 'loading' && terms.length > 0;
+    const showProgressSyncNotice = canUseReviewMode && progressStatus === 'loading' && terms.length > 0;
+    const recentWrongTerms = userProgress.quiz_history
+        .filter((attempt) => !attempt.is_correct)
+        .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
+    const mistakeReviewPool = Array.from(
+        new Map(
+            recentWrongTerms
+                .map((attempt) => terms.find((term) => term.id === attempt.term_id))
+                .filter((term): term is typeof terms[number] => Boolean(term))
+                .map((term) => [term.id, term] as const)
+        ).values()
+    ).slice(0, 20);
 
     const getQuickQuizPool = (category: string | null) => {
         let pool = [...terms];
@@ -156,16 +197,17 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
     const quickQuizPool = getQuickQuizPool(quickQuizCategory);
     const quickQuizAvailableCount = quickQuizPool.length;
+    const reviewUnlockHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
-        if (!isQuickQuiz && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length > 0) {
+        if (!isQuickQuiz && !isMistakeReview && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length > 0) {
             setSessionTerms(dueTerms);
             setHasStartedNormalQuiz(true);
-        } else if (!isQuickQuiz && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length === 0) {
+        } else if (!isQuickQuiz && !isMistakeReview && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length === 0) {
             setSessionTerms([]);
         }
-    }, [dueTerms, isQuickQuiz, hasStartedNormalQuiz, hasChosenMode]);
+    }, [dueTerms, isMistakeReview, isQuickQuiz, hasStartedNormalQuiz, hasChosenMode]);
 
     const currentTerm = sessionTerms[currentIndex];
 
@@ -193,6 +235,20 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setSubmissionError(null);
     };
 
+    const startMistakeReview = () => {
+        setSessionTerms(mistakeReviewPool);
+        setCurrentIndex(0);
+        setCorrectCount(0);
+        setIsComplete(false);
+        setIsQuickQuiz(false);
+        setIsMistakeReview(true);
+        setHasChosenMode(true);
+        setHasStartedNormalQuiz(true);
+        setShowQuizOptions(false);
+        setQuickQuizCategory(null);
+        setSubmissionError(null);
+    };
+
     const handleAnswer = async (isCorrect: boolean, responseTimeMs: number) => {
         if (!currentTerm || isPending) return;
 
@@ -207,10 +263,13 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         currentTerm.id,
                         isCorrect,
                         responseTimeMs,
-                        currentReviewId ?? createIdempotencyKey()
+                        currentReviewId ?? createIdempotencyKey(),
+                        isMistakeReview ? 'review' : 'daily'
                     )
                 );
                 setShowSavedIndicator(true);
+            } else if (!entitlements.canUseAdvancedAnalytics) {
+                recordQuizPreviewAttempt(isCorrect, responseTimeMs);
             }
 
             incrementQuizAttempt();
@@ -235,6 +294,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     // Reset to mode selection
     const resetToNormal = () => {
         setIsQuickQuiz(false);
+        setIsMistakeReview(false);
         setHasStartedNormalQuiz(false);
         setHasChosenMode(false);
         setSessionTerms([]);
@@ -251,8 +311,12 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
     // Start SRS review mode
     const startSrsReview = () => {
+        if (!canUseReviewMode) {
+            return;
+        }
         setHasChosenMode(true);
         setIsQuickQuiz(false);
+        setIsMistakeReview(false);
     };
 
     // Mode Selection Screen — show when user hasn't chosen a mode yet
@@ -340,7 +404,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                     )}
                                 </div>
                             </div>
-                        ) : showProgressSyncNotice ? null : (
+                        ) : showProgressSyncNotice || !canUseReviewMode ? null : (
                             <div className="mb-4">
                                 <DataStateCard
                                     tone="error"
@@ -358,6 +422,22 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 />
                             </div>
                         )}
+
+                        {!canUseReviewMode ? (
+                            <div className="mb-4 rounded-2xl border border-primary-100 bg-primary-50 p-5 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{stateCopy.reviewLockedTitle}</h2>
+                                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                    {stateCopy.reviewLockedDescription}
+                                </p>
+                                <Link
+                                    href={reviewUnlockHref}
+                                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
+                                >
+                                    <span>{stateCopy.reviewLockedCta}</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        ) : null}
 
                         {/* SRS Review Card — only when dueTerms exist */}
                         {canUseProgressData && dueTerms.length > 0 && (
@@ -381,6 +461,38 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 >
                                     {t('quiz.startSrsReview')}
                                 </button>
+                            </div>
+                        )}
+
+                        {entitlements.canUseMistakeReview && (
+                            <div className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-white/20 rounded-full">
+                                        <X className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">{stateCopy.mistakeReviewTitle}</p>
+                                        <p className="text-white/80 text-xs">{stateCopy.mistakeReviewDescription}</p>
+                                    </div>
+                                </div>
+                                {mistakeReviewPool.length > 0 ? (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-white/90 text-sm font-medium">{mistakeReviewPool.length} {t('quiz.cardsDue')}</span>
+                                        </div>
+                                        <button
+                                            onClick={startMistakeReview}
+                                            data-testid="start-mistake-review"
+                                            className="w-full mt-3 py-2.5 bg-white text-rose-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                        >
+                                            {stateCopy.mistakeReviewTitle}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-white/90">
+                                        {stateCopy.noMistakeReviewDescription}
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -570,7 +682,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         );
     }
 
-    // No cards due after choosing SRS mode
+    // No cards due after choosing SRS or mistake review mode
     if (sessionTerms.length === 0 && !isComplete && !isQuickQuiz && hasChosenMode) {
         return (
             <div className="page-content px-4 py-6">
@@ -578,7 +690,12 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('quiz.title')}</h1>
                 </header>
                 <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">{t('quiz.noCards')}</p>
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">
+                        {isMistakeReview ? stateCopy.noMistakeReviewTitle : t('quiz.noCards')}
+                    </p>
+                    {isMistakeReview ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{stateCopy.noMistakeReviewDescription}</p>
+                    ) : null}
                     <div className="flex gap-3 justify-center">
                         <button
                             onClick={resetToNormal}
@@ -616,6 +733,10 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
                     {isQuickQuiz && (
                         <p className="text-primary-500 font-medium mb-2">{t('quiz.quickQuiz')}</p>
+                    )}
+
+                    {isMistakeReview && (
+                        <p className="text-primary-500 font-medium mb-2">{stateCopy.mistakeReviewTitle}</p>
                     )}
 
                     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-card w-full max-w-sm mt-4 mb-6">

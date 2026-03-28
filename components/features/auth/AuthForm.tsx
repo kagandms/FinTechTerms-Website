@@ -6,14 +6,20 @@ import { logger } from '@/lib/logger';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
     authMode, setAuthMode, authForm, setAuthForm,
-    authLoading, handleAuth, authError, setAuthError,
+    authLoading, handleAuth, handleGoogleAuth, authError, setAuthError,
     showPassword, setShowPassword, showConfirmPassword,
     setShowConfirmPassword, resetPassword, showToast, language, t
 }) => {
+    const translateOrFallback = (key: string, fallback: string): string => {
+        const translated = t(key);
+        return translated === key ? fallback : translated;
+    };
+
     const copy = {
         login: t('auth.login'),
         register: t('auth.register'),
         resetPassword: t('auth.resetPassword'),
+        continueWithGoogle: translateOrFallback('auth.continueWithGoogle', 'Continue with Google'),
         email: t('auth.email'),
         password: t('auth.password'),
         confirmPassword: t('auth.confirmPassword'),
@@ -71,6 +77,28 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
 
             <div className="space-y-4">
+                {authMode !== 'forgot-password' ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleGoogleAuth}
+                            disabled={authLoading}
+                            data-testid="auth-google-submit"
+                            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                        >
+                            {copy.continueWithGoogle}
+                        </button>
+
+                        <div className="flex items-center gap-3">
+                            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500">
+                                {t('auth.or')}
+                            </span>
+                            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                    </>
+                ) : null}
+
                 {authMode !== 'register' && emailField}
 
                 {/* Register Fields */}

@@ -2,9 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
-import { Session } from '@supabase/supabase-js';
+import { Session, type User as SupabaseUser } from '@supabase/supabase-js';
 import {
     type AuthenticatedUser,
+    getSupabaseUserMetadataBirthDate,
+    getSupabaseUserProviders,
     mapSupabaseUser,
 } from '@/lib/auth/user';
 import {
@@ -14,15 +16,22 @@ import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';
+import {
+    type MemberEntitlements,
+    resolveMemberEntitlements,
+} from '@/lib/member-entitlements';
 
 interface AuthContextType {
     user: AuthenticatedUser | null;
     isAdmin: boolean;
     isAuthenticated: boolean;
     isLoading: boolean;
+    entitlements: MemberEntitlements;
+    requiresProfileCompletion: boolean;
     pendingVerificationEmail: string | null;
     isPasswordRecovery: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
     register: (email: string, password: string, name: string, birthDate?: string) => Promise<{ success: boolean; error?: string; needsOTPVerification?: boolean }>;
     verifyOTP: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
     resendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -30,6 +39,7 @@ interface AuthContextType {
     resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
     updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<{ success: boolean; error?: string }>;
+    refreshMemberState: () => Promise<void>;
     favoriteLimit: number;
 }
 
@@ -67,8 +77,6 @@ const clearLocalAuthArtifacts = (currentUserId: string | null): void => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const GUEST_FAVORITE_LIMIT = 50;
-const AUTHENTICATED_FAVORITE_LIMIT = Infinity;
 const AUTH_CAPABILITIES_TIMEOUT_MS = 4_000;
 
 interface AuthProviderProps {
@@ -82,6 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const currentUserId = user?.id ?? null;
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [requiresProfileCompletion, setRequiresProfileCompletion] = useState(false);
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
     const [pendingVerificationPassword, setPendingVerificationPassword] = useState<string | null>(null);
     const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
@@ -163,6 +172,68 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, [fetchCapabilitiesWithTimeout]);
 
+    const resolveProfileCompletionRequirement = useCallback(async (
+        supabaseUser: SupabaseUser | null
+    ): Promise<boolean> => {
+        if (!supabaseUser) {
+            return false;
+        }
+
+        const providers = getSupabaseUserProviders(supabaseUser);
+        if (!providers.includes('google')) {
+            return false;
+        }
+
+        if (getSupabaseUserMetadataBirthDate(supabaseUser)) {
+            return false;
+        }
+
+        try {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('birth_date')
+                .eq('id', supabaseUser.id)
+                .maybeSingle();
+
+            if (error) {
+                logger.warn('AUTH_PROFILE_COMPLETION_CHECK_FAILED', {
+                    route: 'AuthProvider',
+                    userId: supabaseUser.id,
+                    error,
+                });
+                return true;
+            }
+
+            return !(typeof profile?.birth_date === 'string' && profile.birth_date.trim().length > 0);
+        } catch (error) {
+            logger.warn('AUTH_PROFILE_COMPLETION_CHECK_EXCEPTION', {
+                route: 'AuthProvider',
+                userId: supabaseUser.id,
+                error: error instanceof Error ? error : undefined,
+            });
+            return true;
+        }
+    }, [supabase]);
+
+    const refreshMemberState = useCallback(async (): Promise<void> => {
+        try {
+            const { data: { user: supabaseUser }, error } = await supabaseAuth.getUser();
+
+            if (error || !supabaseUser) {
+                setRequiresProfileCompletion(false);
+                return;
+            }
+
+            setUser(mapSupabaseUser(supabaseUser));
+            setRequiresProfileCompletion(await resolveProfileCompletionRequirement(supabaseUser));
+        } catch (error) {
+            logger.warn('AUTH_MEMBER_STATE_REFRESH_FAILED', {
+                route: 'AuthProvider',
+                error: error instanceof Error ? error : undefined,
+            });
+        }
+    }, [resolveProfileCompletionRequirement, supabaseAuth]);
+
     // Initialize auth state and listen for changes
     useEffect(() => {
         // Check if we have Supabase configured
@@ -173,6 +244,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 route: 'AuthProvider',
             });
             setIsAdmin(false);
+            setRequiresProfileCompletion(false);
             setIsLoading(false);
             return;
         }
@@ -187,17 +259,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         error: sessionError,
                     });
                     setIsAdmin(false);
+                    setRequiresProfileCompletion(false);
                     setUser(null);
                     return;
                 }
 
                 if (!session?.user) {
                     setIsAdmin(false);
+                    setRequiresProfileCompletion(false);
                     setUser(null);
                     return;
                 }
 
                 setUser(mapSupabaseUser(session.user));
+                setRequiresProfileCompletion(await resolveProfileCompletionRequirement(session.user));
                 void refreshCapabilities(session);
             } catch (error) {
                 logger.error('AUTH_INIT_EXCEPTION', {
@@ -205,6 +280,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     error: error instanceof Error ? error : undefined,
                 });
                 setIsAdmin(false);
+                setRequiresProfileCompletion(false);
                 setUser(null);
             } finally {
                 setIsLoading(false);
@@ -223,11 +299,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (!session?.user) {
                 setIsAdmin(false);
+                setRequiresProfileCompletion(false);
                 setUser(null);
                 return;
             }
 
             setUser(mapSupabaseUser(session.user));
+            setRequiresProfileCompletion(await resolveProfileCompletionRequirement(session.user));
             void refreshCapabilities(session);
 
             // Check if user has progress, if not create it
@@ -247,7 +325,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return () => {
             subscription.unsubscribe();
         };
-    }, [refreshCapabilities, supabaseAuth]);
+    }, [refreshCapabilities, resolveProfileCompletionRequirement, supabaseAuth]);
 
     /**
      * Login with email and password
@@ -279,9 +357,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
             });
-            return { success: false, error: 'Login failed' };
+                return { success: false, error: 'Login failed' };
         }
     }, [refreshCapabilities, supabaseAuth]);
+
+    const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const redirectTo = `${window.location.origin}/profile?complete=1`;
+            const { error } = await supabaseAuth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo,
+                },
+            });
+
+            if (error) {
+                logger.error('AUTH_GOOGLE_SIGNIN_ERROR', {
+                    route: 'AuthProvider',
+                    error,
+                });
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            logger.error('AUTH_GOOGLE_SIGNIN_EXCEPTION', {
+                route: 'AuthProvider',
+                error: error instanceof Error ? error : undefined,
+            });
+            return { success: false, error: 'Google sign-in failed' };
+        }
+    }, [supabaseAuth]);
 
     /**
      * Register a new user with OTP verification
@@ -582,6 +688,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             clearLocalAuthArtifacts(currentUserId);
 
             setIsAdmin(false);
+            setRequiresProfileCompletion(false);
             setUser(null);
             setPendingVerificationEmail(null);
             setPendingVerificationPassword(null);
@@ -612,7 +719,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, [currentUserId, supabaseAuth]);
 
     const isAuthenticated = user !== null;
-    const favoriteLimit = isAuthenticated ? AUTHENTICATED_FAVORITE_LIMIT : GUEST_FAVORITE_LIMIT;
+    const entitlements = React.useMemo(() => resolveMemberEntitlements({
+        isAuthenticated,
+        requiresProfileCompletion,
+    }), [isAuthenticated, requiresProfileCompletion]);
+    const favoriteLimit = entitlements.maxFavorites;
 
     return (
         <AuthContext.Provider
@@ -621,9 +732,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isAdmin,
                 isAuthenticated,
                 isLoading,
+                entitlements,
+                requiresProfileCompletion,
                 pendingVerificationEmail,
                 isPasswordRecovery,
                 login,
+                signInWithGoogle,
                 register,
                 verifyOTP,
                 resendOTP,
@@ -631,6 +745,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 resetPassword,
                 updatePassword,
                 logout,
+                refreshMemberState,
                 favoriteLimit,
             }}
         >

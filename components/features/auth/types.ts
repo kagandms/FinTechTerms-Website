@@ -31,6 +31,7 @@ export interface AuthFormProps extends CommonAuthProps {
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;
     handleAuth: () => void;
+    handleGoogleAuth: () => void;
     resetPassword: (email: string) => Promise<AuthActionResult>;
     showPassword: boolean;
     setShowPassword: (show: boolean) => void;

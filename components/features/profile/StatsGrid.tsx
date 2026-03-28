@@ -10,7 +10,7 @@ interface StatsGridProps {
     };
     totalReviews: number | null;
     accuracy: number | null;
-    isAuthenticated: boolean;
+    favoriteLimit: number;
     t: (key: string) => string;
 }
 
@@ -18,9 +18,11 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
     stats,
     totalReviews,
     accuracy,
-    isAuthenticated,
+    favoriteLimit,
     t
 }) => {
+    const showsFavoriteLimit = Number.isFinite(favoriteLimit);
+
     return (
         <section className="mb-8">
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
@@ -51,8 +53,8 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                     </div>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                         {stats.totalFavorites}
-                        {!isAuthenticated && (
-                            <span className="text-sm font-normal text-gray-400 dark:text-gray-500"> / 50</span>
+                        {showsFavoriteLimit && (
+                            <span className="text-sm font-normal text-gray-400 dark:text-gray-500"> / {favoriteLimit}</span>
                         )}
                     </p>
                 </div>
@@ -99,7 +101,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                         <span className="text-sm text-gray-500 dark:text-gray-400">{t('profile.accuracy')}</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {accuracy === null && isAuthenticated ? '—' : `%${accuracy ?? 0}`}
+                        {accuracy === null ? '—' : `%${accuracy}`}
                     </p>
                 </div>
             </div>

@@ -4,13 +4,27 @@ import React from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { BookOpen, ChevronRight, Sparkles } from 'lucide-react';
 
 export default function DailyReview() {
     const { t } = useLanguage();
     const { dueTerms, stats } = useSRS();
+    const { entitlements, requiresProfileCompletion } = useAuth();
+    const readCopy = (key: string, fallback: string): string => {
+        const translated = t(key);
+        return translated === key ? fallback : translated;
+    };
 
     const hasDueCards = dueTerms.length > 0;
+    const reviewModeLocked = !entitlements.canUseReviewMode;
+    const reviewUnlockHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
+    const reviewUnlockLabel = requiresProfileCompletion
+        ? readCopy('profile.completeProfileAction', 'Complete profile')
+        : readCopy('auth.register', 'Sign Up');
+    const reviewUnlockMessage = requiresProfileCompletion
+        ? readCopy('home.completeProfileForReview', 'Complete your profile to unlock spaced repetition.')
+        : readCopy('home.unlockReviewMode', 'Create an account to unlock spaced repetition review.');
 
     return (
         <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-5 text-white shadow-lg overflow-hidden relative">
@@ -47,6 +61,20 @@ export default function DailyReview() {
                                 {t('home.startQuiz')}
                             </span>
                             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                    </>
+                ) : reviewModeLocked ? (
+                    <>
+                        <p className="text-white/80 mb-4">
+                            {reviewUnlockMessage}
+                        </p>
+
+                        <Link
+                            href={reviewUnlockHref}
+                            className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white py-2 px-4 rounded-xl transition-all duration-200"
+                        >
+                            <span>{reviewUnlockLabel}</span>
+                            <ChevronRight className="w-4 h-4" />
                         </Link>
                     </>
                 ) : (

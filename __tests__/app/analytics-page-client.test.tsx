@@ -76,7 +76,11 @@ describe('AnalyticsPageClient', () => {
             }[key] ?? key),
         });
         mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
             isAuthenticated: true,
+            requiresProfileCompletion: false,
         });
         mockUseSRS.mockReturnValue({
             terms: [
@@ -135,6 +139,11 @@ describe('AnalyticsPageClient', () => {
                 mastered: 1,
                 learning: 2,
                 dueToday: 0,
+            },
+            quizPreview: {
+                attemptCount: 0,
+                correctCount: 0,
+                avgResponseTimeMs: null,
             },
         });
     });
@@ -202,6 +211,11 @@ describe('AnalyticsPageClient', () => {
                 learning: 1,
                 dueToday: 0,
             },
+            quizPreview: {
+                attemptCount: 0,
+                correctCount: 0,
+                avgResponseTimeMs: null,
+            },
         });
 
         render(
@@ -220,5 +234,52 @@ describe('AnalyticsPageClient', () => {
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
         expect(screen.getByText('No activity')).toBeInTheDocument();
         expect(screen.queryByText('Correct')).not.toBeInTheDocument();
+    });
+
+    it('shows the teaser analytics surface when advanced analytics are locked', () => {
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            isAuthenticated: false,
+            requiresProfileCompletion: false,
+        });
+        mockUseSRS.mockReturnValue({
+            terms: [],
+            userProgress: {
+                favorites: [],
+                quiz_history: [],
+                current_streak: 0,
+            },
+            stats: {
+                totalFavorites: 0,
+                mastered: 0,
+                learning: 0,
+                dueToday: 0,
+            },
+            quizPreview: {
+                attemptCount: 4,
+                correctCount: 3,
+                avgResponseTimeMs: 980,
+            },
+        });
+
+        render(
+            <AnalyticsPageClient
+                learningStats={{
+                    ok: false,
+                    error: {
+                        code: 'UNAUTHORIZED',
+                        message: 'Unauthorized',
+                        status: 401,
+                    },
+                }}
+            />
+        );
+
+        expect(screen.getByText('Unlock full member analytics')).toBeInTheDocument();
+        expect(screen.getByText('This session attempts')).toBeInTheDocument();
+        expect(screen.getByText('%75')).toBeInTheDocument();
+        expect(screen.queryByText('Category analysis')).not.toBeInTheDocument();
     });
 });

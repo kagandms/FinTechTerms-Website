@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { Term, UserProgress, QuizAttempt } from '@/types';
+import { Term, UserProgress, QuizAttempt, type QuizType } from '@/types';
 import {
+    type GuestQuizPreview,
     getTerms,
     saveTerms,
     updateTerm as updateTermInStorage,
@@ -10,6 +11,8 @@ import {
     toggleFavorite as toggleFavoriteInStorage,
     addQuizAttempt as addQuizAttemptToStorage,
     saveUserProgress as saveLocalUserProgress,
+    getGuestQuizPreview,
+    recordGuestQuizPreviewAttempt as recordGuestQuizPreviewAttemptInStorage,
 } from '@/utils/storage';
 import {
     getTermsDueForReview,
@@ -52,10 +55,12 @@ interface SRSContextType {
     terms: Term[];
     userProgress: UserProgress;
     dueTerms: Term[];
+    quizPreview: GuestQuizPreview;
     toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
     isFavoriteUpdating: (termId: string) => boolean;
-    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string) => Promise<void>;
+    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string, quizType?: QuizType) => Promise<void>;
+    recordQuizPreviewAttempt: (isCorrect: boolean, responseTimeMs: number) => void;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
@@ -116,11 +121,12 @@ const buildFavoriteFailureResult = (
 });
 
 export function SRSProvider({ children }: SRSProviderProps) {
-    const { favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
+    const { entitlements, favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
     const { showToast } = useToast();
     const userId = user?.id ?? null;
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+    const [quizPreview, setQuizPreview] = useState<GuestQuizPreview>(() => getGuestQuizPreview());
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [termsStatus, setTermsStatus] = useState<AsyncDataStatus>('loading');
@@ -294,6 +300,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
         } catch {
             // Best-effort cross-tab fallback only.
         }
+    }, []);
+
+    const recordQuizPreviewAttempt = useCallback((isCorrect: boolean, responseTimeMs: number) => {
+        setQuizPreview(recordGuestQuizPreviewAttemptInStorage(isCorrect, responseTimeMs));
     }, []);
 
     const applySyncedReview = useCallback((message: SrsSyncMessage) => {
@@ -588,7 +598,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     }, [applySyncedReview]);
 
     // Calculate due terms
-    const dueTerms = userProgress
+    const dueTerms = userProgress && entitlements.canUseReviewMode
         ? getTermsDueForReview(terms, userProgress.favorites)
         : [];
 
@@ -598,10 +608,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
         : { totalFavorites: 0, mastered: 0, learning: 0, dueToday: 0, averageRetention: 0 };
 
     // Check if user can add more favorites
-    const canAddMoreFavorites = isAuthenticated || (userProgress?.favorites.length ?? 0) < favoriteLimit;
-    const favoritesRemaining = isAuthenticated
-        ? Infinity
-        : Math.max(0, favoriteLimit - (userProgress?.favorites.length ?? 0));
+    const hasFiniteFavoriteLimit = Number.isFinite(favoriteLimit);
+    const favoriteCount = userProgress?.favorites.length ?? 0;
+    const canAddMoreFavorites = !hasFiniteFavoriteLimit || favoriteCount < favoriteLimit;
+    const favoritesRemaining = hasFiniteFavoriteLimit
+        ? Math.max(0, favoriteLimit - favoriteCount)
+        : Infinity;
 
     /**
      * Toggle a term's favorite status with limit check
@@ -647,9 +659,13 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 };
             }
 
-            // If trying to add and limit reached
-            if (!isCurrentlyFavorite && !isAuthenticated && currentFavorites.length >= favoriteLimit) {
-                return { success: false, limitReached: true };
+            // If trying to add and the entitlement limit is exhausted.
+            if (!isCurrentlyFavorite && hasFiniteFavoriteLimit && currentFavorites.length >= favoriteLimit) {
+                return {
+                    success: false,
+                    limitReached: true,
+                    isFavorite: isCurrentlyFavorite,
+                };
             }
 
             if (isAuthenticated && userId) {
@@ -744,7 +760,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 error: error instanceof Error ? error.message : 'Failed to update favorite.',
             };
         }
-    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, isAuthLoading, isAuthenticated, userId, userProgress]);
+    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, hasFiniteFavoriteLimit, isAuthLoading, isAuthenticated, userId, userProgress]);
 
     /**
      * Check if a term is favorited
@@ -768,8 +784,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
         termId: string,
         isCorrect: boolean,
         responseTimeMs: number = 0,
-        reviewId: string
+        reviewId: string,
+        quizType: QuizType = 'daily',
     ): Promise<void> => {
+        if (!entitlements.canUseReviewMode) {
+            clearPendingReview();
+            clearReviewKey(reviewId);
+            throw new Error('Review mode is unavailable until your member account is fully unlocked.');
+        }
+
         const idempotencyKey = getOrCreateReviewKey(reviewId);
         const normalizedResponseTimeMs = Math.max(0, Math.round(responseTimeMs));
         const attempt: QuizAttempt = {
@@ -778,7 +801,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             is_correct: isCorrect,
             response_time_ms: normalizedResponseTimeMs,
             timestamp: new Date().toISOString(),
-            quiz_type: 'daily',
+            quiz_type: quizType,
         };
 
         if (!isAuthenticated || !userId) {
@@ -853,6 +876,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         broadcastCommittedReview,
         clearPendingReview,
         clearReviewKey,
+        entitlements.canUseReviewMode,
         getOrCreateReviewKey,
         isAuthenticated,
         persistPendingReview,
@@ -929,10 +953,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 terms,
                 userProgress: safeProgress,
                 dueTerms,
+                quizPreview,
                 toggleFavorite,
                 isFavorite,
                 isFavoriteUpdating,
                 submitQuizAnswer,
+                recordQuizPreviewAttempt,
                 refreshData,
                 canAddMoreFavorites,
                 favoritesRemaining,

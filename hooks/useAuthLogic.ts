@@ -16,7 +16,7 @@ export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-passwo
 export function useAuthLogic() {
     const supabase = getSupabaseClient();
     const {
-        user, isAuthenticated, login, register, logout,
+        user, isAuthenticated, login, signInWithGoogle, register, logout,
         verifyOTP, resendOTP, pendingVerificationEmail,
         cancelVerification, resetPassword, updatePassword, isPasswordRecovery
     } = useAuth();
@@ -243,6 +243,27 @@ export function useAuthLogic() {
         setShowResetConfirm(false);
     };
 
+    const handleGoogleAuth = useCallback(async () => {
+        setAuthError('');
+        setAuthLoading(true);
+
+        try {
+            const result = await signInWithGoogle();
+
+            if (!result.success) {
+                const msg = getLocalizedAuthError(result.error, language);
+                setAuthError(msg);
+                showToast(msg, 'error');
+            }
+        } catch (error: unknown) {
+            const msg = getLocalizedAuthError(error, language);
+            setAuthError(msg);
+            showToast(msg, 'error');
+        } finally {
+            setAuthLoading(false);
+        }
+    }, [language, showToast, signInWithGoogle]);
+
     const startCooldown = () => {
         if (resendCooldownIntervalRef.current) {
             clearInterval(resendCooldownIntervalRef.current);
@@ -292,6 +313,7 @@ export function useAuthLogic() {
 
         // Actions
         handleAuth,
+        handleGoogleAuth,
         handleDataReset,
         logout: handleLogout,
         verifyOTP,

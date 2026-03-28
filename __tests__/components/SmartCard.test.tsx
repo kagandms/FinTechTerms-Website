@@ -49,7 +49,9 @@ jest.mock('@/contexts/SRSContext', () => ({
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => ({
-        isAuthenticated: false
+        isAuthenticated: false,
+        isLoading: false,
+        requiresProfileCompletion: false,
     })
 }));
 

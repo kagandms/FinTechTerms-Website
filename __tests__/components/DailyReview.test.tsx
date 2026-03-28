@@ -17,6 +17,15 @@ jest.mock('@/contexts/SRSContext', () => ({
     useSRS: () => mockUseSRS()
 }));
 
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuth: () => ({
+        entitlements: {
+            canUseReviewMode: true,
+        },
+        requiresProfileCompletion: false,
+    }),
+}));
+
 jest.mock('next/link', () => {
     return ({ children, href }: { children: React.ReactNode; href: string }) => {
         return <a href={href}>{children}</a>;

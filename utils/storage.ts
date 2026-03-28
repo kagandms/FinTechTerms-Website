@@ -20,12 +20,21 @@ const STORAGE_KEYS = {
     USER_PROGRESS_LEGACY: 'globalfinterm_user_progress',
     USER_PROGRESS_PREFIX: 'globalfinterm_user_progress',
     LANGUAGE: 'globalfinterm_language',
+    GUEST_ENTITLEMENT_POLICY: 'globalfinterm_guest_entitlement_policy',
+    GUEST_QUIZ_PREVIEW: 'globalfinterm_guest_quiz_preview',
 } as const;
 
 const GUEST_PROGRESS_SCOPE = 'guest';
 const GUEST_PROGRESS_USER_IDS = new Set(['guest', 'guest_user']);
 const MAX_LOCAL_QUIZ_HISTORY = 500;
 const MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY = 100;
+const GUEST_ENTITLEMENT_POLICY_VERSION = '2026-03-28-v1';
+
+export interface GuestQuizPreview {
+    attemptCount: number;
+    correctCount: number;
+    avgResponseTimeMs: number | null;
+}
 
 /**
  * Check if localStorage is available
@@ -35,6 +44,17 @@ function isLocalStorageAvailable(): boolean {
         const test = '__storage_test__';
         window.localStorage.setItem(test, test);
         window.localStorage.removeItem(test);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function isSessionStorageAvailable(): boolean {
+    try {
+        const test = '__session_storage_test__';
+        window.sessionStorage.setItem(test, test);
+        window.sessionStorage.removeItem(test);
         return true;
     } catch {
         return false;
@@ -104,6 +124,12 @@ const createDefaultProgress = (userId?: string | null): UserProgress => {
         updated_at: now,
     };
 };
+
+const createDefaultGuestQuizPreview = (): GuestQuizPreview => ({
+    attemptCount: 0,
+    correctCount: 0,
+    avgResponseTimeMs: null,
+});
 
 const clampQuizHistory = (history: readonly QuizAttempt[]): QuizAttempt[] => (
     history.slice(-MAX_LOCAL_QUIZ_HISTORY)
@@ -176,6 +202,39 @@ const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[]
     });
 };
 
+const applyGuestEntitlementPolicyMigration = (fallbackTerms: Term[]): void => {
+    if (!isLocalStorageAvailable()) {
+        return;
+    }
+
+    const currentPolicyVersion = localStorage.getItem(STORAGE_KEYS.GUEST_ENTITLEMENT_POLICY);
+    if (currentPolicyVersion === GUEST_ENTITLEMENT_POLICY_VERSION) {
+        return;
+    }
+
+    const guestProgressKey = getProgressStorageKey(null);
+    const storedProgress = localStorage.getItem(guestProgressKey);
+    const parsedProgress = storedProgress ? userProgressSchema.safeParse(JSON.parse(storedProgress)) : null;
+    const guestProgress = parsedProgress?.success
+        ? parsedProgress.data
+        : createDefaultProgress(null);
+    const migratedGuestProgress: UserProgress = {
+        ...guestProgress,
+        quiz_history: [],
+        total_words_learned: 0,
+        current_streak: 0,
+        last_study_date: null,
+        updated_at: new Date().toISOString(),
+    };
+
+    localStorage.setItem(getTermsStorageKey(null), JSON.stringify(fallbackTerms));
+    localStorage.setItem(getTermsVersionStorageKey(null), DATA_VERSION);
+    localStorage.setItem(guestProgressKey, JSON.stringify(migratedGuestProgress));
+    localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+    clearLegacyTermsCache();
+    localStorage.setItem(STORAGE_KEYS.GUEST_ENTITLEMENT_POLICY, GUEST_ENTITLEMENT_POLICY_VERSION);
+}
+
 const clearLegacyTermsCache = (): void => {
     localStorage.removeItem(STORAGE_KEYS.TERMS_LEGACY);
     localStorage.removeItem(STORAGE_KEYS.TERMS_VERSION_LEGACY);
@@ -233,6 +292,10 @@ export function getTerms(userId?: string | null): Term[] {
     if (!isLocalStorageAvailable()) return fallbackTerms;
 
     try {
+        if (resolveProgressScopeUserId(userId) === null) {
+            applyGuestEntitlementPolicyMigration(fallbackTerms);
+        }
+
         const termsStorageKey = getTermsStorageKey(userId);
         const versionStorageKey = getTermsVersionStorageKey(userId);
         const isGuestScope = resolveProgressScopeUserId(userId) === null;
@@ -320,6 +383,10 @@ export function getUserProgress(userId?: string | null): UserProgress {
     if (!isLocalStorageAvailable()) return createDefaultProgress(userId);
 
     try {
+        if (resolveProgressScopeUserId(userId) === null) {
+            applyGuestEntitlementPolicyMigration(filterAcademicTerms(mockTerms));
+        }
+
         migrateLegacyUserProgress(userId);
 
         const progressKey = getProgressStorageKey(userId);
@@ -546,6 +613,9 @@ export function resetAllData(): void {
         if (typeof document !== 'undefined') {
             document.cookie = `${LANGUAGE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
         }
+        if (isSessionStorageAvailable()) {
+            sessionStorage.removeItem(STORAGE_KEYS.GUEST_QUIZ_PREVIEW);
+        }
     } catch (error) {
         logger.error('STORAGE_RESET_FAILED', {
             route: 'storage',
@@ -580,6 +650,81 @@ export function clearLegacyUserProgress(): void {
         localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
     } catch (error) {
         logger.error('STORAGE_CLEAR_LEGACY_PROGRESS_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+}
+
+export function getGuestQuizPreview(): GuestQuizPreview {
+    if (!isSessionStorageAvailable()) {
+        return createDefaultGuestQuizPreview();
+    }
+
+    try {
+        const stored = sessionStorage.getItem(STORAGE_KEYS.GUEST_QUIZ_PREVIEW);
+        if (!stored) {
+            return createDefaultGuestQuizPreview();
+        }
+
+        const parsed = JSON.parse(stored) as Partial<GuestQuizPreview>;
+        return {
+            attemptCount: typeof parsed.attemptCount === 'number' ? parsed.attemptCount : 0,
+            correctCount: typeof parsed.correctCount === 'number' ? parsed.correctCount : 0,
+            avgResponseTimeMs: typeof parsed.avgResponseTimeMs === 'number'
+                ? parsed.avgResponseTimeMs
+                : null,
+        };
+    } catch {
+        return createDefaultGuestQuizPreview();
+    }
+}
+
+export function recordGuestQuizPreviewAttempt(
+    isCorrect: boolean,
+    responseTimeMs: number
+): GuestQuizPreview {
+    const currentPreview = getGuestQuizPreview();
+    const nextAttemptCount = currentPreview.attemptCount + 1;
+    const nextCorrectCount = currentPreview.correctCount + (isCorrect ? 1 : 0);
+    const normalizedResponseTimeMs = Math.max(0, Math.round(responseTimeMs));
+    const nextAvgResponseTimeMs = currentPreview.avgResponseTimeMs === null
+        ? normalizedResponseTimeMs
+        : Math.round(
+            ((currentPreview.avgResponseTimeMs * currentPreview.attemptCount) + normalizedResponseTimeMs)
+            / nextAttemptCount
+        );
+    const nextPreview: GuestQuizPreview = {
+        attemptCount: nextAttemptCount,
+        correctCount: nextCorrectCount,
+        avgResponseTimeMs: nextAvgResponseTimeMs,
+    };
+
+    if (!isSessionStorageAvailable()) {
+        return nextPreview;
+    }
+
+    try {
+        sessionStorage.setItem(STORAGE_KEYS.GUEST_QUIZ_PREVIEW, JSON.stringify(nextPreview));
+    } catch (error) {
+        logger.error('STORAGE_SAVE_GUEST_QUIZ_PREVIEW_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+
+    return nextPreview;
+}
+
+export function clearGuestQuizPreview(): void {
+    if (!isSessionStorageAvailable()) {
+        return;
+    }
+
+    try {
+        sessionStorage.removeItem(STORAGE_KEYS.GUEST_QUIZ_PREVIEW);
+    } catch (error) {
+        logger.error('STORAGE_CLEAR_GUEST_QUIZ_PREVIEW_FAILED', {
             route: 'storage',
             error: error instanceof Error ? error : undefined,
         });
