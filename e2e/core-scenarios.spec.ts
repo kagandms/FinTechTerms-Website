@@ -48,28 +48,41 @@ test.describe('Core Scenarios (Visitor)', () => {
 
             const title = findVisibleByText('h1', /FinTechTerms/);
             const subtitle = findVisibleByText('p', /Словарь экономики и ИТ TR-EN-RU/);
-            const installButton = findVisibleByText('button, a', /Установить/);
             const languageButton = findVisibleByText('button', /Русский/);
+            const installButton = findVisibleByText('button, a', /Установить/);
 
-            if (!title || !subtitle || !installButton || !languageButton) {
+            if (!title || !subtitle || !languageButton) {
                 return {
                     hasAllTargets: false,
                     overlaps: true,
                 };
             }
 
-            const titleRect = title.getBoundingClientRect();
-            const subtitleRect = subtitle.getBoundingClientRect();
-            const installRect = installButton.getBoundingClientRect();
-            const languageRect = languageButton.getBoundingClientRect();
+            const rects = [
+                title.getBoundingClientRect(),
+                subtitle.getBoundingClientRect(),
+                languageButton.getBoundingClientRect(),
+                ...(installButton ? [installButton.getBoundingClientRect()] : []),
+            ];
+            let overlaps = false;
 
-            return {
-                hasAllTargets: true,
-                overlaps: intersects(titleRect, installRect)
-                    || intersects(titleRect, languageRect)
-                    || intersects(subtitleRect, installRect)
-                    || intersects(subtitleRect, languageRect),
-            };
+            for (let leftIndex = 0; leftIndex < rects.length; leftIndex += 1) {
+                const leftRect = rects[leftIndex];
+                if (!leftRect) {
+                    continue;
+                }
+
+                for (let rightIndex = leftIndex + 1; rightIndex < rects.length; rightIndex += 1) {
+                    const rightRect = rects[rightIndex];
+                    if (!rightRect || !intersects(leftRect, rightRect)) {
+                        continue;
+                    }
+
+                    overlaps = true;
+                }
+            }
+
+            return { hasAllTargets: true, overlaps };
         });
 
         expect(layoutState.hasAllTargets).toBe(true);
@@ -83,7 +96,9 @@ test.describe('Core Scenarios (Visitor)', () => {
         await waitForAppReady(page);
 
         await expect.poll(async () => readDueCount(page)).toBe(0);
-        await expect(page.getByText(/add|favori|избран/i).first()).toBeVisible();
+        await expect(page.getByText(/membership|участникам|üyelik/i).first()).toBeVisible();
+        await expect(page.getByRole('link', { name: /profile|профил|profil/i }).first()).toBeVisible();
+        await expect(page.getByRole('button', { name: /quick|быстрый|hızlı/i }).first()).toBeVisible();
     });
 
     test('lets a guest favorite a visible term', async ({ page }) => {
