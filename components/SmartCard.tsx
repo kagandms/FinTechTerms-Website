@@ -12,6 +12,10 @@ import Link from 'next/link';
 import { ContextTagList, MarketBadge } from '@/components/TermTaxonomy';
 import { formatTranslation } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
+import { fetchTermExplainResponse } from '@/lib/ai/client';
+import { getAiUiCopy } from '@/lib/ai-copy';
+import { getAiGuestTeaserUsage, getCachedTermExplainResponse, incrementAiGuestTeaserUsage, setCachedTermExplainResponse } from '@/utils/ai-session';
+import type { AiExplainMode, AiTermExplainResponse } from '@/types/ai';
 import {
     Volume2,
     Heart,
@@ -21,6 +25,7 @@ import {
     ChevronDown,
     ChevronUp,
     AlertCircle,
+    Sparkles,
 } from 'lucide-react';
 
 interface SmartCardProps {
@@ -52,7 +57,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         currentExample
     } = useTermTranslation(term);
     const { toggleFavorite, isFavorite, isFavoriteUpdating, favoritesRemaining } = useSRS();
-    const { isAuthenticated, isLoading: isAuthLoading, requiresProfileCompletion } = useAuth();
+    const { entitlements, isAuthenticated, isLoading: isAuthLoading, requiresProfileCompletion } = useAuth();
     const { showToast } = useToast();
     const [isExpanded, setIsExpanded] = useState(showFullDetails);
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -64,6 +69,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const isFavoriteActionDisabled = isPending || isAuthLoading;
     const favoriteLimitHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
     const favoriteLimitActionLabel = requiresProfileCompletion ? t('profile.edit') : t('auth.login');
+    const aiCopy = getAiUiCopy(language);
+    const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
+    const [isAiExplainOpen, setIsAiExplainOpen] = useState(false);
+    const [aiExplainStatus, setAiExplainStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
+    const [aiExplainError, setAiExplainError] = useState<string | null>(null);
+    const [aiExplainMode, setAiExplainMode] = useState<AiExplainMode | null>(null);
+    const [aiExplainResponse, setAiExplainResponse] = useState<AiTermExplainResponse | null>(null);
+    const [guestAiUsage, setGuestAiUsage] = useState(() => getAiGuestTeaserUsage());
 
     useEffect(() => () => {
         if (limitWarningTimeoutRef.current) {
@@ -128,6 +141,52 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 : t('smartCard.favoriteRemoved'),
             result.isFavorite ? 'success' : 'info'
         );
+    };
+
+    const handleAiExplain = async (mode: AiExplainMode) => {
+        const cacheKey = `${term.id}:${language}:${mode}`;
+        const cachedResponse = getCachedTermExplainResponse(cacheKey);
+
+        setIsAiExplainOpen(true);
+        setAiExplainMode(mode);
+        setAiExplainError(null);
+
+        if (cachedResponse) {
+            setAiExplainResponse(cachedResponse);
+            setAiExplainStatus('ready');
+            return;
+        }
+
+        const canUseGuestTeaser = guestAiUsage.termExplainCount < 1;
+        const shouldFetchExplanation = hasFullAiAccess || canUseGuestTeaser;
+
+        if (!shouldFetchExplanation) {
+            setAiExplainResponse(null);
+            setAiExplainStatus('locked');
+            return;
+        }
+
+        if (!hasFullAiAccess) {
+            setGuestAiUsage(incrementAiGuestTeaserUsage('term-explain'));
+        }
+
+        setAiExplainStatus('loading');
+        setAiExplainResponse(null);
+
+        try {
+            const response = await fetchTermExplainResponse({
+                termId: term.id,
+                language,
+                mode,
+            });
+
+            setCachedTermExplainResponse(cacheKey, response);
+            setAiExplainResponse(response);
+            setAiExplainStatus('ready');
+        } catch (error) {
+            setAiExplainStatus('error');
+            setAiExplainError(error instanceof Error ? error.message : t('smartCard.favoriteUpdateError'));
+        }
     };
 
     return (
@@ -216,6 +275,18 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         >
                             <Heart className={`w-5 h-5 ${favorite ? 'fill-current' : ''}`} aria-hidden="true" />
                         </button>
+
+                        <button
+                            onClick={() => setIsAiExplainOpen((value) => !value)}
+                            className={`p-2 rounded-full transition-all duration-200 ${isAiExplainOpen
+                                ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300'
+                                : 'bg-gray-100 text-gray-500 hover:bg-primary-50 hover:text-primary-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                                }`}
+                            title={aiCopy.explainLabel}
+                            aria-label={`${aiCopy.explainLabel}: ${currentTerm}`}
+                        >
+                            <Sparkles className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
 
@@ -234,6 +305,80 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         </button>
                     ))}
                 </div>
+
+                {!hasFullAiAccess ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">
+                        <p className="font-medium">{t('smartCard.aiPreviewHint')}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                {t('membership.items.aiFeedback')}
+                            </span>
+                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                {t('membership.items.studyCoach')}
+                            </span>
+                        </div>
+                    </div>
+                ) : null}
+
+                {isAiExplainOpen ? (
+                    <div className="mt-4 rounded-2xl border border-primary-100 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20">
+                        <div className="flex flex-wrap gap-2">
+                            {(['simple', 'example', 'language-bridge', 'importance'] as AiExplainMode[]).map((mode) => (
+                                <button
+                                    key={mode}
+                                    type="button"
+                                    onClick={() => void handleAiExplain(mode)}
+                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${aiExplainMode === mode
+                                        ? 'bg-primary-500 text-white'
+                                        : 'bg-white text-primary-600 hover:bg-primary-100 dark:bg-slate-800 dark:text-primary-200 dark:hover:bg-slate-700'
+                                        }`}
+                                >
+                                    {aiCopy.explainModes[mode]}
+                                </button>
+                            ))}
+                        </div>
+
+                        {aiExplainStatus === 'loading' ? (
+                            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{aiCopy.explainLoading}</p>
+                        ) : null}
+
+                        {aiExplainStatus === 'locked' ? (
+                            <div className="mt-3 space-y-3">
+                                <p className="text-sm text-gray-600 dark:text-gray-300">{aiCopy.explainGuestLimit}</p>
+                                <Link
+                                    href={favoriteLimitHref}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
+                                >
+                                    <span>{favoriteLimitActionLabel}</span>
+                                </Link>
+                            </div>
+                        ) : null}
+
+                        {aiExplainStatus === 'error' && aiExplainError ? (
+                            <p className="mt-3 text-sm text-red-600 dark:text-red-300">{aiExplainError}</p>
+                        ) : null}
+
+                        {aiExplainStatus === 'ready' && aiExplainResponse ? (
+                            <div className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-white">{aiExplainResponse.title}</p>
+                                    <p>{aiExplainResponse.summary}</p>
+                                </div>
+                                <ul className="space-y-2">
+                                    {aiExplainResponse.keyPoints.map((point) => (
+                                        <li key={point} className="rounded-xl bg-white/80 px-3 py-2 dark:bg-slate-800/80">
+                                            {point}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.memoryHook}</p>
+                                    <p>{aiExplainResponse.memoryHook}</p>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
             </div>
 
             {/* Definition - Always visible */}

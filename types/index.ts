@@ -5,6 +5,7 @@
 
 export type Language = 'tr' | 'en' | 'ru';
 export type QuizType = 'daily' | 'practice' | 'review' | 'simulation' | 'telegram_bot';
+export type QuizPresentationMode = 'flashcard' | 'multiple-choice';
 export const QUIZ_TYPE_VALUES = [
     'daily',
     'practice',

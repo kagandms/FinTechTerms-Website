@@ -61,6 +61,7 @@ jest.mock('@/components/SmartCard', () => ({ term }: { term: any }) => <div data
 jest.mock('@/components/LanguageSwitcher', () => () => <div>Language Switcher</div>);
 jest.mock('@/components/InstallButton', () => () => <div data-testid="install-button">Install App</div>);
 jest.mock('@/components/TelegramBanner', () => () => <div data-testid="telegram-banner">Telegram Banner</div>);
+jest.mock('@/components/home/AiChatPanel', () => () => <div data-testid="ai-chat-panel">AI Chat Panel</div>);
 
 // Mock Next.js Components
 jest.mock('next/image', () => {
@@ -91,6 +92,7 @@ describe('Home Page (Client)', () => {
     it('renders daily review section', () => {
         render(<HomeClient />);
         expect(screen.getByTestId('daily-review')).toBeInTheDocument();
+        expect(screen.getByTestId('ai-chat-panel')).toBeInTheDocument();
     });
 
     it('renders recent terms', () => {

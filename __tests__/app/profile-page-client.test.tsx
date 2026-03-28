@@ -114,6 +114,10 @@ jest.mock('@/components/profile/ProfileErrorBoundary', () => ({
     __esModule: true,
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+jest.mock('@/components/profile/AiStudyCoachCard', () => ({
+    __esModule: true,
+    default: () => <div data-testid="ai-study-coach-card" />,
+}));
 jest.mock('@/components/profile/SRSNotificationCard', () => ({
     __esModule: true,
     default: () => mockSrsNotificationCard(),

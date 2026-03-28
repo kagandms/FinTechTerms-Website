@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import QuizCard from '@/components/QuizCard';
+import MultipleChoiceQuizCard from '@/components/MultipleChoiceQuizCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
 import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X, Loader2, RefreshCw } from 'lucide-react';
@@ -12,12 +13,25 @@ import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { resolveHomeHref } from '@/lib/navigation';
+import { buildMultipleChoiceQuestion } from '@/lib/quiz/multiple-choice';
+import type { QuizAnswerRequest, QuizAnswerResult } from '@/components/quiz-answer-types';
+import type { QuizPresentationMode } from '@/types';
+import { fetchQuizFeedback } from '@/lib/ai/client';
+import { getAiUiCopy } from '@/lib/ai-copy';
+import { getAiGuestTeaserUsage, incrementAiGuestTeaserUsage } from '@/utils/ai-session';
+import type { AiQuizFeedback } from '@/types/ai';
+import ValueHintList from '@/components/membership/ValueHintList';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
 
 interface QuizPageProps {
     nonce?: string;
+}
+
+interface PausedWrongAnswerState {
+    termId: string;
+    selectedWrongLabel: string | null;
 }
 
 const withQuizSubmissionTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
@@ -118,7 +132,7 @@ const stateMessages = {
 
 export default function QuizPage({ nonce }: QuizPageProps) {
     const { t, language } = useLanguage();
-    const { entitlements, requiresProfileCompletion } = useAuth();
+    const { entitlements, isAuthenticated, requiresProfileCompletion } = useAuth();
     const {
         dueTerms,
         quizPreview,
@@ -135,6 +149,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         refreshData,
     } = useSRS();
     const stateCopy = stateMessages[language] ?? stateMessages.en;
+    const aiCopy = getAiUiCopy(language);
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -145,11 +160,19 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [showQuizOptions, setShowQuizOptions] = useState(false);
     const [hasChosenMode, setHasChosenMode] = useState(false);
     const [quickQuizCategory, setQuickQuizCategory] = useState<string | null>(null);
+    const [quickQuizConfiguratorMode, setQuickQuizConfiguratorMode] = useState<QuizPresentationMode | null>(null);
+    const [quickQuizSessionPool, setQuickQuizSessionPool] = useState<typeof terms>([]);
+    const [quizPresentationMode, setQuizPresentationMode] = useState<QuizPresentationMode>('flashcard');
     const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
     const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+    const [pausedWrongAnswer, setPausedWrongAnswer] = useState<PausedWrongAnswerState | null>(null);
+    const [quizFeedback, setQuizFeedback] = useState<AiQuizFeedback | null>(null);
+    const [quizFeedbackStatus, setQuizFeedbackStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
+    const [quizFeedbackError, setQuizFeedbackError] = useState<string | null>(null);
+    const [guestAiUsage, setGuestAiUsage] = useState(() => getAiGuestTeaserUsage());
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -204,7 +227,22 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
     const quickQuizPool = getQuickQuizPool(quickQuizCategory);
     const quickQuizAvailableCount = quickQuizPool.length;
+    const currentTerm = sessionTerms[currentIndex];
+    const currentMultipleChoiceQuestion = (
+        currentTerm
+        && isQuickQuiz
+        && quizPresentationMode === 'multiple-choice'
+    )
+        ? buildMultipleChoiceQuestion(currentTerm, quickQuizSessionPool, terms, language)
+        : null;
     const reviewUnlockHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
+    const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
+    const membershipHintItems = [
+        t('membership.items.srs'),
+        t('membership.items.aiFeedback'),
+        t('membership.items.studyCoach'),
+        t('membership.items.sync'),
+    ];
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
@@ -216,8 +254,6 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         }
     }, [dueTerms, isMistakeReview, isQuickQuiz, hasStartedNormalQuiz, hasChosenMode]);
 
-    const currentTerm = sessionTerms[currentIndex];
-
     useEffect(() => {
         if (!currentTerm || isQuickQuiz) {
             setCurrentReviewId(null);
@@ -228,17 +264,27 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     }, [currentIndex, currentTerm, isQuickQuiz]);
 
     // Start quick quiz with selected word count and category
-    const startQuickQuiz = (count: number) => {
+    const openQuickQuizConfigurator = (mode: QuizPresentationMode) => {
+        setQuickQuizConfiguratorMode(mode);
+        setShowQuizOptions(true);
+        setQuickQuizCategory(null);
+        setSubmissionError(null);
+    };
+
+    const startQuickQuiz = (count: number, modeOverride?: QuizPresentationMode) => {
         const pool = getQuickQuizPool(quickQuizCategory);
         const shuffled = pool.sort(() => Math.random() - 0.5);
         const quizTerms = shuffled.slice(0, Math.min(count, pool.length));
         setSessionTerms(quizTerms);
+        setQuickQuizSessionPool(pool);
         setCurrentIndex(0);
         setCorrectCount(0);
         setIsComplete(false);
         setIsQuickQuiz(true);
         setShowQuizOptions(false);
         setQuickQuizCategory(null);
+        setQuizPresentationMode(modeOverride ?? quickQuizConfiguratorMode ?? 'flashcard');
+        setQuickQuizConfiguratorMode(null);
         setSubmissionError(null);
     };
 
@@ -253,10 +299,26 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setHasStartedNormalQuiz(true);
         setShowQuizOptions(false);
         setQuickQuizCategory(null);
+        setQuickQuizConfiguratorMode(null);
+        setQuickQuizSessionPool([]);
+        setQuizPresentationMode('flashcard');
         setSubmissionError(null);
     };
 
-    const handleAnswer = async (isCorrect: boolean, responseTimeMs: number) => {
+    const advanceToNextTerm = () => {
+        if (currentIndex + 1 >= sessionTerms.length) {
+            setIsComplete(true);
+            return;
+        }
+
+        setCurrentIndex((index) => index + 1);
+    };
+
+    const handleAnswer = async ({
+        isCorrect,
+        responseTimeMs,
+        selectedOptionLabel,
+    }: QuizAnswerRequest): Promise<QuizAnswerResult | void> => {
         if (!currentTerm || isPending) return;
 
         setIsPending(true);
@@ -293,17 +355,61 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 setCorrectCount(c => c + 1);
             }
 
-            // Move to next or complete
-            if (currentIndex + 1 >= sessionTerms.length) {
-                setIsComplete(true);
-            } else {
-                setCurrentIndex(i => i + 1);
+            if (!isCorrect) {
+                const canUseGuestTeaser = guestAiUsage.quizFeedbackCount < 1;
+                const shouldFetchAiFeedback = hasFullAiAccess || canUseGuestTeaser;
+
+                setPausedWrongAnswer({
+                    termId: currentTerm.id,
+                    selectedWrongLabel: selectedOptionLabel ?? null,
+                });
+
+                if (shouldFetchAiFeedback) {
+                    if (!hasFullAiAccess) {
+                        setGuestAiUsage(incrementAiGuestTeaserUsage('quiz-feedback'));
+                    }
+
+                    setQuizFeedbackStatus('loading');
+                    setQuizFeedback(null);
+                    setQuizFeedbackError(null);
+
+                    void fetchQuizFeedback({
+                        termId: currentTerm.id,
+                        language,
+                        selectedWrongLabel: selectedOptionLabel ?? null,
+                    })
+                        .then((feedback) => {
+                            setQuizFeedback(feedback);
+                            setQuizFeedbackStatus('ready');
+                        })
+                        .catch((error) => {
+                            setQuizFeedback(null);
+                            setQuizFeedbackStatus('error');
+                            setQuizFeedbackError(error instanceof Error ? error.message : stateCopy.slowLoadingDescription);
+                        });
+                } else {
+                    setQuizFeedback(null);
+                    setQuizFeedbackError(null);
+                    setQuizFeedbackStatus('locked');
+                }
+
+                return { keepLocked: true };
             }
+
+            advanceToNextTerm();
         } catch (error) {
             setSubmissionError(error instanceof Error ? error.message : stateCopy.slowLoadingDescription);
         } finally {
             setIsPending(false);
         }
+    };
+
+    const continueAfterWrongAnswer = () => {
+        setPausedWrongAnswer(null);
+        setQuizFeedback(null);
+        setQuizFeedbackError(null);
+        setQuizFeedbackStatus('idle');
+        advanceToNextTerm();
     };
 
     // Reset to mode selection
@@ -318,10 +424,17 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setIsComplete(false);
         setShowQuizOptions(false);
         setQuickQuizCategory(null);
+        setQuickQuizConfiguratorMode(null);
+        setQuickQuizSessionPool([]);
+        setQuizPresentationMode('flashcard');
         setUseOnlyFavorites(false);
         setSubmissionError(null);
         setCurrentReviewId(null);
         setShowSavedIndicator(false);
+        setPausedWrongAnswer(null);
+        setQuizFeedback(null);
+        setQuizFeedbackError(null);
+        setQuizFeedbackStatus('idle');
     };
 
     // Start SRS review mode
@@ -444,6 +557,16 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
                                     {stateCopy.reviewLockedDescription}
                                 </p>
+                                <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                                    {t('membership.quizHint')}
+                                </p>
+                                <div className="mt-4">
+                                    <ValueHintList
+                                        title={t('membership.hintTitle')}
+                                        items={membershipHintItems}
+                                        tone="strong"
+                                    />
+                                </div>
                                 <Link
                                     href={reviewUnlockHref}
                                     className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
@@ -511,7 +634,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             </div>
                         )}
 
-                        {/* Quick Quiz Card */}
+                        {/* Flashcard Quick Quiz Card */}
                         <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="p-2 bg-white/20 rounded-full">
@@ -523,9 +646,9 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 </div>
                             </div>
 
-                            {!showQuizOptions ? (
+                            {!showQuizOptions || quickQuizConfiguratorMode !== 'flashcard' ? (
                                 <button
-                                    onClick={() => setShowQuizOptions(true)}
+                                    onClick={() => openQuickQuizConfigurator('flashcard')}
                                     className="w-full py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
                                 >
                                     {t('quiz.startQuickQuiz')}
@@ -605,6 +728,103 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                     {quickQuizAvailableCount === 0 ? (
                                         <p className="text-white/80 text-xs">
                                             {stateCopy.noQuestionsAvailable}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 bg-white/15 rounded-full">
+                                    <Target className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold">{t('quiz.multipleChoice')}</p>
+                                    <p className="text-white/80 text-xs">{t('quiz.multipleChoiceDesc')}</p>
+                                </div>
+                            </div>
+
+                            {!showQuizOptions || quickQuizConfiguratorMode !== 'multiple-choice' ? (
+                                <button
+                                    onClick={() => openQuickQuizConfigurator('multiple-choice')}
+                                    className="w-full py-2.5 bg-white text-slate-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    {t('quiz.startMultipleChoice')}
+                                </button>
+                            ) : !quickQuizCategory ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-white/80 text-xs">
+                                            {t('quiz.categorySelect')}
+                                        </p>
+                                        {canUseProgressData && stats.totalFavorites > 0 && (
+                                            <button
+                                                onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
+                                                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
+                                                    ? 'bg-white text-red-500 border-white'
+                                                    : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                                                    }`}
+                                            >
+                                                <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
+                                                {t('quiz.favoritesOnly')}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { key: 'all', label: t('quiz.categoryAll') },
+                                            { key: 'Finance', label: t('categories.Finance') },
+                                            { key: 'Technology', label: t('quiz.categoryTechnology') },
+                                            { key: 'Fintech', label: t('categories.Fintech') },
+                                        ].map(cat => (
+                                            <button
+                                                key={cat.key}
+                                                onClick={() => setQuickQuizCategory(cat.key)}
+                                                className="py-2.5 bg-white text-slate-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors text-sm"
+                                            >
+                                                {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-white/80 text-xs mb-1">
+                                        {t('quiz.questionCount')}
+                                    </p>
+                                    <p className="text-white/70 text-[11px] mb-2">
+                                        {stateCopy.availableQuestions}: {quickQuizAvailableCount}
+                                    </p>
+                                    {quickQuizAvailableCount < 4 ? (
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title={t('quiz.multipleChoiceUnavailable')}
+                                            className="w-full py-2.5 bg-white/30 text-white/50 cursor-not-allowed font-semibold rounded-xl"
+                                        >
+                                            {t('quiz.startMultipleChoice')}
+                                        </button>
+                                    ) : (
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {quizOptions.map(count => (
+                                                <button
+                                                    key={count}
+                                                    onClick={() => startQuickQuiz(count)}
+                                                    disabled={quickQuizAvailableCount < count}
+                                                    className={`py-2.5 font-bold rounded-xl transition-colors ${quickQuizAvailableCount >= count
+                                                        ? 'bg-white text-slate-900 hover:bg-gray-100'
+                                                        : 'bg-white/30 text-white/50 cursor-not-allowed'
+                                                        }`}
+                                                >
+                                                    {count}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {quickQuizAvailableCount < 4 ? (
+                                        <p className="text-white/80 text-xs">
+                                            {t('quiz.multipleChoiceUnavailable')}
                                         </p>
                                     ) : null}
                                 </div>
@@ -779,11 +999,11 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         {isQuickQuiz ? (
                             <>
                                 <button
-                                    onClick={() => startQuickQuiz(5)}
+                                    onClick={() => startQuickQuiz(5, quizPresentationMode)}
                                     className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
                                 >
-                                    <Zap className="w-5 h-5" />
-                                    <span>{t('quiz.quickQuiz')}</span>
+                                    {quizPresentationMode === 'multiple-choice' ? <Target className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+                                    <span>{quizPresentationMode === 'multiple-choice' ? t('quiz.multipleChoice') : t('quiz.quickQuiz')}</span>
                                 </button>
                                 <button
                                     onClick={resetToNormal}
@@ -827,7 +1047,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
             {/* Header */}
             <header className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => {
                                 const confirmMsg = t('quiz.exitConfirmation');
@@ -845,8 +1065,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         </h1>
                         {isQuickQuiz && (
                             <span className="px-2 py-0.5 bg-primary-100 text-primary-600 text-xs font-medium rounded-full flex items-center gap-1">
-                                <Zap className="w-3 h-3" />
-                                {t('quiz.quickQuiz')}
+                                {quizPresentationMode === 'multiple-choice' ? <Target className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                                {quizPresentationMode === 'multiple-choice' ? t('quiz.multipleChoice') : t('quiz.quickQuiz')}
                             </span>
                         )}
                     </div>
@@ -887,13 +1107,81 @@ export default function QuizPage({ nonce }: QuizPageProps) {
             ) : null}
 
             {currentTerm && (
-                <QuizCard
-                    key={currentTerm.id}
-                    term={currentTerm}
-                    onAnswer={handleAnswer}
-                    isPending={isPending}
-                />
+                quizPresentationMode === 'multiple-choice' && currentMultipleChoiceQuestion ? (
+                    <MultipleChoiceQuizCard
+                        key={`${currentTerm.id}:multiple-choice`}
+                        term={currentTerm}
+                        options={currentMultipleChoiceQuestion.options}
+                        onAnswer={handleAnswer}
+                        isPending={isPending}
+                    />
+                ) : (
+                    <QuizCard
+                        key={`${currentTerm.id}:flashcard`}
+                        term={currentTerm}
+                        onAnswer={handleAnswer}
+                        isPending={isPending}
+                    />
+                )
             )}
+
+            {pausedWrongAnswer ? (
+                <section className="mx-auto mt-5 w-full max-w-md rounded-3xl border border-primary-100 bg-primary-50 p-5 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">{aiCopy.quizFeedbackTitle}</h2>
+
+                    {quizFeedbackStatus === 'loading' ? (
+                        <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{aiCopy.quizFeedbackLoading}</p>
+                    ) : null}
+
+                    {quizFeedbackStatus === 'locked' ? (
+                        <div className="mt-3 space-y-3">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{aiCopy.quizFeedbackGuestLimit}</p>
+                            <Link
+                                href={reviewUnlockHref}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
+                            >
+                                <span>{aiCopy.quizFeedbackCta}</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        </div>
+                    ) : null}
+
+                    {quizFeedbackStatus === 'error' && quizFeedbackError ? (
+                        <p className="mt-3 text-sm text-red-600 dark:text-red-300">{quizFeedbackError}</p>
+                    ) : null}
+
+                    {quizFeedbackStatus === 'ready' && quizFeedback ? (
+                        <div className="mt-4 space-y-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                            <div>
+                                <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.whyWrong}</p>
+                                <p>{quizFeedback.whyWrong}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.whyCorrect}</p>
+                                <p>{quizFeedback.whyCorrect}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.memoryHook}</p>
+                                <p>{quizFeedback.memoryHook}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.confusedWith}</p>
+                                <p>{quizFeedback.confusedWith}</p>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    <div className="mt-5">
+                        <button
+                            type="button"
+                            onClick={continueAfterWrongAnswer}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                        >
+                            {aiCopy.quizFeedbackContinue}
+                        </button>
+                    </div>
+                </section>
+            ) : null}
 
             {/* Correct Streak */}
             {correctCount > 0 && (

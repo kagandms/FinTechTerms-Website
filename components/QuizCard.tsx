@@ -10,10 +10,11 @@ import { getIntervalDescription } from '@/utils/srsLogic';
 import { useResponseTimer } from '@/hooks/useResponseTimer';
 import { logger } from '@/lib/logger';
 import { Volume2, Check, X, RotateCcw } from 'lucide-react';
+import type { QuizAnswerRequest, QuizAnswerResult } from '@/components/quiz-answer-types';
 
 interface QuizCardProps {
     term: Term;
-    onAnswer: (isCorrect: boolean, responseTimeMs: number) => Promise<void> | void;
+    onAnswer: (answer: QuizAnswerRequest) => Promise<QuizAnswerResult | void> | QuizAnswerResult | void;
     isPending?: boolean;
 }
 
@@ -64,9 +65,20 @@ export default function QuizCard({ term, onAnswer, isPending = false }: QuizCard
         submittingRef.current = true;
         setIsAnswerLocked(true);
 
-        void Promise.resolve(onAnswer(isCorrect, recallTime)).catch(() => {
-            // Parent state surfaces the failure and unlocks the card via isPending.
-        });
+        void Promise.resolve(onAnswer({
+            isCorrect,
+            responseTimeMs: recallTime,
+        }))
+            .then((result) => {
+                if (!result?.keepLocked) {
+                    submittingRef.current = false;
+                    setIsAnswerLocked(false);
+                }
+            })
+            .catch(() => {
+                submittingRef.current = false;
+                setIsAnswerLocked(false);
+            });
     };
 
     // Handle TTS

@@ -96,6 +96,11 @@
         "quickQuiz": "Hızlı Quiz",
         "quickQuizDesc": "Rastgele 5-50 kelimeyle hızlı pratik",
         "startQuickQuiz": "Hızlı Quiz Başlat",
+        "multipleChoice": "4 Şıklı Quiz",
+        "multipleChoiceDesc": "Her tanım için dört terim arasından doğru olanı seç",
+        "startMultipleChoice": "4 Şıklı Quizi Başlat",
+        "whichTermMatches": "Bu tanıma hangi terim uyar?",
+        "multipleChoiceUnavailable": "4 şıklı quiz için en az 4 eşleşen terim gerekir.",
         "dailyStreak": "Günlük Seri",
         "days": "gün",
         "keepItUp": "Böyle devam!",
@@ -306,12 +311,29 @@
         "favoriteAdded": "Favorilere eklendi ❤️",
         "favoriteRemoved": "Favorilerden çıkarıldı",
         "favoritesRemaining": "{count} hak",
+        "aiPreviewHint": "Guest önizleme: 1 AI açıklaması. Üyelerde sınırsız terim koçu açılır.",
         "showExampleSentence": "Örnek cümleyi göster",
         "showLess": "Daha az göster",
         "less": "Daha az",
         "difficulty": "Zorluk",
         "success": "Başarı",
         "reviews": "Tekrar"
+    },
+    "membership": {
+        "hintTitle": "Üyelikle açılanlar",
+        "profileTitle": "Neden hesap oluşturmalı",
+        "items": {
+            "srs": "Tam SRS tekrar sistemi",
+            "favorites": "Sınırsız favori kütüphanesi",
+            "aiFeedback": "AI hata açıklamaları",
+            "aiExplain": "AI terim koçu",
+            "studyCoach": "AI Çalışma Koçu",
+            "sync": "Cihazlar arası senkronizasyon",
+            "analytics": "Gelişmiş analitik"
+        },
+        "chatHint": "Guest önizleme 3 AI mesajı içerir. Üyelerde tam FinTechTerms sohbeti açılır.",
+        "favoritesHint": "Guest kullanıcılar en fazla {count} favori kaydedebilir. Üyelerde sınırsız favori, tam SRS ve AI çalışma desteği açılır.",
+        "quizHint": "Üyeler tam SRS, AI hata açıklamaları, AI Çalışma Koçu ve senkronize ilerleme açar."
     },
     "profileValidation": {
         "nameMin": "Ad en az 2 karakter olmalıdır",

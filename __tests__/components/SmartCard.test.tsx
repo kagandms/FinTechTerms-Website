@@ -6,6 +6,7 @@ import SmartCard from '@/components/SmartCard';
 
 const mockUseTermTranslation = jest.fn();
 const mockShowToast = jest.fn();
+const mockFetchTermExplainResponse = jest.fn();
 
 // Mock dependencies
 jest.mock('@/hooks/useTermTranslation', () => ({
@@ -25,6 +26,9 @@ jest.mock('@/contexts/SRSContext', () => ({
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => ({
+        entitlements: {
+            canUseAdvancedAnalytics: false,
+        },
         isAuthenticated: false,
         isLoading: false,
         requiresProfileCompletion: false,
@@ -40,6 +44,25 @@ jest.mock('@/contexts/ToastContext', () => ({
 jest.mock('@/utils/tts', () => ({
     speakText: jest.fn(),
     isSpeechAvailable: jest.fn().mockReturnValue(true)
+}));
+
+jest.mock('@/lib/ai/client', () => ({
+    fetchTermExplainResponse: (...args: unknown[]) => mockFetchTermExplainResponse(...args),
+}));
+
+jest.mock('@/utils/ai-session', () => ({
+    getAiGuestTeaserUsage: () => ({
+        quizFeedbackCount: 0,
+        termExplainCount: 0,
+        chatMessageCount: 0,
+    }),
+    incrementAiGuestTeaserUsage: jest.fn(() => ({
+        quizFeedbackCount: 0,
+        termExplainCount: 1,
+        chatMessageCount: 0,
+    })),
+    getCachedTermExplainResponse: jest.fn(() => null),
+    setCachedTermExplainResponse: jest.fn(),
 }));
 
 jest.mock('next/link', () => {
@@ -208,5 +231,22 @@ describe('SmartCard Component', () => {
 
         await screen.findByTitle('card.addFavorite');
         expect(mockShowToast).toHaveBeenCalledWith('Добавлено в избранное ❤️', 'success');
+    });
+
+    it('requests AI explanation when an explain mode is selected', async () => {
+        mockFetchTermExplainResponse.mockResolvedValue({
+            title: 'Почему это важно',
+            summary: 'Краткое объяснение',
+            keyPoints: ['Пункт 1', 'Пункт 2'],
+            memoryHook: 'Запомни так',
+        });
+
+        render(<SmartCard term={mockTerm as any} />);
+
+        fireEvent.click(screen.getByLabelText('Объяснить с AI: Тестовый Термин'));
+        fireEvent.click(screen.getByRole('button', { name: 'Объяснить проще' }));
+
+        expect(await screen.findByText('Почему это важно')).toBeInTheDocument();
+        expect(mockFetchTermExplainResponse).toHaveBeenCalled();
     });
 });

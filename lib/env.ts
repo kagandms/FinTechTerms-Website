@@ -32,6 +32,11 @@ export interface ServerEnv extends PublicEnv {
     readonly adminUserIds: readonly string[];
     readonly serviceRoleKey: string | null;
     readonly studySessionTokenSecret: string | null;
+    readonly openRouterApiKey: string | null;
+    readonly aiPrimaryModel: string | null;
+    readonly aiFallbackModels: readonly string[];
+    readonly openRouterReferer: string | null;
+    readonly openRouterAppName: string | null;
     readonly sentryAuthToken: string | null;
     readonly sentryOrg: string | null;
     readonly sentryProject: string | null;
@@ -87,6 +92,13 @@ const readOptionalValue = (
 };
 
 const readAdminUserIds = (rawValue: string | null | undefined): string[] => (
+    (rawValue ?? '')
+        .split(',')
+        .map((value) => unwrapQuotedEnvValue(value).trim())
+        .filter(Boolean)
+);
+
+const readListValue = (rawValue: string | null | undefined): string[] => (
     (rawValue ?? '')
         .split(',')
         .map((value) => unwrapQuotedEnvValue(value).trim())
@@ -219,6 +231,11 @@ export const getServerEnv = (): ServerEnv => {
                 process.env.STUDY_SESSION_TOKEN_SECRET,
                 new Set(['', 'your_study_session_token_secret_here'])
             ),
+            openRouterApiKey: readOptionalValue(process.env.OPENROUTER_API_KEY, new Set(['', 'your_openrouter_api_key_here'])),
+            aiPrimaryModel: readOptionalValue(process.env.AI_PRIMARY_MODEL, new Set([''])),
+            aiFallbackModels: readListValue(process.env.AI_FALLBACK_MODELS),
+            openRouterReferer: readOptionalValue(process.env.OPENROUTER_REFERER, new Set([''])),
+            openRouterAppName: readOptionalValue(process.env.OPENROUTER_APP_NAME, new Set([''])),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),
             sentryProject: readOptionalValue(process.env.SENTRY_PROJECT, new Set([''])),
@@ -235,6 +252,11 @@ export const getServerEnv = (): ServerEnv => {
                 process.env.STUDY_SESSION_TOKEN_SECRET,
                 new Set(['', 'your_study_session_token_secret_here'])
             ),
+            openRouterApiKey: readOptionalValue(process.env.OPENROUTER_API_KEY, new Set(['', 'your_openrouter_api_key_here'])),
+            aiPrimaryModel: readOptionalValue(process.env.AI_PRIMARY_MODEL, new Set([''])),
+            aiFallbackModels: readListValue(process.env.AI_FALLBACK_MODELS),
+            openRouterReferer: readOptionalValue(process.env.OPENROUTER_REFERER, new Set([''])),
+            openRouterAppName: readOptionalValue(process.env.OPENROUTER_APP_NAME, new Set([''])),
             sentryAuthToken: readOptionalValue(process.env.SENTRY_AUTH_TOKEN, new Set([''])),
             sentryOrg: readOptionalValue(process.env.SENTRY_ORG, new Set([''])),
             sentryProject: readOptionalValue(process.env.SENTRY_PROJECT, new Set([''])),
@@ -258,4 +280,11 @@ export const hasConfiguredStudySessionEnv = (
     env.supabaseUrl
     && env.studySessionTokenSecret
     && env.supabaseAnonKey
+);
+
+export const hasConfiguredAiEnv = (
+    env: ServerEnv = getServerEnv()
+): boolean => Boolean(
+    env.openRouterApiKey
+    && env.aiPrimaryModel
 );

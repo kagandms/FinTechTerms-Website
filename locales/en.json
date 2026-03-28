@@ -96,6 +96,11 @@
         "quickQuiz": "Quick Quiz",
         "quickQuizDesc": "Quick practice with 5-50 random words",
         "startQuickQuiz": "Start Quick Quiz",
+        "multipleChoice": "Multiple Choice",
+        "multipleChoiceDesc": "Answer each definition with one of four terms",
+        "startMultipleChoice": "Start Multiple Choice",
+        "whichTermMatches": "Which term matches this definition?",
+        "multipleChoiceUnavailable": "Multiple choice needs at least 4 matching terms.",
         "dailyStreak": "Daily Streak",
         "days": "days",
         "keepItUp": "Keep it up!",
@@ -306,12 +311,29 @@
         "favoriteAdded": "Added to favorites ❤️",
         "favoriteRemoved": "Removed from favorites",
         "favoritesRemaining": "{count} left",
+        "aiPreviewHint": "Guest preview: 1 AI explanation. Members unlock unlimited term coach.",
         "showExampleSentence": "Show example sentence",
         "showLess": "Show less",
         "less": "Less",
         "difficulty": "Difficulty",
         "success": "Success",
         "reviews": "Reviews"
+    },
+    "membership": {
+        "hintTitle": "Member unlocks",
+        "profileTitle": "Why create an account",
+        "items": {
+            "srs": "Full SRS review system",
+            "favorites": "Unlimited favorites library",
+            "aiFeedback": "AI mistake feedback",
+            "aiExplain": "AI term coach",
+            "studyCoach": "AI Study Coach",
+            "sync": "Cross-device sync",
+            "analytics": "Advanced analytics"
+        },
+        "chatHint": "Guest preview includes 3 AI messages. Members unlock the full FinTechTerms chat.",
+        "favoritesHint": "Guests can save up to {count} favorites. Members unlock unlimited favorites, full SRS, and AI study help.",
+        "quizHint": "Members unlock full SRS, AI mistake feedback, AI Study Coach, and synced progress."
     },
     "profileValidation": {
         "nameMin": "Name must be at least 2 characters",

@@ -23,6 +23,8 @@ import type { LearningStatsActionResult } from '@/types/gamification';
 import InstallButton from '@/components/InstallButton';
 import Heatmap from '@/components/profile/Heatmap';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
+import AiStudyCoachCard from '@/components/profile/AiStudyCoachCard';
+import ValueHintList from '@/components/membership/ValueHintList';
 import { formatTranslation } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 
@@ -123,6 +125,15 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             />
         ),
     } : undefined;
+    const membershipItems = [
+        t('membership.items.srs'),
+        t('membership.items.favorites'),
+        t('membership.items.aiFeedback'),
+        t('membership.items.aiExplain'),
+        t('membership.items.studyCoach'),
+        t('membership.items.sync'),
+        t('membership.items.analytics'),
+    ];
 
     return (
         <div className="pb-24 pt-6 px-4 max-w-7xl mx-auto">
@@ -191,6 +202,16 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                 </section>
             ) : null}
 
+            {(!isAuthenticated || requiresProfileCompletion) ? (
+                <section className="mb-8">
+                    <ValueHintList
+                        title={t('membership.profileTitle')}
+                        items={membershipItems}
+                        tone="strong"
+                    />
+                </section>
+            ) : null}
+
             {/* Main Dashboard Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
@@ -219,8 +240,12 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         </section>
                     )}
 
+                    <section className="order-3">
+                        <AiStudyCoachCard learningStats={learningStats} />
+                    </section>
+
                     {/* View Favorites CTA - Moved UP in Mobile (order-2), remains on right on Large screens */}
-                    <section className="lg:hidden order-3 bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
+                    <section className="lg:hidden order-4 bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                         <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-20 h-20 bg-emerald-400 opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
 

@@ -10,6 +10,7 @@ import SmartCard from '@/components/SmartCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
 import TelegramBanner from '@/components/TelegramBanner';
+import AiChatPanel from '@/components/home/AiChatPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
@@ -211,6 +212,10 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
             {/* Daily Review Card */}
             <section className="mb-6">
                 <DailyReview />
+            </section>
+
+            <section className="mb-6">
+                <AiChatPanel />
             </section>
 
             {entitlements.canUseReviewMode ? (

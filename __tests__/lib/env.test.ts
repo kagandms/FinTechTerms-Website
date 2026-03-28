@@ -44,3 +44,43 @@ describe('getPublicEnv', () => {
         });
     });
 });
+
+describe('getServerEnv', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+        jest.resetModules();
+        process.env = {
+            ...originalEnv,
+            NODE_ENV: 'test',
+            NEXT_PUBLIC_SITE_URL: 'https://fintechterms.example',
+            NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
+            OPENROUTER_API_KEY: 'openrouter-key',
+            AI_PRIMARY_MODEL: 'qwen/qwen3-next-80b-a3b-instruct:free',
+            AI_FALLBACK_MODELS: 'openai/gpt-oss-120b:free,google/gemma-3-27b-it:free',
+            OPENROUTER_REFERER: 'https://fintechterms.example',
+            OPENROUTER_APP_NAME: 'FinTechTerms',
+        };
+    });
+
+    afterAll(() => {
+        process.env = originalEnv;
+    });
+
+    it('should parse OpenRouter AI configuration from server env', async () => {
+        const { getServerEnv, hasConfiguredAiEnv } = await import('@/lib/env');
+
+        expect(getServerEnv()).toMatchObject({
+            openRouterApiKey: 'openrouter-key',
+            aiPrimaryModel: 'qwen/qwen3-next-80b-a3b-instruct:free',
+            aiFallbackModels: [
+                'openai/gpt-oss-120b:free',
+                'google/gemma-3-27b-it:free',
+            ],
+            openRouterReferer: 'https://fintechterms.example',
+            openRouterAppName: 'FinTechTerms',
+        });
+        expect(hasConfiguredAiEnv()).toBe(true);
+    });
+});

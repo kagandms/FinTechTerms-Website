@@ -7,13 +7,15 @@ import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
+import ValueHintList from '@/components/membership/ValueHintList';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookMarked, Loader2, RefreshCw } from 'lucide-react';
+import { formatTranslation } from '@/lib/i18n';
 
 export default function FavoritesClient() {
     const { t } = useLanguage();
-    const { isAuthenticated } = useAuth();
+    const { favoriteLimit, isAuthenticated } = useAuth();
     const searchParams = useSearchParams();
     const {
         terms,
@@ -37,6 +39,7 @@ export default function FavoritesClient() {
         || progressStatus === 'error'
         || ((termsStatus === 'degraded' || progressStatus === 'degraded') && favoriteTerms.length === 0);
     const shouldShowDegradedNotice = !hasBlockingError && (termsStatus === 'degraded' || progressStatus === 'degraded');
+    const shouldShowMembershipHint = Number.isFinite(favoriteLimit);
 
     return (
         <div className="page-content px-4 py-8 mb-20 max-w-4xl mx-auto min-h-screen">
@@ -76,6 +79,23 @@ export default function FavoritesClient() {
             </header>
 
             <div className="space-y-4">
+                {shouldShowMembershipHint ? (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                            {formatTranslation(t('membership.favoritesHint'), { count: favoriteLimit })}
+                        </p>
+                        <ValueHintList
+                            title={t('membership.hintTitle')}
+                            items={[
+                                t('membership.items.favorites'),
+                                t('membership.items.srs'),
+                                t('membership.items.aiExplain'),
+                                t('membership.items.studyCoach'),
+                            ]}
+                        />
+                    </div>
+                ) : null}
+
                 {isRouteLoading ? (
                     <DataStateCard
                         title={t('favorites.loadingTitle')}
