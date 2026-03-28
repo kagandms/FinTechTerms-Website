@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { mockTerms } from '@/data/mockData';
+import { fullRepoTerms } from '@/data/terms/repo-catalog';
 import { seoContributors } from '@/data/seo/contributors';
 import {
     PRIORITY_TERM_COUNT,
@@ -323,7 +323,7 @@ const validatePriorityRegistry = (catalog: readonly Term[]): void => {
 };
 
 const buildCatalog = (): SeoCatalog => {
-    const enrichedTerms = filterAcademicTerms(mockTerms).map(enrichTerm);
+    const enrichedTerms = filterAcademicTerms(fullRepoTerms).map(enrichTerm);
     const catalog = enrichedTerms.map((term) => ({
         ...term,
         related_term_ids: buildRelatedTermIds(enrichedTerms, term),

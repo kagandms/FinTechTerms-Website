@@ -19,6 +19,9 @@ const mockAddQuizAttemptToStorage = jest.fn();
 const mockSaveUserProgress = jest.fn();
 const mockGetGuestQuizPreview = jest.fn();
 const mockRecordGuestQuizPreviewAttempt = jest.fn();
+const mockGetMistakeReviewQueue = jest.fn();
+const mockRecordMistakeReviewMiss = jest.fn();
+const mockRemoveMistakeReviewTerm = jest.fn();
 const mockGetTermsDueForReview = jest.fn();
 const mockUpdateTermAfterReview = jest.fn();
 const mockCalculateProgressStats = jest.fn();
@@ -50,6 +53,9 @@ jest.mock('@/utils/storage', () => ({
     saveUserProgress: (...args: unknown[]) => mockSaveUserProgress(...args),
     getGuestQuizPreview: () => mockGetGuestQuizPreview(),
     recordGuestQuizPreviewAttempt: (...args: unknown[]) => mockRecordGuestQuizPreviewAttempt(...args),
+    getMistakeReviewQueue: (...args: unknown[]) => mockGetMistakeReviewQueue(...args),
+    recordMistakeReviewMiss: (...args: unknown[]) => mockRecordMistakeReviewMiss(...args),
+    removeMistakeReviewTerm: (...args: unknown[]) => mockRemoveMistakeReviewTerm(...args),
 }));
 
 jest.mock('@/utils/srsLogic', () => ({
@@ -221,6 +227,7 @@ describe('SRSContext', () => {
         mockUseAuth.mockImplementation(() => authState);
         mockGetTerms.mockReturnValue([baseTerm]);
         mockGetUserProgress.mockReturnValue(baseProgress);
+        mockGetMistakeReviewQueue.mockReturnValue([]);
         mockFetchTermsFromSupabase.mockResolvedValue([baseTerm]);
         mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult());
         mockGetAllTermSRSFromSupabase.mockResolvedValue({ status: 'ok', data: new Map() });

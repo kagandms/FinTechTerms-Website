@@ -1,4 +1,4 @@
-import { terms } from '@/data/terms';
+import { fullRepoTerms } from '@/data/terms/repo-catalog';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 import { buildLocalePath } from '@/lib/seo-routing';
@@ -17,7 +17,7 @@ interface LegacyTermRedirectInput extends LegacyLocaleInput {
 }
 
 const legacySeoTermSlugById = new Map(
-    filterAcademicTerms(terms).map((term) => [term.id, term.slug] as const)
+    filterAcademicTerms(fullRepoTerms).map((term) => [term.id, term.slug] as const)
 );
 
 export const resolveLegacyPublicLocale = ({
