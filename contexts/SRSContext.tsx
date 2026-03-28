@@ -13,6 +13,9 @@ import {
     saveUserProgress as saveLocalUserProgress,
     getGuestQuizPreview,
     recordGuestQuizPreviewAttempt as recordGuestQuizPreviewAttemptInStorage,
+    getMistakeReviewQueue,
+    recordMistakeReviewMiss as recordMistakeReviewMissInStorage,
+    removeMistakeReviewTerm as removeMistakeReviewTermInStorage,
 } from '@/utils/storage';
 import {
     getTermsDueForReview,
@@ -56,11 +59,14 @@ interface SRSContextType {
     userProgress: UserProgress;
     dueTerms: Term[];
     quizPreview: GuestQuizPreview;
+    mistakeReviewQueue: string[];
     toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
     isFavoriteUpdating: (termId: string) => boolean;
     submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string, quizType?: QuizType) => Promise<void>;
     recordQuizPreviewAttempt: (isCorrect: boolean, responseTimeMs: number) => void;
+    recordMistakeReviewMiss: (termId: string) => void;
+    clearMistakeReviewTerm: (termId: string) => void;
     refreshData: () => void;
     canAddMoreFavorites: boolean;
     favoritesRemaining: number;
@@ -127,6 +133,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const [terms, setTerms] = useState<Term[]>([]);
     const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
     const [quizPreview, setQuizPreview] = useState<GuestQuizPreview>(() => getGuestQuizPreview());
+    const [mistakeReviewQueue, setMistakeReviewQueue] = useState<string[]>(() => getMistakeReviewQueue(userId));
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [termsStatus, setTermsStatus] = useState<AsyncDataStatus>('loading');
@@ -305,6 +312,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const recordQuizPreviewAttempt = useCallback((isCorrect: boolean, responseTimeMs: number) => {
         setQuizPreview(recordGuestQuizPreviewAttemptInStorage(isCorrect, responseTimeMs));
     }, []);
+
+    const recordMistakeReviewMiss = useCallback((termId: string) => {
+        setMistakeReviewQueue(recordMistakeReviewMissInStorage(termId, userId));
+    }, [userId]);
+
+    const clearMistakeReviewTerm = useCallback((termId: string) => {
+        setMistakeReviewQueue(removeMistakeReviewTermInStorage(termId, userId));
+    }, [userId]);
 
     const applySyncedReview = useCallback((message: SrsSyncMessage) => {
         const { attempt, termId, termSrs, userProgress: syncedProgress } = message;
@@ -522,6 +537,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
         setFavoriteOptimisticState({});
         setFavoritePendingState({});
     }, [isAuthenticated, userId]);
+
+    useEffect(() => {
+        setMistakeReviewQueue(getMistakeReviewQueue(userId));
+    }, [userId]);
 
     useEffect(() => {
         restorePendingReview();
@@ -954,11 +973,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 userProgress: safeProgress,
                 dueTerms,
                 quizPreview,
+                mistakeReviewQueue,
                 toggleFavorite,
                 isFavorite,
                 isFavoriteUpdating,
                 submitQuizAnswer,
                 recordQuizPreviewAttempt,
+                recordMistakeReviewMiss,
+                clearMistakeReviewTerm,
                 refreshData,
                 canAddMoreFavorites,
                 favoritesRemaining,

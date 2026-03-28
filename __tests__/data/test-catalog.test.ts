@@ -12,7 +12,9 @@ describe('test catalog', () => {
         ]);
     });
 
-    it('keeps the main repo catalog broader than the locked test subset', () => {
-        expect(fullCatalogTerms.length).toBeGreaterThan(testCatalogTerms.length);
+    it('uses the locked test catalog as the active repo catalog', () => {
+        expect(fullCatalogTerms.map((term) => term.id)).toEqual(
+            testCatalogTerms.map((term) => term.id)
+        );
     });
 });

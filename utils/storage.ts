@@ -22,6 +22,7 @@ const STORAGE_KEYS = {
     LANGUAGE: 'globalfinterm_language',
     GUEST_ENTITLEMENT_POLICY: 'globalfinterm_guest_entitlement_policy',
     GUEST_QUIZ_PREVIEW: 'globalfinterm_guest_quiz_preview',
+    MISTAKE_REVIEW_QUEUE_PREFIX: 'globalfinterm_mistake_review_queue',
 } as const;
 
 const GUEST_PROGRESS_SCOPE = 'guest';
@@ -29,6 +30,7 @@ const GUEST_PROGRESS_USER_IDS = new Set(['guest', 'guest_user']);
 const MAX_LOCAL_QUIZ_HISTORY = 500;
 const MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY = 100;
 const GUEST_ENTITLEMENT_POLICY_VERSION = '2026-03-28-v1';
+const MAX_MISTAKE_REVIEW_TERMS = 20;
 
 export interface GuestQuizPreview {
     attemptCount: number;
@@ -109,6 +111,16 @@ const getTermsVersionStorageKey = (userId: string | null | undefined): string =>
     }
 
     return `${STORAGE_KEYS.TERMS_VERSION_PREFIX}:auth:${scopeUserId}`;
+};
+
+const getMistakeReviewQueueStorageKey = (userId: string | null | undefined): string => {
+    const scopeUserId = resolveProgressScopeUserId(userId);
+
+    if (!scopeUserId) {
+        return `${STORAGE_KEYS.MISTAKE_REVIEW_QUEUE_PREFIX}:${GUEST_PROGRESS_SCOPE}`;
+    }
+
+    return `${STORAGE_KEYS.MISTAKE_REVIEW_QUEUE_PREFIX}:auth:${scopeUserId}`;
 };
 
 const createDefaultProgress = (userId?: string | null): UserProgress => {
@@ -592,6 +604,7 @@ export function resetAllData(): void {
         localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
         const progressKeys: string[] = [];
         const termKeys: string[] = [];
+        const mistakeQueueKeys: string[] = [];
         for (let index = 0; index < localStorage.length; index += 1) {
             const key = localStorage.key(index);
             if (key?.startsWith(`${STORAGE_KEYS.USER_PROGRESS_PREFIX}:`)) {
@@ -603,11 +616,17 @@ export function resetAllData(): void {
             ) {
                 termKeys.push(key);
             }
+            if (key?.startsWith(`${STORAGE_KEYS.MISTAKE_REVIEW_QUEUE_PREFIX}:`)) {
+                mistakeQueueKeys.push(key);
+            }
         }
         progressKeys.forEach((key) => {
             localStorage.removeItem(key);
         });
         termKeys.forEach((key) => {
+            localStorage.removeItem(key);
+        });
+        mistakeQueueKeys.forEach((key) => {
             localStorage.removeItem(key);
         });
         if (typeof document !== 'undefined') {
@@ -632,6 +651,7 @@ export function clearStoredUserProgress(userId?: string | null): void {
 
     try {
         localStorage.removeItem(getProgressStorageKey(userId));
+        localStorage.removeItem(getMistakeReviewQueueStorageKey(userId));
     } catch (error) {
         logger.error('STORAGE_CLEAR_PROGRESS_FAILED', {
             route: 'storage',
@@ -729,4 +749,74 @@ export function clearGuestQuizPreview(): void {
             error: error instanceof Error ? error : undefined,
         });
     }
+}
+
+export function getMistakeReviewQueue(userId?: string | null): string[] {
+    if (!isLocalStorageAvailable()) {
+        return [];
+    }
+
+    try {
+        const stored = localStorage.getItem(getMistakeReviewQueueStorageKey(userId));
+        if (!stored) {
+            return [];
+        }
+
+        const parsed = JSON.parse(stored) as unknown;
+        if (!Array.isArray(parsed)) {
+            localStorage.removeItem(getMistakeReviewQueueStorageKey(userId));
+            return [];
+        }
+
+        return parsed
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+            .slice(0, MAX_MISTAKE_REVIEW_TERMS);
+    } catch {
+        localStorage.removeItem(getMistakeReviewQueueStorageKey(userId));
+        return [];
+    }
+}
+
+export function recordMistakeReviewMiss(termId: string, userId?: string | null): string[] {
+    const currentQueue = getMistakeReviewQueue(userId);
+    const nextQueue = [termId, ...currentQueue.filter((queuedTermId) => queuedTermId !== termId)]
+        .slice(0, MAX_MISTAKE_REVIEW_TERMS);
+
+    if (!isLocalStorageAvailable()) {
+        return nextQueue;
+    }
+
+    try {
+        localStorage.setItem(getMistakeReviewQueueStorageKey(userId), JSON.stringify(nextQueue));
+    } catch (error) {
+        logger.error('STORAGE_SAVE_MISTAKE_REVIEW_QUEUE_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+
+    return nextQueue;
+}
+
+export function removeMistakeReviewTerm(termId: string, userId?: string | null): string[] {
+    const nextQueue = getMistakeReviewQueue(userId).filter((queuedTermId) => queuedTermId !== termId);
+
+    if (!isLocalStorageAvailable()) {
+        return nextQueue;
+    }
+
+    try {
+        if (nextQueue.length === 0) {
+            localStorage.removeItem(getMistakeReviewQueueStorageKey(userId));
+        } else {
+            localStorage.setItem(getMistakeReviewQueueStorageKey(userId), JSON.stringify(nextQueue));
+        }
+    } catch (error) {
+        logger.error('STORAGE_REMOVE_MISTAKE_REVIEW_TERM_FAILED', {
+            route: 'storage',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+
+    return nextQueue;
 }

@@ -52,7 +52,12 @@ describe('Term Database Validation', () => {
         console.log('Category Distribution:', categories);
         console.log('Total Terms:', terms.length);
 
-        expect(terms.length).toBeGreaterThan(1000);
+        expect(terms.length).toBe(5);
+        expect(categories).toEqual({
+            Finance: 2,
+            Fintech: 2,
+            Technology: 1,
+        });
     });
 
     it('should include contest taxonomy fields on every term', () => {

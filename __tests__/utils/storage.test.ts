@@ -34,6 +34,9 @@ import {
     addQuizAttempt,
     getGuestQuizPreview,
     recordGuestQuizPreviewAttempt,
+    getMistakeReviewQueue,
+    recordMistakeReviewMiss,
+    removeMistakeReviewTerm,
     getCurrentLanguage,
     setCurrentLanguage,
     resetAllData,
@@ -349,6 +352,23 @@ describe('guest quiz preview', () => {
     });
 });
 
+describe('mistake review queue', () => {
+    it('stores the most recent mistake first and keeps entries unique', () => {
+        expect(recordMistakeReviewMiss('term_001', 'user_1')).toEqual(['term_001']);
+        expect(recordMistakeReviewMiss('term_002', 'user_1')).toEqual(['term_002', 'term_001']);
+        expect(recordMistakeReviewMiss('term_001', 'user_1')).toEqual(['term_001', 'term_002']);
+        expect(getMistakeReviewQueue('user_1')).toEqual(['term_001', 'term_002']);
+    });
+
+    it('removes a reviewed mistake from the queue', () => {
+        recordMistakeReviewMiss('term_001', 'user_1');
+        recordMistakeReviewMiss('term_002', 'user_1');
+
+        expect(removeMistakeReviewTerm('term_002', 'user_1')).toEqual(['term_001']);
+        expect(getMistakeReviewQueue('user_1')).toEqual(['term_001']);
+    });
+});
+
 // ══════════════════════════════════════════════════════════
 // Language preference
 // ══════════════════════════════════════════════════════════
@@ -379,6 +399,7 @@ describe('resetAllData', () => {
         getUserProgress();
         saveUserProgress(createProgress({ user_id: 'user_7', current_streak: 3 }), 'user_7');
         recordGuestQuizPreviewAttempt(true, 900);
+        recordMistakeReviewMiss('term_001', 'user_7');
         setCurrentLanguage('tr');
 
         resetAllData();
@@ -393,6 +414,7 @@ describe('resetAllData', () => {
         expect(localStorageMock.getItem('globalfinterm_data_version:auth:user_7')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:guest')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_7')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_mistake_review_queue:auth:user_7')).toBeNull();
         expect(sessionStorage.getItem('globalfinterm_guest_quiz_preview')).toBeNull();
         expect(document.cookie).not.toContain(`${LANGUAGE_COOKIE_NAME}=tr`);
     });

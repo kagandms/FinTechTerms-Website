@@ -150,23 +150,23 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
             </header>
 
             <header className="relative z-50 -mx-4 mb-12 hidden rounded-b-3xl border-b border-gray-100 bg-white/50 px-8 py-7 shadow-sm backdrop-blur-md dark:border-[#0c3452]/50 dark:bg-[#0a2d46]/80 lg:block">
-                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] lg:items-center">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(14rem,16rem)] lg:items-center">
                     <div className="flex min-w-0 items-center gap-8">
                         <div className="relative group shrink-0">
                             <Image
                                 src="/home-logo.png"
                                 alt="FinTechTerms Logo"
-                                width={160}
-                                height={144}
-                                className="w-40 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
+                                width={144}
+                                height={132}
+                                className="w-36 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
                                 priority
                             />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h1 className="max-w-[min(100%,34rem)] bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(3rem,4.6vw,4.25rem)] font-extrabold leading-[0.9] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
+                            <h1 className="max-w-full whitespace-nowrap bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-[clamp(2.2rem,3.3vw,3.35rem)] font-extrabold leading-[0.94] tracking-tighter text-transparent dark:from-white dark:to-gray-300">
                                 FinTechTerms
                             </h1>
-                            <p className="mt-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-500 dark:text-gray-400">
+                            <p className="mt-3 max-w-3xl text-lg font-medium leading-relaxed text-gray-500 dark:text-gray-400">
                                 {t('home.subtitle')}
                             </p>
                         </div>

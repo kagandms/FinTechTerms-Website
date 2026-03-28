@@ -122,7 +122,10 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const {
         dueTerms,
         quizPreview,
+        mistakeReviewQueue,
         recordQuizPreviewAttempt,
+        recordMistakeReviewMiss,
+        clearMistakeReviewTerm,
         submitQuizAnswer,
         stats,
         terms,
@@ -172,11 +175,15 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const recentWrongTerms = userProgress.quiz_history
         .filter((attempt) => !attempt.is_correct)
         .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
+    const queuedMistakeTerms = mistakeReviewQueue
+        .map((termId) => terms.find((term) => term.id === termId))
+        .filter((term): term is typeof terms[number] => Boolean(term));
+    const historicalMistakeTerms = recentWrongTerms
+        .map((attempt) => terms.find((term) => term.id === attempt.term_id))
+        .filter((term): term is typeof terms[number] => Boolean(term));
     const mistakeReviewPool = Array.from(
         new Map(
-            recentWrongTerms
-                .map((attempt) => terms.find((term) => term.id === attempt.term_id))
-                .filter((term): term is typeof terms[number] => Boolean(term))
+            [...queuedMistakeTerms, ...historicalMistakeTerms]
                 .map((term) => [term.id, term] as const)
         ).values()
     ).slice(0, 20);
@@ -270,6 +277,14 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 setShowSavedIndicator(true);
             } else if (!entitlements.canUseAdvancedAnalytics) {
                 recordQuizPreviewAttempt(isCorrect, responseTimeMs);
+            }
+
+            if (entitlements.canUseMistakeReview && isQuickQuiz && !isCorrect) {
+                recordMistakeReviewMiss(currentTerm.id);
+            }
+
+            if (entitlements.canUseMistakeReview && isMistakeReview && isCorrect) {
+                clearMistakeReviewTerm(currentTerm.id);
             }
 
             incrementQuizAttempt();
