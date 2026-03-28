@@ -102,7 +102,13 @@ describe('QuizClient quick quiz counts', () => {
             }[key] ?? key),
         });
         mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+                canUseMistakeReview: true,
+                canUseReviewMode: true,
+            },
             isAuthenticated: true,
+            requiresProfileCompletion: false,
         });
 
         mockUseSRS.mockReturnValue({
@@ -119,9 +125,15 @@ describe('QuizClient quick quiz counts', () => {
                 updated_at: new Date().toISOString(),
             },
             dueTerms: [],
+            quizPreview: {
+                attemptCount: 0,
+                correctCount: 0,
+                avgResponseTimeMs: null,
+            },
             toggleFavorite: jest.fn(),
             isFavorite: jest.fn(),
             isFavoriteUpdating: jest.fn(),
+            recordQuizPreviewAttempt: jest.fn(),
             submitQuizAnswer: jest.fn(),
             refreshData: jest.fn(),
             canAddMoreFavorites: true,

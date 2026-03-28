@@ -96,9 +96,15 @@ const createSrsState = (overrides: Partial<ReturnType<typeof mockUseSRS>> = {}) 
     terms: [baseTerm],
     userProgress: baseProgress,
     dueTerms: [],
+    quizPreview: {
+        attemptCount: 0,
+        correctCount: 0,
+        avgResponseTimeMs: null,
+    },
     toggleFavorite: jest.fn(),
     isFavorite: jest.fn(),
     isFavoriteUpdating: jest.fn(),
+    recordQuizPreviewAttempt: jest.fn(),
     submitQuizAnswer: jest.fn(),
     refreshData: jest.fn(),
     canAddMoreFavorites: true,
@@ -183,7 +189,13 @@ describe('Route state separation', () => {
             t: (key: string) => translationMap[key] ?? key,
         });
         mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+                canUseMistakeReview: true,
+                canUseReviewMode: true,
+            },
             isAuthenticated: true,
+            requiresProfileCompletion: false,
         });
         mockUseSRS.mockReturnValue(createSrsState());
     });
