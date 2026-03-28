@@ -14,7 +14,13 @@ import { formatTranslation } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 import { fetchTermExplainResponse } from '@/lib/ai/client';
 import { getAiUiCopy } from '@/lib/ai-copy';
-import { getAiGuestTeaserUsage, getCachedTermExplainResponse, incrementAiGuestTeaserUsage, setCachedTermExplainResponse } from '@/utils/ai-session';
+import {
+    createDefaultAiGuestTeaserUsage,
+    getAiGuestTeaserUsage,
+    getCachedTermExplainResponse,
+    incrementAiGuestTeaserUsage,
+    setCachedTermExplainResponse,
+} from '@/utils/ai-session';
 import type { AiExplainMode, AiTermExplainResponse } from '@/types/ai';
 import {
     Volume2,
@@ -76,12 +82,16 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const [aiExplainError, setAiExplainError] = useState<string | null>(null);
     const [aiExplainMode, setAiExplainMode] = useState<AiExplainMode | null>(null);
     const [aiExplainResponse, setAiExplainResponse] = useState<AiTermExplainResponse | null>(null);
-    const [guestAiUsage, setGuestAiUsage] = useState(() => getAiGuestTeaserUsage());
+    const [guestAiUsage, setGuestAiUsage] = useState(createDefaultAiGuestTeaserUsage);
 
     useEffect(() => () => {
         if (limitWarningTimeoutRef.current) {
             clearTimeout(limitWarningTimeoutRef.current);
         }
+    }, []);
+
+    useEffect(() => {
+        setGuestAiUsage(getAiGuestTeaserUsage());
     }, []);
 
     // Handle TTS

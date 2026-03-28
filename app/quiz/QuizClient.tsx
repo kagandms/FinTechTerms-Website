@@ -18,7 +18,7 @@ import type { QuizAnswerRequest, QuizAnswerResult } from '@/components/quiz-answ
 import type { QuizPresentationMode } from '@/types';
 import { fetchQuizFeedback } from '@/lib/ai/client';
 import { getAiUiCopy } from '@/lib/ai-copy';
-import { getAiGuestTeaserUsage, incrementAiGuestTeaserUsage } from '@/utils/ai-session';
+import { createDefaultAiGuestTeaserUsage, getAiGuestTeaserUsage, incrementAiGuestTeaserUsage } from '@/utils/ai-session';
 import type { AiQuizFeedback } from '@/types/ai';
 import ValueHintList from '@/components/membership/ValueHintList';
 import { formatTranslation } from '@/lib/i18n';
@@ -175,7 +175,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [quizFeedback, setQuizFeedback] = useState<AiQuizFeedback | null>(null);
     const [quizFeedbackStatus, setQuizFeedbackStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
     const [quizFeedbackError, setQuizFeedbackError] = useState<string | null>(null);
-    const [guestAiUsage, setGuestAiUsage] = useState(() => getAiGuestTeaserUsage());
+    const [guestAiUsage, setGuestAiUsage] = useState(createDefaultAiGuestTeaserUsage);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -255,6 +255,10 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     );
 
     // Initialize session terms only AFTER user has chosen SRS mode
+    useEffect(() => {
+        setGuestAiUsage(getAiGuestTeaserUsage());
+    }, []);
+
     useEffect(() => {
         if (!isQuickQuiz && !isMistakeReview && hasChosenMode && !hasStartedNormalQuiz && dueTerms.length > 0) {
             setSessionTerms(dueTerms);

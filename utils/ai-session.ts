@@ -5,7 +5,7 @@ import type {
 
 export type AiGuestTeaserKey = 'quiz-feedback' | 'term-explain' | 'chat-message';
 
-interface AiGuestTeaserUsageState {
+export interface AiGuestTeaserUsageState {
     quizFeedbackCount: number;
     termExplainCount: number;
     chatMessageCount: number;
@@ -21,7 +21,7 @@ const AI_TERM_EXPLAIN_CACHE_KEY = 'fintechterms_ai_term_explain_cache';
 const AI_CHAT_HISTORY_KEY = 'fintechterms_ai_chat_history';
 const TERM_EXPLAIN_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const createDefaultUsageState = (): AiGuestTeaserUsageState => ({
+export const createDefaultAiGuestTeaserUsage = (): AiGuestTeaserUsageState => ({
     quizFeedbackCount: 0,
     termExplainCount: 0,
     chatMessageCount: 0,
@@ -65,7 +65,7 @@ const writeJsonValue = (key: string, value: unknown): void => {
 
 export const getAiGuestTeaserUsage = (): AiGuestTeaserUsageState => (
     readJsonValue<AiGuestTeaserUsageState>(AI_GUEST_USAGE_STORAGE_KEY)
-    ?? createDefaultUsageState()
+    ?? createDefaultAiGuestTeaserUsage()
 );
 
 export const incrementAiGuestTeaserUsage = (key: AiGuestTeaserKey): AiGuestTeaserUsageState => {

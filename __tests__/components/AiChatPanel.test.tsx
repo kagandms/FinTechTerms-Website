@@ -11,6 +11,7 @@ const mockFetchAiChatResponse = jest.fn();
 const mockClearAiChatHistory = jest.fn();
 const mockUseAuth = jest.fn();
 const mockIncrementAiGuestTeaserUsage = jest.fn();
+const mockSaveAiChatHistory = jest.fn();
 
 jest.mock('@/contexts/LanguageContext', () => ({
     useLanguage: () => ({
@@ -34,11 +35,16 @@ jest.mock('@/lib/ai/client', () => ({
 }));
 
 jest.mock('@/utils/ai-session', () => ({
+    createDefaultAiGuestTeaserUsage: () => ({
+        quizFeedbackCount: 0,
+        termExplainCount: 0,
+        chatMessageCount: 0,
+    }),
     getAiChatHistory: () => ([
         { role: 'user', content: 'finans' },
         { role: 'assistant', content: 'Finans aciklamasi' },
     ]),
-    saveAiChatHistory: jest.fn(),
+    saveAiChatHistory: (...args: unknown[]) => mockSaveAiChatHistory(...args),
     clearAiChatHistory: () => mockClearAiChatHistory(),
     getAiGuestTeaserUsage: () => ({
         quizFeedbackCount: 0,
@@ -74,6 +80,13 @@ describe('AiChatPanel', () => {
 
         expect(screen.queryByText('finans')).not.toBeInTheDocument();
         expect(mockClearAiChatHistory).toHaveBeenCalled();
+    });
+
+    it('hydrates stored chat history without overwriting it with an empty state', async () => {
+        render(<AiChatPanel />);
+
+        expect(await screen.findByText('finans')).toBeInTheDocument();
+        expect(mockSaveAiChatHistory).not.toHaveBeenCalledWith([]);
     });
 
     it('increments guest usage only after a successful guest response', async () => {

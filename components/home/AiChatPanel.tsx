@@ -6,7 +6,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAiUiCopy } from '@/lib/ai-copy';
 import { fetchAiChatResponse } from '@/lib/ai/client';
-import { clearAiChatHistory, getAiChatHistory, getAiGuestTeaserUsage, incrementAiGuestTeaserUsage, saveAiChatHistory } from '@/utils/ai-session';
+import {
+    clearAiChatHistory,
+    createDefaultAiGuestTeaserUsage,
+    getAiChatHistory,
+    getAiGuestTeaserUsage,
+    incrementAiGuestTeaserUsage,
+    saveAiChatHistory,
+} from '@/utils/ai-session';
 import type { AiChatMessage } from '@/types/ai';
 import ValueHintList from '@/components/membership/ValueHintList';
 
@@ -14,16 +21,27 @@ export default function AiChatPanel() {
     const { language, t } = useLanguage();
     const { entitlements, isAuthenticated } = useAuth();
     const aiCopy = getAiUiCopy(language);
-    const [messages, setMessages] = useState<AiChatMessage[]>(() => getAiChatHistory());
+    const [messages, setMessages] = useState<AiChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [guestAiUsage, setGuestAiUsage] = useState(() => getAiGuestTeaserUsage());
+    const [guestAiUsage, setGuestAiUsage] = useState(createDefaultAiGuestTeaserUsage);
+    const [isAiSessionHydrated, setIsAiSessionHydrated] = useState(false);
     const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
 
     useEffect(() => {
+        setMessages(getAiChatHistory());
+        setGuestAiUsage(getAiGuestTeaserUsage());
+        setIsAiSessionHydrated(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isAiSessionHydrated) {
+            return;
+        }
+
         saveAiChatHistory(messages);
-    }, [messages]);
+    }, [isAiSessionHydrated, messages]);
 
     const remainingGuestMessages = Math.max(0, 3 - guestAiUsage.chatMessageCount);
     const helperLabel = useMemo(() => {
