@@ -18,6 +18,7 @@ import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
 import { getScriptNonce } from '@/lib/script-nonce';
 import { getSiteUrl } from '@/lib/site-url';
 import { buildXDefaultAlternates } from '@/lib/seo-routing';
+import { getThemeBootstrapScript } from '@/lib/theme-bootstrap';
 
 const siteUrl = getSiteUrl();
 
@@ -80,6 +81,10 @@ export default async function RootSurfaceLayout({
     return (
         <html lang={htmlLanguage}>
             <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
+                <script
+                    nonce={nonce}
+                    dangerouslySetInnerHTML={{ __html: getThemeBootstrapScript() }}
+                />
                 <ThemeProvider>
                     <AuthProvider>
                         <LanguageProvider>

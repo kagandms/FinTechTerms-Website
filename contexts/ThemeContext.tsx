@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { isThemeValue, THEME_STORAGE_KEY } from '@/lib/theme-bootstrap';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -13,10 +14,33 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('system');
-    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === 'undefined') {
+            return 'system';
+        }
 
-    // Get system preference
+        const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+        return isThemeValue(storedTheme) ? storedTheme : 'system';
+    });
+    const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => {
+        if (typeof document !== 'undefined') {
+            if (document.documentElement.classList.contains('dark')) {
+                return 'dark';
+            }
+
+            if (document.documentElement.classList.contains('light')) {
+                return 'light';
+            }
+        }
+
+        if (typeof window !== 'undefined') {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        return 'light';
+    });
+    const resolvedTheme: 'light' | 'dark' = theme === 'system' ? systemTheme : theme;
+
     const getSystemTheme = (): 'light' | 'dark' => {
         if (typeof window !== 'undefined') {
             return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -24,47 +48,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return 'light';
     };
 
-    // Update resolved theme
-    const updateResolvedTheme = (currentTheme: Theme) => {
-        const resolved = currentTheme === 'system' ? getSystemTheme() : currentTheme;
-        setResolvedTheme(resolved);
-
-        // Update document class
-        if (typeof document !== 'undefined') {
-            document.documentElement.classList.remove('light', 'dark');
-            document.documentElement.classList.add(resolved);
-        }
-    };
-
-    // Initialize theme from localStorage
     useEffect(() => {
-        const savedTheme = localStorage.getItem('theme') as Theme | null;
-        const initialTheme = savedTheme || 'system';
-        setThemeState(initialTheme);
-        updateResolvedTheme(initialTheme);
+        if (typeof document === 'undefined') {
+            return;
+        }
 
-        // Listen for system theme changes
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(resolvedTheme);
+    }, [resolvedTheme]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const handleChange = () => {
-            if (theme === 'system') {
-                updateResolvedTheme('system');
-            }
+            setSystemTheme(getSystemTheme());
         };
+
         mediaQuery.addEventListener('change', handleChange);
         return () => mediaQuery.removeEventListener('change', handleChange);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    // Update when theme changes
-    useEffect(() => {
-        updateResolvedTheme(theme);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [theme]);
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateResolvedTheme(newTheme);
+        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     };
 
     return (

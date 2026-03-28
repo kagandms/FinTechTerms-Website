@@ -16,6 +16,7 @@ import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { inter, jetbrainsMono } from '@/lib/fonts';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
 import { getScriptNonce } from '@/lib/script-nonce';
+import { getThemeBootstrapScript } from '@/lib/theme-bootstrap';
 
 export const metadata: Metadata = {
     robots: {
@@ -36,6 +37,10 @@ export default async function AppLayout({
     return (
         <html lang={htmlLanguage}>
             <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
+                <script
+                    nonce={nonce}
+                    dangerouslySetInnerHTML={{ __html: getThemeBootstrapScript() }}
+                />
                 <ThemeProvider>
                     <AuthProvider>
                         <LanguageProvider>

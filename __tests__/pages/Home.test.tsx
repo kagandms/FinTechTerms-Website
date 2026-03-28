@@ -137,4 +137,10 @@ describe('Home Page (Client)', () => {
 
         expect(screen.getByText('%75')).toBeInTheDocument();
     });
+
+    it('renders the desktop hero actions inside a 2x2 grid container', () => {
+        const { container } = render(<HomeClient />);
+
+        expect(container.querySelector('div.grid.w-full.grid-cols-2.gap-3')).not.toBeNull();
+    });
 });

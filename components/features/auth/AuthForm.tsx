@@ -10,16 +10,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     showPassword, setShowPassword, showConfirmPassword,
     setShowConfirmPassword, resetPassword, showToast, language, t
 }) => {
-    const translateOrFallback = (key: string, fallback: string): string => {
-        const translated = t(key);
-        return translated === key ? fallback : translated;
-    };
-
     const copy = {
         login: t('auth.login'),
         register: t('auth.register'),
         resetPassword: t('auth.resetPassword'),
-        continueWithGoogle: translateOrFallback('auth.continueWithGoogle', 'Continue with Google'),
+        continueWithGoogle: t('auth.continueWithGoogle'),
         email: t('auth.email'),
         password: t('auth.password'),
         confirmPassword: t('auth.confirmPassword'),

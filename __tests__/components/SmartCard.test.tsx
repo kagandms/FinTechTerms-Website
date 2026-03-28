@@ -4,36 +4,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SmartCard from '@/components/SmartCard';
 
+const mockUseTermTranslation = jest.fn();
+const mockShowToast = jest.fn();
+
 // Mock dependencies
 jest.mock('@/hooks/useTermTranslation', () => ({
-    useTermTranslation: (term: any) => ({
-        language: 'ru',
-        t: (key: string) => ({
-            'categories.Fintech': 'categories.Fintech',
-            'card.example': 'card.example',
-            'smartCard.less': 'Меньше',
-            'smartCard.showLess': 'Показать меньше',
-            'smartCard.showExampleSentence': 'Показать пример',
-            'card.listen': 'card.listen',
-            'card.addFavorite': 'card.addFavorite',
-            'card.removeFavorite': 'card.removeFavorite',
-            'smartCard.favoriteLimitWarning': 'Лимит избранного! Войдите для неограниченного добавления.',
-            'smartCard.favoriteUpdateError': 'Не удалось обновить избранное.',
-            'smartCard.favoriteAdded': 'Добавлено в избранное ❤️',
-            'smartCard.favoriteRemoved': 'Удалено из избранного',
-            'smartCard.favoritesRemaining': '{count} осталось',
-            'smartCard.difficulty': 'Сложность',
-            'smartCard.success': 'Успех',
-            'smartCard.reviews': 'Повторов',
-            'auth.login': 'Войти',
-        }[key] ?? key),
-        getTermByLang: (lang: string) => term[`term_${lang}`] || term.term_ru,
-        getPhoneticByLang: (lang: string) => '/term/',
-        currentTerm: term.term_ru,
-        currentPhonetic: '/term/',
-        currentDefinition: term.definition_ru,
-        currentExample: term.example_ru
-    })
+    useTermTranslation: (...args: unknown[]) => mockUseTermTranslation(...args),
 }));
 
 // Mock SRSContext with a spy for useSRS
@@ -57,7 +33,7 @@ jest.mock('@/contexts/AuthContext', () => ({
 
 jest.mock('@/contexts/ToastContext', () => ({
     useToast: () => ({
-        showToast: jest.fn()
+        showToast: mockShowToast
     })
 }));
 
@@ -104,6 +80,39 @@ describe('SmartCard Component', () => {
         times_reviewed: 0,
         times_correct: 0
     };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockUseTermTranslation.mockImplementation((term: typeof mockTerm) => ({
+            language: 'ru',
+            t: (key: string) => ({
+                'categories.Fintech': 'categories.Fintech',
+                'card.example': 'card.example',
+                'smartCard.less': 'Меньше',
+                'smartCard.showLess': 'Показать меньше',
+                'smartCard.showExampleSentence': 'Показать пример',
+                'card.listen': 'card.listen',
+                'card.addFavorite': 'card.addFavorite',
+                'card.removeFavorite': 'card.removeFavorite',
+                'smartCard.favoriteLimitWarning': 'Лимит избранного! Войдите для неограниченного добавления.',
+                'smartCard.favoriteUpdateError': 'Не удалось обновить избранное.',
+                'smartCard.favoriteAdded': 'Добавлено в избранное ❤️',
+                'smartCard.favoriteRemoved': 'Удалено из избранного',
+                'smartCard.favoritesRemaining': '{count} осталось',
+                'smartCard.difficulty': 'Сложность',
+                'smartCard.success': 'Успех',
+                'smartCard.reviews': 'Повторов',
+                'auth.login': 'Войти',
+                'profile.edit': 'Профиль',
+            }[key] ?? key),
+            getTermByLang: (lang: string) => term[`term_${lang}` as keyof typeof term] || term.term_ru,
+            getPhoneticByLang: () => '/term/',
+            currentTerm: term.term_ru,
+            currentPhonetic: '/term/',
+            currentDefinition: term.definition_ru,
+            currentExample: term.example_ru,
+        }));
+    });
 
     it('renders the term and definition correctly', () => {
         render(<SmartCard term={mockTerm as any} />);
@@ -157,5 +166,47 @@ describe('SmartCard Component', () => {
         fireEvent.click(heartButton);
 
         expect(toggleMock).toHaveBeenCalledWith('term_1');
+    });
+
+    it('renders the selected language as the primary heading', () => {
+        mockUseTermTranslation.mockImplementation((term: typeof mockTerm) => ({
+            language: 'tr',
+            t: (key: string) => key,
+            getTermByLang: (lang: string) => term[`term_${lang}` as keyof typeof term] || term.term_tr,
+            getPhoneticByLang: () => '/term/',
+            currentTerm: term.term_tr,
+            currentPhonetic: '/term/',
+            currentDefinition: term.definition_tr,
+            currentExample: term.example_tr,
+        }));
+
+        render(<SmartCard term={mockTerm as any} />);
+
+        expect(screen.getByText('Test Terimi')).toBeInTheDocument();
+        expect(screen.getByText('Bu bir test tanımıdır.')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Тестовый Термин' })).not.toBeInTheDocument();
+    });
+
+    it('shows a localized success toast when a term is favorited', async () => {
+        const { useSRS } = require('@/contexts/SRSContext');
+        const toggleMock = jest.fn().mockResolvedValue({
+            success: true,
+            limitReached: false,
+            isFavorite: true,
+        });
+
+        (useSRS as jest.Mock).mockReturnValue({
+            toggleFavorite: toggleMock,
+            isFavorite: () => false,
+            isFavoriteUpdating: () => false,
+            favoritesRemaining: 10,
+        });
+
+        render(<SmartCard term={mockTerm as any} />);
+
+        fireEvent.click(screen.getByTitle('card.addFavorite'));
+
+        await screen.findByTitle('card.addFavorite');
+        expect(mockShowToast).toHaveBeenCalledWith('Добавлено в избранное ❤️', 'success');
     });
 });

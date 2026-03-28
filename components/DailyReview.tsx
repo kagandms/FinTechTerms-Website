@@ -11,20 +11,16 @@ export default function DailyReview() {
     const { t } = useLanguage();
     const { dueTerms, stats } = useSRS();
     const { entitlements, requiresProfileCompletion } = useAuth();
-    const readCopy = (key: string, fallback: string): string => {
-        const translated = t(key);
-        return translated === key ? fallback : translated;
-    };
 
     const hasDueCards = dueTerms.length > 0;
     const reviewModeLocked = !entitlements.canUseReviewMode;
     const reviewUnlockHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
     const reviewUnlockLabel = requiresProfileCompletion
-        ? readCopy('profile.completeProfileAction', 'Complete profile')
-        : readCopy('auth.register', 'Sign Up');
+        ? t('profile.completeProfileAction')
+        : t('auth.register');
     const reviewUnlockMessage = requiresProfileCompletion
-        ? readCopy('home.completeProfileForReview', 'Complete your profile to unlock spaced repetition.')
-        : readCopy('home.unlockReviewMode', 'Create an account to unlock spaced repetition review.');
+        ? t('home.completeProfileForReview')
+        : t('home.unlockReviewMode');
 
     return (
         <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-5 text-white shadow-lg overflow-hidden relative">

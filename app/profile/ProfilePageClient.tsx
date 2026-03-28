@@ -55,10 +55,6 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     const { setLanguage } = useLanguage();
     const { stats, refreshData } = useSRS();
     const { entitlements, favoriteLimit, refreshMemberState, requiresProfileCompletion } = useAuth();
-    const readCopy = useCallback((key: string, fallback: string): string => {
-        const translated = t(key);
-        return translated === key ? fallback : translated;
-    }, [t]);
 
     // Toggle for Profile Editing
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -100,14 +96,14 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     const favoritesHref = isAuthenticated ? '/favorites?from=profile' : '/favorites';
     const profileEditorSection = isAuthenticated ? {
         title: requiresProfileCompletion
-            ? readCopy('profile.completeProfileTitle', 'Complete your profile')
+            ? t('profile.completeProfileTitle')
             : t('profile.editProfileTitle'),
         description: requiresProfileCompletion
-            ? readCopy('profile.completeProfileDescription', 'Add your date of birth to unlock full member study features.')
+            ? t('profile.completeProfileDescription')
             : t('profile.editProfileDescription'),
         isOpen: isProfileEditorOpen,
         toggleLabel: requiresProfileCompletion
-            ? readCopy('profile.completeProfileAction', 'Complete profile')
+            ? t('profile.completeProfileAction')
             : isProfileEditorOpen
             ? t('profile.closeEdit')
             : t('profile.edit'),
@@ -187,10 +183,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             {isAuthenticated && requiresProfileCompletion ? (
                 <section className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
                     <h3 className="text-lg font-bold">
-                        {readCopy('profile.completeProfileTitle', 'Complete your profile')}
+                        {t('profile.completeProfileTitle')}
                     </h3>
                     <p className="mt-2 text-sm leading-6">
-                        {readCopy('profile.completeProfileDescription', 'Add your date of birth to unlock full member study features.')}
+                        {t('profile.completeProfileDescription')}
                     </p>
                 </section>
             ) : null}

@@ -172,15 +172,15 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     )}
                 </div>
 
-                {/* Primary Term — Always Russian (Cyrillic) */}
+                {/* Primary term follows the selected UI language */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                         <h3 className="text-2xl font-bold text-primary-500 dark:text-primary-300 mb-1 leading-tight">
-                            {getTermByLang('ru')}
+                            {currentTerm}
                         </h3>
-                        {getPhoneticByLang('ru') && (
+                        {currentPhonetic && (
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                {getPhoneticByLang('ru')}
+                                {currentPhonetic}
                             </p>
                         )}
                     </div>
@@ -188,14 +188,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     {/* Actions */}
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => handleSpeak(getTermByLang('ru'), 'ru')}
+                            onClick={() => handleSpeak(currentTerm, language)}
                             disabled={isSpeaking || !isSpeechAvailable()}
                             className={`p-2 rounded-full transition-all duration-200 ${isSpeaking
                                 ? 'bg-accent-100 text-accent-600 animate-pulse-soft'
                                 : 'bg-gray-100 text-gray-600 hover:bg-accent-100 hover:text-accent-600'
                                 }`}
                             title={t('card.listen')}
-                            aria-label={`${t('card.listen')}: ${getTermByLang('ru')}`}
+                            aria-label={`${t('card.listen')}: ${currentTerm}`}
                         >
                             <Volume2 className="w-5 h-5" aria-hidden="true" />
                         </button>
@@ -219,9 +219,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                     </div>
                 </div>
 
-                {/* Secondary Translations — EN & TR always below in gray */}
+                {/* Secondary translations show the remaining languages */}
                 <div className="mt-3 flex flex-wrap gap-2">
-                    {(['en', 'tr'] as Language[]).map(lang => (
+                    {(['tr', 'en', 'ru'] as Language[])
+                        .filter((candidateLanguage) => candidateLanguage !== language)
+                        .map((lang) => (
                         <button
                             key={lang}
                             onClick={() => handleSpeak(getTermByLang(lang), lang)}
