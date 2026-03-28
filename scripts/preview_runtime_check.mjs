@@ -249,6 +249,10 @@ const runStudySessionsProbe = async (browser) => {
     const page = await context.newPage();
 
     try {
+        await grantResearchConsent(page);
+        await page.goto(`${stagingBaseUrl}/`, { waitUntil: 'domcontentloaded' });
+        await waitForPageSettle(page);
+
         const startResponse = await fetchJson(page, '/api/study-sessions', {
             method: 'POST',
             headers: {
