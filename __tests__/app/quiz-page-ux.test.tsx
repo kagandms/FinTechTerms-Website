@@ -8,7 +8,57 @@ import '@testing-library/jest-dom';
 
 import QuizPage from '@/app/quiz/QuizClient';
 
-const mockAuthState = {
+type MockStatus = 'ready' | 'loading' | 'degraded' | 'error';
+
+interface MockAuthState {
+    entitlements: {
+        canUseAdvancedAnalytics: boolean;
+        canUseMistakeReview: boolean;
+        canUseReviewMode: boolean;
+    };
+    isAuthenticated: boolean;
+    requiresProfileCompletion: boolean;
+}
+
+interface MockQuizTerm {
+    id: string;
+    category: 'Finance' | 'Fintech' | 'Technology';
+}
+
+interface MockSrsState {
+    dueTerms: MockQuizTerm[];
+    quizPreview: {
+        attemptCount: number;
+        correctCount: number;
+        avgResponseTimeMs: number | null;
+    };
+    mistakeReviewQueue: string[];
+    recordQuizPreviewAttempt: jest.Mock;
+    recordMistakeReviewMiss: jest.Mock;
+    clearMistakeReviewTerm: jest.Mock;
+    submitQuizAnswer: jest.Mock;
+    stats: {
+        totalFavorites: number;
+        mastered: number;
+        learning: number;
+    };
+    terms: MockQuizTerm[];
+    userProgress: {
+        favorites: string[];
+        quiz_history: Array<{
+            term_id: string;
+            is_correct: boolean;
+            timestamp: string;
+        }>;
+        current_streak: number;
+    };
+    isLoading: boolean;
+    termsStatus: MockStatus;
+    progressStatus: MockStatus;
+    refreshData: jest.Mock;
+}
+
+const mockAuthState: MockAuthState = {
     entitlements: {
         canUseAdvancedAnalytics: false,
         canUseMistakeReview: false,
@@ -18,7 +68,7 @@ const mockAuthState = {
     requiresProfileCompletion: false,
 };
 
-const mockSrsState = {
+const mockSrsState: MockSrsState = {
     dueTerms: [],
     quizPreview: {
         attemptCount: 0,

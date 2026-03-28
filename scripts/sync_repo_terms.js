@@ -51,6 +51,7 @@ const getRequiredEnv = (key) => {
 
 const loadRepoTerms = () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fintechterms-sync-'));
+    const entryPath = path.resolve(process.cwd(), 'data/terms/repo-catalog.ts');
 
     try {
         const tscPath = require.resolve('typescript/bin/tsc');
@@ -68,14 +69,14 @@ const loadRepoTerms = () => {
             '--resolveJsonModule',
             '--pretty',
             'false',
-            path.resolve(process.cwd(), 'data/mockData.ts'),
+            entryPath,
         ], {
             stdio: 'pipe',
         });
 
-        const compiledModulePath = path.join(tempDir, 'data/mockData.js');
-        const { mockTerms } = require(compiledModulePath);
-        return Array.isArray(mockTerms) ? mockTerms : [];
+        const compiledModulePath = path.join(tempDir, 'data/terms/repo-catalog.js');
+        const { fullRepoTerms } = require(compiledModulePath);
+        return Array.isArray(fullRepoTerms) ? fullRepoTerms : [];
     } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
     }
