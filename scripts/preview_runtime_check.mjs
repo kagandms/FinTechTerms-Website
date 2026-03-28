@@ -317,6 +317,55 @@ const runStudySessionsProbe = async (browser) => {
     }
 };
 
+const runAiChatProbe = async (browser) => {
+    const context = await createBypassedContext(browser);
+    const page = await context.newPage();
+
+    try {
+        await grantResearchConsent(page);
+        await page.goto(`${stagingBaseUrl}/`, { waitUntil: 'domcontentloaded' });
+        await waitForPageSettle(page);
+
+        const response = await fetchJson(page, '/api/ai/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                language: 'en',
+                message: 'What is Bitcoin?',
+                history: [],
+            }),
+        });
+
+        if (response.status === 503 && response.body?.code === 'RATE_LIMITER_UNAVAILABLE') {
+            throw new Error(
+                'Preview runtime AI route returned RATE_LIMITER_UNAVAILABLE. ' +
+                'Verify Vercel preview environment variables include UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
+            );
+        }
+
+        assertCondition(response.status === 200, `Preview runtime AI chat returned ${response.status}.`);
+        assertCondition(
+            response.body?.degraded !== true,
+            'Preview runtime AI chat is serving degraded fallback responses. ' +
+            'Verify OpenRouter provider configuration and model availability.'
+        );
+        assertCondition(
+            typeof response.body?.answer === 'string' && response.body.answer.length > 0,
+            'Preview runtime AI chat did not return an answer.'
+        );
+        assertCondition(
+            typeof response.body?.model === 'string' && response.body.model.length > 0,
+            'Preview runtime AI chat did not report a serving model.'
+        );
+
+        recordCheck('ai-chat-probe', true, 'Guest AI chat route is reachable and serving a real model response.');
+    } finally {
+        await context.close();
+    }
+};
+
 const runSentryCapabilityProbe = async (browser) => {
     const context = await createBypassedContext(browser);
     const page = await context.newPage();
@@ -366,6 +415,7 @@ try {
     await runGuestCheck(browser);
     await runFavoritesProbe(browser);
     await runStudySessionsProbe(browser);
+    await runAiChatProbe(browser);
     await runSentryCapabilityProbe(browser);
 } catch (error) {
     recordCheck(

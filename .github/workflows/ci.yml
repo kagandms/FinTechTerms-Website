@@ -76,6 +76,9 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
           STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET || 'ci-study-session-token-secret' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || 'ci-openrouter-key' }}
+          AI_PRIMARY_MODEL: ${{ secrets.AI_PRIMARY_MODEL || 'mistralai/mistral-small-2603' }}
+          AI_FALLBACK_MODELS: ${{ secrets.AI_FALLBACK_MODELS || 'deepseek/deepseek-chat-v3.1,openai/gpt-oss-20b' }}
           ADMIN_USER_IDS: ${{ vars.ADMIN_USER_IDS || 'ci-admin-user' }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL || 'https://example.upstash.io' }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN || 'ci-upstash-token' }}
@@ -100,6 +103,9 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || 'ci-openrouter-key' }}
+          AI_PRIMARY_MODEL: ${{ secrets.AI_PRIMARY_MODEL || 'mistralai/mistral-small-2603' }}
+          AI_FALLBACK_MODELS: ${{ secrets.AI_FALLBACK_MODELS || 'deepseek/deepseek-chat-v3.1,openai/gpt-oss-20b' }}
           ADMIN_USER_IDS: ${{ vars.ADMIN_USER_IDS || 'ci-admin-user' }}
           NEXT_PUBLIC_DEFAULT_LANGUAGE: ${{ vars.NEXT_PUBLIC_DEFAULT_LANGUAGE || 'ru' }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || 'https://examplePublicKey@o0.ingest.sentry.io/0' }}
