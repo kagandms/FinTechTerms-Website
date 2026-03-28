@@ -876,11 +876,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
             });
-            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
-            if (!didApplyLocalReview) {
-                throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
-            }
-
             showToast(result.message, 'warning');
             return;
         }
@@ -893,11 +888,6 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
             });
-            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
-            if (!didApplyLocalReview) {
-                throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
-            }
-
             showToast(PENDING_REVIEW_SYNC_MESSAGE, 'warning');
             return;
         }

@@ -169,6 +169,27 @@ const fetchWithBearer = async (page, path, token, init = {}) => (
     })
 );
 
+const fetchJson = async (page, path, init = {}) => (
+    await page.evaluate(async ({ routePath, requestInit }) => {
+        const response = await fetch(routePath, requestInit);
+
+        let body = null;
+        try {
+            body = await response.json();
+        } catch {
+            body = null;
+        }
+
+        return {
+            status: response.status,
+            body,
+        };
+    }, {
+        routePath: path,
+        requestInit: init,
+    })
+);
+
 const runGuestCheck = async (browser) => {
     const context = await createBypassedContext(browser);
     const page = await context.newPage();
@@ -223,6 +244,75 @@ const runFavoritesProbe = async (browser) => {
     }
 };
 
+const runStudySessionsProbe = async (browser) => {
+    const context = await createBypassedContext(browser);
+    const page = await context.newPage();
+
+    try {
+        const startResponse = await fetchJson(page, '/api/study-sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'start',
+                anonymousId: `preview-probe-${crypto.randomUUID()}`,
+                deviceType: 'desktop',
+                userAgent: 'preview-runtime-check',
+                consentGiven: true,
+                idempotency_key: crypto.randomUUID(),
+            }),
+        });
+
+        if (startResponse.status === 503 && startResponse.body?.code === 'STUDY_SESSION_DISABLED') {
+            throw new Error(
+                'Preview runtime study-sessions route is disabled. ' +
+                'Verify Vercel preview environment variables include STUDY_SESSION_TOKEN_SECRET.'
+            );
+        }
+
+        if (startResponse.status === 503 && startResponse.body?.code === 'RATE_LIMITER_UNAVAILABLE') {
+            throw new Error(
+                'Preview runtime study-sessions route returned RATE_LIMITER_UNAVAILABLE. ' +
+                'Verify Vercel preview environment variables include UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
+            );
+        }
+
+        assertCondition(startResponse.status === 200, `Preview runtime study-session start returned ${startResponse.status}.`);
+        assertCondition(
+            typeof startResponse.body?.sessionId === 'string' && startResponse.body.sessionId.length > 0,
+            'Preview runtime study-session start did not return a sessionId field.'
+        );
+        assertCondition(
+            typeof startResponse.body?.sessionToken === 'string' && startResponse.body.sessionToken.length > 0,
+            'Preview runtime study-session start did not return a sessionToken field.'
+        );
+
+        const endResponse = await fetchJson(page, '/api/study-sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'end',
+                sessionId: startResponse.body.sessionId,
+                sessionToken: startResponse.body.sessionToken,
+                durationSeconds: 1,
+                pageViews: 1,
+                quizAttempts: 0,
+                idempotency_key: crypto.randomUUID(),
+            }),
+        });
+
+        assertCondition(endResponse.status === 200, `Preview runtime study-session end returned ${endResponse.status}.`);
+        assertCondition(endResponse.body?.success === true, 'Preview runtime study-session end did not return success=true.');
+
+        recordCheck('study-sessions-probe', true, 'Anonymous study-session start/end path is reachable.');
+    } finally {
+        await context.close();
+    }
+};
+
 const runSentryCapabilityProbe = async (browser) => {
     const context = await createBypassedContext(browser);
     const page = await context.newPage();
@@ -271,6 +361,7 @@ const browser = await chromium.launch({ headless: true });
 try {
     await runGuestCheck(browser);
     await runFavoritesProbe(browser);
+    await runStudySessionsProbe(browser);
     await runSentryCapabilityProbe(browser);
 } catch (error) {
     recordCheck(

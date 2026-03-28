@@ -12,6 +12,12 @@ jest.mock('@/lib/supabaseAdmin', () => ({
 }));
 
 jest.mock('@/lib/learning-stats', () => ({
+    InvalidAnalyticsExportCursorError: class InvalidAnalyticsExportCursorError extends Error {
+        constructor(message = 'Analytics export cursor is invalid.') {
+            super(message);
+            this.name = 'InvalidAnalyticsExportCursorError';
+        }
+    },
     loadLearningStatsExportAttempts: (...args: unknown[]) => mockLoadLearningStatsExportAttempts(...args),
 }));
 
@@ -34,7 +40,7 @@ describe('analytics export route', () => {
                     quizType: 'daily',
                 },
             ],
-            nextCursor: '500',
+            nextCursor: 'opaque-cursor',
         });
 
         const { GET } = await import('@/app/api/analytics/export/route');
@@ -54,7 +60,7 @@ describe('analytics export route', () => {
                     quizType: 'daily',
                 },
             ],
-            nextCursor: '500',
+            nextCursor: 'opaque-cursor',
         });
     });
 
@@ -67,17 +73,34 @@ describe('analytics export route', () => {
         });
 
         const { GET } = await import('@/app/api/analytics/export/route');
-        const response = await GET(new Request('http://localhost:3000/api/analytics/export?cursor=1000&limit=250'));
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?cursor=opaque-cursor&limit=250'));
 
         expect(response.status).toBe(200);
         expect(mockLoadLearningStatsExportAttempts).toHaveBeenCalledWith(
             { supabase: true },
             'user-1',
             {
-                cursor: '1000',
+                cursor: 'opaque-cursor',
                 limit: 250,
             }
         );
+    });
+
+    it('returns 400 when the export cursor is invalid', async () => {
+        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
+        mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
+        const { InvalidAnalyticsExportCursorError } = await import('@/lib/learning-stats');
+        mockLoadLearningStatsExportAttempts.mockRejectedValue(new InvalidAnalyticsExportCursorError());
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?cursor=bad-cursor'));
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'INVALID_CURSOR',
+            retryable: false,
+        });
     });
 
     it('returns unauthorized when there is no authenticated user', async () => {

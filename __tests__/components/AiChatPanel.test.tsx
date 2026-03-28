@@ -3,12 +3,14 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AiChatPanel from '@/components/home/AiChatPanel';
 
 const mockFetchAiChatResponse = jest.fn();
 const mockClearAiChatHistory = jest.fn();
+const mockUseAuth = jest.fn();
+const mockIncrementAiGuestTeaserUsage = jest.fn();
 
 jest.mock('@/contexts/LanguageContext', () => ({
     useLanguage: () => ({
@@ -24,12 +26,7 @@ jest.mock('@/contexts/LanguageContext', () => ({
 }));
 
 jest.mock('@/contexts/AuthContext', () => ({
-    useAuth: () => ({
-        entitlements: {
-            canUseAdvancedAnalytics: true,
-        },
-        isAuthenticated: true,
-    }),
+    useAuth: () => mockUseAuth(),
 }));
 
 jest.mock('@/lib/ai/client', () => ({
@@ -48,16 +45,27 @@ jest.mock('@/utils/ai-session', () => ({
         termExplainCount: 0,
         chatMessageCount: 0,
     }),
-    incrementAiGuestTeaserUsage: jest.fn(() => ({
-        quizFeedbackCount: 0,
-        termExplainCount: 0,
-        chatMessageCount: 1,
-    })),
+    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
 }));
 
 jest.mock('@/components/membership/ValueHintList', () => () => null);
 
 describe('AiChatPanel', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
+            isAuthenticated: true,
+        });
+        mockIncrementAiGuestTeaserUsage.mockReturnValue({
+            quizFeedbackCount: 0,
+            termExplainCount: 0,
+            chatMessageCount: 1,
+        });
+    });
+
     it('clears chat history when reset is clicked', () => {
         render(<AiChatPanel />);
 
@@ -66,5 +74,49 @@ describe('AiChatPanel', () => {
 
         expect(screen.queryByText('finans')).not.toBeInTheDocument();
         expect(mockClearAiChatHistory).toHaveBeenCalled();
+    });
+
+    it('increments guest usage only after a successful guest response', async () => {
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            isAuthenticated: false,
+        });
+        mockFetchAiChatResponse.mockResolvedValue({
+            answer: 'Yanıt',
+        });
+
+        render(<AiChatPanel />);
+
+        fireEvent.change(screen.getByPlaceholderText('Finans, fintek veya teknoloji hakkında sor...'), {
+            target: { value: 'borsa nedir' },
+        });
+        fireEvent.click(screen.getByText('Gönder'));
+
+        expect(await screen.findByText('Yanıt')).toBeInTheDocument();
+        expect(mockIncrementAiGuestTeaserUsage).toHaveBeenCalledWith('chat-message');
+    });
+
+    it('does not increment guest usage when the guest request fails', async () => {
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            isAuthenticated: false,
+        });
+        mockFetchAiChatResponse.mockRejectedValue(new Error('AI unavailable'));
+
+        render(<AiChatPanel />);
+
+        fireEvent.change(screen.getByPlaceholderText('Finans, fintek veya teknoloji hakkında sor...'), {
+            target: { value: 'borsa nedir' },
+        });
+        fireEvent.click(screen.getByText('Gönder'));
+
+        expect(await screen.findByText('AI unavailable')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+        });
     });
 });

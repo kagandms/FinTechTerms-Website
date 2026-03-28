@@ -481,7 +481,7 @@ describe('SRSContext', () => {
         expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
     });
 
-    it('keeps the quiz moving locally when an auth-expired review is queued for replay', async () => {
+    it('queues an auth-expired review without mutating canonical local study state', async () => {
         mockGetUserProgressFromSupabase
             .mockResolvedValueOnce(okProgressResult())
             .mockResolvedValue(okProgressResult({
@@ -528,7 +528,7 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
         });
 
         expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(1);
@@ -536,6 +536,10 @@ describe('SRSContext', () => {
             id: 'review-key-1',
             term_id: 'term-1',
         });
+        expect(mockUpdateTermAfterReview).not.toHaveBeenCalled();
+        expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
+        expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
+        expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
         expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
         expect(mockShowToast).toHaveBeenCalledWith(
             'Session expired. Please sign in again to save this answer.',
@@ -695,7 +699,7 @@ describe('SRSContext', () => {
         expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
     });
 
-    it('moves forward locally when a retryable review sync is queued', async () => {
+    it('queues a retryable review without mutating canonical local study state', async () => {
         mockSaveQuizAttemptToSupabase
             .mockResolvedValueOnce({
                 status: 'retryable',
@@ -719,8 +723,12 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
         });
+        expect(mockUpdateTermAfterReview).not.toHaveBeenCalled();
+        expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
+        expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
+        expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
         expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
         expect(mockShowToast).toHaveBeenCalledWith(
             'Answer saved locally. It will sync when connection returns.',
@@ -735,6 +743,57 @@ describe('SRSContext', () => {
         await waitFor(() => {
             expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
         });
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('current-streak')).toHaveTextContent('1');
+        });
         expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+    });
+
+    it('clears a queued review without changing local study state when replay fails non-retryably', async () => {
+        mockSaveQuizAttemptToSupabase
+            .mockResolvedValueOnce({
+                status: 'retryable',
+                message: 'Temporary outage',
+            })
+            .mockResolvedValueOnce({
+                status: 'non_retryable',
+                message: 'Term must be in favorites before review.',
+            });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'answer' }));
+
+        await waitFor(() => {
+            expect(sessionStorage.getItem('fintechterms_pending_review')).not.toBeNull();
+        });
+
+        act(() => {
+            window.dispatchEvent(new Event('online'));
+        });
+
+        await waitFor(() => {
+            expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
+        });
+
+        await waitFor(() => {
+            expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+            expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
+            expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
+        });
+
+        expect(mockUpdateTermAfterReview).not.toHaveBeenCalled();
+        expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
+        expect(mockShowToast).toHaveBeenCalledWith('Progress could not be saved. Please try again.', 'error');
     });
 });

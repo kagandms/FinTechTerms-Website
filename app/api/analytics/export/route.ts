@@ -5,7 +5,10 @@ import {
     successResponse,
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
-import { loadLearningStatsExportAttempts } from '@/lib/learning-stats';
+import {
+    InvalidAnalyticsExportCursorError,
+    loadLearningStatsExportAttempts,
+} from '@/lib/learning-stats';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 
 /**
@@ -65,6 +68,16 @@ export async function GET(request: Request) {
             },
         });
     } catch (error) {
+        if (error instanceof InvalidAnalyticsExportCursorError) {
+            return errorResponse({
+                status: 400,
+                code: 'INVALID_CURSOR',
+                message: 'Analytics export cursor is invalid.',
+                requestId,
+                retryable: false,
+            });
+        }
+
         return handleRouteError(error, {
             requestId,
             code: 'ANALYTICS_EXPORT_FAILED',

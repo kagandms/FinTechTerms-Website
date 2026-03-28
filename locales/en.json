@@ -229,7 +229,7 @@
         "confirmNewPassword": "Confirm New Password",
         "unknownError": "Something went wrong.",
         "profileUpdated": "Successfully saved",
-        "profilePartiallyUpdated": "Profile details were saved, but the secondary profile sync did not complete.",
+        "profilePartiallyUpdated": "Profile details were saved, but the secondary auth sync did not complete.",
         "passwordUpdated": "Password updated successfully!",
         "currentPasswordError": "Current password incorrect",
         "authRequired": "Session not authenticated.",

@@ -10,6 +10,8 @@ import type { Language } from '@/types';
 import { getSupabaseClient } from '@/lib/supabase';
 import { getAiUiCopy } from '@/lib/ai-copy';
 
+const AI_REQUEST_TIMEOUT_MS = 10_000;
+
 const resolveLocalizedAiError = (
     language: Language,
     fallbackMessage: string,
@@ -47,12 +49,37 @@ const parseAiError = async (
     return resolveLocalizedAiError(language, fallbackMessage, null);
 };
 
+const fetchWithTimeout = async (
+    input: string,
+    init: RequestInit
+): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(() => {
+        controller.abort();
+    }, AI_REQUEST_TIMEOUT_MS);
+
+    try {
+        return await fetch(input, {
+            ...init,
+            signal: controller.signal,
+        });
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('AI request timed out. Please try again.');
+        }
+
+        throw error;
+    } finally {
+        globalThis.clearTimeout(timeoutId);
+    }
+};
+
 const postJson = async <T,>(input: string, body: unknown, language: Language, fallbackMessage: string): Promise<T> => {
     const {
         data: { session },
     } = await getSupabaseClient().auth.getSession();
 
-    const response = await fetch(input, {
+    const response = await fetchWithTimeout(input, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {

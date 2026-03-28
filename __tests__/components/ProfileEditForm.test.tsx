@@ -232,7 +232,7 @@ describe('ProfileEditForm submit flow', () => {
         });
     });
 
-    it('keeps metadata failures as hard errors', async () => {
+    it('treats metadata sync failures as partial success after the canonical profile write succeeds', async () => {
         mockGetSupabaseClient.mockReturnValue(createSupabaseMock({
             metadataError: {
                 code: '42501',
@@ -250,23 +250,23 @@ describe('ProfileEditForm submit flow', () => {
         fireEvent.click(screen.getByTestId('profile-save'));
 
         await waitFor(() => {
-            expect(mockShowToast).toHaveBeenCalledWith(
-                'You do not have permission to perform this action.',
-                'error'
+            expect(mockShowToastAfterRefresh).toHaveBeenCalledWith(
+                'Profile details were saved, but the secondary auth sync did not complete.',
+                'warning'
             );
         });
 
-        expect(mockShowToastAfterRefresh).not.toHaveBeenCalled();
-        expect(mockRefresh).not.toHaveBeenCalled();
-        expect(screen.getByText('You do not have permission to perform this action.')).toBeInTheDocument();
+        expect(mockRefresh).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('Profile details were saved, but the secondary auth sync did not complete.')).toBeInTheDocument();
     });
 
-    it('treats profile sync failures as partial success after metadata succeeds', async () => {
-        mockGetSupabaseClient.mockReturnValue(createSupabaseMock({
+    it('treats canonical profile write failures as hard errors', async () => {
+        const supabaseMock = createSupabaseMock({
             profileError: {
                 message: 'profiles sync failed',
             },
-        }));
+        });
+        mockGetSupabaseClient.mockReturnValue(supabaseMock);
 
         render(
             <ProfileEditForm
@@ -278,14 +278,16 @@ describe('ProfileEditForm submit flow', () => {
         fireEvent.click(screen.getByTestId('profile-save'));
 
         await waitFor(() => {
-            expect(mockShowToastAfterRefresh).toHaveBeenCalledWith(
-                'Profile details were saved, but the secondary profile sync did not complete.',
-                'warning'
+            expect(mockShowToast).toHaveBeenCalledWith(
+                'Something went wrong. Please try again.',
+                'error'
             );
         });
 
-        expect(mockRefresh).toHaveBeenCalledTimes(1);
-        expect(screen.getByText('Profile details were saved, but the secondary profile sync did not complete.')).toBeInTheDocument();
+        expect(supabaseMock.auth.updateUser).not.toHaveBeenCalled();
+        expect(mockShowToastAfterRefresh).not.toHaveBeenCalled();
+        expect(mockRefresh).not.toHaveBeenCalled();
+        expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument();
     });
 
     it('updates password through the dedicated password action without triggering a profile refresh', async () => {

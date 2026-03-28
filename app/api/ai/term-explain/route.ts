@@ -33,9 +33,23 @@ const RATE_LIMIT_HEADERS = {
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    let body: unknown;
 
     try {
-        const parsedBody = TermExplainRequestSchema.safeParse(await request.json());
+        try {
+            body = await request.json();
+        } catch {
+            return errorResponse({
+                status: 400,
+                code: 'INVALID_JSON',
+                message: 'Invalid JSON payload.',
+                requestId,
+                retryable: false,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const parsedBody = TermExplainRequestSchema.safeParse(body);
 
         if (!parsedBody.success) {
             return errorResponse({

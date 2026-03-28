@@ -1,8 +1,10 @@
 import 'server-only';
 
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
-import { getSupabaseUserMetadataBirthDate, getSupabaseUserProviders } from '@/lib/auth/user';
+import { getSupabaseUserProviders } from '@/lib/auth/user';
+import { logger } from '@/lib/logger';
 import { resolveMemberEntitlements, type MemberEntitlements } from '@/lib/member-entitlements';
+import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
 interface RequestMemberEntitlementsResult {
     user: Awaited<ReturnType<typeof resolveAuthenticatedUser>>;
@@ -27,17 +29,25 @@ export const resolveRequestMemberEntitlements = async (
     const providers = getSupabaseUserProviders(user);
     let requiresProfileCompletion = false;
 
-    if (providers.includes('google') && !getSupabaseUserMetadataBirthDate(user)) {
+    if (providers.includes('google')) {
         const supabase = await createRequestScopedClient(request);
-        const { data } = supabase
+        const { data, error } = supabase
             ? await supabase
                 .from('profiles')
                 .select('birth_date')
                 .eq('id', user.id)
                 .maybeSingle()
-            : { data: null };
+            : { data: null, error: new Error('Supabase request client unavailable.') };
 
-        requiresProfileCompletion = !(typeof data?.birth_date === 'string' && data.birth_date.trim().length > 0);
+        if (error) {
+            logger.warn('SERVER_MEMBER_ENTITLEMENTS_PROFILE_CHECK_FAILED', {
+                route: 'resolveRequestMemberEntitlements',
+                userId: user.id,
+                error: error instanceof Error ? error : new Error(String(error)),
+            });
+        }
+
+        requiresProfileCompletion = !hasPersistedBirthDate(data?.birth_date);
     }
 
     return {

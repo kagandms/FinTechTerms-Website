@@ -67,16 +67,16 @@ export default function AiChatPanel() {
         setError(null);
         setIsLoading(true);
 
-        if (!hasFullAiAccess) {
-            setGuestAiUsage(incrementAiGuestTeaserUsage('chat-message'));
-        }
-
         try {
             const response = await fetchAiChatResponse({
                 language,
                 message: nextMessage,
                 history: previousMessages,
             });
+
+            if (!hasFullAiAccess) {
+                setGuestAiUsage(incrementAiGuestTeaserUsage('chat-message'));
+            }
 
             setMessages((currentMessages) => [
                 ...currentMessages,

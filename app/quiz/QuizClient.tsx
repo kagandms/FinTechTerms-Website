@@ -375,10 +375,6 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 });
 
                 if (shouldFetchAiFeedback) {
-                    if (!hasFullAiAccess) {
-                        setGuestAiUsage(incrementAiGuestTeaserUsage('quiz-feedback'));
-                    }
-
                     setQuizFeedbackStatus('loading');
                     setQuizFeedback(null);
                     setQuizFeedbackError(null);
@@ -389,6 +385,9 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         selectedWrongLabel: selectedOptionLabel ?? null,
                     })
                         .then((feedback) => {
+                            if (!hasFullAiAccess) {
+                                setGuestAiUsage(incrementAiGuestTeaserUsage('quiz-feedback'));
+                            }
                             setQuizFeedback(feedback);
                             setQuizFeedbackStatus('ready');
                         })

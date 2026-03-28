@@ -229,7 +229,7 @@
         "confirmNewPassword": "Yeni Şifre (Tekrar)",
         "unknownError": "Bir hata oluştu.",
         "profileUpdated": "Başarıyla kaydedildi",
-        "profilePartiallyUpdated": "Profil bilgileri kaydedildi, ancak yedek profil senkronizasyonu tamamlanamadı.",
+        "profilePartiallyUpdated": "Profil bilgileri kaydedildi, ancak ikincil kimlik senkronizasyonu tamamlanamadı.",
         "passwordUpdated": "Şifreniz başarıyla güncellendi!",
         "currentPasswordError": "Mevcut şifre yanlış",
         "authRequired": "Oturum doğrulanamadı.",

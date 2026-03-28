@@ -16,9 +16,61 @@ interface QuizMetricsRow {
     avg_response_time_ms: number | null;
 }
 
+interface ExportCursorState {
+    snapshotCreatedAt: string;
+    offset: number;
+}
+
 const RECENT_ATTEMPTS_LIMIT = 10;
 const DEFAULT_EXPORT_ATTEMPTS_PAGE_SIZE = 500;
 const MAX_EXPORT_ATTEMPTS_PAGE_SIZE = 1000;
+
+const isValidIsoTimestamp = (value: string): boolean => !Number.isNaN(new Date(value).getTime());
+
+const encodeExportCursor = (state: ExportCursorState): string => Buffer.from(
+    JSON.stringify(state)
+).toString('base64url');
+
+export class InvalidAnalyticsExportCursorError extends Error {
+    constructor(message = 'Analytics export cursor is invalid.') {
+        super(message);
+        this.name = 'InvalidAnalyticsExportCursorError';
+    }
+}
+
+const decodeExportCursor = (rawCursor: string): ExportCursorState => {
+    let parsedCursor: unknown;
+
+    try {
+        parsedCursor = JSON.parse(Buffer.from(rawCursor, 'base64url').toString('utf8')) as unknown;
+    } catch {
+        throw new InvalidAnalyticsExportCursorError();
+    }
+
+    if (!parsedCursor || typeof parsedCursor !== 'object') {
+        throw new InvalidAnalyticsExportCursorError();
+    }
+
+    const snapshotCreatedAt = 'snapshotCreatedAt' in parsedCursor
+        && typeof parsedCursor.snapshotCreatedAt === 'string'
+        ? parsedCursor.snapshotCreatedAt
+        : null;
+    const offset = 'offset' in parsedCursor
+        && typeof parsedCursor.offset === 'number'
+        && Number.isInteger(parsedCursor.offset)
+        && parsedCursor.offset >= 0
+        ? parsedCursor.offset
+        : null;
+
+    if (!snapshotCreatedAt || offset === null || !isValidIsoTimestamp(snapshotCreatedAt)) {
+        throw new InvalidAnalyticsExportCursorError();
+    }
+
+    return {
+        snapshotCreatedAt,
+        offset,
+    };
+};
 
 const mapRecentAttempt = (
     attempt: Database['public']['Tables']['quiz_attempts']['Row']
@@ -134,38 +186,45 @@ export async function loadLearningStatsExportAttempts(
     attempts: LearningRecentAttempt[];
     nextCursor: string | null;
 }> {
-    const start = (() => {
+    const cursorState = (() => {
         const rawCursor = options?.cursor?.trim();
         if (!rawCursor) {
-            return 0;
+            return {
+                snapshotCreatedAt: new Date().toISOString(),
+                offset: 0,
+            } satisfies ExportCursorState;
         }
 
-        const parsedCursor = Number.parseInt(rawCursor, 10);
-        return Number.isFinite(parsedCursor) && parsedCursor >= 0
-            ? parsedCursor
-            : 0;
+        return decodeExportCursor(rawCursor);
     })();
     const pageSize = Math.min(
         Math.max(1, options?.limit ?? DEFAULT_EXPORT_ATTEMPTS_PAGE_SIZE),
         MAX_EXPORT_ATTEMPTS_PAGE_SIZE
     );
-    const end = start + pageSize - 1;
+    const end = cursorState.offset + pageSize;
 
     const { data, error } = await supabase
         .from('quiz_attempts')
         .select('id, term_id, is_correct, response_time_ms, created_at, quiz_type')
         .eq('user_id', userId)
+        .lte('created_at', cursorState.snapshotCreatedAt)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
-        .range(start, end);
+        .range(cursorState.offset, end);
 
     if (error) {
         throw new Error(error.message);
     }
 
-    const attempts = ((data ?? []) as Database['public']['Tables']['quiz_attempts']['Row'][]).map(mapRecentAttempt);
-    const nextCursor = attempts.length === pageSize
-        ? String(start + pageSize)
+    const rows = (data ?? []) as Database['public']['Tables']['quiz_attempts']['Row'][];
+    const attempts = rows
+        .slice(0, pageSize)
+        .map(mapRecentAttempt);
+    const nextCursor = rows.length > pageSize
+        ? encodeExportCursor({
+            snapshotCreatedAt: cursorState.snapshotCreatedAt,
+            offset: cursorState.offset + pageSize,
+        })
         : null;
 
     return {

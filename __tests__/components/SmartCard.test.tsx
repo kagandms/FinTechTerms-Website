@@ -1,19 +1,17 @@
-
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SmartCard from '@/components/SmartCard';
 
 const mockUseTermTranslation = jest.fn();
 const mockShowToast = jest.fn();
 const mockFetchTermExplainResponse = jest.fn();
+const mockIncrementAiGuestTeaserUsage = jest.fn();
 
-// Mock dependencies
 jest.mock('@/hooks/useTermTranslation', () => ({
     useTermTranslation: (...args: unknown[]) => mockUseTermTranslation(...args),
 }));
 
-// Mock SRSContext with a spy for useSRS
 jest.mock('@/contexts/SRSContext', () => ({
     useSRS: jest.fn(() => ({
         toggleFavorite: jest.fn().mockReturnValue({ success: true, limitReached: false }),
@@ -56,20 +54,13 @@ jest.mock('@/utils/ai-session', () => ({
         termExplainCount: 0,
         chatMessageCount: 0,
     }),
-    incrementAiGuestTeaserUsage: jest.fn(() => ({
-        quizFeedbackCount: 0,
-        termExplainCount: 1,
-        chatMessageCount: 0,
-    })),
+    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
     getCachedTermExplainResponse: jest.fn(() => null),
     setCachedTermExplainResponse: jest.fn(),
 }));
 
 jest.mock('next/link', () => {
-    const MockLink = ({ children }: { children: React.ReactNode }) => {
-        return <span>{children}</span>;
-    };
-
+    const MockLink = ({ children }: { children: React.ReactNode }) => <span>{children}</span>;
     MockLink.displayName = 'MockLink';
     return MockLink;
 });
@@ -106,6 +97,11 @@ describe('SmartCard Component', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockIncrementAiGuestTeaserUsage.mockReturnValue({
+            quizFeedbackCount: 0,
+            termExplainCount: 1,
+            chatMessageCount: 0,
+        });
         mockUseTermTranslation.mockImplementation((term: typeof mockTerm) => ({
             language: 'ru',
             t: (key: string) => ({
@@ -140,12 +136,9 @@ describe('SmartCard Component', () => {
     it('renders the term and definition correctly', () => {
         render(<SmartCard term={mockTerm as any} />);
 
-        // check Russian term is displayed as primary
         expect(screen.getByText('Тестовый Термин')).toBeInTheDocument();
-        // check definition (current language = ru)
         expect(screen.getByText('Это тестовое определение.')).toBeInTheDocument();
-        // check category
-        expect(screen.getByText('categories.Fintech')).toBeInTheDocument(); // Mocked t returns key
+        expect(screen.getByText('categories.Fintech')).toBeInTheDocument();
         expect(screen.getByText('MOEX')).toBeInTheDocument();
         expect(screen.getByText('Economics')).toBeInTheDocument();
         expect(screen.getByText('MIS')).toBeInTheDocument();
@@ -156,18 +149,14 @@ describe('SmartCard Component', () => {
 
         const toggleButton = screen.getByText('card.example');
 
-        // Example should not be visible initially (unless showFullDetails prop is true)
         expect(screen.queryByText('Это тестовый пример.')).not.toBeInTheDocument();
 
-        // Click to expand
         fireEvent.click(toggleButton);
         expect(screen.getByText('"Это тестовый пример."')).toBeInTheDocument();
 
-        // Click to collapse — language is 'ru' so text is 'Меньше'
         const collapseButton = screen.getByText('Меньше');
         fireEvent.click(collapseButton);
 
-        // Wait for animation or state update if needed, but here it's sync
         expect(screen.queryByText('"Это тестовый пример."')).not.toBeInTheDocument();
     });
 
@@ -175,7 +164,6 @@ describe('SmartCard Component', () => {
         const { useSRS } = require('@/contexts/SRSContext');
         const toggleMock = jest.fn().mockReturnValue({ success: true });
 
-        // Use type casting to tell TS that useSRS is a Mock
         (useSRS as jest.Mock).mockReturnValue({
             toggleFavorite: toggleMock,
             isFavorite: () => false,
@@ -185,8 +173,7 @@ describe('SmartCard Component', () => {
 
         render(<SmartCard term={mockTerm as any} />);
 
-        const heartButton = screen.getByTitle('card.addFavorite');
-        fireEvent.click(heartButton);
+        fireEvent.click(screen.getByTitle('card.addFavorite'));
 
         expect(toggleMock).toHaveBeenCalledWith('term_1');
     });
@@ -248,5 +235,20 @@ describe('SmartCard Component', () => {
 
         expect(await screen.findByText('Почему это важно')).toBeInTheDocument();
         expect(mockFetchTermExplainResponse).toHaveBeenCalled();
+        expect(mockIncrementAiGuestTeaserUsage).toHaveBeenCalledWith('term-explain');
+    });
+
+    it('does not increment guest AI usage when the explanation request fails', async () => {
+        mockFetchTermExplainResponse.mockRejectedValue(new Error('AI failed'));
+
+        render(<SmartCard term={mockTerm as any} />);
+
+        fireEvent.click(screen.getByLabelText('Объяснить с AI: Тестовый Термин'));
+        fireEvent.click(screen.getByRole('button', { name: 'Объяснить проще' }));
+
+        expect(await screen.findByText('AI failed')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+        });
     });
 });

@@ -42,6 +42,7 @@ const RATE_LIMIT_HEADERS = {
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
+    let body: unknown;
 
     try {
         const memberState = await resolveRequestMemberEntitlements(request);
@@ -94,7 +95,20 @@ export async function POST(request: Request) {
             });
         }
 
-        const parsedBody = StudyCoachRequestSchema.safeParse(await request.json());
+        try {
+            body = await request.json();
+        } catch {
+            return errorResponse({
+                status: 400,
+                code: 'INVALID_JSON',
+                message: 'Invalid JSON payload.',
+                requestId,
+                retryable: false,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const parsedBody = StudyCoachRequestSchema.safeParse(body);
 
         if (!parsedBody.success) {
             return errorResponse({

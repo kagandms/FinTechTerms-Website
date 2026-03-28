@@ -3,12 +3,14 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import QuizPage from '@/app/quiz/QuizClient';
 
 const mockFetchQuizFeedback = jest.fn();
+const mockUseAuth = jest.fn();
+const mockIncrementAiGuestTeaserUsage = jest.fn();
 
 const quizTerms = [
     { id: 'term-1', category: 'Finance' },
@@ -26,15 +28,7 @@ jest.mock('@/contexts/LanguageContext', () => ({
 }));
 
 jest.mock('@/contexts/AuthContext', () => ({
-    useAuth: () => ({
-        entitlements: {
-            canUseAdvancedAnalytics: true,
-            canUseMistakeReview: true,
-            canUseReviewMode: true,
-        },
-        isAuthenticated: true,
-        requiresProfileCompletion: false,
-    }),
+    useAuth: () => mockUseAuth(),
 }));
 
 jest.mock('@/contexts/SRSContext', () => ({
@@ -80,11 +74,7 @@ jest.mock('@/utils/ai-session', () => ({
         termExplainCount: 0,
         chatMessageCount: 0,
     }),
-    incrementAiGuestTeaserUsage: jest.fn(() => ({
-        quizFeedbackCount: 1,
-        termExplainCount: 0,
-        chatMessageCount: 0,
-    })),
+    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
 }));
 
 jest.mock('@/components/MultipleChoiceQuizCard', () => () => null);
@@ -114,6 +104,24 @@ jest.mock('next/link', () => ({
 }));
 
 describe('QuizPage AI feedback', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+                canUseMistakeReview: true,
+                canUseReviewMode: true,
+            },
+            isAuthenticated: true,
+            requiresProfileCompletion: false,
+        });
+        mockIncrementAiGuestTeaserUsage.mockReturnValue({
+            quizFeedbackCount: 1,
+            termExplainCount: 0,
+            chatMessageCount: 0,
+        });
+    });
+
     it('shows AI feedback after a wrong answer in flashcard mode', async () => {
         mockFetchQuizFeedback.mockResolvedValue({
             whyWrong: 'Wrong because you mixed the concept.',
@@ -131,5 +139,30 @@ describe('QuizPage AI feedback', () => {
 
         expect(await screen.findByText('AI memory coach')).toBeInTheDocument();
         expect(screen.getByText('Wrong because you mixed the concept.')).toBeInTheDocument();
+    });
+
+    it('does not increment guest teaser usage when guest AI feedback fails', async () => {
+        mockUseAuth.mockReturnValue({
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+                canUseMistakeReview: false,
+                canUseReviewMode: false,
+            },
+            isAuthenticated: false,
+            requiresProfileCompletion: false,
+        });
+        mockFetchQuizFeedback.mockRejectedValue(new Error('AI feedback unavailable'));
+
+        render(<QuizPage />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'quiz.startQuickQuiz' }));
+        fireEvent.click(screen.getByRole('button', { name: 'quiz.categoryAll' }));
+        fireEvent.click(screen.getByRole('button', { name: '5' }));
+        fireEvent.click(screen.getByRole('button', { name: 'answer-wrong' }));
+
+        expect(await screen.findByText('AI feedback unavailable')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+        });
     });
 });

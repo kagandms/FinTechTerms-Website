@@ -229,7 +229,7 @@
         "confirmNewPassword": "Новый пароль (Еще раз)",
         "unknownError": "Произошла ошибка.",
         "profileUpdated": "Успешно сохранено",
-        "profilePartiallyUpdated": "Данные профиля сохранены, но резервная синхронизация профиля не завершилась.",
+        "profilePartiallyUpdated": "Данные профиля сохранены, но резервная синхронизация auth-данных не завершилась.",
         "passwordUpdated": "Пароль успешно обновлён!",
         "currentPasswordError": "Текущий пароль неверен",
         "authRequired": "Сессия не подтверждена.",

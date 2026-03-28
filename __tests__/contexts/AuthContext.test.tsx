@@ -16,6 +16,8 @@ const mockSignInWithPassword = jest.fn();
 const mockTempSetSession = jest.fn();
 const mockTempUpdateUser = jest.fn();
 const mockCreateClient = jest.fn();
+const mockProfileMaybeSingle = jest.fn();
+const mockProfileFrom = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
     getSupabaseClient: () => ({
@@ -26,6 +28,7 @@ jest.mock('@/lib/supabase', () => ({
             verifyOtp: (...args: unknown[]) => mockVerifyOtp(...args),
             signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
         },
+        from: (...args: unknown[]) => mockProfileFrom(...args),
     }),
 }));
 
@@ -65,7 +68,7 @@ jest.mock('@supabase/supabase-js', () => ({
 }));
 
 const AuthContextConsumer = () => {
-    const { isAuthenticated, isPasswordRecovery, logout, updatePassword, verifyOTP } = useAuth();
+    const { isAuthenticated, isPasswordRecovery, logout, updatePassword, verifyOTP, requiresProfileCompletion } = useAuth();
     const [result, setResult] = React.useState('idle');
     const [logoutResult, setLogoutResult] = React.useState('idle');
     const [verifyResult, setVerifyResult] = React.useState('idle');
@@ -74,6 +77,7 @@ const AuthContextConsumer = () => {
         <div>
             <div data-testid="authenticated-state">{String(isAuthenticated)}</div>
             <div data-testid="recovery-state">{String(isPasswordRecovery)}</div>
+            <div data-testid="profile-completion-state">{String(requiresProfileCompletion)}</div>
             <div data-testid="update-result">{result}</div>
             <div data-testid="logout-result">{logoutResult}</div>
             <div data-testid="verify-result">{verifyResult}</div>
@@ -170,6 +174,17 @@ describe('AuthProvider updatePassword', () => {
                 setSession: (...args: unknown[]) => mockTempSetSession(...args),
                 updateUser: (...args: unknown[]) => mockTempUpdateUser(...args),
             },
+        });
+        mockProfileMaybeSingle.mockResolvedValue({
+            data: { birth_date: '2000-01-01' },
+            error: null,
+        });
+        mockProfileFrom.mockReturnValue({
+            select: () => ({
+                eq: () => ({
+                    maybeSingle: (...args: unknown[]) => mockProfileMaybeSingle(...args),
+                }),
+            }),
         });
     });
 
@@ -274,5 +289,44 @@ describe('AuthProvider updatePassword', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
             expect(screen.getByTestId('verify-result')).toHaveTextContent('authenticated session could not be established');
         }, { timeout: 2500 });
+    });
+
+    it('uses profiles.birth_date as the canonical profile-completion source for Google users', async () => {
+        mockGetSession.mockResolvedValue({
+            data: {
+                session: {
+                    access_token: 'access-token',
+                    refresh_token: 'refresh-token',
+                    user: {
+                        id: 'user-1',
+                        email: 'user@example.com',
+                        created_at: '2026-03-11T00:00:00.000Z',
+                        app_metadata: {
+                            provider: 'google',
+                            providers: ['google'],
+                        },
+                        user_metadata: {
+                            birth_date: '2000-01-01',
+                        },
+                    },
+                },
+            },
+            error: null,
+        });
+        mockProfileMaybeSingle.mockResolvedValue({
+            data: { birth_date: null },
+            error: null,
+        });
+
+        render(
+            <AuthProvider>
+                <AuthContextConsumer />
+            </AuthProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('authenticated-state')).toHaveTextContent('true');
+            expect(screen.getByTestId('profile-completion-state')).toHaveTextContent('true');
+        });
     });
 });

@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { toSafeUserError } from '@/lib/errors';
 import { getTranslationString } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
+import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
@@ -175,7 +176,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         pwdSaveBtn: copy('profileForm.updatePassword', 'Update Password'),
         unknownError: copy('profileForm.unknownError', 'Something went wrong.'),
         profileUpdated: copy('profileForm.profileUpdated', 'Successfully saved'),
-        profilePartiallyUpdated: copy('profileForm.profilePartiallyUpdated', 'Profile details were saved, but the secondary profile sync did not complete.'),
+        profilePartiallyUpdated: copy('profileForm.profilePartiallyUpdated', 'Profile details were saved, but the secondary auth sync did not complete.'),
         passwordUpdated: copy('profileForm.passwordUpdated', 'Password updated successfully!'),
         currentPasswordError: copy('profileForm.currentPasswordError', 'Current password incorrect'),
         authRequired: copy('profileForm.authRequired', 'Session not authenticated.'),
@@ -223,22 +224,29 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     return false;
                 }
 
-                let recoveredFullName = providedName.trim();
+                let recoveredFullName = '';
                 let recoveredBirthDate = fallbackInitialBirthDate;
 
                 if (providedUserId) {
                     try {
-                        const { data: profile } = await supabase
+                        const { data: profile, error: profileError } = await supabase
                             .from('profiles')
                             .select('full_name, birth_date')
                             .eq('id', providedUserId)
                             .maybeSingle();
 
-                        if (!recoveredFullName && profile?.full_name) {
+                        if (profileError) {
+                            logger.warn('PROFILE_FORM_CONTEXT_PROFILE_FALLBACK_FAILED', {
+                                route: 'ProfileEditForm',
+                                error: new Error(profileError.message),
+                            });
+                        }
+
+                        if (typeof profile?.full_name === 'string' && profile.full_name.trim().length > 0) {
                             recoveredFullName = String(profile.full_name).trim();
                         }
 
-                        if (!recoveredBirthDate && profile?.birth_date) {
+                        if (hasPersistedBirthDate(profile?.birth_date)) {
                             recoveredBirthDate = toDateInputValue(profile.birth_date);
                         }
                     } catch (error) {
@@ -316,16 +324,32 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     return;
                 }
 
-                let fullName = getSupabaseUserMetadataName(supabaseUser);
-                let birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(supabaseUser));
-                const { data: profile } = await supabase
+                let fullName = '';
+                let birthDate = '';
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('full_name, birth_date')
                     .eq('id', supabaseUser.id)
                     .maybeSingle();
 
-                if (!fullName && profile?.full_name) fullName = profile.full_name.trim();
-                if (!birthDate && profile?.birth_date) birthDate = toDateInputValue(profile.birth_date);
+                if (profileError) {
+                    logger.warn('PROFILE_FORM_PROFILE_LOAD_WARNING', {
+                        route: 'ProfileEditForm',
+                        userId: supabaseUser.id,
+                        error: new Error(profileError.message),
+                    });
+                } else if (profile) {
+                    if (typeof profile.full_name === 'string' && profile.full_name.trim().length > 0) {
+                        fullName = profile.full_name.trim();
+                    }
+
+                    if (hasPersistedBirthDate(profile.birth_date)) {
+                        birthDate = toDateInputValue(profile.birth_date);
+                    }
+                }
+
+                if (!fullName) fullName = getSupabaseUserMetadataName(supabaseUser);
+                if (!birthDate) birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(supabaseUser));
                 if (!fullName) fullName = getSupabaseUserNameSeed(supabaseUser);
 
                 const nameParts = fullName ? fullName.split(' ') : [''];
@@ -464,14 +488,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const normalizedBirthDate = toDateInputValue(formValues.birthDate);
             let hasProfileSyncWarning = false;
 
-            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
-                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
-            }));
-
-            if (metadataError) {
-                throw metadataError;
-            }
-
             const { error: profileError } = await withTimeout(async () => await supabase
                 .from('profiles')
                 .upsert(
@@ -487,9 +503,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                 .abortSignal(timeoutSignal));
 
             if (profileError) {
-                logger.warn('PROFILE_FORM_PROFILE_TABLE_SYNC_WARNING', {
+                throw profileError;
+            }
+
+            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
+                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
+            }));
+
+            if (metadataError) {
+                logger.warn('PROFILE_FORM_METADATA_SYNC_WARNING', {
                     route: 'ProfileEditForm',
-                    error: profileError ?? undefined,
+                    error: metadataError ?? undefined,
                 });
                 hasProfileSyncWarning = true;
             }

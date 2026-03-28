@@ -131,6 +131,9 @@ def main() -> None:
     if is_production:
         logger.info("🚀 PRODUCTION MODE — Render detected")
         logger.info("   Supabase URL: %s", config.supabase_url)
+        if not config.sentry_dsn:
+            logger.critical("Configuration error: BOT_SENTRY_DSN is required in production.")
+            sys.exit(1)
     else:
         logger.info("📡 LOCAL MODE — Development")
         logger.info("   Supabase URL: %s", config.supabase_url)

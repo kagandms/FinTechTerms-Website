@@ -10,6 +10,7 @@ import {
 } from '@/lib/auth/user';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
+import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -83,8 +84,10 @@ const loadInitialProfileData = async (): Promise<{
 
     const user = authState.user;
 
-    let fullName = getSupabaseUserMetadataName(user);
-    let birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(user));
+    let fullName = '';
+    let birthDate = '';
+    const metadataFullName = getSupabaseUserMetadataName(user);
+    const metadataBirthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(user));
 
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -100,12 +103,20 @@ const loadInitialProfileData = async (): Promise<{
         });
         warningCode = 'PROFILE_DATA_PARTIAL';
     } else if (profileData) {
-        if (!fullName && profileData.full_name) {
+        if (typeof profileData.full_name === 'string' && profileData.full_name.trim().length > 0) {
             fullName = String(profileData.full_name).trim();
         }
-        if (!birthDate && profileData.birth_date) {
+        if (hasPersistedBirthDate(profileData.birth_date)) {
             birthDate = toDateInputValue(profileData.birth_date);
         }
+    }
+
+    if (!fullName && metadataFullName) {
+        fullName = metadataFullName;
+    }
+
+    if (!birthDate && metadataBirthDate) {
+        birthDate = metadataBirthDate;
     }
 
     if (!fullName) {

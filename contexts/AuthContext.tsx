@@ -5,7 +5,6 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { Session, type User as SupabaseUser } from '@supabase/supabase-js';
 import {
     type AuthenticatedUser,
-    getSupabaseUserMetadataBirthDate,
     getSupabaseUserProviders,
     mapSupabaseUser,
 } from '@/lib/auth/user';
@@ -15,6 +14,7 @@ import {
 import { EMAIL_OTP_LENGTH, isValidEmailOtp } from '@/lib/auth/constants';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';
 import {
     type MemberEntitlements,
@@ -185,10 +185,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return false;
         }
 
-        if (getSupabaseUserMetadataBirthDate(supabaseUser)) {
-            return false;
-        }
-
         try {
             const { data: profile, error } = await supabase
                 .from('profiles')
@@ -205,7 +201,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 return true;
             }
 
-            return !(typeof profile?.birth_date === 'string' && profile.birth_date.trim().length > 0);
+            return !hasPersistedBirthDate(profile?.birth_date);
         } catch (error) {
             logger.warn('AUTH_PROFILE_COMPLETION_CHECK_EXCEPTION', {
                 route: 'AuthProvider',
@@ -356,6 +352,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (data.user) {
                 setUser(mapSupabaseUser(data.user));
+                setRequiresProfileCompletion(await resolveProfileCompletionRequirement(data.user));
                 void refreshCapabilities(data.session ?? null);
                 return { success: true };
             }
@@ -368,7 +365,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
                 return { success: false, error: 'Login failed' };
         }
-    }, [refreshCapabilities, supabaseAuth]);
+    }, [refreshCapabilities, resolveProfileCompletionRequirement, supabaseAuth]);
 
     const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
         try {
@@ -426,6 +423,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (data.user && data.session) {
                 setUser(mapSupabaseUser(data.user));
+                setRequiresProfileCompletion(await resolveProfileCompletionRequirement(data.user));
                 return { success: true };
             }
 
@@ -452,7 +450,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return { success: false, error: 'Registration failed' };
         }
-    }, [supabaseAuth]);
+    }, [resolveProfileCompletionRequirement, supabaseAuth]);
 
     /**
      * Verify OTP code sent to email
@@ -509,6 +507,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 }
 
                 setUser(mapSupabaseUser(resolvedUser));
+                setRequiresProfileCompletion(await resolveProfileCompletionRequirement(resolvedUser));
                 setPendingVerificationEmail(null);
                 setPendingVerificationPassword(null);
                 void refreshCapabilities(resolvedSession);
@@ -523,7 +522,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return { success: false, error: 'Verification failed' };
         }
-    }, [pendingVerificationPassword, refreshCapabilities, supabaseAuth, waitForActiveSession]);
+    }, [pendingVerificationPassword, refreshCapabilities, resolveProfileCompletionRequirement, supabaseAuth, waitForActiveSession]);
 
     /**
      * Resend OTP code

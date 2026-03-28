@@ -166,10 +166,6 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             return;
         }
 
-        if (!hasFullAiAccess) {
-            setGuestAiUsage(incrementAiGuestTeaserUsage('term-explain'));
-        }
-
         setAiExplainStatus('loading');
         setAiExplainResponse(null);
 
@@ -179,6 +175,10 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 language,
                 mode,
             });
+
+            if (!hasFullAiAccess) {
+                setGuestAiUsage(incrementAiGuestTeaserUsage('term-explain'));
+            }
 
             setCachedTermExplainResponse(cacheKey, response);
             setAiExplainResponse(response);

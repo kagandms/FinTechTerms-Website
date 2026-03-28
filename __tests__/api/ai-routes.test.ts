@@ -288,4 +288,49 @@ describe('AI routes', () => {
             },
         });
     });
+
+    it.each([
+        ['chat', '@/app/api/ai/chat/route', 'http://localhost/api/ai/chat'],
+        ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
+        ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
+    ])('returns 400 for invalid JSON on the %s route', async (_label, modulePath, url) => {
+        const { POST } = await import(modulePath);
+        const response = await POST(new MockRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: '{',
+        }) as unknown as Request);
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            code: 'INVALID_JSON',
+            retryable: false,
+        });
+    });
+
+    it('returns 400 for invalid JSON on the study coach route', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
+        });
+
+        const { POST } = await import('@/app/api/ai/study-coach/route');
+        const response = await POST(new MockRequest('http://localhost/api/ai/study-coach', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: '{',
+        }) as unknown as Request);
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            code: 'INVALID_JSON',
+            retryable: false,
+        });
+    });
 });
