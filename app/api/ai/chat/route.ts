@@ -6,6 +6,7 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
+import { buildChatFallback } from '@/lib/ai/fallbacks';
 import { aiAssistantRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 import { buildScopedChatMessages, getAiScopeRefusal } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
@@ -88,25 +89,40 @@ export async function POST(request: Request) {
         }
 
         const chatPrompt = buildScopedChatMessages(language, message, history);
-        const result = await generateStructuredAiResponse({
-            route: '/api/ai/chat',
-            requestId,
-            messages: chatPrompt.messages,
-            outputContract: '{ "answer": string }',
-            schema: ChatResponseSchema,
-            maxTokens: 650,
-            temperature: 0.3,
-        });
 
-        return successResponse({
-            answer: result.data.answer,
-            relatedTerms: chatPrompt.relatedTerms,
-            refused: false,
-            model: result.model,
-            usedFallback: result.usedFallback,
-        }, requestId, {
-            headers: RATE_LIMIT_HEADERS,
-        });
+        try {
+            const result = await generateStructuredAiResponse({
+                route: '/api/ai/chat',
+                requestId,
+                messages: chatPrompt.messages,
+                outputContract: '{ "answer": string }',
+                schema: ChatResponseSchema,
+                maxTokens: 650,
+                temperature: 0.3,
+            });
+
+            return successResponse({
+                answer: result.data.answer,
+                relatedTerms: chatPrompt.relatedTerms,
+                refused: false,
+                model: result.model,
+                usedFallback: result.usedFallback,
+                degraded: false,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        } catch {
+            const fallback = buildChatFallback(language, message);
+
+            return successResponse({
+                ...fallback,
+                model: null,
+                usedFallback: true,
+                degraded: true,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
     } catch (error) {
         return handleRouteError(error, {
             requestId,

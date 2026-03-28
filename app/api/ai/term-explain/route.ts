@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-response';
 import { aiAssistantRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 import { getAiCatalogTermById } from '@/lib/ai/grounding';
+import { buildTermExplainFallback } from '@/lib/ai/fallbacks';
 import { buildTermExplainMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 
@@ -87,23 +88,35 @@ export async function POST(request: Request) {
             });
         }
 
-        const result = await generateStructuredAiResponse({
-            route: '/api/ai/term-explain',
-            requestId,
-            messages: buildTermExplainMessages(term, language, mode),
-            outputContract: '{ "title": string, "summary": string, "keyPoints": string[], "memoryHook": string }',
-            schema: TermExplainResponseSchema,
-            maxTokens: 500,
-            temperature: 0.25,
-        });
+        try {
+            const result = await generateStructuredAiResponse({
+                route: '/api/ai/term-explain',
+                requestId,
+                messages: buildTermExplainMessages(term, language, mode),
+                outputContract: '{ "title": string, "summary": string, "keyPoints": string[], "memoryHook": string }',
+                schema: TermExplainResponseSchema,
+                maxTokens: 500,
+                temperature: 0.25,
+            });
 
-        return successResponse({
-            explanation: result.data,
-            model: result.model,
-            usedFallback: result.usedFallback,
-        }, requestId, {
-            headers: RATE_LIMIT_HEADERS,
-        });
+            return successResponse({
+                explanation: result.data,
+                model: result.model,
+                usedFallback: result.usedFallback,
+                degraded: false,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        } catch {
+            return successResponse({
+                explanation: buildTermExplainFallback(term, language, mode),
+                model: null,
+                usedFallback: true,
+                degraded: true,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
     } catch (error) {
         return handleRouteError(error, {
             requestId,

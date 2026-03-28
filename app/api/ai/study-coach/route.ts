@@ -5,6 +5,7 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
+import { buildStudyCoachFallback } from '@/lib/ai/fallbacks';
 import { aiCoachRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 import { buildStudyCoachMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
@@ -106,23 +107,35 @@ export async function POST(request: Request) {
             });
         }
 
-        const result = await generateStructuredAiResponse({
-            route: '/api/ai/study-coach',
-            requestId,
-            messages: buildStudyCoachMessages(parsedBody.data.language, parsedBody.data),
-            outputContract: '{ "focusAreas": string[], "todayPlan": string[], "reason": string, "encouragement": string }',
-            schema: StudyCoachResponseSchema,
-            maxTokens: 520,
-            temperature: 0.25,
-        });
+        try {
+            const result = await generateStructuredAiResponse({
+                route: '/api/ai/study-coach',
+                requestId,
+                messages: buildStudyCoachMessages(parsedBody.data.language, parsedBody.data),
+                outputContract: '{ "focusAreas": string[], "todayPlan": string[], "reason": string, "encouragement": string }',
+                schema: StudyCoachResponseSchema,
+                maxTokens: 520,
+                temperature: 0.25,
+            });
 
-        return successResponse({
-            coach: result.data,
-            model: result.model,
-            usedFallback: result.usedFallback,
-        }, requestId, {
-            headers: RATE_LIMIT_HEADERS,
-        });
+            return successResponse({
+                coach: result.data,
+                model: result.model,
+                usedFallback: result.usedFallback,
+                degraded: false,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        } catch {
+            return successResponse({
+                coach: buildStudyCoachFallback(parsedBody.data.language, parsedBody.data),
+                model: null,
+                usedFallback: true,
+                degraded: true,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
     } catch (error) {
         return handleRouteError(error, {
             requestId,

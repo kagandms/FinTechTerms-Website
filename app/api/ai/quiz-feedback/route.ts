@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-response';
 import { aiAssistantRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 import { getAiCatalogTermById } from '@/lib/ai/grounding';
+import { buildQuizFeedbackFallback } from '@/lib/ai/fallbacks';
 import { buildQuizFeedbackMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 
@@ -87,23 +88,35 @@ export async function POST(request: Request) {
             });
         }
 
-        const result = await generateStructuredAiResponse({
-            route: '/api/ai/quiz-feedback',
-            requestId,
-            messages: buildQuizFeedbackMessages(term, language, selectedWrongLabel),
-            outputContract: '{ "whyWrong": string, "whyCorrect": string, "memoryHook": string, "confusedWith": string }',
-            schema: QuizFeedbackResponseSchema,
-            maxTokens: 420,
-            temperature: 0.2,
-        });
+        try {
+            const result = await generateStructuredAiResponse({
+                route: '/api/ai/quiz-feedback',
+                requestId,
+                messages: buildQuizFeedbackMessages(term, language, selectedWrongLabel),
+                outputContract: '{ "whyWrong": string, "whyCorrect": string, "memoryHook": string, "confusedWith": string }',
+                schema: QuizFeedbackResponseSchema,
+                maxTokens: 420,
+                temperature: 0.2,
+            });
 
-        return successResponse({
-            feedback: result.data,
-            model: result.model,
-            usedFallback: result.usedFallback,
-        }, requestId, {
-            headers: RATE_LIMIT_HEADERS,
-        });
+            return successResponse({
+                feedback: result.data,
+                model: result.model,
+                usedFallback: result.usedFallback,
+                degraded: false,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        } catch {
+            return successResponse({
+                feedback: buildQuizFeedbackFallback(term, language, selectedWrongLabel),
+                model: null,
+                usedFallback: true,
+                degraded: true,
+            }, requestId, {
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
     } catch (error) {
         return handleRouteError(error, {
             requestId,

@@ -24,6 +24,8 @@ import ValueHintList from '@/components/membership/ValueHintList';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+const PRACTICE_MODE_CARD_CLASS = 'rounded-2xl p-4 text-white shadow-lg min-h-[220px] flex flex-col';
+const PRACTICE_MODE_BUTTON_CLASS = 'mt-auto w-full rounded-xl bg-white py-2.5 text-sm font-semibold transition-colors hover:bg-gray-100';
 
 interface QuizPageProps {
     nonce?: string;
@@ -516,7 +518,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
                         {/* Daily Streak Card - Compact */}
                         {canUseProgressData ? (
-                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-3 text-white mb-4 shadow-md">
+                            <div className="mb-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-md md:max-w-sm">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="p-2 bg-white/20 rounded-full">
@@ -577,9 +579,10 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             </div>
                         ) : null}
 
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
                         {/* SRS Review Card — only when dueTerms exist */}
                         {canUseProgressData && dueTerms.length > 0 && (
-                            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                            <div className={`${PRACTICE_MODE_CARD_CLASS} bg-gradient-to-r from-emerald-500 to-teal-500`}>
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="p-2 bg-white/20 rounded-full">
                                         <BookOpen className="w-5 h-5" />
@@ -595,7 +598,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 <button
                                     onClick={startSrsReview}
                                     data-testid="start-srs-review"
-                                    className="w-full mt-3 py-2.5 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                    className={`${PRACTICE_MODE_BUTTON_CLASS} text-emerald-600`}
                                 >
                                     {t('quiz.startSrsReview')}
                                 </button>
@@ -603,7 +606,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         )}
 
                         {entitlements.canUseMistakeReview && (
-                            <div className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                            <div className={`${PRACTICE_MODE_CARD_CLASS} bg-gradient-to-r from-rose-500 to-pink-500`}>
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="p-2 bg-white/20 rounded-full">
                                         <X className="w-5 h-5" />
@@ -621,7 +624,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                         <button
                                             onClick={startMistakeReview}
                                             data-testid="start-mistake-review"
-                                            className="w-full mt-3 py-2.5 bg-white text-rose-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                            className={`${PRACTICE_MODE_BUTTON_CLASS} text-rose-600`}
                                         >
                                             {stateCopy.mistakeReviewTitle}
                                         </button>
@@ -635,7 +638,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         )}
 
                         {/* Flashcard Quick Quiz Card */}
-                        <div className="bg-gradient-to-r from-primary-500 to-blue-500 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                        <div className={`${PRACTICE_MODE_CARD_CLASS} bg-gradient-to-r from-primary-500 to-blue-500`}>
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="p-2 bg-white/20 rounded-full">
                                     <Zap className="w-5 h-5" />
@@ -649,7 +652,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             {!showQuizOptions || quickQuizConfiguratorMode !== 'flashcard' ? (
                                 <button
                                     onClick={() => openQuickQuizConfigurator('flashcard')}
-                                    className="w-full py-2.5 bg-white text-primary-600 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                    className={`${PRACTICE_MODE_BUTTON_CLASS} text-primary-600`}
                                 >
                                     {t('quiz.startQuickQuiz')}
                                 </button>
@@ -734,7 +737,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             )}
                         </div>
 
-                        <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-2xl p-5 text-white mb-4 shadow-lg">
+                        <div className={`${PRACTICE_MODE_CARD_CLASS} bg-gradient-to-r from-slate-700 to-slate-900`}>
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="p-2 bg-white/15 rounded-full">
                                     <Target className="w-5 h-5" />
@@ -748,7 +751,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             {!showQuizOptions || quickQuizConfiguratorMode !== 'multiple-choice' ? (
                                 <button
                                     onClick={() => openQuickQuizConfigurator('multiple-choice')}
-                                    className="w-full py-2.5 bg-white text-slate-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                    className={`${PRACTICE_MODE_BUTTON_CLASS} text-slate-900`}
                                 >
                                     {t('quiz.startMultipleChoice')}
                                 </button>
@@ -829,6 +832,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                     ) : null}
                                 </div>
                             )}
+                        </div>
                         </div>
 
                         {/* Statistics */}
