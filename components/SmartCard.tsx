@@ -185,7 +185,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             setAiExplainStatus('ready');
         } catch (error) {
             setAiExplainStatus('error');
-            setAiExplainError(error instanceof Error ? error.message : t('smartCard.favoriteUpdateError'));
+            setAiExplainError(error instanceof Error ? error.message : aiCopy.genericError);
         }
     };
 

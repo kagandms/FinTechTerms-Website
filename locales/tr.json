@@ -101,6 +101,7 @@
         "startMultipleChoice": "Hızlı Quizi Başlat",
         "whichTermMatches": "Bu tanıma hangi terim uyar?",
         "multipleChoiceUnavailable": "Hızlı Quiz için en az 4 eşleşen terim gerekir.",
+        "favoritesMinimumRequired": "Sadece favoriler modu için en az {count} favori gerekli.",
         "dailyStreak": "Günlük Seri",
         "days": "gün",
         "keepItUp": "Böyle devam!",

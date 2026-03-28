@@ -7,32 +7,63 @@ import type {
     AiTermExplainResponse,
 } from '@/types/ai';
 import type { Language } from '@/types';
+import { getSupabaseClient } from '@/lib/supabase';
+import { getAiUiCopy } from '@/lib/ai-copy';
 
-const parseAiError = async (response: Response, fallbackMessage: string): Promise<string> => {
+const resolveLocalizedAiError = (
+    language: Language,
+    fallbackMessage: string,
+    errorCode?: string | null
+): string => {
+    const copy = getAiUiCopy(language);
+
+    if (errorCode === 'UNAUTHORIZED') {
+        if (language === 'tr') return 'Devam etmek için giriş yap.';
+        if (language === 'ru') return 'Войдите, чтобы продолжить.';
+        return 'Sign in to continue.';
+    }
+
+    if (errorCode === 'MEMBER_REQUIRED') {
+        return copy.studyCoachCompleteProfile;
+    }
+
+    return fallbackMessage || copy.genericError;
+};
+
+const parseAiError = async (
+    response: Response,
+    language: Language,
+    fallbackMessage: string
+): Promise<string> => {
     try {
-        const payload = await response.json();
+        const payload = await response.json() as { message?: string; code?: string | null };
         if (payload && typeof payload.message === 'string' && payload.message.trim()) {
-            return payload.message;
+            return resolveLocalizedAiError(language, payload.message, payload.code ?? null);
         }
     } catch {
         // Ignore invalid JSON error bodies.
     }
 
-    return fallbackMessage;
+    return resolveLocalizedAiError(language, fallbackMessage, null);
 };
 
-const postJson = async <T,>(input: string, body: unknown, fallbackMessage: string): Promise<T> => {
+const postJson = async <T,>(input: string, body: unknown, language: Language, fallbackMessage: string): Promise<T> => {
+    const {
+        data: { session },
+    } = await getSupabaseClient().auth.getSession();
+
     const response = await fetch(input, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify(body),
     });
 
     if (!response.ok) {
-        throw new Error(await parseAiError(response, fallbackMessage));
+        throw new Error(await parseAiError(response, language, fallbackMessage));
     }
 
     return await response.json() as T;
@@ -48,6 +79,7 @@ export const fetchQuizFeedback = async (
     const payload = await postJson<{ feedback: AiQuizFeedback }>(
         '/api/ai/quiz-feedback',
         input,
+        input.language,
         'Unable to generate AI quiz feedback right now.'
     );
 
@@ -64,6 +96,7 @@ export const fetchTermExplainResponse = async (
     const payload = await postJson<{ explanation: AiTermExplainResponse }>(
         '/api/ai/term-explain',
         input,
+        input.language,
         'Unable to generate the AI explanation right now.'
     );
 
@@ -84,6 +117,7 @@ export const fetchStudyCoachResponse = async (
     const payload = await postJson<{ coach: AiStudyCoachResponse }>(
         '/api/ai/study-coach',
         input,
+        input.language,
         'Unable to generate the AI study coach plan right now.'
     );
 
@@ -100,6 +134,7 @@ export const fetchAiChatResponse = async (
     await postJson<AiChatResponse>(
         '/api/ai/chat',
         input,
+        input.language,
         'Unable to answer right now.'
     )
 );

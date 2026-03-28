@@ -101,6 +101,7 @@
         "startMultipleChoice": "Start Quick Quiz",
         "whichTermMatches": "Which term matches this definition?",
         "multipleChoiceUnavailable": "Quick Quiz needs at least 4 matching terms.",
+        "favoritesMinimumRequired": "Favorites-only mode needs at least {count} saved favorites.",
         "dailyStreak": "Daily Streak",
         "days": "days",
         "keepItUp": "Keep it up!",

@@ -21,6 +21,7 @@ import { getAiUiCopy } from '@/lib/ai-copy';
 import { getAiGuestTeaserUsage, incrementAiGuestTeaserUsage } from '@/utils/ai-session';
 import type { AiQuizFeedback } from '@/types/ai';
 import ValueHintList from '@/components/membership/ValueHintList';
+import { formatTranslation } from '@/lib/i18n';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
 const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
@@ -245,6 +246,13 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         t('membership.items.studyCoach'),
         t('membership.items.sync'),
     ];
+    const favoritesOnlyMinimumRequired = 5;
+    const favoritesOnlyAvailableCount = userProgress.favorites.length;
+    const canUseFavoritesOnlyMode = favoritesOnlyAvailableCount >= favoritesOnlyMinimumRequired;
+    const favoritesMinimumRequiredMessage = formatTranslation(
+        t('quiz.favoritesMinimumRequired'),
+        { count: favoritesOnlyMinimumRequired }
+    );
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
@@ -665,17 +673,29 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                         </p>
                                         {canUseProgressData && stats.totalFavorites > 0 && (
                                             <button
-                                                onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
+                                                onClick={() => {
+                                                    if (!canUseFavoritesOnlyMode) {
+                                                        setSubmissionError(favoritesMinimumRequiredMessage);
+                                                        return;
+                                                    }
+                                                    setUseOnlyFavorites(!useOnlyFavorites);
+                                                }}
                                                 className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
                                                     ? 'bg-white text-red-500 border-white'
                                                     : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                                                    }`}
+                                                    } ${!canUseFavoritesOnlyMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                disabled={!canUseFavoritesOnlyMode}
                                             >
                                                 <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
                                                 {t('quiz.favoritesOnly')}
                                             </button>
                                         )}
                                     </div>
+                                    {!canUseFavoritesOnlyMode && canUseProgressData && stats.totalFavorites > 0 ? (
+                                        <p className="text-white/80 text-[11px]">
+                                            {favoritesMinimumRequiredMessage}
+                                        </p>
+                                    ) : null}
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { key: 'all', label: t('quiz.categoryAll') },
@@ -763,17 +783,29 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                         </p>
                                         {canUseProgressData && stats.totalFavorites > 0 && (
                                             <button
-                                                onClick={() => setUseOnlyFavorites(!useOnlyFavorites)}
+                                                onClick={() => {
+                                                    if (!canUseFavoritesOnlyMode) {
+                                                        setSubmissionError(favoritesMinimumRequiredMessage);
+                                                        return;
+                                                    }
+                                                    setUseOnlyFavorites(!useOnlyFavorites);
+                                                }}
                                                 className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${useOnlyFavorites
                                                     ? 'bg-white text-red-500 border-white'
                                                     : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                                                    }`}
+                                                    } ${!canUseFavoritesOnlyMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                disabled={!canUseFavoritesOnlyMode}
                                             >
                                                 <Heart className={`w-2.5 h-2.5 ${useOnlyFavorites ? 'fill-current' : ''}`} />
                                                 {t('quiz.favoritesOnly')}
                                             </button>
                                         )}
                                     </div>
+                                    {!canUseFavoritesOnlyMode && canUseProgressData && stats.totalFavorites > 0 ? (
+                                        <p className="text-white/80 text-[11px]">
+                                            {favoritesMinimumRequiredMessage}
+                                        </p>
+                                    ) : null}
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
                                             { key: 'all', label: t('quiz.categoryAll') },

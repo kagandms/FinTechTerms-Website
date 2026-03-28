@@ -74,7 +74,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
         try {
             setCoachResponse(await fetchStudyCoachResponse(requestPayload));
         } catch (nextError) {
-            setError(nextError instanceof Error ? nextError.message : 'Unable to generate the AI study coach plan right now.');
+            setError(nextError instanceof Error ? nextError.message : aiCopy.genericError);
         } finally {
             setIsLoading(false);
         }
@@ -89,7 +89,13 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">{aiCopy.studyCoachTitle}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{aiCopy.studyCoachGuest}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {!isAuthenticated
+                                ? aiCopy.studyCoachGuest
+                                : requiresProfileCompletion
+                                ? aiCopy.studyCoachCompleteProfile
+                                : aiCopy.studyCoachGuest}
+                        </p>
                     </div>
                 </div>
                 <Link

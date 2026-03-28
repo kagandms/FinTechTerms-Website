@@ -86,7 +86,7 @@ export default function AiChatPanel() {
                 },
             ]);
         } catch (nextError) {
-            setError(nextError instanceof Error ? nextError.message : 'Unable to answer right now.');
+            setError(nextError instanceof Error ? nextError.message : aiCopy.genericError);
         } finally {
             setIsLoading(false);
         }

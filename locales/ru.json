@@ -101,6 +101,7 @@
         "startMultipleChoice": "Начать быстрый квиз",
         "whichTermMatches": "Какой термин соответствует этому определению?",
         "multipleChoiceUnavailable": "Для быстрого квиза нужно минимум 4 подходящих термина.",
+        "favoritesMinimumRequired": "Для режима только по избранному нужно минимум {count} избранных терминов.",
         "dailyStreak": "Ежедневная серия",
         "days": "дней",
         "keepItUp": "Так держать!",
