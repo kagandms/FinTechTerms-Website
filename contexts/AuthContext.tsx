@@ -44,6 +44,7 @@ interface AuthContextType {
 }
 
 const SIGNOUT_FAILED_MESSAGE = 'Unable to sign out. Please try again.';
+const AUTH_INIT_TIMEOUT_MS = 4_000;
 
 const readSignoutRouteMessage = async (response: Response): Promise<string> => {
     try {
@@ -250,6 +251,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         const hydrateInitialUser = async () => {
+            const timeoutId = window.setTimeout(() => {
+                setIsLoading(false);
+                logger.warn('AUTH_INIT_TIMEOUT_FALLBACK', {
+                    route: 'AuthProvider',
+                });
+            }, AUTH_INIT_TIMEOUT_MS);
+
             try {
                 const { data: { session }, error: sessionError } = await supabaseAuth.getSession();
 
@@ -283,6 +291,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setRequiresProfileCompletion(false);
                 setUser(null);
             } finally {
+                window.clearTimeout(timeoutId);
                 setIsLoading(false);
             }
         };

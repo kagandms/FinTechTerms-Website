@@ -130,14 +130,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const { entitlements, favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
     const { showToast } = useToast();
     const userId = user?.id ?? null;
-    const [terms, setTerms] = useState<Term[]>([]);
-    const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+    const [terms, setTerms] = useState<Term[]>(() => getTerms(userId));
+    const [userProgress, setUserProgress] = useState<UserProgress | null>(() => getLocalUserProgress(userId));
     const [quizPreview, setQuizPreview] = useState<GuestQuizPreview>(() => getGuestQuizPreview());
     const [mistakeReviewQueue, setMistakeReviewQueue] = useState<string[]>(() => getMistakeReviewQueue(userId));
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [termsStatus, setTermsStatus] = useState<AsyncDataStatus>('loading');
-    const [progressStatus, setProgressStatus] = useState<AsyncDataStatus>('loading');
+    const [termsStatus, setTermsStatus] = useState<AsyncDataStatus>(() => (getTerms(userId).length > 0 ? 'ready' : 'loading'));
+    const [progressStatus, setProgressStatus] = useState<AsyncDataStatus>(() => (isAuthenticated ? 'loading' : 'ready'));
     const [termsError, setTermsError] = useState<string | null>(null);
     const [progressError, setProgressError] = useState<string | null>(null);
     const [favoriteOptimisticState, setFavoriteOptimisticState] = useState<Record<string, boolean>>({});
@@ -536,6 +536,22 @@ export function SRSProvider({ children }: SRSProviderProps) {
     useEffect(() => {
         setFavoriteOptimisticState({});
         setFavoritePendingState({});
+    }, [isAuthenticated, userId]);
+
+    useEffect(() => {
+        const localTerms = getTerms(userId);
+        const localProgress = getLocalUserProgress(userId);
+
+        setTerms(localTerms);
+        setUserProgress(localProgress);
+
+        if (localTerms.length > 0) {
+            setTermsStatus('ready');
+        }
+
+        if (!isAuthenticated) {
+            setProgressStatus('ready');
+        }
     }, [isAuthenticated, userId]);
 
     useEffect(() => {

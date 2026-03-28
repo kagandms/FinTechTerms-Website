@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { SendHorizonal, Sparkles } from 'lucide-react';
+import { RotateCcw, SendHorizonal, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAiUiCopy } from '@/lib/ai-copy';
 import { fetchAiChatResponse } from '@/lib/ai/client';
-import { getAiChatHistory, getAiGuestTeaserUsage, incrementAiGuestTeaserUsage, saveAiChatHistory } from '@/utils/ai-session';
+import { clearAiChatHistory, getAiChatHistory, getAiGuestTeaserUsage, incrementAiGuestTeaserUsage, saveAiChatHistory } from '@/utils/ai-session';
 import type { AiChatMessage } from '@/types/ai';
 import ValueHintList from '@/components/membership/ValueHintList';
 
@@ -33,6 +33,13 @@ export default function AiChatPanel() {
 
         return `${aiCopy.chatDescription} ${remainingGuestMessages}/3`;
     }, [aiCopy.chatDescription, hasFullAiAccess, remainingGuestMessages]);
+
+    const handleResetChat = () => {
+        setMessages([]);
+        setError(null);
+        clearAiChatHistory();
+    };
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const nextMessage = input.trim();
@@ -95,6 +102,14 @@ export default function AiChatPanel() {
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">{aiCopy.chatTitle}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{helperLabel}</p>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleResetChat}
+                    className="ml-auto inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>{aiCopy.chatReset}</span>
+                </button>
             </div>
 
             {!hasFullAiAccess ? (

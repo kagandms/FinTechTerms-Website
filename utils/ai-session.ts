@@ -128,3 +128,11 @@ export const getAiChatHistory = (): AiChatMessage[] => (
 export const saveAiChatHistory = (messages: readonly AiChatMessage[]): void => {
     writeJsonValue(AI_CHAT_HISTORY_KEY, messages);
 };
+
+export const clearAiChatHistory = (): void => {
+    if (typeof window === 'undefined' || !isSessionStorageAvailable()) {
+        return;
+    }
+
+    window.sessionStorage.removeItem(AI_CHAT_HISTORY_KEY);
+};
