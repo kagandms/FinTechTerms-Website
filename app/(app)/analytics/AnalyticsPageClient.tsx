@@ -97,8 +97,7 @@ const teaserCopyByLanguage = {
     },
 } as const;
 
-const downloadJsonFile = (filename: string, payload: unknown): void => {
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+const downloadBlob = (filename: string, blob: Blob): void => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -225,50 +224,25 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
         setExportError(null);
 
         try {
-            const aggregatedAttempts: unknown[] = [];
-            let nextCursor: string | null = null;
-            let exportedAt: string | null = null;
+            const response = await fetch('/api/analytics/export?download=1', {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+            });
 
-            do {
-                const searchParams = new URLSearchParams({ limit: '500' });
-                if (nextCursor) {
-                    searchParams.set('cursor', nextCursor);
-                }
-
-                const response = await fetch(`/api/analytics/export?${searchParams.toString()}`, {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                    cache: 'no-store',
-                });
-
+            if (!response.ok) {
                 const payload = await response.json();
-                if (!response.ok) {
-                    throw new Error(
-                        typeof payload?.message === 'string'
-                            ? payload.message
-                            : 'Unable to export analytics data.'
-                    );
-                }
+                throw new Error(
+                    typeof payload?.message === 'string'
+                        ? payload.message
+                        : 'Unable to export analytics data.'
+                );
+            }
 
-                if (!Array.isArray(payload?.attempts)) {
-                    throw new Error('Unable to export analytics data.');
-                }
-
-                aggregatedAttempts.push(...payload.attempts);
-                exportedAt = typeof payload?.exportedAt === 'string'
-                    ? payload.exportedAt
-                    : exportedAt;
-                nextCursor = typeof payload?.nextCursor === 'string'
-                    ? payload.nextCursor
-                    : null;
-            } while (nextCursor);
-
-            downloadJsonFile(
+            const blob = await response.blob();
+            downloadBlob(
                 `fintechterms-analytics-${new Date().toISOString().split('T')[0]}.json`,
-                {
-                    exportedAt: exportedAt ?? new Date().toISOString(),
-                    attempts: aggregatedAttempts,
-                }
+                blob
             );
         } catch (error) {
             setExportError(

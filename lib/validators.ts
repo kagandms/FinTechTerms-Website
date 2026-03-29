@@ -95,6 +95,8 @@ export const QuizAttemptSchema = z.object({
     is_correct: z.boolean(),
     response_time_ms: z.number().int().nonnegative(),
     quiz_type: z.enum(QUIZ_TYPE_VALUES).default('simulation'),
+    session_id: z.string().uuid().optional(),
+    session_token: z.string().min(32).optional(),
     anonymous_id: z.string().optional(),
     user_id: z.string().optional().nullable(),
     metadata: z.record(z.unknown()).optional(),

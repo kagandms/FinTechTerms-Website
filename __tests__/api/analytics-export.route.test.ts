@@ -117,4 +117,57 @@ describe('analytics export route', () => {
         });
         expect(mockLoadLearningStatsExportAttempts).not.toHaveBeenCalled();
     });
+
+    it('streams a downloadable export without client-side pagination accumulation', async () => {
+        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
+        mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
+        mockLoadLearningStatsExportAttempts
+            .mockResolvedValueOnce({
+                attempts: [
+                    {
+                        id: 'attempt-1',
+                        termId: 'term-1',
+                        createdAt: '2026-03-20T10:00:00.000Z',
+                        isCorrect: true,
+                        responseTimeMs: 1200,
+                        quizType: 'daily',
+                    },
+                ],
+                nextCursor: 'cursor-2',
+            })
+            .mockResolvedValueOnce({
+                attempts: [
+                    {
+                        id: 'attempt-2',
+                        termId: 'term-2',
+                        createdAt: '2026-03-20T11:00:00.000Z',
+                        isCorrect: false,
+                        responseTimeMs: 900,
+                        quizType: 'review',
+                    },
+                ],
+                nextCursor: null,
+            });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?download=1'));
+        const body = await response.text();
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Disposition')).toContain('attachment; filename=');
+        expect(JSON.parse(body)).toMatchObject({
+            attempts: [
+                { id: 'attempt-1' },
+                { id: 'attempt-2' },
+            ],
+        });
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(1, { supabase: true }, 'user-1', {
+            cursor: null,
+            limit: undefined,
+        });
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(2, { supabase: true }, 'user-1', {
+            cursor: 'cursor-2',
+            limit: 500,
+        });
+    });
 });

@@ -201,22 +201,28 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
         return normalize_public_terms(response.data)
 
     try:
-        global _TERM_ID_CACHE, _TERM_ID_CACHE_LOADED_AT
-
-        now = monotonic()
-        if not _TERM_ID_CACHE or (now - _TERM_ID_CACHE_LOADED_AT) > TERM_ID_CACHE_TTL_SECONDS:
-            _TERM_ID_CACHE = await asyncio.to_thread(_fetch_term_ids)
-            _TERM_ID_CACHE_LOADED_AT = now
-
-        if not _TERM_ID_CACHE:
+        sample_ids = await _load_cached_term_ids(limit=safe_limit, fetcher=_fetch_term_ids)
+        if not sample_ids:
             return []
-
-        sample_size = min(safe_limit, len(_TERM_ID_CACHE))
-        sample_ids = random.sample(_TERM_ID_CACHE, sample_size)
         return await asyncio.to_thread(_fetch_terms, sample_ids)
     except Exception as e:
         logger.error("Failed to fetch bounded quiz terms (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
+
+
+async def _load_cached_term_ids(limit: int, fetcher: Any) -> list[str]:
+    global _TERM_ID_CACHE, _TERM_ID_CACHE_LOADED_AT
+
+    now = monotonic()
+    if not _TERM_ID_CACHE or (now - _TERM_ID_CACHE_LOADED_AT) > TERM_ID_CACHE_TTL_SECONDS:
+        _TERM_ID_CACHE = await asyncio.to_thread(fetcher)
+        _TERM_ID_CACHE_LOADED_AT = now
+
+    if not _TERM_ID_CACHE:
+        return []
+
+    sample_size = min(max(1, int(limit)), len(_TERM_ID_CACHE))
+    return random.sample(_TERM_ID_CACHE, sample_size)
 
 
 async def fetch_term_by_id(term_id: str) -> Optional[dict[str, Any]]:
@@ -295,18 +301,21 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 async def get_random_term() -> Optional[dict[str, Any]]:
     """Return a random public term for the Daily Term feature."""
-    def _get():
-        return apply_academic_quarantine(
+    def _fetch_term_ids() -> list[str]:
+        response = apply_academic_quarantine(
             get_public_client().table("terms").select("id")
         ).execute()
+        return [
+            row["id"]
+            for row in (response.data or [])
+            if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
+        ]
 
     try:
-        response = await asyncio.to_thread(_get)
-        ids = [row["id"] for row in (response.data or []) if isinstance(row, dict) and row.get("id")]
-        if not ids:
+        sample_ids = await _load_cached_term_ids(limit=1, fetcher=_fetch_term_ids)
+        if not sample_ids:
             return None
-        chosen_id = random.choice(ids)
-        return await fetch_term_by_id(chosen_id)
+        return await fetch_term_by_id(sample_ids[0])
     except Exception as e:
         logger.error("Failed to get random term (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")

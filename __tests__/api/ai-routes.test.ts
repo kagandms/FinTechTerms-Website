@@ -20,6 +20,25 @@ jest.mock('@/lib/ai/grounding', () => ({
 
 jest.mock('@/lib/server-member-entitlements', () => ({
     resolveRequestMemberEntitlements: mockResolveRequestMemberEntitlements,
+    resolveRequestAiAccess: (...args: unknown[]) => mockResolveRequestMemberEntitlements(...args).then((state: {
+        user: { id: string } | null;
+        entitlements: { canUseAdvancedAnalytics: boolean };
+    }) => ({
+        ...state,
+        denial: !state.user
+            ? {
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Sign in to use AI features.',
+            }
+            : !state.entitlements.canUseAdvancedAnalytics
+                ? {
+                    status: 403,
+                    code: 'MEMBER_REQUIRED',
+                    message: 'Complete your member setup to unlock AI features.',
+                }
+                : null,
+    })),
 }));
 
 jest.mock('@/lib/api-response', () => ({
@@ -123,6 +142,12 @@ describe('AI routes', () => {
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
+        });
         mockAiAssistantCheck.mockResolvedValue({
             allowed: true,
             remaining: 10,
@@ -185,6 +210,76 @@ describe('AI routes', () => {
                 title: 'Why Bitcoin matters',
             },
         });
+    });
+
+    it.each([
+        ['chat', '@/app/api/ai/chat/route', 'http://localhost/api/ai/chat'],
+        ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
+        ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
+    ])('returns 401 for guests on the %s route', async (_label, modulePath, url) => {
+        mockResolveRequestMemberEntitlements.mockResolvedValueOnce({
+            user: null,
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+        });
+
+        const { POST } = await import(modulePath);
+        const response = await POST(new MockRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                termId: 'term-1',
+                language: 'en',
+                mode: 'simple',
+                message: 'What is open banking?',
+                history: [],
+            }),
+        }) as unknown as Request);
+
+        expect(response.status).toBe(401);
+        await expect(response.json()).resolves.toMatchObject({
+            code: 'UNAUTHORIZED',
+            retryable: false,
+        });
+        expect(mockGenerateStructuredAiResponse).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['chat', '@/app/api/ai/chat/route', 'http://localhost/api/ai/chat'],
+        ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
+        ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
+    ])('returns 403 for incomplete members on the %s route', async (_label, modulePath, url) => {
+        mockResolveRequestMemberEntitlements.mockResolvedValueOnce({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+        });
+
+        const { POST } = await import(modulePath);
+        const response = await POST(new MockRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                termId: 'term-1',
+                language: 'en',
+                mode: 'simple',
+                message: 'What is open banking?',
+                history: [],
+            }),
+        }) as unknown as Request);
+
+        expect(response.status).toBe(403);
+        await expect(response.json()).resolves.toMatchObject({
+            code: 'MEMBER_REQUIRED',
+            retryable: false,
+        });
+        expect(mockGenerateStructuredAiResponse).not.toHaveBeenCalled();
     });
 
     it('returns a scoped refusal for chat messages outside the supported domain', async () => {

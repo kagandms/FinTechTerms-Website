@@ -8,10 +8,7 @@ import { getAiUiCopy } from '@/lib/ai-copy';
 import { fetchAiChatResponse } from '@/lib/ai/client';
 import {
     clearAiChatHistory,
-    createDefaultAiGuestTeaserUsage,
     getAiChatHistory,
-    getAiGuestTeaserUsage,
-    incrementAiGuestTeaserUsage,
     saveAiChatHistory,
 } from '@/utils/ai-session';
 import type { AiChatMessage } from '@/types/ai';
@@ -25,13 +22,11 @@ export default function AiChatPanel() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [guestAiUsage, setGuestAiUsage] = useState(createDefaultAiGuestTeaserUsage);
     const [isAiSessionHydrated, setIsAiSessionHydrated] = useState(false);
     const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
 
     useEffect(() => {
         setMessages(getAiChatHistory());
-        setGuestAiUsage(getAiGuestTeaserUsage());
         setIsAiSessionHydrated(true);
     }, []);
 
@@ -43,14 +38,7 @@ export default function AiChatPanel() {
         saveAiChatHistory(messages);
     }, [isAiSessionHydrated, messages]);
 
-    const remainingGuestMessages = Math.max(0, 3 - guestAiUsage.chatMessageCount);
-    const helperLabel = useMemo(() => {
-        if (hasFullAiAccess) {
-            return aiCopy.chatDescription;
-        }
-
-        return `${aiCopy.chatDescription} ${remainingGuestMessages}/3`;
-    }, [aiCopy.chatDescription, hasFullAiAccess, remainingGuestMessages]);
+    const helperLabel = useMemo(() => aiCopy.chatDescription, [aiCopy.chatDescription]);
 
     const handleResetChat = () => {
         setMessages([]);
@@ -66,7 +54,7 @@ export default function AiChatPanel() {
             return;
         }
 
-        if (!hasFullAiAccess && guestAiUsage.chatMessageCount >= 3) {
+        if (!hasFullAiAccess) {
             setError(aiCopy.chatGuestLimit);
             return;
         }
@@ -91,10 +79,6 @@ export default function AiChatPanel() {
                 message: nextMessage,
                 history: previousMessages,
             });
-
-            if (!hasFullAiAccess) {
-                setGuestAiUsage(incrementAiGuestTeaserUsage('chat-message'));
-            }
 
             setMessages((currentMessages) => [
                 ...currentMessages,

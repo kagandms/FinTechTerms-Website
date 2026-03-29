@@ -11,6 +11,7 @@ import { aiAssistantRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rat
 import { buildScopedChatMessages, getAiScopeRefusal } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 import { isAiDomainQuestion } from '@/lib/ai/grounding';
+import { resolveRequestAiAccess } from '@/lib/server-member-entitlements';
 
 const ChatRequestSchema = z.object({
     language: z.enum(['tr', 'en', 'ru']),
@@ -36,6 +37,19 @@ export async function POST(request: Request) {
     let body: unknown;
 
     try {
+        const access = await resolveRequestAiAccess(request);
+
+        if (access.denial) {
+            return errorResponse({
+                status: access.denial.status,
+                code: access.denial.code,
+                message: access.denial.message,
+                requestId,
+                retryable: false,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
         try {
             body = await request.json();
         } catch {

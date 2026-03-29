@@ -1,10 +1,12 @@
 # FinTechTerms Telegram Bot — Docker Image
-# Python 3.11 slim for minimal footprint
+# Python 3.13 slim to match the compiled lockfile target
 
-FROM python:3.11-slim AS base
+FROM python:3.13-slim AS base
 
 # Set working directory
 WORKDIR /app
+
+ENV PORT=8080
 
 # Install system dependencies for edge-tts audio generation
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,6 +22,8 @@ COPY . .
 
 # Create audio cache directory
 RUN mkdir -p audio_cache
+
+EXPOSE 8080
 
 # Health check for container orchestrators
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

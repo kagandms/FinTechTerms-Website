@@ -9,7 +9,7 @@ import { mockTerms, defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
-import { endOfUtcDay, startOfUtcDay } from '@/lib/time';
+import { startOfUtcDay, toUtcDateKey } from '@/lib/time';
 import { logger } from '@/lib/logger';
 
 const STORAGE_KEYS = {
@@ -520,7 +520,7 @@ export function addQuizAttempt(attempt: QuizAttempt, userId?: string | null): Us
         } else {
             updatedProgress.current_streak = 1;
         }
-        updatedProgress.last_study_date = endOfUtcDay(new Date()).toISOString();
+        updatedProgress.last_study_date = toUtcDateKey(new Date());
     }
 
     // Update words learned count

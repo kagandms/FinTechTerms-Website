@@ -6,14 +6,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CONSENT_GRANTED_EVENT, hasResearchConsent } from './ConsentModal';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { logger } from '@/lib/logger';
+import {
+    buildStudySessionStorageKey,
+    getOrCreateStudySessionTabId,
+} from '@/lib/study-session-storage';
 
-const SESSION_KEY = 'fintechterms_session';
-const SESSION_TAB_ID_KEY = 'fintechterms_session_tab_id';
 const PENDING_START_SESSION_KEY = 'fintechterms_pending_start_session';
 const PENDING_END_SESSION_KEY = 'fintechterms_pending_end_session';
 const RETRY_QUEUE_SESSION_KEY = 'fintechterms_session_retry_queue';
 const ANONYMOUS_ID_KEY = 'fintechterms_anon_id';
 const SESSION_UPDATE_INTERVAL = 30000; // 30 seconds
+const SESSION_MUTATION_TIMEOUT_MS = 8000;
 const MAX_RETRY_QUEUE_SIZE = 50;
 const MAX_RETRY_QUEUE_AGE_MS = 24 * 60 * 60 * 1000;
 type SessionMode = 'anonymous' | 'authenticated';
@@ -93,7 +96,6 @@ interface PendingEndSessionMutation {
 
 type RetryQueueDropReason = 'age' | 'capacity';
 
-const buildSessionStorageKey = (tabId: string): string => `${SESSION_KEY}:${tabId}`;
 const buildPendingStartSessionStorageKey = (tabId: string): string => `${PENDING_START_SESSION_KEY}:${tabId}`;
 const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
 const buildRetryQueueStorageKey = (tabId: string): string => `${RETRY_QUEUE_SESSION_KEY}:${tabId}`;
@@ -112,25 +114,6 @@ const summarizeRetryQueueEntries = (entries: QueuedSessionMutation[]): {
         oldestQueuedAt: queuedAtValues.length > 0 ? Math.min(...queuedAtValues) : null,
         newestQueuedAt: queuedAtValues.length > 0 ? Math.max(...queuedAtValues) : null,
     };
-};
-
-const getOrCreateSessionTabId = (): string | null => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    try {
-        const existingTabId = window.sessionStorage.getItem(SESSION_TAB_ID_KEY);
-        if (existingTabId) {
-            return existingTabId;
-        }
-
-        const nextTabId = `tab_${createIdempotencyKey()}`;
-        window.sessionStorage.setItem(SESSION_TAB_ID_KEY, nextTabId);
-        return nextTabId;
-    } catch {
-        return null;
-    }
 };
 
 /**
@@ -153,6 +136,9 @@ export default function SessionTracker() {
     const endKeyRef = useRef<string | null>(null);
     const pendingStartPayloadRef = useRef<PendingStartSessionMutation | null>(null);
     const pendingEndPayloadRef = useRef<PendingEndSessionMutation | null>(null);
+    const startRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
+    const heartbeatRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
+    const endRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
 
     const logSessionTrackerWarning = useCallback((
         message: string,
@@ -188,7 +174,7 @@ export default function SessionTracker() {
             return tabIdRef.current;
         }
 
-        const nextTabId = getOrCreateSessionTabId();
+        const nextTabId = getOrCreateStudySessionTabId();
         tabIdRef.current = nextTabId;
         return nextTabId;
     }, []);
@@ -466,7 +452,7 @@ export default function SessionTracker() {
         if (!tabId) {
             return;
         }
-        const storageKey = buildSessionStorageKey(tabId);
+        const storageKey = buildStudySessionStorageKey(tabId);
 
         try {
             if (session) {
@@ -487,7 +473,7 @@ export default function SessionTracker() {
         }
 
         try {
-            const stored = sessionStorage.getItem(buildSessionStorageKey(tabId));
+            const stored = sessionStorage.getItem(buildStudySessionStorageKey(tabId));
             if (!stored) {
                 return session;
             }
@@ -553,14 +539,26 @@ export default function SessionTracker() {
         idempotencyKey: string
     ): Promise<PersistSessionResult> => {
         try {
-            const response = await fetch('/api/study-sessions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: buildMutationBody(payload, idempotencyKey),
-                keepalive: true,
-            });
+            const controller = new AbortController();
+            const timeoutId = globalThis.setTimeout(() => {
+                controller.abort();
+            }, SESSION_MUTATION_TIMEOUT_MS);
+
+            let response: Response;
+
+            try {
+                response = await fetch('/api/study-sessions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: buildMutationBody(payload, idempotencyKey),
+                    keepalive: true,
+                    signal: controller.signal,
+                });
+            } finally {
+                globalThis.clearTimeout(timeoutId);
+            }
 
             let responseBody: unknown = null;
 
@@ -627,7 +625,15 @@ export default function SessionTracker() {
                 data: responseBody as { sessionId?: string },
                 retryable: false,
             };
-        } catch {
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return {
+                    ok: false,
+                    data: null,
+                    retryable: true,
+                };
+            }
+
             return {
                 ok: false,
                 data: null,
@@ -671,10 +677,10 @@ export default function SessionTracker() {
                         }
 
                         if (entry.payload.action === 'end') {
-                            if (endKeyRef.current === entry.idempotencyKey) {
-                                endKeyRef.current = null;
-                            }
-                            clearPendingEndSession(entry.idempotencyKey);
+                            logSessionTrackerWarning('SESSION_TRACKER_END_REPLAY_REQUIRES_MANUAL_RETRY', new Error('Session end mutation returned a non-retryable response.'), {
+                                action: entry.payload.action,
+                                idempotencyKey: entry.idempotencyKey,
+                            });
                         }
                     }
 
@@ -715,6 +721,7 @@ export default function SessionTracker() {
         applyStartResponseToCurrentSession,
         clearPendingEndSession,
         clearPendingStartSession,
+        logSessionTrackerWarning,
         persistSessionMutation,
         readRetryQueue,
         replaceRetryQueue,
@@ -825,11 +832,11 @@ export default function SessionTracker() {
             return;
         }
 
-        clearPendingEndSession(pending.idempotencyKey);
-        if (endKeyRef.current === pending.idempotencyKey) {
-            endKeyRef.current = null;
-        }
-    }, [clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
+        logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_REQUIRES_MANUAL_RETRY', new Error('Pending end-session replay returned a non-retryable response.'), {
+            action: pending.payload.action,
+            idempotencyKey: pending.idempotencyKey,
+        });
+    }, [logSessionTrackerWarning, clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
 
     const replayPendingStartSession = useCallback(async (): Promise<boolean> => {
         const pending = readPendingStartSession();
@@ -840,7 +847,7 @@ export default function SessionTracker() {
         const currentTabId = getCurrentTabId();
         if (currentTabId && !sessionRef.current) {
             try {
-                const stored = sessionStorage.getItem(buildSessionStorageKey(currentTabId));
+                const stored = sessionStorage.getItem(buildStudySessionStorageKey(currentTabId));
                 if (stored) {
                     sessionRef.current = JSON.parse(stored) as SessionData;
                 }
@@ -953,8 +960,16 @@ export default function SessionTracker() {
             idempotencyKey: startIdempotencyKey,
         });
 
+        const inFlightStart = startRequestRef.current;
+        if (inFlightStart) {
+            await inFlightStart.catch(() => undefined);
+            return;
+        }
+
         try {
-            const response = await persistSessionMutation(startPayload, startIdempotencyKey);
+            const request = persistSessionMutation(startPayload, startIdempotencyKey);
+            startRequestRef.current = request;
+            const response = await request;
 
             if (!response.ok) {
                 if (response.retryable) {
@@ -986,6 +1001,10 @@ export default function SessionTracker() {
                 action: 'start',
                 idempotencyKey: startIdempotencyKey,
             });
+        } finally {
+            if (startRequestRef.current) {
+                startRequestRef.current = null;
+            }
         }
     }, [
         clearPendingStartSession,
@@ -1002,6 +1021,10 @@ export default function SessionTracker() {
     // Update session (called periodically)
     const updateSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
+
+        if (endRequestRef.current || heartbeatRequestRef.current) {
+            return;
+        }
 
         const session = hydrateSessionFromStorage(sessionRef.current);
         sessionRef.current = session;
@@ -1024,7 +1047,9 @@ export default function SessionTracker() {
         const heartbeatIdempotencyKey = createIdempotencyKey();
 
         try {
-            const response = await persistSessionMutation(heartbeatPayload, heartbeatIdempotencyKey);
+            const request = persistSessionMutation(heartbeatPayload, heartbeatIdempotencyKey);
+            heartbeatRequestRef.current = request;
+            const response = await request;
 
             if (!response.ok) {
                 if (response.retryable) {
@@ -1044,12 +1069,25 @@ export default function SessionTracker() {
                 action: 'heartbeat',
                 idempotencyKey: heartbeatIdempotencyKey,
             });
+        } finally {
+            if (heartbeatRequestRef.current) {
+                heartbeatRequestRef.current = null;
+            }
         }
     }, [flushRetryQueue, hydrateSessionFromStorage, logSessionTrackerWarning, persistSessionMutation, queueRetryableMutation, saveSessionToStorage]);
 
     // End session (called on unmount or page close)
     const endSession = useCallback(async () => {
         if (!sessionRef.current || !hasResearchConsent()) return;
+
+        if (endRequestRef.current) {
+            await endRequestRef.current.catch(() => undefined);
+            return;
+        }
+
+        if (heartbeatRequestRef.current) {
+            await heartbeatRequestRef.current.catch(() => undefined);
+        }
 
         const session = hydrateSessionFromStorage(sessionRef.current);
         sessionRef.current = session;
@@ -1075,7 +1113,9 @@ export default function SessionTracker() {
         });
 
         try {
-            const response = await persistSessionMutation(endPayload, endIdempotencyKey);
+            const request = persistSessionMutation(endPayload, endIdempotencyKey);
+            endRequestRef.current = request;
+            const response = await request;
 
             if (!response.ok) {
                 if (response.retryable) {
@@ -1085,10 +1125,10 @@ export default function SessionTracker() {
                         idempotencyKey: endIdempotencyKey,
                     });
                 } else {
-                    clearPendingEndSession(endIdempotencyKey);
-                    if (endKeyRef.current === endIdempotencyKey) {
-                        endKeyRef.current = null;
-                    }
+                    logSessionTrackerWarning('SESSION_TRACKER_END_REQUIRES_MANUAL_RETRY', new Error('End-session mutation returned a non-retryable response.'), {
+                        action: 'end',
+                        idempotencyKey: endIdempotencyKey,
+                    });
                 }
                 return;
             }
@@ -1105,6 +1145,9 @@ export default function SessionTracker() {
                 idempotencyKey: endIdempotencyKey,
             });
         } finally {
+            if (endRequestRef.current) {
+                endRequestRef.current = null;
+            }
             sessionRef.current = null;
             lastTrackedPathnameRef.current = null;
             saveSessionToStorage(null);
@@ -1251,16 +1294,16 @@ export default function SessionTracker() {
  */
 export function incrementQuizAttempt() {
     try {
-        const tabId = getOrCreateSessionTabId();
+        const tabId = getOrCreateStudySessionTabId();
         if (!tabId) {
             return;
         }
 
-        const stored = sessionStorage.getItem(buildSessionStorageKey(tabId));
+        const stored = sessionStorage.getItem(buildStudySessionStorageKey(tabId));
         if (stored) {
             const session: SessionData = JSON.parse(stored);
             session.quizAttempts += 1;
-            sessionStorage.setItem(buildSessionStorageKey(tabId), JSON.stringify(session));
+            sessionStorage.setItem(buildStudySessionStorageKey(tabId), JSON.stringify(session));
         }
     } catch (error) {
         logger.warn('SESSION_TRACKER_INCREMENT_QUIZ_ATTEMPT_FAILED', {

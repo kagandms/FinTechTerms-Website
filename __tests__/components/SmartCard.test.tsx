@@ -6,7 +6,6 @@ import SmartCard from '@/components/SmartCard';
 const mockUseTermTranslation = jest.fn();
 const mockShowToast = jest.fn();
 const mockFetchTermExplainResponse = jest.fn();
-const mockIncrementAiGuestTeaserUsage = jest.fn();
 
 jest.mock('@/hooks/useTermTranslation', () => ({
     useTermTranslation: (...args: unknown[]) => mockUseTermTranslation(...args),
@@ -49,12 +48,6 @@ jest.mock('@/lib/ai/client', () => ({
 }));
 
 jest.mock('@/utils/ai-session', () => ({
-    getAiGuestTeaserUsage: () => ({
-        quizFeedbackCount: 0,
-        termExplainCount: 0,
-        chatMessageCount: 0,
-    }),
-    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
     getCachedTermExplainResponse: jest.fn(() => null),
     setCachedTermExplainResponse: jest.fn(),
 }));
@@ -97,11 +90,6 @@ describe('SmartCard Component', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockIncrementAiGuestTeaserUsage.mockReturnValue({
-            quizFeedbackCount: 0,
-            termExplainCount: 1,
-            chatMessageCount: 0,
-        });
         mockUseTermTranslation.mockImplementation((term: typeof mockTerm) => ({
             language: 'ru',
             t: (key: string) => ({
@@ -220,35 +208,15 @@ describe('SmartCard Component', () => {
         expect(mockShowToast).toHaveBeenCalledWith('Добавлено в избранное ❤️', 'success');
     });
 
-    it('requests AI explanation when an explain mode is selected', async () => {
-        mockFetchTermExplainResponse.mockResolvedValue({
-            title: 'Почему это важно',
-            summary: 'Краткое объяснение',
-            keyPoints: ['Пункт 1', 'Пункт 2'],
-            memoryHook: 'Запомни так',
-        });
-
+    it('does not request AI explanation for guests', async () => {
         render(<SmartCard term={mockTerm as any} />);
 
         fireEvent.click(screen.getByLabelText('Объяснить с AI: Тестовый Термин'));
         fireEvent.click(screen.getByRole('button', { name: 'Объяснить проще' }));
 
-        expect(await screen.findByText('Почему это важно')).toBeInTheDocument();
-        expect(mockFetchTermExplainResponse).toHaveBeenCalled();
-        expect(mockIncrementAiGuestTeaserUsage).toHaveBeenCalledWith('term-explain');
-    });
-
-    it('does not increment guest AI usage when the explanation request fails', async () => {
-        mockFetchTermExplainResponse.mockRejectedValue(new Error('AI failed'));
-
-        render(<SmartCard term={mockTerm as any} />);
-
-        fireEvent.click(screen.getByLabelText('Объяснить с AI: Тестовый Термин'));
-        fireEvent.click(screen.getByRole('button', { name: 'Объяснить проще' }));
-
-        expect(await screen.findByText('AI failed')).toBeInTheDocument();
+        expect(await screen.findByText('Гостевой предпросмотр использован. Войдите, чтобы открыть полные AI-объяснения.')).toBeInTheDocument();
         await waitFor(() => {
-            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+            expect(mockFetchTermExplainResponse).not.toHaveBeenCalled();
         });
     });
 });

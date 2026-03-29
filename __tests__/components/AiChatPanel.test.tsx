@@ -10,7 +10,6 @@ import AiChatPanel from '@/components/home/AiChatPanel';
 const mockFetchAiChatResponse = jest.fn();
 const mockClearAiChatHistory = jest.fn();
 const mockUseAuth = jest.fn();
-const mockIncrementAiGuestTeaserUsage = jest.fn();
 const mockSaveAiChatHistory = jest.fn();
 
 jest.mock('@/contexts/LanguageContext', () => ({
@@ -46,12 +45,6 @@ jest.mock('@/utils/ai-session', () => ({
     ]),
     saveAiChatHistory: (...args: unknown[]) => mockSaveAiChatHistory(...args),
     clearAiChatHistory: () => mockClearAiChatHistory(),
-    getAiGuestTeaserUsage: () => ({
-        quizFeedbackCount: 0,
-        termExplainCount: 0,
-        chatMessageCount: 0,
-    }),
-    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
 }));
 
 jest.mock('@/components/membership/ValueHintList', () => () => null);
@@ -64,11 +57,6 @@ describe('AiChatPanel', () => {
                 canUseAdvancedAnalytics: true,
             },
             isAuthenticated: true,
-        });
-        mockIncrementAiGuestTeaserUsage.mockReturnValue({
-            quizFeedbackCount: 0,
-            termExplainCount: 0,
-            chatMessageCount: 1,
         });
     });
 
@@ -89,17 +77,13 @@ describe('AiChatPanel', () => {
         expect(mockSaveAiChatHistory).not.toHaveBeenCalledWith([]);
     });
 
-    it('increments guest usage only after a successful guest response', async () => {
+    it('does not submit chat requests for guests', async () => {
         mockUseAuth.mockReturnValue({
             entitlements: {
                 canUseAdvancedAnalytics: false,
             },
             isAuthenticated: false,
         });
-        mockFetchAiChatResponse.mockResolvedValue({
-            answer: 'Yanıt',
-        });
-
         render(<AiChatPanel />);
 
         fireEvent.change(screen.getByPlaceholderText('Finans, fintek veya teknoloji hakkında sor...'), {
@@ -107,29 +91,9 @@ describe('AiChatPanel', () => {
         });
         fireEvent.click(screen.getByText('Gönder'));
 
-        expect(await screen.findByText('Yanıt')).toBeInTheDocument();
-        expect(mockIncrementAiGuestTeaserUsage).toHaveBeenCalledWith('chat-message');
-    });
-
-    it('does not increment guest usage when the guest request fails', async () => {
-        mockUseAuth.mockReturnValue({
-            entitlements: {
-                canUseAdvancedAnalytics: false,
-            },
-            isAuthenticated: false,
-        });
-        mockFetchAiChatResponse.mockRejectedValue(new Error('AI unavailable'));
-
-        render(<AiChatPanel />);
-
-        fireEvent.change(screen.getByPlaceholderText('Finans, fintek veya teknoloji hakkında sor...'), {
-            target: { value: 'borsa nedir' },
-        });
-        fireEvent.click(screen.getByText('Gönder'));
-
-        expect(await screen.findByText('AI unavailable')).toBeInTheDocument();
+        expect(await screen.findByText('AI sohbet yalnızca tam üyelere açıktır.')).toBeInTheDocument();
         await waitFor(() => {
-            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+            expect(mockFetchAiChatResponse).not.toHaveBeenCalled();
         });
     });
 });

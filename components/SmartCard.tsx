@@ -15,10 +15,7 @@ import { logger } from '@/lib/logger';
 import { fetchTermExplainResponse } from '@/lib/ai/client';
 import { getAiUiCopy } from '@/lib/ai-copy';
 import {
-    createDefaultAiGuestTeaserUsage,
-    getAiGuestTeaserUsage,
     getCachedTermExplainResponse,
-    incrementAiGuestTeaserUsage,
     setCachedTermExplainResponse,
 } from '@/utils/ai-session';
 import type { AiExplainMode, AiTermExplainResponse } from '@/types/ai';
@@ -82,16 +79,11 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const [aiExplainError, setAiExplainError] = useState<string | null>(null);
     const [aiExplainMode, setAiExplainMode] = useState<AiExplainMode | null>(null);
     const [aiExplainResponse, setAiExplainResponse] = useState<AiTermExplainResponse | null>(null);
-    const [guestAiUsage, setGuestAiUsage] = useState(createDefaultAiGuestTeaserUsage);
 
     useEffect(() => () => {
         if (limitWarningTimeoutRef.current) {
             clearTimeout(limitWarningTimeoutRef.current);
         }
-    }, []);
-
-    useEffect(() => {
-        setGuestAiUsage(getAiGuestTeaserUsage());
     }, []);
 
     // Handle TTS
@@ -167,10 +159,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
             return;
         }
 
-        const canUseGuestTeaser = guestAiUsage.termExplainCount < 1;
-        const shouldFetchExplanation = hasFullAiAccess || canUseGuestTeaser;
-
-        if (!shouldFetchExplanation) {
+        if (!hasFullAiAccess) {
             setAiExplainResponse(null);
             setAiExplainStatus('locked');
             return;
@@ -185,10 +174,6 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 language,
                 mode,
             });
-
-            if (!hasFullAiAccess) {
-                setGuestAiUsage(incrementAiGuestTeaserUsage('term-explain'));
-            }
 
             setCachedTermExplainResponse(cacheKey, response);
             setAiExplainResponse(response);

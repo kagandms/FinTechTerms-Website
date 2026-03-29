@@ -3,6 +3,7 @@
  */
 
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
+import { hashStudySessionToken } from '@/lib/study-session-token';
 
 const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateRequestScopedClient = jest.fn();
@@ -81,6 +82,20 @@ describe('record-quiz route', () => {
             retryable: false,
         });
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('rejects partial study-session context when only session_id is provided', async () => {
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'VALIDATION_ERROR',
+            retryable: false,
+        });
     });
 
     it('replays cached responses before touching route or write rate limiters', async () => {
@@ -238,6 +253,31 @@ describe('record-quiz route', () => {
             'record_my_study_event',
             expect.not.objectContaining({ p_user_id: expect.anything() })
         );
+    });
+
+    it('passes the active study-session context through to the quiz RPC', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: { ok: true },
+            error: null,
+        });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+            session_token: 'a'.repeat(32),
+        })) as never);
+
+        expect(response.status).toBe(200);
+        expect(mockReserveIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            payload: expect.objectContaining({
+                session_id: '550e8400-e29b-41d4-a716-446655440001',
+            }),
+        }));
+        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
+            p_session_id: '550e8400-e29b-41d4-a716-446655440001',
+            p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
+        }));
     });
 
     it('returns 503 when the route rate limiter is unavailable', async () => {

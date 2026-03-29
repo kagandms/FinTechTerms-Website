@@ -436,22 +436,32 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         operation: (
             withTimeout: <T,>(callback: () => Promise<T>) => Promise<T>,
             timeoutSignal: AbortSignal
-        ) => Promise<void>
+        ) => Promise<void>,
+        options?: {
+            enableTimeout?: boolean;
+        }
     ) => {
+        const enableTimeout = options?.enableTimeout ?? true;
         setPendingAction(action);
         setFormSuccess(null);
         setFormWarning(null);
         setFormError(null);
         const timeoutController = new AbortController();
-        const timeoutId = globalThis.setTimeout(() => {
-            timeoutController.abort();
-        }, PROFILE_SUBMIT_TIMEOUT_MS);
+        const timeoutId = enableTimeout
+            ? globalThis.setTimeout(() => {
+                timeoutController.abort();
+            }, PROFILE_SUBMIT_TIMEOUT_MS)
+            : null;
 
         try {
-            const withTimeout = <T,>(operation: () => Promise<T>) => runWithAbortSignal(
-                timeoutController.signal,
-                operation,
-                dict.requestTimeout
+            const withTimeout = <T,>(callback: () => Promise<T>) => (
+                enableTimeout
+                    ? runWithAbortSignal(
+                        timeoutController.signal,
+                        callback,
+                        dict.requestTimeout
+                    )
+                    : callback()
             );
             await operation(withTimeout, timeoutController.signal);
 
@@ -469,7 +479,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
-            globalThis.clearTimeout(timeoutId);
+            if (timeoutId !== null) {
+                globalThis.clearTimeout(timeoutId);
+            }
             setPendingAction(null);
         }
     };
@@ -575,6 +587,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             setShowPasswordSection(false);
             setFormSuccess(dict.passwordUpdated);
             showToast(dict.passwordUpdated, 'success');
+        }, {
+            enableTimeout: false,
         });
     };
 

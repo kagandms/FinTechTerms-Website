@@ -6,9 +6,19 @@ import { logger } from '@/lib/logger';
 import { resolveMemberEntitlements, type MemberEntitlements } from '@/lib/member-entitlements';
 import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
-interface RequestMemberEntitlementsResult {
+export interface RequestMemberEntitlementsResult {
     user: Awaited<ReturnType<typeof resolveAuthenticatedUser>>;
     entitlements: MemberEntitlements;
+}
+
+export interface RequestAiAccessResult extends RequestMemberEntitlementsResult {
+    denial:
+        | {
+            status: 401 | 403;
+            code: 'UNAUTHORIZED' | 'MEMBER_REQUIRED';
+            message: string;
+        }
+        | null;
 }
 
 export const resolveRequestMemberEntitlements = async (
@@ -56,5 +66,38 @@ export const resolveRequestMemberEntitlements = async (
             isAuthenticated: true,
             requiresProfileCompletion,
         }),
+    };
+};
+
+export const resolveRequestAiAccess = async (
+    request: Request
+): Promise<RequestAiAccessResult> => {
+    const memberState = await resolveRequestMemberEntitlements(request);
+
+    if (!memberState.user) {
+        return {
+            ...memberState,
+            denial: {
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Sign in to use AI features.',
+            },
+        };
+    }
+
+    if (!memberState.entitlements.canUseAdvancedAnalytics) {
+        return {
+            ...memberState,
+            denial: {
+                status: 403,
+                code: 'MEMBER_REQUIRED',
+                message: 'Complete your member setup to unlock AI features.',
+            },
+        };
+    }
+
+    return {
+        ...memberState,
+        denial: null,
     };
 };

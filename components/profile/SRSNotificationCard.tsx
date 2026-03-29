@@ -2,6 +2,7 @@
 
 import { BellRing, BrainCircuit, CalendarClock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatUtcDateForLocale } from '@/lib/time';
 
 interface SRSNotificationCardProps {
     dueCount: number;
@@ -75,11 +76,7 @@ const formatReviewDate = (
         return invalidFallback;
     }
 
-    return new Intl.DateTimeFormat(locale, {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(date);
+    return formatUtcDateForLocale(date, locale);
 };
 
 export default function SRSNotificationCard({

@@ -320,6 +320,39 @@ describe('SessionTracker', () => {
         }
     });
 
+    it('keeps the pending end-session payload when the close request returns a non-retryable failure', async () => {
+        grantConsent();
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }))
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                json: jest.fn().mockResolvedValue({
+                    code: 'STUDY_SESSION_FORBIDDEN',
+                    retryable: false,
+                }),
+            });
+        global.fetch = fetchMock as typeof fetch;
+
+        const view = render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        view.unmount();
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        const pendingKey = getCurrentPendingEndKey();
+        expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).not.toBeNull();
+    });
+
     it('increments quiz attempts only for the active tab session record', async () => {
         grantConsent();
         render(<SessionTracker />);

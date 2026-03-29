@@ -8,7 +8,7 @@
 4. Confirm preview/staging gate secrets include `STAGING_BASE_URL`, `SUPABASE_DB_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STUDY_SESSION_TOKEN_SECRET`, `ADMIN_USER_IDS`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_SENTRY_DSN`, `E2E_AUTH_EMAIL`, `E2E_AUTH_PASSWORD`, `SENTRY_SMOKE_EMAIL`, and `SENTRY_SMOKE_PASSWORD`.
    `STUDY_SESSION_TOKEN_SECRET` must be a dedicated high-entropy server secret, never a reused API key.
 5. Run `npm run validate:runtime-env` and stop immediately if any runtime key is missing, placeholder, or malformed.
-6. Run `npm run validate:release-gate-env` before any manually dispatched preview/staging release verification.
+6. Run `npm run validate:release-gate-env` before any preview/staging release verification, including automatic PR/main gates and manual re-runs.
 7. Run the clean bootstrap smoke against a disposable database with `BOOTSTRAP_DB_URL` or `DATABASE_URL` set: `npm run verify:bootstrap-db`.
 8. Run `npm run typecheck`.
 9. Run `npm run lint`.

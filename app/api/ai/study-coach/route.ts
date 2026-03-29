@@ -9,7 +9,7 @@ import { buildStudyCoachFallback } from '@/lib/ai/fallbacks';
 import { aiCoachRouteRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 import { buildStudyCoachMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
-import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
+import { resolveRequestAiAccess } from '@/lib/server-member-entitlements';
 
 const StudyCoachRequestSchema = z.object({
     language: z.enum(['tr', 'en', 'ru']),
@@ -45,31 +45,44 @@ export async function POST(request: Request) {
     let body: unknown;
 
     try {
-        const memberState = await resolveRequestMemberEntitlements(request);
+        const memberState = await resolveRequestAiAccess(request);
 
-        if (!memberState.user) {
+        if (memberState.denial?.status === 401) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
-                message: 'Sign in to use AI study coach.',
+                message: memberState.denial.message,
                 requestId,
                 retryable: false,
                 headers: RATE_LIMIT_HEADERS,
             });
         }
 
-        if (!memberState.entitlements.canUseAdvancedAnalytics) {
+        if (memberState.denial?.status === 403) {
             return errorResponse({
                 status: 403,
                 code: 'MEMBER_REQUIRED',
-                message: 'Complete your member setup to unlock AI study coach.',
+                message: memberState.denial.message,
                 requestId,
                 retryable: false,
                 headers: RATE_LIMIT_HEADERS,
             });
         }
 
-        const limitCheck = await aiCoachRouteRateLimiter.check(memberState.user.id);
+        const user = memberState.user;
+
+        if (!user) {
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Sign in to use AI features.',
+                requestId,
+                retryable: false,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const limitCheck = await aiCoachRouteRateLimiter.check(user.id);
         if (isRateLimiterUnavailable(limitCheck)) {
             return errorResponse({
                 status: 503,

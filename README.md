@@ -131,8 +131,9 @@ Preview release verification uses:
 - `npm run test:e2e:auth`
 - `npm run smoke:staging`
 
-`Preview Release Gate` is intended to run manually via GitHub Actions
-`workflow_dispatch`. Fast code-quality checks continue to run automatically in
+`Preview Release Gate` runs automatically for pull requests to `main` and
+pushes to `main`, and can still be re-run manually via GitHub Actions
+`workflow_dispatch`. Fast code-quality checks continue to run in
 `CI/CD Pipeline`.
 
 If Preview Deployment Protection is enabled on Vercel, also provide

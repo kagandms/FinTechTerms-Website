@@ -10,7 +10,6 @@ import QuizPage from '@/app/quiz/QuizClient';
 
 const mockFetchQuizFeedback = jest.fn();
 const mockUseAuth = jest.fn();
-const mockIncrementAiGuestTeaserUsage = jest.fn();
 
 const quizTerms = [
     { id: 'term-1', category: 'Finance' },
@@ -69,12 +68,8 @@ jest.mock('@/lib/ai/client', () => ({
 }));
 
 jest.mock('@/utils/ai-session', () => ({
-    getAiGuestTeaserUsage: () => ({
-        quizFeedbackCount: 0,
-        termExplainCount: 0,
-        chatMessageCount: 0,
-    }),
-    incrementAiGuestTeaserUsage: (...args: unknown[]) => mockIncrementAiGuestTeaserUsage(...args),
+    getAiGuestTeaserUsage: jest.fn(),
+    incrementAiGuestTeaserUsage: jest.fn(),
 }));
 
 jest.mock('@/components/MultipleChoiceQuizCard', () => () => null);
@@ -115,11 +110,6 @@ describe('QuizPage AI feedback', () => {
             isAuthenticated: true,
             requiresProfileCompletion: false,
         });
-        mockIncrementAiGuestTeaserUsage.mockReturnValue({
-            quizFeedbackCount: 1,
-            termExplainCount: 0,
-            chatMessageCount: 0,
-        });
     });
 
     it('shows AI feedback after a wrong answer in flashcard mode', async () => {
@@ -141,7 +131,7 @@ describe('QuizPage AI feedback', () => {
         expect(screen.getByText('Wrong because you mixed the concept.')).toBeInTheDocument();
     });
 
-    it('does not increment guest teaser usage when guest AI feedback fails', async () => {
+    it('does not submit guest AI feedback requests', async () => {
         mockUseAuth.mockReturnValue({
             entitlements: {
                 canUseAdvancedAnalytics: false,
@@ -151,8 +141,6 @@ describe('QuizPage AI feedback', () => {
             isAuthenticated: false,
             requiresProfileCompletion: false,
         });
-        mockFetchQuizFeedback.mockRejectedValue(new Error('AI feedback unavailable'));
-
         render(<QuizPage />);
 
         fireEvent.click(screen.getByRole('button', { name: 'quiz.startQuickQuiz' }));
@@ -160,9 +148,9 @@ describe('QuizPage AI feedback', () => {
         fireEvent.click(screen.getByRole('button', { name: '5' }));
         fireEvent.click(screen.getByRole('button', { name: 'answer-wrong' }));
 
-        expect(await screen.findByText('AI feedback unavailable')).toBeInTheDocument();
+        expect(await screen.findByText('Guest preview used. Sign in to unlock full AI mistake feedback.')).toBeInTheDocument();
         await waitFor(() => {
-            expect(mockIncrementAiGuestTeaserUsage).not.toHaveBeenCalled();
+            expect(mockFetchQuizFeedback).not.toHaveBeenCalled();
         });
     });
 });

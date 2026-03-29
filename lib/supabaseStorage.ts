@@ -10,6 +10,7 @@ import { createIdempotencyKey } from '@/lib/idempotency';
 import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 import { logger } from '@/lib/logger';
+import { readTrackedStudySessionContext } from '@/lib/study-session-storage';
 
 interface FavoriteToggleResponse {
     favorites: string[];
@@ -728,6 +729,7 @@ export async function saveQuizAttemptToSupabase(
     attempt: QuizAttempt
 ): Promise<SaveQuizAttemptResult> {
     try {
+        const sessionContext = readTrackedStudySessionContext();
         const response = await fetchWithAuthRetry('/api/record-quiz', {
             method: 'POST',
             body: JSON.stringify({
@@ -736,6 +738,8 @@ export async function saveQuizAttemptToSupabase(
                 response_time_ms: attempt.response_time_ms,
                 quiz_type: attempt.quiz_type,
                 idempotencyKey: attempt.id || createIdempotencyKey(),
+                session_id: sessionContext?.sessionId,
+                session_token: sessionContext?.sessionToken,
             }),
         }, 'Failed to save quiz attempt.', {
             throwOnFinalUnauthorized: false,

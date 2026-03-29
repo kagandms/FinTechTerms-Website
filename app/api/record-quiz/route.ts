@@ -22,10 +22,24 @@ import {
 } from '@/lib/rate-limiter';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { hashStudySessionToken } from '@/lib/study-session-token';
 import { QuizAttemptSchema } from '@/lib/validators';
 
 const RecordQuizRequestSchema = QuizAttemptSchema.extend({
     idempotencyKey: z.string().uuid(),
+}).superRefine((value, context) => {
+    const hasSessionId = typeof value.session_id === 'string';
+    const hasSessionToken = typeof value.session_token === 'string';
+
+    if (hasSessionId === hasSessionToken) {
+        return;
+    }
+
+    context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'session_id and session_token must be provided together.',
+        path: hasSessionId ? ['session_token'] : ['session_id'],
+    });
 });
 
 const GLOBAL_RATE_LIMIT_HEADERS = {
@@ -133,6 +147,8 @@ export async function POST(request: NextRequest) {
         is_correct,
         response_time_ms,
         quiz_type,
+        session_id,
+        session_token,
         idempotencyKey,
     } = validatedData.data;
 
@@ -146,6 +162,7 @@ export async function POST(request: NextRequest) {
             is_correct,
             response_time_ms,
             quiz_type,
+            session_id: session_id ?? null,
         },
     });
 
@@ -247,6 +264,7 @@ export async function POST(request: NextRequest) {
                 is_correct,
                 response_time_ms,
                 quiz_type,
+                session_id: session_id ?? null,
             },
         });
 
@@ -279,6 +297,8 @@ export async function POST(request: NextRequest) {
                 p_response_time_ms: response_time_ms,
                 p_quiz_type: quiz_type,
                 p_idempotency_key: idempotencyKey,
+                p_session_id: session_id ?? null,
+                p_session_token_hash: session_token ? hashStudySessionToken(session_token) : null,
             });
 
         if (error) {

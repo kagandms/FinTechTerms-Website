@@ -26,7 +26,7 @@ const resolveLocalizedAiError = (
     }
 
     if (errorCode === 'MEMBER_REQUIRED') {
-        return copy.studyCoachCompleteProfile;
+        return copy.memberRequired;
     }
 
     return fallbackMessage || copy.genericError;
@@ -103,11 +103,12 @@ export const fetchQuizFeedback = async (
         selectedWrongLabel?: string | null;
     }
 ): Promise<AiQuizFeedback> => {
+    const copy = getAiUiCopy(input.language);
     const payload = await postJson<{ feedback: AiQuizFeedback }>(
         '/api/ai/quiz-feedback',
         input,
         input.language,
-        'Unable to generate AI quiz feedback right now.'
+        copy.quizFeedbackGuestLimit
     );
 
     return payload.feedback;
@@ -120,11 +121,12 @@ export const fetchTermExplainResponse = async (
         mode: AiExplainMode;
     }
 ): Promise<AiTermExplainResponse> => {
+    const copy = getAiUiCopy(input.language);
     const payload = await postJson<{ explanation: AiTermExplainResponse }>(
         '/api/ai/term-explain',
         input,
         input.language,
-        'Unable to generate the AI explanation right now.'
+        copy.explainGuestLimit
     );
 
     return payload.explanation;
@@ -141,11 +143,12 @@ export const fetchStudyCoachResponse = async (
         mistakeQueueCount: number;
     }
 ): Promise<AiStudyCoachResponse> => {
+    const copy = getAiUiCopy(input.language);
     const payload = await postJson<{ coach: AiStudyCoachResponse }>(
         '/api/ai/study-coach',
         input,
         input.language,
-        'Unable to generate the AI study coach plan right now.'
+        copy.studyCoachCompleteProfile
     );
 
     return payload.coach;
@@ -157,11 +160,13 @@ export const fetchAiChatResponse = async (
         message: string;
         history: AiChatMessage[];
     }
-): Promise<AiChatResponse> => (
-    await postJson<AiChatResponse>(
+): Promise<AiChatResponse> => {
+    const copy = getAiUiCopy(input.language);
+
+    return await postJson<AiChatResponse>(
         '/api/ai/chat',
         input,
         input.language,
-        'Unable to answer right now.'
-    )
-);
+        copy.chatGuestLimit
+    );
+};
