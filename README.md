@@ -119,6 +119,7 @@ cd telegram-bot && python -m pytest tests/ -v
 ```
 
 The authenticated Playwright flow uses `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD`.
+This account must be a full member account, because preview/runtime AI probes now verify guest denial plus authenticated-member access.
 Set them in local `.env.local` for `npx playwright test`,
 and in GitHub Actions as repository secrets for `.github/workflows/e2e.yml`.
 

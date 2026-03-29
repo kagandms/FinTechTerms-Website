@@ -326,7 +326,7 @@ const runAiChatProbe = async (browser) => {
         await page.goto(`${stagingBaseUrl}/`, { waitUntil: 'domcontentloaded' });
         await waitForPageSettle(page);
 
-        const response = await fetchJson(page, '/api/ai/chat', {
+        const guestResponse = await fetchJson(page, '/api/ai/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -338,29 +338,70 @@ const runAiChatProbe = async (browser) => {
             }),
         });
 
-        if (response.status === 503 && response.body?.code === 'RATE_LIMITER_UNAVAILABLE') {
+        if (guestResponse.status === 503 && guestResponse.body?.code === 'RATE_LIMITER_UNAVAILABLE') {
             throw new Error(
                 'Preview runtime AI route returned RATE_LIMITER_UNAVAILABLE. ' +
                 'Verify Vercel preview environment variables include UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
             );
         }
 
-        assertCondition(response.status === 200, `Preview runtime AI chat returned ${response.status}.`);
         assertCondition(
-            response.body?.degraded !== true,
+            guestResponse.status === 401,
+            `Preview runtime guest AI chat returned ${guestResponse.status}.`
+        );
+        assertCondition(
+            guestResponse.body?.code === 'UNAUTHORIZED',
+            'Preview runtime guest AI chat did not return the UNAUTHORIZED guard response.'
+        );
+
+        await loginViaProfile(page, authEmail, authPassword);
+        const accessToken = await readSupabaseAccessToken(page);
+        const memberResponse = await fetchWithBearer(page, '/api/ai/chat', accessToken, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                language: 'en',
+                message: 'What is Bitcoin?',
+                history: [],
+            }),
+        });
+
+        if (memberResponse.status === 503 && memberResponse.body?.code === 'RATE_LIMITER_UNAVAILABLE') {
+            throw new Error(
+                'Preview runtime AI route returned RATE_LIMITER_UNAVAILABLE. ' +
+                'Verify Vercel preview environment variables include UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
+            );
+        }
+
+        if (memberResponse.status === 403 && memberResponse.body?.code === 'MEMBER_REQUIRED') {
+            throw new Error(
+                'Preview runtime AI chat denied the configured E2E user with MEMBER_REQUIRED. ' +
+                'Verify E2E_AUTH_EMAIL belongs to a full member with completed profile setup.'
+            );
+        }
+
+        assertCondition(memberResponse.status === 200, `Preview runtime member AI chat returned ${memberResponse.status}.`);
+        assertCondition(
+            memberResponse.body?.degraded !== true,
             'Preview runtime AI chat is serving degraded fallback responses. ' +
             'Verify OpenRouter provider configuration and model availability.'
         );
         assertCondition(
-            typeof response.body?.answer === 'string' && response.body.answer.length > 0,
+            typeof memberResponse.body?.answer === 'string' && memberResponse.body.answer.length > 0,
             'Preview runtime AI chat did not return an answer.'
         );
         assertCondition(
-            typeof response.body?.model === 'string' && response.body.model.length > 0,
+            typeof memberResponse.body?.model === 'string' && memberResponse.body.model.length > 0,
             'Preview runtime AI chat did not report a serving model.'
         );
 
-        recordCheck('ai-chat-probe', true, 'Guest AI chat route is reachable and serving a real model response.');
+        recordCheck(
+            'ai-chat-probe',
+            true,
+            'AI chat route rejects guests and serves a real model response for the authenticated member probe.'
+        );
     } finally {
         await context.close();
     }
