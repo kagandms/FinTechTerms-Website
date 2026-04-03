@@ -24,6 +24,7 @@ import {
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
+import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
 
 const FavoriteRequestSchema = z.object({
     termId: z.string().min(1, 'Term ID is required'),
@@ -45,6 +46,7 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 
 const WRITE_RATE_LIMIT = 10;
 const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailable. Verify preview/staging runtime env includes UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.';
+const FAVORITES_LIMIT_REACHED_MESSAGE = 'Favorite limit reached. Complete your member setup to save more terms.';
 
 const markFavoriteFailure = async (
     supabaseAdmin: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
@@ -117,7 +119,19 @@ export async function POST(request: Request) {
     }
 
     try {
-        const user = await resolveAuthenticatedUser(request);
+        const memberState = await resolveRequestMemberEntitlements(request);
+        if (memberState.unavailable) {
+            return errorResponse({
+                status: memberState.unavailable.status,
+                code: memberState.unavailable.code,
+                message: memberState.unavailable.message,
+                requestId,
+                retryable: true,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const user = memberState.user;
         if (!user) {
             return errorResponse({
                 status: 401,
@@ -272,6 +286,38 @@ export async function POST(request: Request) {
                 retryable: reservation.code === 'REQUEST_IN_PROGRESS',
                 headers: guardedHeaders,
             });
+        }
+
+        if (shouldFavorite && Number.isFinite(memberState.entitlements.maxFavorites)) {
+            const existingFavoritesResponse = await supabaseAdmin
+                .from('user_favorites')
+                .select('term_id')
+                .eq('user_id', user.id);
+
+            if (existingFavoritesResponse.error) {
+                throw existingFavoritesResponse.error;
+            }
+
+            const existingFavorites = (existingFavoritesResponse.data || []).map((row) => row.term_id);
+            const isAlreadyFavorite = existingFavorites.includes(termId);
+
+            if (
+                !isAlreadyFavorite
+                && existingFavorites.length >= memberState.entitlements.maxFavorites
+            ) {
+                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 409, {
+                    code: 'FAVORITES_LIMIT_REACHED',
+                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
+                });
+                return errorResponse({
+                    status: 409,
+                    code: 'FAVORITES_LIMIT_REACHED',
+                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
         }
 
         const { data: mutationData, error: mutationError } = await supabaseAdmin.rpc(

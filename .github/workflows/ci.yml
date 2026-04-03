@@ -84,6 +84,9 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN || 'validation-upstash-token-0123456789abcdefghijklmnop' }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || 'https://public-validation-key@o123456.ingest.sentry.io/123456' }}
 
+      - name: Run Production Dependency Audit
+        run: npm audit --omit=dev
+
       - name: Run TypeScript Check
         run: npm run typecheck
 
@@ -142,7 +145,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-          python -m pip install pytest==9.0.2
+          python -m pip install pytest==9.0.2 pip-audit
 
       - name: Run Python tests
         run: python -m pytest tests/ -v
+
+      - name: Run Python Dependency Audit
+        run: python -m pip_audit -r requirements.txt --format json --disable-pip
+
+      - name: Build Telegram Bot Image
+        run: docker build -t fintechterms-bot-ci .
+
+      - name: Validate Telegram Bot Runtime Contract
+        run: |
+          docker run --rm \
+            -e BOT_TOKEN=validation-bot-token \
+            -e SUPABASE_URL=https://validation.supabase.co \
+            -e SUPABASE_ANON_KEY=validation-anon-key \
+            -e WEB_APP_URL=https://preview.fintechterms.app \
+            -e BOT_SENTRY_DSN=https://public-validation-key@o123456.ingest.sentry.io/123456 \
+            -e RENDER=1 \
+            fintechterms-bot-ci python -m bot.validate_runtime

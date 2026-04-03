@@ -51,22 +51,27 @@ jobs:
             echo "sentry_ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' }}
-        run: echo "Preview release gate skipped on PR because staging preview secrets are missing."
+      - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: echo "Preview release gate is not release-evaluable for fork PRs because staging preview secrets are unavailable."
+
+      - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          echo "Missing required preview release gate secrets on a same-repo pull request."
+          exit 1
 
       - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name != 'pull_request' }}
         run: |
           echo "Missing required preview release gate secrets on a protected branch run."
           exit 1
 
-      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.auth_ready != 'true' && github.event_name != 'pull_request' }}
+      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.auth_ready != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         run: |
-          echo "Missing required authenticated Playwright secrets on a protected branch run."
+          echo "Missing required authenticated Playwright secrets."
           exit 1
 
-      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.sentry_ready != 'true' && github.event_name != 'pull_request' }}
+      - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.sentry_ready != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         run: |
-          echo "Missing required Sentry smoke credentials on a protected branch run."
+          echo "Missing required Sentry smoke credentials."
           exit 1
 
   bootstrap-db-smoke:

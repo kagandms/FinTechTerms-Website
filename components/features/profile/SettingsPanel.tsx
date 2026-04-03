@@ -60,6 +60,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                 type="button"
                                 onClick={profileEditorSection.onToggle}
                                 data-testid={profileEditorSection.toggleTestId}
+                                aria-expanded={profileEditorSection.isOpen}
+                                aria-controls="profile-editor-panel"
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <ChevronRight className={`w-4 h-4 transition-transform ${profileEditorSection.isOpen ? 'rotate-90' : ''}`} />
@@ -68,7 +70,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
 
                         {profileEditorSection.isOpen ? (
-                            <div className="mt-5">
+                            <div id="profile-editor-panel" className="mt-5">
                                 {profileEditorSection.content}
                             </div>
                         ) : null}

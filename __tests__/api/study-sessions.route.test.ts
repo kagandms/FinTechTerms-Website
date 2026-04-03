@@ -147,6 +147,40 @@ describe('study-sessions route', () => {
         expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
     });
 
+    it('does not leak an in-progress reservation when the request-scoped client is unavailable', async () => {
+        const { client } = createStudySessionClient({
+            startResult: {
+                data: 'session_after_retry',
+                error: null,
+            },
+        });
+        mockCreateRequestScopedClient
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce(client);
+
+        const payload = createStartPayload({
+            idempotency_key: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        });
+        const { POST } = await import('@/app/api/study-sessions/route');
+
+        const firstResponse = await POST(createRequest(payload));
+        const firstBody = await firstResponse.json();
+        const secondResponse = await POST(createRequest(payload));
+        const secondBody = await secondResponse.json();
+
+        expect(firstResponse.status).toBe(503);
+        expect(firstBody).toMatchObject({
+            code: 'STUDY_SESSION_FAILED',
+            retryable: true,
+        });
+
+        expect(secondResponse.status).toBe(200);
+        expect(secondBody).toMatchObject({
+            sessionId: 'session_after_retry',
+            sessionToken: expect.any(String),
+        });
+    });
+
     it('returns 503 when the study-session rate limiter is unavailable', async () => {
         jest.spyOn(studySessionRouteRateLimiter, 'check').mockResolvedValueOnce({
             allowed: false,

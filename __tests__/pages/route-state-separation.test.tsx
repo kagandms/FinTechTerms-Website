@@ -193,6 +193,7 @@ describe('Route state separation', () => {
         });
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
                 canUseMistakeReview: true,
                 canUseReviewMode: true,

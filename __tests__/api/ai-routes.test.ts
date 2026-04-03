@@ -1,9 +1,12 @@
+export {};
+
 const mockGenerateStructuredAiResponse = jest.fn();
 const mockGetAiCatalogTermById = jest.fn();
 const mockIsAiDomainQuestion = jest.fn();
 const mockFindRelevantAiTerms = jest.fn();
 const mockFormatTermContextForAi = jest.fn(() => 'term-context');
 const mockResolveRequestMemberEntitlements = jest.fn();
+const mockResolveRequestAiAccess = jest.fn();
 const mockAiAssistantCheck = jest.fn();
 const mockAiCoachCheck = jest.fn();
 
@@ -20,25 +23,7 @@ jest.mock('@/lib/ai/grounding', () => ({
 
 jest.mock('@/lib/server-member-entitlements', () => ({
     resolveRequestMemberEntitlements: mockResolveRequestMemberEntitlements,
-    resolveRequestAiAccess: (...args: unknown[]) => mockResolveRequestMemberEntitlements(...args).then((state: {
-        user: { id: string } | null;
-        entitlements: { canUseAdvancedAnalytics: boolean };
-    }) => ({
-        ...state,
-        denial: !state.user
-            ? {
-                status: 401,
-                code: 'UNAUTHORIZED',
-                message: 'Sign in to use AI features.',
-            }
-            : !state.entitlements.canUseAdvancedAnalytics
-                ? {
-                    status: 403,
-                    code: 'MEMBER_REQUIRED',
-                    message: 'Complete your member setup to unlock AI features.',
-                }
-                : null,
-    })),
+    resolveRequestAiAccess: (...args: unknown[]) => mockResolveRequestAiAccess(...args),
 }));
 
 jest.mock('@/lib/api-response', () => ({
@@ -145,8 +130,17 @@ describe('AI routes', () => {
         mockResolveRequestMemberEntitlements.mockResolvedValue({
             user: { id: 'user-1' },
             entitlements: {
-                canUseAdvancedAnalytics: true,
+                canUseAiFeatures: true,
             },
+            unavailable: null,
+        });
+        mockResolveRequestAiAccess.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAiFeatures: true,
+            },
+            unavailable: null,
+            denial: null,
         });
         mockAiAssistantCheck.mockResolvedValue({
             allowed: true,
@@ -217,10 +211,16 @@ describe('AI routes', () => {
         ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
         ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
     ])('returns 401 for guests on the %s route', async (_label, modulePath, url) => {
-        mockResolveRequestMemberEntitlements.mockResolvedValueOnce({
+        mockResolveRequestAiAccess.mockResolvedValueOnce({
             user: null,
             entitlements: {
-                canUseAdvancedAnalytics: false,
+                canUseAiFeatures: false,
+            },
+            unavailable: null,
+            denial: {
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: 'Sign in to use AI features.',
             },
         });
 
@@ -252,10 +252,16 @@ describe('AI routes', () => {
         ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
         ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
     ])('returns 403 for incomplete members on the %s route', async (_label, modulePath, url) => {
-        mockResolveRequestMemberEntitlements.mockResolvedValueOnce({
+        mockResolveRequestAiAccess.mockResolvedValueOnce({
             user: { id: 'user-1' },
             entitlements: {
-                canUseAdvancedAnalytics: false,
+                canUseAiFeatures: false,
+            },
+            unavailable: null,
+            denial: {
+                status: 403,
+                code: 'MEMBER_REQUIRED',
+                message: 'Complete your member setup to unlock AI features.',
             },
         });
 
@@ -278,6 +284,47 @@ describe('AI routes', () => {
         await expect(response.json()).resolves.toMatchObject({
             code: 'MEMBER_REQUIRED',
             retryable: false,
+        });
+        expect(mockGenerateStructuredAiResponse).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['chat', '@/app/api/ai/chat/route', 'http://localhost/api/ai/chat'],
+        ['quiz feedback', '@/app/api/ai/quiz-feedback/route', 'http://localhost/api/ai/quiz-feedback'],
+        ['term explain', '@/app/api/ai/term-explain/route', 'http://localhost/api/ai/term-explain'],
+    ])('returns 503 when member state is unavailable on the %s route', async (_label, modulePath, url) => {
+        mockResolveRequestAiAccess.mockResolvedValueOnce({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAiFeatures: false,
+            },
+            unavailable: {
+                status: 503,
+                code: 'MEMBER_STATE_UNAVAILABLE',
+                message: 'Member state is temporarily unavailable. Please try again.',
+            },
+            denial: null,
+        });
+
+        const { POST } = await import(modulePath);
+        const response = await POST(new MockRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                termId: 'term-1',
+                language: 'en',
+                mode: 'simple',
+                message: 'What is open banking?',
+                history: [],
+            }),
+        }) as unknown as Request);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+            code: 'MEMBER_STATE_UNAVAILABLE',
+            retryable: true,
         });
         expect(mockGenerateStructuredAiResponse).not.toHaveBeenCalled();
     });
@@ -307,10 +354,16 @@ describe('AI routes', () => {
     });
 
     it('blocks study coach when the user is not a full member', async () => {
-        mockResolveRequestMemberEntitlements.mockResolvedValue({
+        mockResolveRequestAiAccess.mockResolvedValue({
             user: { id: 'user-1' },
             entitlements: {
-                canUseAdvancedAnalytics: false,
+                canUseAiFeatures: false,
+            },
+            unavailable: null,
+            denial: {
+                status: 403,
+                code: 'MEMBER_REQUIRED',
+                message: 'Complete your member setup to unlock AI features.',
             },
         });
 
@@ -406,13 +459,6 @@ describe('AI routes', () => {
     });
 
     it('returns 400 for invalid JSON on the study coach route', async () => {
-        mockResolveRequestMemberEntitlements.mockResolvedValue({
-            user: { id: 'user-1' },
-            entitlements: {
-                canUseAdvancedAnalytics: true,
-            },
-        });
-
         const { POST } = await import('@/app/api/ai/study-coach/route');
         const response = await POST(new MockRequest('http://localhost/api/ai/study-coach', {
             method: 'POST',

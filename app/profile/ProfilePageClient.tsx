@@ -148,17 +148,20 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     </p>
                 </div>
 
-                <div onClick={() => !isAuthenticated && setShowAuthModal(true)} className="cursor-pointer">
-                    {isAuthenticated ? (
-                        <div data-testid="user-avatar" className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
-                            {getInitials(user?.name || '', user?.id)}
-                        </div>
-                    ) : (
-                        <div className="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
-                            <User className="w-7 h-7" />
-                        </div>
-                    )}
-                </div>
+                {isAuthenticated ? (
+                    <div data-testid="user-avatar" className="w-14 h-14 bg-gradient-to-br from-primary-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-black shadow-lg shadow-primary-500/30 tracking-tight ring-2 ring-white dark:ring-gray-800">
+                        {getInitials(user?.name || '', user?.id)}
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setShowAuthModal(true)}
+                        className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 dark:bg-gray-700"
+                        aria-label={t('auth.login')}
+                    >
+                        <User className="w-7 h-7" />
+                    </button>
+                )}
             </header>
 
             {/* Login Prompt Banner (Guest Only) */}
@@ -308,7 +311,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     </section>
 
                     {/* Install App Button — Profile */}
-                    <section className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4">
+                    <section className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h3 className="text-sm font-bold text-gray-900 dark:text-white">
                                 {t('profile.installTitle')}
@@ -317,7 +320,9 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                                 {t('profile.installDescription')}
                             </p>
                         </div>
-                        <InstallButton variant="prominent" />
+                        <div className="w-full sm:w-auto sm:min-w-[9rem]">
+                            <InstallButton variant="prominent" />
+                        </div>
                     </section>
                 </div>
             </div>

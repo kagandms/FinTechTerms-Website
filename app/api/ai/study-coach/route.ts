@@ -47,6 +47,17 @@ export async function POST(request: Request) {
     try {
         const memberState = await resolveRequestAiAccess(request);
 
+        if (memberState.unavailable) {
+            return errorResponse({
+                status: memberState.unavailable.status,
+                code: memberState.unavailable.code,
+                message: memberState.unavailable.message,
+                requestId,
+                retryable: true,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
         if (memberState.denial?.status === 401) {
             return errorResponse({
                 status: 401,
@@ -70,7 +81,6 @@ export async function POST(request: Request) {
         }
 
         const user = memberState.user;
-
         if (!user) {
             return errorResponse({
                 status: 401,

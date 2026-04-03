@@ -136,6 +136,8 @@ const recordQuizResult = {
     },
 };
 
+const pendingReviewQueueKey = (userId = 'user-1') => `pending_review_queue:${userId}`;
+
 const okProgressResult = (overrides?: Partial<typeof baseProgress>) => ({
     status: 'ok' as const,
     data: {
@@ -189,6 +191,7 @@ function TestConsumer() {
 describe('SRSContext', () => {
     let authState: {
         entitlements: {
+            canUseAiFeatures: boolean;
             canUseAdvancedAnalytics: boolean;
             canUseMistakeReview: boolean;
             canUseReviewMode: boolean;
@@ -210,6 +213,7 @@ describe('SRSContext', () => {
 
         authState = {
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
                 canUseMistakeReview: true,
                 canUseReviewMode: true,
@@ -368,6 +372,38 @@ describe('SRSContext', () => {
         });
     });
 
+    it('returns limitReached when the server-side favorite cap is hit', async () => {
+        mockGetUserProgress.mockReturnValue({
+            ...baseProgress,
+            favorites: [],
+        });
+        mockGetUserProgressFromSupabase.mockResolvedValue(okProgressResult({
+            favorites: [],
+        }));
+        mockToggleFavoriteInSupabase.mockResolvedValue({
+            status: 'limit_reached',
+            message: 'Favorite limit reached. Complete your member setup to save more terms.',
+        });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'favorite' }));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('favorites-count')).toHaveTextContent('0');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"success":false');
+            expect(screen.getByTestId('toggle-result')).toHaveTextContent('"limitReached":true');
+        });
+    });
+
     it('persists merged favorites before SRS enrichment fails for authenticated users', async () => {
         mockGetUserProgress.mockReturnValue({
             ...baseProgress,
@@ -446,6 +482,7 @@ describe('SRSContext', () => {
     it('throws a hard error for guest quiz answers when the local term is missing', async () => {
         authState = {
             entitlements: {
+                canUseAiFeatures: false,
                 canUseAdvancedAnalytics: false,
                 canUseMistakeReview: false,
                 canUseReviewMode: false,
@@ -542,14 +579,14 @@ describe('SRSContext', () => {
         expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
         expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
         expect(mockShowToast).toHaveBeenCalledWith(
-            'Session expired. Please sign in again to save this answer.',
+            'Session expired. This answer will retry after you sign in again.',
             'warning'
         );
 
-        expect(JSON.parse(String(sessionStorage.getItem('fintechterms_pending_review')))).toMatchObject({
+        expect(JSON.parse(String(localStorage.getItem(pendingReviewQueueKey())))).toMatchObject([{
             reviewId: 'review-1',
             idempotencyKey: 'review-key-1',
-        });
+        }]);
 
         unmount();
 
@@ -587,16 +624,17 @@ describe('SRSContext', () => {
             id: 'review-key-1',
             term_id: 'term-1',
         });
-        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
+        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answers…', 'info');
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
-        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+        expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
     });
 
     it('drops a due card when another tab broadcasts a committed review through storage sync', async () => {
         authState = {
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
                 canUseMistakeReview: true,
                 canUseReviewMode: true,
@@ -665,13 +703,14 @@ describe('SRSContext', () => {
     });
 
     it('replays a pending review immediately on mount when the user is already authenticated', async () => {
-        sessionStorage.setItem('fintechterms_pending_review', JSON.stringify({
+        localStorage.setItem(pendingReviewQueueKey(), JSON.stringify([{
             reviewId: 'review-1',
             termId: 'term-1',
             isCorrect: true,
             responseTimeMs: 0,
             idempotencyKey: 'review-key-1',
-        }));
+            queuedAt: Date.now(),
+        }]));
         mockSaveQuizAttemptToSupabase.mockResolvedValue({
             status: 'ok',
             data: recordQuizResult,
@@ -691,12 +730,12 @@ describe('SRSContext', () => {
             id: 'review-key-1',
             response_time_ms: 0,
         });
-        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answer…', 'info');
+        expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answers…', 'info');
 
         await waitFor(() => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
         });
-        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+        expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
     });
 
     it('queues a retryable review without mutating canonical local study state', async () => {
@@ -731,10 +770,10 @@ describe('SRSContext', () => {
         expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
         expect(screen.queryByTestId('submit-error')).not.toBeInTheDocument();
         expect(mockShowToast).toHaveBeenCalledWith(
-            'Answer saved locally. It will sync when connection returns.',
+            'This answer was queued for sync on this device.',
             'warning'
         );
-        expect(sessionStorage.getItem('fintechterms_pending_review')).not.toBeNull();
+        expect(localStorage.getItem(pendingReviewQueueKey())).not.toBeNull();
 
         act(() => {
             window.dispatchEvent(new Event('online'));
@@ -747,7 +786,7 @@ describe('SRSContext', () => {
             expect(screen.getByTestId('due-count')).toHaveTextContent('0');
             expect(screen.getByTestId('current-streak')).toHaveTextContent('1');
         });
-        expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+        expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
     });
 
     it('clears a queued review without changing local study state when replay fails non-retryably', async () => {
@@ -774,7 +813,7 @@ describe('SRSContext', () => {
         fireEvent.click(screen.getByRole('button', { name: 'answer' }));
 
         await waitFor(() => {
-            expect(sessionStorage.getItem('fintechterms_pending_review')).not.toBeNull();
+            expect(localStorage.getItem(pendingReviewQueueKey())).not.toBeNull();
         });
 
         act(() => {
@@ -786,7 +825,7 @@ describe('SRSContext', () => {
         });
 
         await waitFor(() => {
-            expect(sessionStorage.getItem('fintechterms_pending_review')).toBeNull();
+            expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
             expect(screen.getByTestId('due-count')).toHaveTextContent('1');
             expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
             expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');

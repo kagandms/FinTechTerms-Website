@@ -10,6 +10,7 @@ export default function Loading() {
                         alt="FinTechTerms Logo"
                         width={120}
                         height={108}
+                        sizes="96px"
                         className="w-24 h-auto object-contain drop-shadow-lg rounded-2xl"
                         priority
                     />

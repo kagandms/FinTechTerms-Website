@@ -73,7 +73,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const favoriteLimitHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
     const favoriteLimitActionLabel = requiresProfileCompletion ? t('profile.edit') : t('auth.login');
     const aiCopy = getAiUiCopy(language);
-    const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
+    const hasFullAiAccess = isAuthenticated && entitlements.canUseAiFeatures;
     const [isAiExplainOpen, setIsAiExplainOpen] = useState(false);
     const [aiExplainStatus, setAiExplainStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
     const [aiExplainError, setAiExplainError] = useState<string | null>(null);

@@ -26,6 +26,12 @@ from telegram.ext import (
     Application,
 )
 from telegram import BotCommand, BotCommandScopeDefault
+from bot.runtime_state import (
+    configure_runtime_state,
+    mark_bot_not_ready,
+    mark_bot_ready,
+    record_bot_heartbeat,
+)
 
 # ── Logging ────────────────────────────────────────────────
 logging.basicConfig(
@@ -97,6 +103,13 @@ async def post_init(application: Application) -> None:
     await application.bot.set_my_commands(commands_en, scope=BotCommandScopeDefault())
     await application.bot.set_my_commands(commands_ru, scope=BotCommandScopeDefault(), language_code="ru")
     await application.bot.set_my_commands(commands_tr, scope=BotCommandScopeDefault(), language_code="tr")
+    record_bot_heartbeat()
+    mark_bot_ready()
+
+
+async def heartbeat_job(_context: object) -> None:
+    """Emit a lightweight heartbeat so the readiness endpoint reflects bot liveness."""
+    record_bot_heartbeat()
 
 
 def main() -> None:
@@ -120,6 +133,11 @@ def main() -> None:
 
         config.validate()
         configure_sentry()
+        configure_runtime_state(
+            sentry_enabled=bool(config.sentry_dsn),
+            redis_rate_limit_enabled=bool(config.redis_url),
+        )
+        mark_bot_not_ready()
     except EnvironmentError as e:
         logger.critical("Configuration error: %s", e)
         sys.exit(1)
@@ -146,6 +164,8 @@ def main() -> None:
 
     # Build application
     app = ApplicationBuilder().token(config.bot_token).post_init(post_init).build()
+    if app.job_queue is not None:
+        app.job_queue.run_repeating(heartbeat_job, interval=30, first=0)
 
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CommandHandler("menu", menu_handler))
@@ -172,10 +192,13 @@ def main() -> None:
         except RuntimeError:
             asyncio.set_event_loop(asyncio.new_event_loop())
 
-        app.run_polling(
-            drop_pending_updates=True,
-            allowed_updates=["message", "callback_query"],
-        )
+        try:
+            app.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
+        finally:
+            mark_bot_not_ready()
     else:
         logger.info("✅ Bot is now running (Polling). Press Ctrl+C to stop.")
 
@@ -184,10 +207,13 @@ def main() -> None:
         except RuntimeError:
             asyncio.set_event_loop(asyncio.new_event_loop())
 
-        app.run_polling(
-            drop_pending_updates=True,
-            allowed_updates=["message", "callback_query"],
-        )
+        try:
+            app.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
+        finally:
+            mark_bot_not_ready()
 
 
 

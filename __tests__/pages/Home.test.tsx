@@ -107,6 +107,7 @@ describe('Home Page (Client)', () => {
         expect(screen.getByText('categories.Fintech')).toBeInTheDocument();
         expect(screen.getByText('categories.Finance')).toBeInTheDocument();
         expect(screen.getByText('categories.Technology')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /categories.Fintech/i })).toHaveAttribute('href', '/search?category=Fintech');
     });
 
     it('renders install CTA surfaces on the home page', () => {

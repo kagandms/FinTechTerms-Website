@@ -16,11 +16,20 @@
 
 Current production mutation model:
 
-- `/api/record-quiz` authenticates the caller server-side, then writes through a service-role RPC
-- `/api/favorites` authenticates the caller server-side and writes through the service-role route path
+- `/api/record-quiz` authenticates the caller server-side, then writes through a request-scoped authenticated RPC (`record_my_study_event`)
+- `/api/favorites` authenticates the caller server-side and writes through a request-scoped authenticated RPC (`toggle_my_favorite`)
 - `/api/study-sessions` writes only through the trusted backend and durable session tokens
+- `/api/profile` authenticates the caller server-side, then updates `profiles` plus auth metadata through a single trusted route boundary
 
 The anon key must never be treated as sufficient authority for user-owned write tables.
+
+## Secret handling
+
+Local secret files such as `.env.local`, `telegram-bot/.env`, and `.vercel/.env*` may exist for developer convenience, but they must be treated as workstation-only material:
+
+- never package them into deploy artifacts or support bundles
+- never rely on them as the production source of truth
+- never share screenshots, archives, or logs that could expose their contents
 
 ## RLS posture
 
@@ -40,7 +49,8 @@ Write-heavy routes use durable or ephemeral idempotency plus rate limiting. Prod
 
 - idempotent replays must resolve before rate-limit rejection for duplicate successful requests
 - rate limits must still apply to genuinely new write attempts
-- service-role mutations must derive user identity from the authenticated request, never from arbitrary body input
+- trusted route mutations must derive user identity from the authenticated request, never from arbitrary body input
+- browser retry queues must only claim durability when the payload is actually persisted in device storage
 
 ## Browser storage
 

@@ -8,6 +8,7 @@ export {};
 
 const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateRequestScopedClient = jest.fn();
+const mockResolveRequestMemberEntitlements = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
 const mockCompleteIdempotentRequest = jest.fn();
@@ -17,6 +18,10 @@ const mockFailIdempotentRequest = jest.fn();
 jest.mock('@/lib/supabaseAdmin', () => ({
     createRequestScopedClient: (request: Request) => mockCreateRequestScopedClient(request),
     resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
+}));
+
+jest.mock('@/lib/server-member-entitlements', () => ({
+    resolveRequestMemberEntitlements: (...args: unknown[]) => mockResolveRequestMemberEntitlements(...args),
 }));
 
 jest.mock('@/lib/api-idempotency', () => ({
@@ -45,6 +50,20 @@ describe('favorites route', () => {
         jest.clearAllMocks();
         apiRouteRateLimiter.reset();
         favoritesMutationRateLimiter.reset();
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: {
+                id: 'user-1',
+                email: 'user@example.com',
+            },
+            entitlements: {
+                maxFavorites: Number.POSITIVE_INFINITY,
+            },
+            unavailable: null,
+        });
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'user@example.com',
+        });
         mockCreateRequestScopedClient.mockResolvedValue({
             rpc: jest.fn(),
             from: jest.fn(),
@@ -57,11 +76,6 @@ describe('favorites route', () => {
     });
 
     it('loads favorites through a request-scoped authenticated client', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
-        });
-
         const order = jest.fn().mockResolvedValue({
             data: [{ term_id: 'term-1' }, { term_id: 'term-2' }],
             error: null,
@@ -86,11 +100,6 @@ describe('favorites route', () => {
     it('replays cached POST responses before touching route or write rate limiters', async () => {
         const routeLimitSpy = jest.spyOn(apiRouteRateLimiter, 'check');
         const writeLimitSpy = jest.spyOn(favoritesMutationRateLimiter, 'check');
-
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
-        });
         mockInspectIdempotentRequest.mockResolvedValue({
             kind: 'replay',
             statusCode: 200,
@@ -126,11 +135,6 @@ describe('favorites route', () => {
     });
 
     it('uses the authoritative favorite mutation RPC for successful writes', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
-        });
-
         const rpc = jest.fn().mockResolvedValue({
             data: {
                 success: true,
@@ -140,7 +144,10 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateRequestScopedClient.mockResolvedValue({
+            rpc,
+            from: jest.fn(),
+        });
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -170,10 +177,6 @@ describe('favorites route', () => {
     });
 
     it('returns 503 when the route rate limiter is unavailable', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
-        });
         jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
             allowed: false,
             remaining: 0,
@@ -207,11 +210,10 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
+        mockCreateRequestScopedClient.mockResolvedValue({
+            rpc,
+            from: jest.fn(),
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -237,11 +239,10 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockResolveAuthenticatedUser.mockResolvedValue({
-            id: 'user-1',
-            email: 'user@example.com',
+        mockCreateRequestScopedClient.mockResolvedValue({
+            rpc,
+            from: jest.fn(),
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
         mockCompleteIdempotentRequest.mockRejectedValueOnce(new Error('idempotency completion failed'));
 
         const { POST } = await import('@/app/api/favorites/route');
@@ -265,5 +266,49 @@ describe('favorites route', () => {
             idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
         }));
         expect(mockFailIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when the server-side favorite limit is exhausted', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: {
+                id: 'user-1',
+                email: 'user@example.com',
+            },
+            entitlements: {
+                maxFavorites: 1,
+            },
+            unavailable: null,
+        });
+
+        const rpc = jest.fn();
+        const eq = jest.fn().mockResolvedValue({
+            data: [{ term_id: 'existing-term' }],
+            error: null,
+        });
+        const select = jest.fn(() => ({ eq }));
+        const from = jest.fn(() => ({ select }));
+        mockCreateRequestScopedClient.mockResolvedValue({ from, rpc });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-2',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(409);
+        expect(body).toMatchObject({
+            code: 'FAVORITES_LIMIT_REACHED',
+            retryable: false,
+        });
+        expect(rpc).not.toHaveBeenCalled();
+        expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'favorite_mutation',
+            statusCode: 409,
+            responseBody: expect.objectContaining({
+                code: 'FAVORITES_LIMIT_REACHED',
+            }),
+        }));
     });
 });

@@ -45,6 +45,11 @@ python -m bot.main
 
 The Telegram bot must use `SUPABASE_ANON_KEY`. Admin scripts and server-side maintenance flows must use `SUPABASE_SERVICE_ROLE_KEY`.
 
+## Runtime validation
+
+- Validate the production runtime contract with `python -m bot.validate_runtime`.
+- When `RENDER=1`, `BOT_SENTRY_DSN` is required in addition to the core bot credentials.
+
 ## Tech Stack
 
 - Python 3.13+

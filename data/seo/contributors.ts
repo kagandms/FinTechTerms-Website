@@ -26,7 +26,7 @@ export const seoContributors: readonly Contributor[] = [
         languages: ['tr', 'en', 'ru'],
         expertise: ['FinTech', 'Payments', 'Market structure', 'Technical SEO', 'Multilingual education'],
         organization: 'FinTechTerms',
-        email: 'kagan.durmus61@mail.ru',
+        email: 'fintechterms@mail.ru',
     },
     {
         id: 'fintechterms-editorial-review',

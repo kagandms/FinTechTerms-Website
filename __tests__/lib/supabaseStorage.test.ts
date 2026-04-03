@@ -177,6 +177,25 @@ describe('supabaseStorage response validation', () => {
         });
     });
 
+    it('classifies favorite limit 409 responses as limit_reached', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 409,
+            json: jest.fn().mockResolvedValue({
+                code: 'FAVORITES_LIMIT_REACHED',
+                message: 'Favorite limit reached. Complete your member setup to save more terms.',
+                retryable: false,
+            }),
+        }) as typeof fetch;
+
+        const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(toggleFavoriteInSupabase('user-1', 'term-1', true)).resolves.toEqual({
+            status: 'limit_reached',
+            message: 'Favorite limit reached. Complete your member setup to save more terms.',
+        });
+    });
+
     it('returns a partial progress result when only the canonical progress row is malformed', async () => {
         const maybeSingle = jest.fn().mockResolvedValue({
             data: {

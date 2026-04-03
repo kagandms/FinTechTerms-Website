@@ -23,7 +23,7 @@ export default function AiChatPanel() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isAiSessionHydrated, setIsAiSessionHydrated] = useState(false);
-    const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
+    const hasFullAiAccess = isAuthenticated && entitlements.canUseAiFeatures;
 
     useEffect(() => {
         setMessages(getAiChatHistory());

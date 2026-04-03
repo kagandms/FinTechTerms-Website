@@ -104,6 +104,7 @@ describe('QuizClient quick quiz counts', () => {
         });
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
                 canUseMistakeReview: true,
                 canUseReviewMode: true,

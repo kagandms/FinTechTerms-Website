@@ -2,13 +2,18 @@
  * @jest-environment node
  */
 
-const mockResolveAuthenticatedUser = jest.fn();
+export {};
+
 const mockCreateRequestScopedClient = jest.fn();
 const mockLoadLearningStatsExportAttempts = jest.fn();
+const mockResolveRequestMemberEntitlements = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
-    resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
     createRequestScopedClient: (...args: unknown[]) => mockCreateRequestScopedClient(...args),
+}));
+
+jest.mock('@/lib/server-member-entitlements', () => ({
+    resolveRequestMemberEntitlements: (...args: unknown[]) => mockResolveRequestMemberEntitlements(...args),
 }));
 
 jest.mock('@/lib/learning-stats', () => ({
@@ -24,10 +29,16 @@ jest.mock('@/lib/learning-stats', () => ({
 describe('analytics export route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: true,
+            },
+            unavailable: null,
+        });
     });
 
     it('returns the authenticated user export payload', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
         mockLoadLearningStatsExportAttempts.mockResolvedValue({
             attempts: [
@@ -65,7 +76,6 @@ describe('analytics export route', () => {
     });
 
     it('forwards cursor and limit parameters to the export loader', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
         mockLoadLearningStatsExportAttempts.mockResolvedValue({
             attempts: [],
@@ -87,7 +97,6 @@ describe('analytics export route', () => {
     });
 
     it('returns 400 when the export cursor is invalid', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
         const { InvalidAnalyticsExportCursorError } = await import('@/lib/learning-stats');
         mockLoadLearningStatsExportAttempts.mockRejectedValue(new InvalidAnalyticsExportCursorError());
@@ -104,7 +113,13 @@ describe('analytics export route', () => {
     });
 
     it('returns unauthorized when there is no authenticated user', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue(null);
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: null,
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            unavailable: null,
+        });
 
         const { GET } = await import('@/app/api/analytics/export/route');
         const response = await GET(new Request('http://localhost:3000/api/analytics/export'));
@@ -118,8 +133,52 @@ describe('analytics export route', () => {
         expect(mockLoadLearningStatsExportAttempts).not.toHaveBeenCalled();
     });
 
+    it('returns member required when advanced analytics are locked', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            unavailable: null,
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export'));
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            code: 'MEMBER_REQUIRED',
+            retryable: false,
+        });
+        expect(mockLoadLearningStatsExportAttempts).not.toHaveBeenCalled();
+    });
+
+    it('returns 503 when member state cannot be resolved', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValue({
+            user: { id: 'user-1' },
+            entitlements: {
+                canUseAdvancedAnalytics: false,
+            },
+            unavailable: {
+                status: 503,
+                code: 'MEMBER_STATE_UNAVAILABLE',
+                message: 'Member state is temporarily unavailable. Please try again.',
+            },
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export'));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'MEMBER_STATE_UNAVAILABLE',
+            retryable: true,
+        });
+    });
+
     it('streams a downloadable export without client-side pagination accumulation', async () => {
-        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user-1' });
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
         mockLoadLearningStatsExportAttempts
             .mockResolvedValueOnce({
@@ -163,11 +222,36 @@ describe('analytics export route', () => {
         });
         expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(1, { supabase: true }, 'user-1', {
             cursor: null,
-            limit: undefined,
+            limit: 500,
         });
         expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(2, { supabase: true }, 'user-1', {
             cursor: 'cursor-2',
             limit: 500,
+        });
+    });
+
+    it('returns 413 when the downloadable export exceeds the bounded maximum', async () => {
+        mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
+        mockLoadLearningStatsExportAttempts.mockResolvedValue({
+            attempts: Array.from({ length: 10_001 }, (_, index) => ({
+                id: `attempt-${index}`,
+                termId: `term-${index}`,
+                createdAt: '2026-03-20T10:00:00.000Z',
+                isCorrect: true,
+                responseTimeMs: 1200,
+                quizType: 'daily',
+            })),
+            nextCursor: null,
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?download=1'));
+        const body = await response.json();
+
+        expect(response.status).toBe(413);
+        expect(body).toMatchObject({
+            code: 'ANALYTICS_EXPORT_TOO_LARGE',
+            retryable: false,
         });
     });
 });

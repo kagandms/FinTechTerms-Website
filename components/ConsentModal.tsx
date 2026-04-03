@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Shield, X, Check } from 'lucide-react';
+import { useAccessibleDialog } from '@/hooks/use-accessible-dialog';
 
 const CONSENT_KEY = 'fintechterms_research_consent';
 export const CONSENT_GRANTED_EVENT = 'consentGranted';
@@ -18,6 +19,7 @@ export default function ConsentModal() {
     const [isOpen, setIsOpen] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const declineButtonRef = useRef<HTMLButtonElement>(null);
 
     // Check if consent was already given
     useEffect(() => {
@@ -96,6 +98,15 @@ export default function ConsentModal() {
             closeTimeoutRef.current = null;
         }, 200);
     };
+    const {
+        dialogRef,
+        titleId,
+        descriptionId,
+    } = useAccessibleDialog({
+        isOpen,
+        onClose: handleDecline,
+        initialFocusRef: declineButtonRef,
+    });
 
     if (!isOpen) return null;
 
@@ -155,10 +166,17 @@ export default function ConsentModal() {
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                 onClick={handleDecline}
+                aria-hidden="true"
             />
 
             {/* Modal */}
             <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                aria-describedby={descriptionId}
+                tabIndex={-1}
                 className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all duration-200 ${isClosing ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'
                     }`}
             >
@@ -168,13 +186,13 @@ export default function ConsentModal() {
                         <div className="p-2 bg-white/20 rounded-xl">
                             <BookOpen className="w-6 h-6" />
                         </div>
-                        <h2 className="text-lg font-bold">{t.title}</h2>
+                        <h2 id={titleId} className="text-lg font-bold">{t.title}</h2>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-5 space-y-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    <p id={descriptionId} className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                         {t.description}
                     </p>
 
@@ -206,6 +224,8 @@ export default function ConsentModal() {
                 {/* Actions */}
                 <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex gap-3">
                     <button
+                        ref={declineButtonRef}
+                        type="button"
                         onClick={handleDecline}
                         className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
@@ -213,6 +233,7 @@ export default function ConsentModal() {
                         {t.decline}
                     </button>
                     <button
+                        type="button"
                         onClick={handleAccept}
                         className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-md"
                     >

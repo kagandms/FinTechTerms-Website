@@ -5,7 +5,6 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { Session, type User as SupabaseUser } from '@supabase/supabase-js';
 import {
     type AuthenticatedUser,
-    getSupabaseUserProviders,
     mapSupabaseUser,
 } from '@/lib/auth/user';
 import {
@@ -177,11 +176,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         supabaseUser: SupabaseUser | null
     ): Promise<boolean> => {
         if (!supabaseUser) {
-            return false;
-        }
-
-        const providers = getSupabaseUserProviders(supabaseUser);
-        if (!providers.includes('google')) {
             return false;
         }
 

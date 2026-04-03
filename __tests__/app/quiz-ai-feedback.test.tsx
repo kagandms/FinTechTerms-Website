@@ -103,6 +103,7 @@ describe('QuizPage AI feedback', () => {
         jest.clearAllMocks();
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
                 canUseMistakeReview: true,
                 canUseReviewMode: true,
@@ -134,6 +135,7 @@ describe('QuizPage AI feedback', () => {
     it('does not submit guest AI feedback requests', async () => {
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: false,
                 canUseAdvancedAnalytics: false,
                 canUseMistakeReview: false,
                 canUseReviewMode: false,

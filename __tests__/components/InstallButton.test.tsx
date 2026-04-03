@@ -3,6 +3,14 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import InstallButton from '@/components/InstallButton';
 
+jest.mock('next/image', () => ({
+    __esModule: true,
+    default: ({ src, alt, ...props }: { src: string; alt: string }) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={alt} {...props} />
+    ),
+}));
+
 jest.mock('@/contexts/LanguageContext', () => ({
     useLanguage: () => ({
         t: (key: string) => ({
@@ -85,6 +93,22 @@ describe('InstallButton', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Install' }));
 
         expect(await screen.findByText('How to Install?')).toBeInTheDocument();
+    });
+
+    it('exposes dialog semantics and closes the manual instructions with Escape', async () => {
+        render(<InstallButton />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+
+        const dialog = await screen.findByRole('dialog', { name: 'How to Install?' });
+        await flushAnimationFrame();
+        expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+
+        await waitFor(() => {
+            expect(dialog).not.toBeInTheDocument();
+        });
     });
 
     it('renders after beforeinstallprompt and invokes the prompt on click', async () => {

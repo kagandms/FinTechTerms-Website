@@ -223,6 +223,9 @@ export const quizMutationRateLimiter = createRateLimiter('quiz-write', 20, 10000
 export const favoritesMutationRateLimiter = createRateLimiter('favorite-write', 10, 10000, '10 s', {
     strictInProduction: true,
 });
+export const profileMutationRateLimiter = createRateLimiter('profile-write', 10, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
 export const studySessionRouteRateLimiter = createRateLimiter('study-session', 30, 60000, '60 s', {
     strictInProduction: true,
 });

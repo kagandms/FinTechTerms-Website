@@ -11,6 +11,7 @@ describe('resolveMemberEntitlements', () => {
         })).toEqual({
             maxFavorites: GUEST_FAVORITE_LIMIT,
             canUseReviewMode: false,
+            canUseAiFeatures: false,
             canUseAdvancedAnalytics: false,
             canUseMistakeReview: false,
             canInstallPwa: true,
@@ -25,6 +26,7 @@ describe('resolveMemberEntitlements', () => {
         })).toEqual({
             maxFavorites: GUEST_FAVORITE_LIMIT,
             canUseReviewMode: false,
+            canUseAiFeatures: false,
             canUseAdvancedAnalytics: false,
             canUseMistakeReview: false,
             canInstallPwa: true,
@@ -39,6 +41,7 @@ describe('resolveMemberEntitlements', () => {
         })).toEqual({
             maxFavorites: Number.POSITIVE_INFINITY,
             canUseReviewMode: true,
+            canUseAiFeatures: true,
             canUseAdvancedAnalytics: true,
             canUseMistakeReview: true,
             canInstallPwa: true,

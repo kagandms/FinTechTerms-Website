@@ -39,6 +39,17 @@ export async function POST(request: Request) {
     try {
         const access = await resolveRequestAiAccess(request);
 
+        if (access.unavailable) {
+            return errorResponse({
+                status: access.unavailable.status,
+                code: access.unavailable.code,
+                message: access.unavailable.message,
+                requestId,
+                retryable: true,
+                headers: RATE_LIMIT_HEADERS,
+            });
+        }
+
         if (access.denial) {
             return errorResponse({
                 status: access.denial.status,

@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Download, Share, PlusSquare, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAccessibleDialog } from '@/hooks/use-accessible-dialog';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -49,6 +51,26 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
     const [hasEvaluatedInstallability, setHasEvaluatedInstallability] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
     const [showManualInstructions, setShowManualInstructions] = useState(false);
+    const closeIosButtonRef = useRef<HTMLButtonElement>(null);
+    const closeManualButtonRef = useRef<HTMLButtonElement>(null);
+    const {
+        dialogRef: iosDialogRef,
+        titleId: iosDialogTitleId,
+        descriptionId: iosDialogDescriptionId,
+    } = useAccessibleDialog({
+        isOpen: showIOSInstructions,
+        onClose: () => setShowIOSInstructions(false),
+        initialFocusRef: closeIosButtonRef,
+    });
+    const {
+        dialogRef: manualDialogRef,
+        titleId: manualDialogTitleId,
+        descriptionId: manualDialogDescriptionId,
+    } = useAccessibleDialog({
+        isOpen: showManualInstructions,
+        onClose: () => setShowManualInstructions(false),
+        initialFocusRef: closeManualButtonRef,
+    });
 
     useEffect(() => {
         let revealFrameId: number | null = null;
@@ -166,6 +188,7 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
     return (
         <>
             <button
+                type="button"
                 onClick={handleInstallClick}
                 className={buttonClassName}
             >
@@ -182,11 +205,22 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
                     <div
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity animate-fade-in"
                         onClick={() => setShowIOSInstructions(false)}
+                        aria-hidden="true"
                     />
 
                     {/* Modal */}
-                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-slide-up sm:animate-scale-in border border-gray-100 dark:border-gray-700">
+                    <div
+                        ref={iosDialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={iosDialogTitleId}
+                        aria-describedby={iosDialogDescriptionId}
+                        tabIndex={-1}
+                        className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-slide-up sm:animate-scale-in border border-gray-100 dark:border-gray-700"
+                    >
                         <button
+                            ref={closeIosButtonRef}
+                            type="button"
                             onClick={() => setShowIOSInstructions(false)}
                             className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                             aria-label={t('shell.close')}
@@ -196,15 +230,21 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
 
                         <div className="flex flex-col items-center text-center gap-4">
                             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center shadow-inner overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src="/ftt.png" alt="App Icon" className="w-12 h-12 rounded-2xl object-cover" />
+                                <Image
+                                    src="/ftt.png"
+                                    alt="App Icon"
+                                    width={48}
+                                    height={48}
+                                    sizes="48px"
+                                    className="w-12 h-12 rounded-2xl object-cover"
+                                />
                             </div>
 
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            <h3 id={iosDialogTitleId} className="text-lg font-bold text-gray-900 dark:text-white">
                                 {t('install.iosTitle')}
                             </h3>
 
-                            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                            <p id={iosDialogDescriptionId} className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                                 {t('install.iosDescription')}
                             </p>
 
@@ -237,9 +277,20 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
                     <div
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto transition-opacity animate-fade-in"
                         onClick={() => setShowManualInstructions(false)}
+                        aria-hidden="true"
                     />
-                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-scale-in border border-gray-100 dark:border-gray-700">
+                    <div
+                        ref={manualDialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={manualDialogTitleId}
+                        aria-describedby={manualDialogDescriptionId}
+                        tabIndex={-1}
+                        className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl pointer-events-auto animate-scale-in border border-gray-100 dark:border-gray-700"
+                    >
                         <button
+                            ref={closeManualButtonRef}
+                            type="button"
                             onClick={() => setShowManualInstructions(false)}
                             className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                             aria-label={t('shell.close')}
@@ -252,11 +303,11 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
                                 <Download className="w-8 h-8 text-primary-600 dark:text-primary-400" />
                             </div>
 
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            <h3 id={manualDialogTitleId} className="text-lg font-bold text-gray-900 dark:text-white">
                                 {t('install.manualTitle')}
                             </h3>
 
-                            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                            <p id={manualDialogDescriptionId} className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                                 {t('install.manualDescription')}
                             </p>
 

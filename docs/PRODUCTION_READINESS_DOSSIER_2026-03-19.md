@@ -3,8 +3,8 @@
 > Historical snapshot.
 > This dossier records the production-readiness position on 2026-03-19.
 > It may reference older command names such as `npm run validate:release-env`.
-> For active operator guidance, prefer [`README.md`](/Users/kagansmtdms/Downloads/Проекты/FinTechTerms-Website/README.md)
-> and [`docs/OPERATIONS.md`](/Users/kagansmtdms/Downloads/Проекты/FinTechTerms-Website/docs/OPERATIONS.md).
+> For active operator guidance, prefer `README.md`
+> and `docs/OPERATIONS.md`.
 
 Tarih: 2026-03-19
 

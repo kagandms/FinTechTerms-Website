@@ -344,6 +344,7 @@ export async function POST(request: Request) {
 
         const { user, hadCredentials } = await resolveRequestAuthState(request);
         const idempotencyScope = buildScopedIdempotencyKey(ip, payload, user?.id ?? null);
+
         const reservation = inspectEphemeralIdempotentRequest({
             scope: idempotencyScope,
             idempotencyKey: payload.idempotency_key,
@@ -403,14 +404,6 @@ export async function POST(request: Request) {
             });
         }
 
-        reserveEphemeralIdempotentRequest({
-            scope: idempotencyScope,
-            idempotencyKey: payload.idempotency_key,
-            payload,
-        });
-        reservedScope = idempotencyScope;
-        reservedIdempotencyKey = payload.idempotency_key;
-
         const supabase = await createRequestScopedClient(request);
         if (!supabase) {
             return errorResponse({
@@ -421,39 +414,48 @@ export async function POST(request: Request) {
                 retryable: true,
             });
         }
+
         if (hadCredentials && !user) {
-            return respondWithCachedError(
-                idempotencyScope,
-                payload.idempotency_key,
-                401,
-                buildCachedApiError(requestId, 'UNAUTHORIZED', AUTH_REQUIRED_MESSAGE, false)
-            );
+            return errorResponse({
+                status: 401,
+                code: 'UNAUTHORIZED',
+                message: AUTH_REQUIRED_MESSAGE,
+                requestId,
+                retryable: false,
+            });
         }
 
         if (payload.action === 'start') {
             if (!user && !payload.anonymousId) {
-                return respondWithCachedError(
-                    idempotencyScope,
-                    payload.idempotency_key,
-                    401,
-                    buildCachedApiError(requestId, 'UNAUTHORIZED', AUTH_REQUIRED_MESSAGE, false)
-                );
+                return errorResponse({
+                    status: 401,
+                    code: 'UNAUTHORIZED',
+                    message: AUTH_REQUIRED_MESSAGE,
+                    requestId,
+                    retryable: false,
+                });
             }
 
             if (user && payload.previous_session_id && !payload.previous_session_token) {
-                return respondWithCachedError(
-                    idempotencyScope,
-                    payload.idempotency_key,
-                    400,
-                    buildCachedApiError(
-                        requestId,
-                        'INVALID_STUDY_SESSION_PAYLOAD',
-                        'previous_session_token is required when previous_session_id is provided.',
-                        false
-                    )
-                );
+                return errorResponse({
+                    status: 400,
+                    code: 'INVALID_STUDY_SESSION_PAYLOAD',
+                    message: 'previous_session_token is required when previous_session_id is provided.',
+                    requestId,
+                    retryable: false,
+                });
             }
+        }
 
+        reserveEphemeralIdempotentRequest({
+            scope: idempotencyScope,
+            idempotencyKey: payload.idempotency_key,
+            payload,
+        });
+        reservedScope = idempotencyScope;
+        reservedIdempotencyKey = payload.idempotency_key;
+
+        if (payload.action === 'start') {
             try {
                 const responseBody = await startStudySession(supabase, payload);
 

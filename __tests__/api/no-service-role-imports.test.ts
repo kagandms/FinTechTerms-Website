@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROUTES = [
+    'app/api/profile/route.ts',
     'app/api/favorites/route.ts',
     'app/api/record-quiz/route.ts',
     'app/api/study-sessions/route.ts',

@@ -51,6 +51,11 @@ interface OrderedFatiguePoint {
     incorrect: number;
 }
 
+interface AccuracyBin {
+    range: string;
+    count: number;
+}
+
 export const buildLearningCurveData = (records: LearningCurveRecord[]) => {
     const grouped: Record<string, GroupedLearningPoint> = {};
     records.forEach(item => {
@@ -78,8 +83,12 @@ export const buildFatigueChartData = (records: FatigueRecord[]) => {
         }
 
         const day = item.created_at.split('T')[0] ?? item.created_at;
-        const userKey = item.user_id || 'anonymous';
-        const sessionKey = item.session_id || `${userKey}:${day}`;
+        const sessionKey = item.session_id
+            || (item.user_id ? `${item.user_id}:${day}` : null);
+
+        if (!sessionKey) {
+            return;
+        }
 
         if (!sessions[sessionKey]) sessions[sessionKey] = [];
         sessions[sessionKey].push(item);
@@ -104,6 +113,60 @@ export const buildFatigueChartData = (records: FatigueRecord[]) => {
         order: point.order,
         errorRate: (point.incorrect / point.total) * 100
     }));
+};
+
+export const buildDistributionChartData = (records: DistributionRecord[]): AccuracyBin[] => {
+    if (!records.length) return [];
+
+    const attemptsByUser: Record<string, { total: number; correct: number }> = {};
+    records.forEach((attempt) => {
+        if (!attempt.user_id) {
+            return;
+        }
+
+        const userKey = attempt.user_id;
+        if (!attemptsByUser[userKey]) {
+            attemptsByUser[userKey] = { total: 0, correct: 0 };
+        }
+
+        attemptsByUser[userKey].total += 1;
+        if (attempt.is_correct) {
+            attemptsByUser[userKey].correct += 1;
+        }
+    });
+
+    const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats) => (
+        userStats.total > 0
+            ? (userStats.correct / userStats.total) * 100
+            : 0
+    ));
+
+    const bins: Record<number, number> = {};
+    for (let i = 0; i < 100; i += 5) bins[i] = 0;
+    bins[100] = 0;
+
+    studentAccuracies.forEach((accuracy) => {
+        if (accuracy === 100) {
+            bins[100] = (bins[100] || 0) + 1;
+            return;
+        }
+
+        const bin = Math.floor(accuracy / 5) * 5;
+        bins[bin] = (bins[bin] || 0) + 1;
+    });
+
+    return Object.entries(bins).map(([binKey, count]) => {
+        const numericBin = Number.parseInt(binKey, 10);
+
+        if (numericBin === 100) {
+            return { range: '100%', count };
+        }
+
+        return {
+            range: `${numericBin}-${numericBin + 5}%`,
+            count,
+        };
+    });
 };
 
 interface Props {
@@ -145,51 +208,10 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     const fatigueChart = useMemo(() => buildFatigueChartData(fatigueRaw.data), [fatigueRaw.data]);
 
     // 4. Process Class Distribution (Accuracy per user)
-    const distributionChart = useMemo(() => {
-        if (!distributionRaw.data.length) return [];
-
-        const attemptsByUser: Record<string, { total: number; correct: number }> = {};
-        distributionRaw.data.forEach((attempt) => {
-            const userKey = attempt.user_id || 'anonymous';
-            if (!attemptsByUser[userKey]) {
-                attemptsByUser[userKey] = { total: 0, correct: 0 };
-            }
-
-            attemptsByUser[userKey].total += 1;
-            if (attempt.is_correct) {
-                attemptsByUser[userKey].correct += 1;
-            }
-        });
-
-        const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats) => (
-            userStats.total > 0
-                ? (userStats.correct / userStats.total) * 100
-                : 0
-        ));
-
-        // Binning for Bell Curve (5% intervals)
-        const bins: Record<number, number> = {};
-        for (let i = 0; i < 100; i += 5) bins[i] = 0;
-        bins[100] = 0; // Separate bin for perfect scores
-
-        studentAccuracies.forEach(acc => {
-            if (acc === 100) {
-                bins[100] = (bins[100] || 0) + 1;
-            } else {
-                const bin = Math.floor(acc / 5) * 5;
-                bins[bin] = (bins[bin] || 0) + 1;
-            }
-        });
-
-        return Object.entries(bins).map(([binKey, count]) => {
-            const b = Number.parseInt(binKey, 10);
-            if (b === 100) return { range: '100%', count };
-            return {
-                range: `${b}-${b + 5}%`,
-                count,
-            };
-        });
-    }, [distributionRaw.data]);
+    const distributionChart = useMemo(
+        () => buildDistributionChartData(distributionRaw.data),
+        [distributionRaw.data]
+    );
 
     const handleLogout = async () => {
         const result = await logout();

@@ -24,6 +24,7 @@ jest.mock('@/contexts/SRSContext', () => ({
 jest.mock('@/contexts/AuthContext', () => ({
     useAuth: () => ({
         entitlements: {
+            canUseAiFeatures: false,
             canUseAdvancedAnalytics: false,
         },
         isAuthenticated: false,

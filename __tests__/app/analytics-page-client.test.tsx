@@ -77,6 +77,7 @@ describe('AnalyticsPageClient', () => {
         });
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
             },
             isAuthenticated: true,
@@ -239,6 +240,7 @@ describe('AnalyticsPageClient', () => {
     it('shows the teaser analytics surface when advanced analytics are locked', () => {
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: false,
                 canUseAdvancedAnalytics: false,
             },
             isAuthenticated: false,

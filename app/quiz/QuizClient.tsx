@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +23,6 @@ import ValueHintList from '@/components/membership/ValueHintList';
 import { formatTranslation } from '@/lib/i18n';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
-const QUIZ_SUBMISSION_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
 const PRACTICE_MODE_CARD_CLASS = 'rounded-2xl p-4 text-white shadow-lg min-h-[220px] flex flex-col';
 const PRACTICE_MODE_BUTTON_CLASS = 'mt-auto w-full rounded-xl bg-white py-2.5 text-sm font-semibold transition-colors hover:bg-gray-100';
 
@@ -35,24 +34,6 @@ interface PausedWrongAnswerState {
     termId: string;
     selectedWrongLabel: string | null;
 }
-
-const withQuizSubmissionTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
-    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
-
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-        timeoutId = globalThis.setTimeout(() => {
-            reject(new Error(QUIZ_SUBMISSION_TIMEOUT_MESSAGE));
-        }, QUIZ_SUBMISSION_TIMEOUT_MS);
-    });
-
-    try {
-        return await Promise.race([promise, timeoutPromise]);
-    } finally {
-        if (timeoutId !== undefined) {
-            globalThis.clearTimeout(timeoutId);
-        }
-    }
-};
 
 const stateMessages = {
     tr: {
@@ -168,12 +149,14 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [useOnlyFavorites, setUseOnlyFavorites] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
+    const [isSubmissionSlow, setIsSubmissionSlow] = useState(false);
     const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
     const [pausedWrongAnswer, setPausedWrongAnswer] = useState<PausedWrongAnswerState | null>(null);
     const [quizFeedback, setQuizFeedback] = useState<AiQuizFeedback | null>(null);
     const [quizFeedbackStatus, setQuizFeedbackStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
     const [quizFeedbackError, setQuizFeedbackError] = useState<string | null>(null);
+    const submissionSlowTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
     const [hasStartedNormalQuiz, setHasStartedNormalQuiz] = useState(false);
@@ -237,7 +220,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         ? buildMultipleChoiceQuestion(currentTerm, quickQuizSessionPool, terms, language)
         : null;
     const reviewUnlockHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
-    const hasFullAiAccess = isAuthenticated && entitlements.canUseAdvancedAnalytics;
+    const hasFullAiAccess = isAuthenticated && entitlements.canUseAiFeatures;
     const membershipHintItems = [
         t('membership.items.srs'),
         t('membership.items.aiFeedback'),
@@ -331,18 +314,24 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
         setIsPending(true);
         setSubmissionError(null);
+        setIsSubmissionSlow(false);
+
+        if (submissionSlowTimerRef.current) {
+            globalThis.clearTimeout(submissionSlowTimerRef.current);
+        }
+        submissionSlowTimerRef.current = globalThis.setTimeout(() => {
+            setIsSubmissionSlow(true);
+        }, QUIZ_SUBMISSION_TIMEOUT_MS);
 
         try {
             // Submit to SRS system (only for actual favorites, not quick quiz)
             if (!isQuickQuiz) {
-                await withQuizSubmissionTimeout(
-                    submitQuizAnswer(
-                        currentTerm.id,
-                        isCorrect,
-                        responseTimeMs,
-                        currentReviewId ?? createIdempotencyKey(),
-                        isMistakeReview ? 'review' : 'daily'
-                    )
+                await submitQuizAnswer(
+                    currentTerm.id,
+                    isCorrect,
+                    responseTimeMs,
+                    currentReviewId ?? createIdempotencyKey(),
+                    isMistakeReview ? 'review' : 'daily'
                 );
                 incrementQuizAttempt();
                 setShowSavedIndicator(true);
@@ -400,9 +389,20 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         } catch (error) {
             setSubmissionError(error instanceof Error ? error.message : stateCopy.slowLoadingDescription);
         } finally {
+            if (submissionSlowTimerRef.current) {
+                globalThis.clearTimeout(submissionSlowTimerRef.current);
+                submissionSlowTimerRef.current = null;
+            }
+            setIsSubmissionSlow(false);
             setIsPending(false);
         }
     };
+
+    useEffect(() => () => {
+        if (submissionSlowTimerRef.current) {
+            globalThis.clearTimeout(submissionSlowTimerRef.current);
+        }
+    }, []);
 
     const continueAfterWrongAnswer = () => {
         setPausedWrongAnswer(null);
@@ -429,6 +429,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setQuizPresentationMode('flashcard');
         setUseOnlyFavorites(false);
         setSubmissionError(null);
+        setIsSubmissionSlow(false);
         setCurrentReviewId(null);
         setShowSavedIndicator(false);
         setPausedWrongAnswer(null);
@@ -1119,6 +1120,16 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         tone="error"
                         title={stateCopy.slowLoadingTitle}
                         description={submissionError}
+                    />
+                </div>
+            ) : null}
+
+            {!submissionError && isSubmissionSlow ? (
+                <div className="mb-4">
+                    <DataStateCard
+                        tone="warning"
+                        title={stateCopy.slowLoadingTitle}
+                        description={stateCopy.slowLoadingDescription}
                     />
                 </div>
             ) : null}

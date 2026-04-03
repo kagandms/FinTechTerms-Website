@@ -1,4 +1,8 @@
-import { buildFatigueChartData, buildLearningCurveData } from '@/components/DashboardClient';
+import {
+    buildDistributionChartData,
+    buildFatigueChartData,
+    buildLearningCurveData,
+} from '@/components/DashboardClient';
 
 describe('DashboardClient analytics transforms', () => {
     it('preserves real calendar dates in the learning curve output', () => {
@@ -39,5 +43,40 @@ describe('DashboardClient analytics transforms', () => {
             { order: 1, errorRate: 50 },
             { order: 2, errorRate: 100 },
         ]);
+    });
+
+    it('excludes records with neither session_id nor user_id from the fatigue chart', () => {
+        const result = buildFatigueChartData([
+            {
+                session_id: null,
+                user_id: null,
+                is_correct: false,
+                created_at: '2026-03-01T10:00:00.000Z',
+            },
+        ]);
+
+        expect(result).toEqual([]);
+    });
+
+    it('excludes anonymous records from the per-user distribution chart', () => {
+        const result = buildDistributionChartData([
+            {
+                user_id: null,
+                is_correct: true,
+            },
+            {
+                user_id: 'user-1',
+                is_correct: true,
+            },
+            {
+                user_id: 'user-1',
+                is_correct: false,
+            },
+        ]);
+
+        expect(result.find((entry) => entry.range === '50-55%')).toMatchObject({
+            count: 1,
+        });
+        expect(result.reduce((sum, entry) => sum + entry.count, 0)).toBe(1);
     });
 });

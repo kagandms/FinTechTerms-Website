@@ -75,6 +75,41 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
             ? pickInitialTerms(displayTerms)
             : pickInitialTerms(shuffleTerms(displayTerms))
     ), [displayTerms]);
+    const categoryCounts = React.useMemo<Record<string, number>>(() => {
+        const counts = {
+            Fintech: 0,
+            Finance: 0,
+            Technology: 0,
+        };
+
+        for (const term of displayTerms) {
+            if (term.category in counts) {
+                counts[term.category as keyof typeof counts] += 1;
+            }
+        }
+
+        return counts;
+    }, [displayTerms]);
+    const categoryPreviewCards = React.useMemo(() => ([
+        {
+            key: 'Fintech',
+            color: 'from-violet-500 to-purple-600',
+            icon: '💳',
+            href: '/search?category=Fintech',
+        },
+        {
+            key: 'Finance',
+            color: 'from-emerald-400 to-green-600',
+            icon: '💰',
+            href: '/search?category=Finance',
+        },
+        {
+            key: 'Technology',
+            color: 'from-slate-700 to-black',
+            icon: '💻',
+            href: '/search?category=Technology',
+        },
+    ]), []);
 
     // Toggle theme quickly
     const toggleTheme = () => {
@@ -111,6 +146,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                     alt="FinTechTerms Logo"
                     height={90}
                     width={100}
+                    sizes="96px"
                     className="w-24 h-auto object-contain drop-shadow-lg rounded-2xl"
                     priority
                 />
@@ -124,7 +160,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                 </div>
 
                 {/* Actions Row */}
-                <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                     <a
                         href="https://t.me/FinTechTermsBot"
                         target="_blank"
@@ -162,6 +198,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                                 alt="FinTechTerms Logo"
                                 width={144}
                                 height={132}
+                                sizes="144px"
                                 className="w-36 h-auto object-contain shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-3xl"
                                 priority
                             />
@@ -297,23 +334,20 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                     {t('home.categories')}
                 </h2>
 
-                <div className="grid grid-cols-3 gap-3">
-                    {[
-                        { key: 'Fintech', color: 'from-violet-500 to-purple-600', icon: '💳' },
-                        { key: 'Finance', color: 'from-emerald-400 to-green-600', icon: '💰' },
-                        { key: 'Technology', color: 'from-slate-700 to-black', icon: '💻' },
-                    ].map((cat) => {
-                        const count = terms.filter(t => t.category === cat.key).length;
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {categoryPreviewCards.map((cat, index) => {
+                        const count = categoryCounts[cat.key] ?? 0;
                         return (
-                            <div
+                            <Link
                                 key={cat.key}
-                                className={`relative overflow-hidden rounded-xl p-4 bg-gradient-to-br ${cat.color} text-white shadow-md hover-lift cursor-pointer`}
+                                href={cat.href}
+                                className={`relative overflow-hidden rounded-xl p-4 bg-gradient-to-br ${cat.color} text-white shadow-md hover-lift transition-transform ${index === categoryPreviewCards.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}
                             >
                                 <span className="text-3xl mb-2 block">{cat.icon}</span>
                                 <p className="text-xs font-medium opacity-90">{t(`categories.${cat.key}`)}</p>
                                 <p className="text-lg font-bold">{count}</p>
                                 <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-white/10 rounded-full" />
-                            </div>
+                            </Link>
                         );
                     })}
                 </div>

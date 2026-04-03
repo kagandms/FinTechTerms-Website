@@ -20,6 +20,7 @@ interface FavoriteToggleResponse {
 export type FavoriteToggleMutationResult =
     | { status: 'ok'; data: FavoriteToggleResponse }
     | { status: 'auth_expired'; message: string }
+    | { status: 'limit_reached'; message: string }
     | { status: 'retryable'; message: string }
     | { status: 'non_retryable'; message: string };
 
@@ -253,9 +254,12 @@ const readApiError = async (response: Response, fallbackMessage: string): Promis
 const readApiFailure = async (
     response: Response,
     fallbackMessage: string
-): Promise<{ message: string; retryable: boolean }> => {
+): Promise<{ code: string | null; message: string; retryable: boolean }> => {
     try {
         const payload = await response.json();
+        const code = typeof payload?.code === 'string'
+            ? payload.code
+            : null;
         const message = typeof payload?.message === 'string'
             ? payload.message
             : (
@@ -275,11 +279,13 @@ const readApiFailure = async (
             : response.status >= 500 || response.status === 429;
 
         return {
+            code,
             message,
             retryable,
         };
     } catch {
         return {
+            code: null,
             message: fallbackMessage,
             retryable: response.status >= 500 || response.status === 429,
         };
@@ -685,10 +691,17 @@ export async function toggleFavoriteInSupabase(
         }
 
         if (!response.ok) {
-            const { message, retryable } = await readApiFailure(
+            const { code, message, retryable } = await readApiFailure(
                 response,
                 'Failed to toggle favorite.'
             );
+
+            if (code === 'FAVORITES_LIMIT_REACHED') {
+                return {
+                    status: 'limit_reached',
+                    message,
+                };
+            }
 
             if (retryable) {
                 return {

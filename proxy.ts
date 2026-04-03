@@ -6,6 +6,7 @@ import { getPublicEnv } from '@/lib/env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
 import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 
+// Intentionally empty: authenticated surfaces enforce access per page/API boundary, not here.
 const PROTECTED_PATHS: string[] = [];
 
 const isProtectedPath = (pathname: string): boolean => (

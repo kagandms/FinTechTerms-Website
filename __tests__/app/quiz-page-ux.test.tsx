@@ -12,6 +12,7 @@ type MockStatus = 'ready' | 'loading' | 'degraded' | 'error';
 
 interface MockAuthState {
     entitlements: {
+        canUseAiFeatures: boolean;
         canUseAdvancedAnalytics: boolean;
         canUseMistakeReview: boolean;
         canUseReviewMode: boolean;
@@ -60,6 +61,7 @@ interface MockSrsState {
 
 const mockAuthState: MockAuthState = {
     entitlements: {
+        canUseAiFeatures: false,
         canUseAdvancedAnalytics: false,
         canUseMistakeReview: false,
         canUseReviewMode: false,
@@ -138,6 +140,7 @@ jest.mock('next/link', () => ({
 describe('QuizPage UX', () => {
     beforeEach(() => {
         mockAuthState.entitlements = {
+            canUseAiFeatures: false,
             canUseAdvancedAnalytics: false,
             canUseMistakeReview: false,
             canUseReviewMode: false,
@@ -178,6 +181,7 @@ describe('QuizPage UX', () => {
 
     it('shows Mistake Review when the persisted mistake queue contains quick quiz misses', () => {
         mockAuthState.entitlements = {
+            canUseAiFeatures: true,
             canUseAdvancedAnalytics: true,
             canUseMistakeReview: true,
             canUseReviewMode: true,

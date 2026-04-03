@@ -9,10 +9,41 @@ import {
     InvalidAnalyticsExportCursorError,
     loadLearningStatsExportAttempts,
 } from '@/lib/learning-stats';
-import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import { createRequestScopedClient } from '@/lib/supabaseAdmin';
+import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
 
 const EXPORT_PAGE_SIZE = 500;
-const encoder = new TextEncoder();
+const MAX_EXPORT_ATTEMPTS = 10_000;
+
+const loadDownloadAttempts = async (
+    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    userId: string
+): Promise<{ attempts: Awaited<ReturnType<typeof loadLearningStatsExportAttempts>>['attempts']; tooLarge: boolean }> => {
+    let cursor: string | null = null;
+    const attempts: Awaited<ReturnType<typeof loadLearningStatsExportAttempts>>['attempts'] = [];
+
+    do {
+        const page = await loadLearningStatsExportAttempts(supabase, userId, {
+            cursor,
+            limit: EXPORT_PAGE_SIZE,
+        });
+        attempts.push(...page.attempts);
+
+        if (attempts.length > MAX_EXPORT_ATTEMPTS) {
+            return {
+                attempts: attempts.slice(0, MAX_EXPORT_ATTEMPTS),
+                tooLarge: true,
+            };
+        }
+
+        cursor = page.nextCursor;
+    } while (cursor);
+
+    return {
+        attempts,
+        tooLarge: false,
+    };
+};
 
 /**
  * Export the authenticated user's full quiz attempt history for analytics.
@@ -35,12 +66,34 @@ export async function GET(request: Request) {
     })();
 
     try {
-        const user = await resolveAuthenticatedUser(request);
+        const memberState = await resolveRequestMemberEntitlements(request);
+        const user = memberState.user;
+
+        if (memberState.unavailable) {
+            return errorResponse({
+                status: memberState.unavailable.status,
+                code: memberState.unavailable.code,
+                message: memberState.unavailable.message,
+                requestId,
+                retryable: true,
+            });
+        }
+
         if (!user) {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',
                 message: AUTH_REQUIRED_MESSAGE,
+                requestId,
+                retryable: false,
+            });
+        }
+
+        if (!memberState.entitlements.canUseAdvancedAnalytics) {
+            return errorResponse({
+                status: 403,
+                code: 'MEMBER_REQUIRED',
+                message: 'Complete your member setup to unlock analytics export.',
                 requestId,
                 retryable: false,
             });
@@ -57,54 +110,24 @@ export async function GET(request: Request) {
             });
         }
 
-        const { attempts, nextCursor } = await loadLearningStatsExportAttempts(supabase, user.id, {
-            cursor,
-            limit,
-        });
-
         if (shouldDownload) {
             const exportedAt = new Date().toISOString();
-            const firstPage = { attempts, nextCursor };
+            const { attempts, tooLarge } = await loadDownloadAttempts(supabase, user.id);
 
-            const stream = new ReadableStream<Uint8Array>({
-                async start(controller) {
-                    let hasWrittenAttempt = false;
-                    let pageCursor = firstPage.nextCursor;
+            if (tooLarge) {
+                return errorResponse({
+                    status: 413,
+                    code: 'ANALYTICS_EXPORT_TOO_LARGE',
+                    message: 'Analytics export exceeds the maximum download size. Use the paginated export endpoint instead.',
+                    requestId,
+                    retryable: false,
+                });
+            }
 
-                    const writeAttempts = (nextAttempts: typeof attempts) => {
-                        for (const attempt of nextAttempts) {
-                            const serializedAttempt = JSON.stringify(attempt);
-                            controller.enqueue(encoder.encode(
-                                hasWrittenAttempt
-                                    ? `,${serializedAttempt}`
-                                    : serializedAttempt
-                            ));
-                            hasWrittenAttempt = true;
-                        }
-                    };
-
-                    try {
-                        controller.enqueue(encoder.encode(`{"exportedAt":"${exportedAt}","attempts":[`));
-                        writeAttempts(firstPage.attempts);
-
-                        while (pageCursor) {
-                            const page = await loadLearningStatsExportAttempts(supabase, user.id, {
-                                cursor: pageCursor,
-                                limit: EXPORT_PAGE_SIZE,
-                            });
-                            writeAttempts(page.attempts);
-                            pageCursor = page.nextCursor;
-                        }
-
-                        controller.enqueue(encoder.encode(']}'));
-                        controller.close();
-                    } catch (error) {
-                        controller.error(error);
-                    }
-                },
-            });
-
-            return new Response(stream, {
+            return new Response(JSON.stringify({
+                exportedAt,
+                attempts,
+            }), {
                 status: 200,
                 headers: {
                     'Cache-Control': 'no-store',
@@ -114,6 +137,11 @@ export async function GET(request: Request) {
                 },
             });
         }
+
+        const { attempts, nextCursor } = await loadLearningStatsExportAttempts(supabase, user.id, {
+            cursor,
+            limit,
+        });
 
         return successResponse({
             exportedAt: new Date().toISOString(),

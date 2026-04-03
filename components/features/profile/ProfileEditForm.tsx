@@ -38,6 +38,11 @@ interface ProfileFormDefaults extends ProfileFormValues {
     email: string | null;
 }
 
+interface ProfileUpdateResponse {
+    status?: 'ok' | 'partial_metadata_sync';
+    message?: string;
+}
+
 const buildProfileFormDefaults = (
     initialData?: ProfileFormInitialData | null
 ): ProfileFormDefaults => ({
@@ -431,6 +436,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         return userResultData.user;
     };
 
+    const buildProfileUpdateHeaders = async (): Promise<Record<string, string>> => {
+        const {
+            data: { session },
+        } = await supabase.auth.getSession();
+
+        return {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        };
+    };
+
     const runTimedAction = async (
         action: 'profile' | 'password',
         operation: (
@@ -494,43 +510,37 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
         const formValues = getValues();
 
-        await runTimedAction('profile', async (withTimeout, timeoutSignal) => {
-            const authUser = await loadAuthenticatedUser(withTimeout);
+        await runTimedAction('profile', async (_withTimeout, timeoutSignal) => {
             const fullName = `${formValues.name.trim()} ${formValues.surname.trim()}`.trim();
             const normalizedBirthDate = toDateInputValue(formValues.birthDate);
-            let hasProfileSyncWarning = false;
 
-            const { error: profileError } = await withTimeout(async () => await supabase
-                .from('profiles')
-                .upsert(
-                    {
-                        id: authUser.id,
-                        full_name: fullName,
-                        birth_date: normalizedBirthDate || null,
-                    },
-                    {
-                        onConflict: 'id',
-                    }
-                )
-                .abortSignal(timeoutSignal));
+            const response = await fetch('/api/profile', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: await buildProfileUpdateHeaders(),
+                body: JSON.stringify({
+                    fullName,
+                    birthDate: normalizedBirthDate || null,
+                }),
+                signal: timeoutSignal,
+            });
 
-            if (profileError) {
-                throw profileError;
+            let responseBody: ProfileUpdateResponse | null = null;
+            try {
+                responseBody = await response.json() as ProfileUpdateResponse;
+            } catch {
+                responseBody = null;
             }
 
-            const { error: metadataError } = await withTimeout(() => supabase.auth.updateUser({
-                data: { name: fullName, full_name: fullName, birth_date: normalizedBirthDate || null },
-            }));
-
-            if (metadataError) {
-                logger.warn('PROFILE_FORM_METADATA_SYNC_WARNING', {
-                    route: 'ProfileEditForm',
-                    error: metadataError ?? undefined,
-                });
-                hasProfileSyncWarning = true;
+            if (response.status === 401) {
+                throw new Error(dict.authRequired);
             }
 
-            if (hasProfileSyncWarning) {
+            if (!response.ok) {
+                throw new Error(responseBody?.message || dict.unknownError);
+            }
+
+            if (responseBody?.status === 'partial_metadata_sync') {
                 setFormWarning(dict.profilePartiallyUpdated);
                 showToastAfterRefresh(dict.profilePartiallyUpdated, 'warning');
             } else {

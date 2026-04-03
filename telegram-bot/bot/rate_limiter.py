@@ -26,6 +26,17 @@ _redis_client: Optional['aioredis.Redis'] = None
 # Fallback memory cache if Redis is not available
 _MEMORY_CACHE: dict[int, float] = {}
 
+
+def _cleanup_memory_cache(now: float) -> None:
+    expired_user_ids = [
+        user_id
+        for user_id, last_request_at in _MEMORY_CACHE.items()
+        if now - last_request_at >= RATE_LIMIT_SECONDS
+    ]
+
+    for user_id in expired_user_ids:
+        _MEMORY_CACHE.pop(user_id, None)
+
 def get_redis() -> Optional['aioredis.Redis']:
     """Lazy-initialize Redis connection pool."""
     global _redis_client
@@ -61,6 +72,7 @@ async def is_rate_limited(user_id: int) -> bool:
     
     # ── Fallback Memory Cache ──
     now = time.time()
+    _cleanup_memory_cache(now)
     last_req = _MEMORY_CACHE.get(user_id, 0)
     if now - last_req < RATE_LIMIT_SECONDS:
         return True

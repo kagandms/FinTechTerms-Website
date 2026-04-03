@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
 import { AuthMode } from '@/hooks/useAuthLogic';
 import { AuthActionResult, AuthFormState } from './types';
@@ -6,6 +6,7 @@ import { Language } from '@/types';
 import { OTPVerification } from './OTPVerification';
 import { UpdatePasswordForm } from './UpdatePasswordForm';
 import { AuthForm } from './AuthForm';
+import { useAccessibleDialog } from '@/hooks/use-accessible-dialog';
 
 interface AuthModalRouter {
     push: (href: string) => void;
@@ -60,6 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
         t, language, authMode, authForm, setAuthForm, authError, setAuthError, authLoading,
         pendingVerificationEmail, cancelVerification, onClose, showToast, router
     } = props;
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
 
     /**
      * Unified close handler — clears both modal visibility AND
@@ -91,25 +93,49 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
             'success'
         );
     }, [cancelVerification, onClose, pendingVerificationEmail, router, setAuthError, showToast, t]);
+    const {
+        dialogRef,
+        titleId,
+    } = useAccessibleDialog({
+        isOpen: props.isOpen,
+        onClose: handleModalClose,
+        initialFocusRef: closeButtonRef,
+    });
 
     if (!props.isOpen) return null;
 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
             data-testid="auth-modal"
+            onClick={handleModalClose}
         >
-            <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-100">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
+                className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-100"
+                onClick={(event) => event.stopPropagation()}
+            >
                 {/* Close (X) Button — always visible, always works */}
                 <button
+                    ref={closeButtonRef}
+                    type="button"
                     onClick={handleModalClose}
                     className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors z-10"
                     aria-label={t('shell.close')}
                 >
                     <X className="w-5 h-5" />
                 </button>
+                <h2 id={titleId} className="sr-only">
+                    {pendingVerificationEmail
+                        ? t('auth.checkEmail')
+                        : authMode === 'update-password'
+                        ? t('auth.resetPassword')
+                        : t(authMode === 'login' ? 'auth.login' : 'auth.register')}
+                </h2>
 
                 {props.pendingVerificationEmail ? (
                     <OTPVerification

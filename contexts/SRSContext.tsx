@@ -39,9 +39,12 @@ import {
     createSafeProgress,
     getErrorMessage,
     hasCachedStudyData,
-    isPendingReview,
+    readPendingReviewQueueFromStorage,
+    removePendingReviewQueueEntry,
+    upsertPendingReviewQueueEntry,
     mergeUserProgressSnapshot,
     type PendingReview,
+    type QueuedPendingReview,
 } from '@/contexts/srs-context-helpers';
 
 type AsyncDataStatus = 'loading' | 'ready' | 'degraded' | 'error';
@@ -89,8 +92,8 @@ const SRSContext = createContext<SRSContextType | undefined>(undefined);
 
 const SRS_SYNC_CHANNEL = 'srs_sync';
 const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
-const PENDING_REVIEW_STORAGE_KEY = 'fintechterms_pending_review';
-const PENDING_REVIEW_SYNC_MESSAGE = 'Answer saved locally. It will sync when connection returns.';
+const PENDING_REVIEW_SYNC_MESSAGE = 'This answer was queued for sync on this device.';
+const AUTH_EXPIRED_PENDING_REVIEW_MESSAGE = 'Session expired. This answer will retry after you sign in again.';
 
 interface SrsSyncMessage {
     type: 'REVIEW_COMMITTED';
@@ -126,6 +129,24 @@ const buildFavoriteFailureResult = (
     authExpired: options.authExpired,
 });
 
+const resolveOptimisticFavorites = (
+    favorites: readonly string[],
+    optimisticState: Readonly<Record<string, boolean>>
+): string[] => {
+    const nextFavorites = new Set(favorites);
+
+    Object.entries(optimisticState).forEach(([termId, shouldFavorite]) => {
+        if (shouldFavorite) {
+            nextFavorites.add(termId);
+            return;
+        }
+
+        nextFavorites.delete(termId);
+    });
+
+    return Array.from(nextFavorites);
+};
+
 export function SRSProvider({ children }: SRSProviderProps) {
     const { entitlements, favoriteLimit, isAuthenticated, user, isLoading: isAuthLoading } = useAuth();
     const { showToast } = useToast();
@@ -142,13 +163,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
     const [progressError, setProgressError] = useState<string | null>(null);
     const [favoriteOptimisticState, setFavoriteOptimisticState] = useState<Record<string, boolean>>({});
     const [favoritePendingState, setFavoritePendingState] = useState<Record<string, boolean>>({});
-    const [pendingReviewVersion, setPendingReviewVersion] = useState(0);
+    const [pendingReviewQueueVersion, setPendingReviewQueueVersion] = useState(0);
     const reviewIdempotencyKeysRef = useRef<Record<string, string>>({});
-    const pendingReviewRef = useRef<PendingReview | null>(null);
-    const isReplayingPendingReviewRef = useRef(false);
-    const replayedPendingReviewIdRef = useRef<string | null>(null);
+    const pendingReviewQueueRef = useRef<QueuedPendingReview[]>([]);
+    const isReplayingPendingReviewQueueRef = useRef(false);
     const authTransitionReplayReadyRef = useRef(false);
     const pendingReviewReplayReadyRef = useRef(false);
+    const favoriteOperationCounterRef = useRef(0);
+    const favoriteLatestOperationRef = useRef<Record<string, number>>({});
     const syncChannelRef = useRef<BroadcastChannel | null>(null);
     const previousAuthStateRef = useRef(isAuthenticated);
     const loadRequestIdRef = useRef(0);
@@ -168,69 +190,34 @@ export function SRSProvider({ children }: SRSProviderProps) {
         delete reviewIdempotencyKeysRef.current[reviewId];
     }, []);
 
-    const clearPendingReview = useCallback(() => {
-        pendingReviewRef.current = null;
-        replayedPendingReviewIdRef.current = null;
-        pendingReviewReplayReadyRef.current = false;
-        setPendingReviewVersion((value) => value + 1);
-
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        try {
-            window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
-        } catch {
-            // Best-effort pending review cleanup only.
-        }
+    const syncPendingReviewQueue = useCallback((queue: QueuedPendingReview[]) => {
+        pendingReviewQueueRef.current = queue;
+        queue.forEach((entry) => {
+            reviewIdempotencyKeysRef.current[entry.reviewId] = entry.idempotencyKey;
+        });
+        setPendingReviewQueueVersion((value) => value + 1);
     }, []);
 
     const persistPendingReview = useCallback((pendingReview: PendingReview) => {
-        pendingReviewRef.current = pendingReview;
-        reviewIdempotencyKeysRef.current[pendingReview.reviewId] = pendingReview.idempotencyKey;
+        const nextQueue = upsertPendingReviewQueueEntry(userId, pendingReview);
+        syncPendingReviewQueue(nextQueue);
         pendingReviewReplayReadyRef.current = false;
-        setPendingReviewVersion((value) => value + 1);
+    }, [syncPendingReviewQueue, userId]);
 
-        if (typeof window === 'undefined') {
-            return;
+    const removePendingReview = useCallback((reviewId: string) => {
+        const nextQueue = removePendingReviewQueueEntry(userId, reviewId);
+        clearReviewKey(reviewId);
+        syncPendingReviewQueue(nextQueue);
+        if (nextQueue.length === 0) {
+            pendingReviewReplayReadyRef.current = false;
         }
+    }, [clearReviewKey, syncPendingReviewQueue, userId]);
 
-        try {
-            window.sessionStorage.setItem(
-                PENDING_REVIEW_STORAGE_KEY,
-                JSON.stringify(pendingReview)
-            );
-        } catch {
-            // Best-effort pending review persistence only.
-        }
-    }, []);
-
-    const restorePendingReview = useCallback(() => {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        try {
-            const storedPendingReview = window.sessionStorage.getItem(PENDING_REVIEW_STORAGE_KEY);
-            if (!storedPendingReview) {
-                return;
-            }
-
-            const parsedPendingReview = JSON.parse(storedPendingReview) as unknown;
-            if (!isPendingReview(parsedPendingReview)) {
-                window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
-                return;
-            }
-
-            pendingReviewRef.current = parsedPendingReview;
-            reviewIdempotencyKeysRef.current[parsedPendingReview.reviewId] = parsedPendingReview.idempotencyKey;
-            replayedPendingReviewIdRef.current = null;
-            pendingReviewReplayReadyRef.current = true;
-            setPendingReviewVersion((value) => value + 1);
-        } catch {
-            window.sessionStorage.removeItem(PENDING_REVIEW_STORAGE_KEY);
-        }
-    }, []);
+    const restorePendingReviewQueue = useCallback(() => {
+        const nextQueue = readPendingReviewQueueFromStorage(userId);
+        syncPendingReviewQueue(nextQueue);
+        pendingReviewReplayReadyRef.current = nextQueue.length > 0;
+    }, [syncPendingReviewQueue, userId]);
 
     const applyCommittedReview = useCallback((
         termId: string,
@@ -536,6 +523,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
     useEffect(() => {
         setFavoriteOptimisticState({});
         setFavoritePendingState({});
+        favoriteLatestOperationRef.current = {};
     }, [isAuthenticated, userId]);
 
     useEffect(() => {
@@ -559,8 +547,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
     }, [userId]);
 
     useEffect(() => {
-        restorePendingReview();
-    }, [restorePendingReview]);
+        if (isAuthLoading) {
+            return;
+        }
+
+        restorePendingReviewQueue();
+    }, [isAuthLoading, restorePendingReviewQueue]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -568,12 +560,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }
 
         const handleOnline = () => {
-            if (!pendingReviewRef.current) {
+            if (pendingReviewQueueRef.current.length === 0) {
                 return;
             }
 
             pendingReviewReplayReadyRef.current = true;
-            setPendingReviewVersion((value) => value + 1);
+            setPendingReviewQueueVersion((value) => value + 1);
         };
 
         window.addEventListener('online', handleOnline);
@@ -632,19 +624,98 @@ export function SRSProvider({ children }: SRSProviderProps) {
         };
     }, [applySyncedReview]);
 
+    const replayPendingReviewQueue = useCallback(async (reason: 'auth' | 'restore') => {
+        if (!isAuthenticated || !userId) {
+            return;
+        }
+
+        let hasShownReplayMessage = false;
+
+        while (pendingReviewQueueRef.current.length > 0) {
+            const nextPendingReview = pendingReviewQueueRef.current[0];
+            if (!nextPendingReview) {
+                return;
+            }
+
+            if (!hasShownReplayMessage) {
+                showToast(
+                    reason === 'auth'
+                        ? 'Session refreshed — saving your queued answers…'
+                        : 'Restoring your pending answers…',
+                    'info'
+                );
+                hasShownReplayMessage = true;
+            }
+
+            const attempt: QuizAttempt = {
+                id: nextPendingReview.idempotencyKey,
+                term_id: nextPendingReview.termId,
+                is_correct: nextPendingReview.isCorrect,
+                response_time_ms: nextPendingReview.responseTimeMs,
+                timestamp: new Date().toISOString(),
+                quiz_type: 'daily',
+            };
+
+            const result = await saveQuizAttemptToSupabase(userId, attempt);
+
+            if (result.status === 'ok') {
+                applyCommittedReview(nextPendingReview.termId, attempt, result.data);
+                broadcastCommittedReview({
+                    type: 'REVIEW_COMMITTED',
+                    reviewId: nextPendingReview.reviewId,
+                    termId: nextPendingReview.termId,
+                    attempt,
+                    termSrs: result.data.termSrs,
+                    userProgress: result.data.userProgress,
+                });
+                removePendingReview(nextPendingReview.reviewId);
+                continue;
+            }
+
+            if (result.status === 'non_retryable') {
+                removePendingReview(nextPendingReview.reviewId);
+                showToast('Progress could not be saved. Please try again.', 'error');
+                continue;
+            }
+
+            showToast(
+                result.status === 'auth_expired'
+                    ? AUTH_EXPIRED_PENDING_REVIEW_MESSAGE
+                    : result.message,
+                'warning'
+            );
+            return;
+        }
+    }, [
+        applyCommittedReview,
+        broadcastCommittedReview,
+        isAuthenticated,
+        removePendingReview,
+        showToast,
+        userId,
+    ]);
+
+    const safeProgress = userProgress ?? createSafeProgress(userId);
+    const optimisticFavorites = React.useMemo(
+        () => resolveOptimisticFavorites(safeProgress.favorites, favoriteOptimisticState),
+        [favoriteOptimisticState, safeProgress.favorites]
+    );
+    const resolvedUserProgress = React.useMemo<UserProgress>(() => ({
+        ...safeProgress,
+        favorites: optimisticFavorites,
+    }), [optimisticFavorites, safeProgress]);
+
     // Calculate due terms
-    const dueTerms = userProgress && entitlements.canUseReviewMode
-        ? getTermsDueForReview(terms, userProgress.favorites)
+    const dueTerms = entitlements.canUseReviewMode
+        ? getTermsDueForReview(terms, resolvedUserProgress.favorites)
         : [];
 
     // Calculate stats
-    const stats = userProgress
-        ? calculateProgressStats(terms, userProgress.favorites)
-        : { totalFavorites: 0, mastered: 0, learning: 0, dueToday: 0, averageRetention: 0 };
+    const stats = calculateProgressStats(terms, resolvedUserProgress.favorites);
 
     // Check if user can add more favorites
     const hasFiniteFavoriteLimit = Number.isFinite(favoriteLimit);
-    const favoriteCount = userProgress?.favorites.length ?? 0;
+    const favoriteCount = resolvedUserProgress.favorites.length;
     const canAddMoreFavorites = !hasFiniteFavoriteLimit || favoriteCount < favoriteLimit;
     const favoritesRemaining = hasFiniteFavoriteLimit
         ? Math.max(0, favoriteLimit - favoriteCount)
@@ -654,27 +725,9 @@ export function SRSProvider({ children }: SRSProviderProps) {
      * Toggle a term's favorite status with limit check
      */
     const toggleFavorite = useCallback(async (termId: string): Promise<FavoriteToggleResult> => {
-        const currentFavorites = userProgress?.favorites ?? [];
-        const optimisticFavorite = favoriteOptimisticState[termId];
-        const isCurrentlyFavorite = optimisticFavorite ?? currentFavorites.includes(termId);
+        const currentFavorites = resolvedUserProgress.favorites;
+        const isCurrentlyFavorite = currentFavorites.includes(termId);
         const shouldFavorite = !isCurrentlyFavorite;
-        const optimisticFavorites = shouldFavorite
-            ? [...currentFavorites, termId]
-            : currentFavorites.filter((favoriteId) => favoriteId !== termId);
-
-        const persistFavorites = (favorites: string[]) => {
-            setUserProgress(prev => {
-                const baseProgress = prev ?? getLocalUserProgress(userId);
-                const reconciled = {
-                    ...baseProgress,
-                    favorites,
-                    updated_at: new Date().toISOString(),
-                };
-
-                saveLocalUserProgress(reconciled, userId);
-                return reconciled;
-            });
-        };
 
         try {
             if (favoritePendingState[termId]) {
@@ -704,14 +757,26 @@ export function SRSProvider({ children }: SRSProviderProps) {
             }
 
             if (isAuthenticated && userId) {
+                const operationId = favoriteOperationCounterRef.current + 1;
+                favoriteOperationCounterRef.current = operationId;
+                favoriteLatestOperationRef.current[termId] = operationId;
                 setFavoritePendingState(prev => ({ ...prev, [termId]: true }));
                 setFavoriteOptimisticState(prev => ({ ...prev, [termId]: shouldFavorite }));
-                persistFavorites(optimisticFavorites);
 
                 try {
                     const response = await toggleFavoriteInSupabase(userId, termId, shouldFavorite);
+                    const isLatestOperation = favoriteLatestOperationRef.current[termId] === operationId;
+                    if (!isLatestOperation) {
+                        return buildFavoriteFailureResult(
+                            resolveOptimisticFavorites(
+                                userProgress?.favorites ?? [],
+                                favoriteOptimisticState
+                            ).includes(termId),
+                            'A newer favorite change superseded this result.'
+                        );
+                    }
+
                     if (response.status === 'auth_expired') {
-                        persistFavorites(currentFavorites);
                         return buildFavoriteFailureResult(
                             isCurrentlyFavorite,
                             response.message,
@@ -719,13 +784,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         );
                     }
 
-                    if (response.status !== 'ok') {
-                        if (response.status === 'retryable') {
-                            persistFavorites(currentFavorites);
-                            return buildFavoriteFailureResult(isCurrentlyFavorite, response.message);
-                        }
+                    if (response.status === 'limit_reached') {
+                        return buildFavoriteFailureResult(
+                            isCurrentlyFavorite,
+                            response.message,
+                            { limitReached: true }
+                        );
+                    }
 
-                        persistFavorites(currentFavorites);
+                    if (response.status !== 'ok') {
                         return buildFavoriteFailureResult(isCurrentlyFavorite, response.message);
                     }
 
@@ -753,23 +820,25 @@ export function SRSProvider({ children }: SRSProviderProps) {
                         termId,
                         error: error instanceof Error ? error : undefined,
                     });
-                    persistFavorites(currentFavorites);
 
                     return buildFavoriteFailureResult(
                         isCurrentlyFavorite,
                         error instanceof Error ? error.message : 'Failed to update favorite.'
                     );
                 } finally {
-                    setFavoritePendingState(prev => {
-                        const next = { ...prev };
-                        delete next[termId];
-                        return next;
-                    });
-                    setFavoriteOptimisticState(prev => {
-                        const next = { ...prev };
-                        delete next[termId];
-                        return next;
-                    });
+                    if (favoriteLatestOperationRef.current[termId] === operationId) {
+                        delete favoriteLatestOperationRef.current[termId];
+                        setFavoritePendingState(prev => {
+                            const next = { ...prev };
+                            delete next[termId];
+                            return next;
+                        });
+                        setFavoriteOptimisticState(prev => {
+                            const next = { ...prev };
+                            delete next[termId];
+                            return next;
+                        });
+                    }
                 }
             }
 
@@ -795,7 +864,17 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 error: error instanceof Error ? error.message : 'Failed to update favorite.',
             };
         }
-    }, [favoriteLimit, favoriteOptimisticState, favoritePendingState, hasFiniteFavoriteLimit, isAuthLoading, isAuthenticated, userId, userProgress]);
+    }, [
+        favoriteLimit,
+        favoriteOptimisticState,
+        favoritePendingState,
+        hasFiniteFavoriteLimit,
+        isAuthLoading,
+        isAuthenticated,
+        resolvedUserProgress.favorites,
+        userId,
+        userProgress?.favorites,
+    ]);
 
     /**
      * Check if a term is favorited
@@ -805,8 +884,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
             return favoriteOptimisticState[termId] ?? false;
         }
 
-        return userProgress?.favorites.includes(termId) ?? false;
-    }, [favoriteOptimisticState, userProgress]);
+        return resolvedUserProgress.favorites.includes(termId);
+    }, [favoriteOptimisticState, resolvedUserProgress.favorites]);
 
     const isFavoriteUpdating = useCallback((termId: string): boolean => (
         favoritePendingState[termId] ?? false
@@ -823,7 +902,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         quizType: QuizType = 'daily',
     ): Promise<void> => {
         if (!entitlements.canUseReviewMode) {
-            clearPendingReview();
+            removePendingReview(reviewId);
             clearReviewKey(reviewId);
             throw new Error('Review mode is unavailable until your member account is fully unlocked.');
         }
@@ -842,12 +921,12 @@ export function SRSProvider({ children }: SRSProviderProps) {
         if (!isAuthenticated || !userId) {
             const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
             if (!didApplyLocalReview) {
-                clearPendingReview();
+                removePendingReview(reviewId);
                 clearReviewKey(reviewId);
                 throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
             }
             clearReviewKey(reviewId);
-            clearPendingReview();
+            removePendingReview(reviewId);
             return;
         }
 
@@ -863,7 +942,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 termSrs: result.data.termSrs,
                 userProgress: result.data.userProgress,
             });
-            clearPendingReview();
+            removePendingReview(reviewId);
             clearReviewKey(reviewId);
             return;
         }
@@ -876,7 +955,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
             });
-            showToast(result.message, 'warning');
+            showToast(AUTH_EXPIRED_PENDING_REVIEW_MESSAGE, 'warning');
             return;
         }
 
@@ -892,56 +971,44 @@ export function SRSProvider({ children }: SRSProviderProps) {
             return;
         }
 
-        clearPendingReview();
+        removePendingReview(reviewId);
         clearReviewKey(reviewId);
         showToast('Progress could not be saved. Please try again.', 'error');
         throw new Error(result.message);
     }, [
         applyCommittedReview,
         broadcastCommittedReview,
-        clearPendingReview,
         clearReviewKey,
         entitlements.canUseReviewMode,
         getOrCreateReviewKey,
         isAuthenticated,
         persistPendingReview,
         applyLocalReview,
+        removePendingReview,
         showToast,
         userId,
     ]);
 
     useEffect(() => {
-        const pendingReview = pendingReviewRef.current;
         const shouldReplayAfterAuth = authTransitionReplayReadyRef.current;
-        const shouldReplayRestoredReview = pendingReviewReplayReadyRef.current;
+        const shouldReplayRestoredQueue = pendingReviewReplayReadyRef.current;
         if (
             !isAuthenticated
             || isLoading
-            || !pendingReview
+            || pendingReviewQueueRef.current.length === 0
             || !userId
-            || isReplayingPendingReviewRef.current
-            || replayedPendingReviewIdRef.current === pendingReview.reviewId
-            || (!shouldReplayAfterAuth && !shouldReplayRestoredReview)
+            || isReplayingPendingReviewQueueRef.current
+            || (!shouldReplayAfterAuth && !shouldReplayRestoredQueue)
         ) {
             return;
         }
 
-        replayedPendingReviewIdRef.current = pendingReview.reviewId;
         authTransitionReplayReadyRef.current = false;
         pendingReviewReplayReadyRef.current = false;
-        isReplayingPendingReviewRef.current = true;
-        showToast(
-            shouldReplayAfterAuth
-                ? 'Session refreshed — saving your answer…'
-                : 'Restoring your pending answer…',
-            'info'
-        );
+        isReplayingPendingReviewQueueRef.current = true;
 
-        void submitQuizAnswer(
-            pendingReview.termId,
-            pendingReview.isCorrect,
-            pendingReview.responseTimeMs,
-            pendingReview.reviewId
+        void replayPendingReviewQueue(
+            shouldReplayAfterAuth ? 'auth' : 'restore'
         ).catch((error) => {
             logger.error('SRS_PENDING_REVIEW_REPLAY_FAILED', {
                 route: 'SRSProvider',
@@ -949,14 +1016,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 error: error instanceof Error ? error : undefined,
             });
         }).finally(() => {
-            isReplayingPendingReviewRef.current = false;
+            isReplayingPendingReviewQueueRef.current = false;
         });
-    }, [isAuthenticated, isLoading, pendingReviewVersion, showToast, submitQuizAnswer, userId]);
+    }, [isAuthenticated, isLoading, pendingReviewQueueVersion, replayPendingReviewQueue, userId]);
 
     useEffect(() => {
         if (!previousAuthStateRef.current && isAuthenticated) {
             authTransitionReplayReadyRef.current = true;
-            setPendingReviewVersion((value) => value + 1);
+            setPendingReviewQueueVersion((value) => value + 1);
         }
 
         previousAuthStateRef.current = isAuthenticated;
@@ -969,14 +1036,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
         void loadData();
     }, [loadData]);
 
-    // Use default progress if not yet hydrated
-    const safeProgress = userProgress ?? createSafeProgress(userId);
-
     return (
         <SRSContext.Provider
             value={{
                 terms,
-                userProgress: safeProgress,
+                userProgress: resolvedUserProgress,
                 dueTerms,
                 quizPreview,
                 mistakeReviewQueue,

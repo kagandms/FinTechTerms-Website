@@ -1,6 +1,7 @@
 export interface MemberEntitlements {
     maxFavorites: number;
     canUseReviewMode: boolean;
+    canUseAiFeatures: boolean;
     canUseAdvancedAnalytics: boolean;
     canUseMistakeReview: boolean;
     canInstallPwa: boolean;
@@ -17,6 +18,7 @@ export const GUEST_FAVORITE_LIMIT = 15;
 const guestEntitlements: MemberEntitlements = {
     maxFavorites: GUEST_FAVORITE_LIMIT,
     canUseReviewMode: false,
+    canUseAiFeatures: false,
     canUseAdvancedAnalytics: false,
     canUseMistakeReview: false,
     canInstallPwa: true,
@@ -26,6 +28,7 @@ const guestEntitlements: MemberEntitlements = {
 const incompleteMemberEntitlements: MemberEntitlements = {
     maxFavorites: GUEST_FAVORITE_LIMIT,
     canUseReviewMode: false,
+    canUseAiFeatures: false,
     canUseAdvancedAnalytics: false,
     canUseMistakeReview: false,
     canInstallPwa: true,
@@ -35,6 +38,7 @@ const incompleteMemberEntitlements: MemberEntitlements = {
 const fullMemberEntitlements: MemberEntitlements = {
     maxFavorites: Number.POSITIVE_INFINITY,
     canUseReviewMode: true,
+    canUseAiFeatures: true,
     canUseAdvancedAnalytics: true,
     canUseMistakeReview: true,
     canInstallPwa: true,

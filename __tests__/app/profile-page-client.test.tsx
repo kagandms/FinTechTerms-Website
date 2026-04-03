@@ -167,6 +167,7 @@ describe('ProfilePageClient', () => {
         });
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
             },
             favoriteLimit: Number.POSITIVE_INFINITY,
@@ -366,6 +367,7 @@ describe('ProfilePageClient', () => {
         });
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: false,
                 canUseAdvancedAnalytics: false,
             },
             favoriteLimit: 15,

@@ -54,6 +54,7 @@ describe('AiChatPanel', () => {
         jest.clearAllMocks();
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: true,
                 canUseAdvancedAnalytics: true,
             },
             isAuthenticated: true,
@@ -80,6 +81,7 @@ describe('AiChatPanel', () => {
     it('does not submit chat requests for guests', async () => {
         mockUseAuth.mockReturnValue({
             entitlements: {
+                canUseAiFeatures: false,
                 canUseAdvancedAnalytics: false,
             },
             isAuthenticated: false,

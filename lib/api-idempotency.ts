@@ -13,6 +13,7 @@ interface IdempotencyRow {
     status: IdempotencyStatus;
     response_code: number | null;
     response_body: unknown;
+    updated_at: string;
 }
 
 interface ReservationBase {
@@ -36,10 +37,21 @@ interface FinalizeReservation extends Omit<ReservationBase, 'payload'> {
 const IN_PROGRESS: IdempotencyStatus = 'in_progress';
 const COMPLETED: IdempotencyStatus = 'completed';
 const FAILED: IdempotencyStatus = 'failed';
+const STALE_AFTER_MS = 120_000;
 
 const hashPayload = (payload: unknown): string => createHash('sha256')
     .update(JSON.stringify(payload))
     .digest('hex');
+
+const isStaleReservation = (updatedAt: string): boolean => {
+    const updatedAtMs = Date.parse(updatedAt);
+
+    if (!Number.isFinite(updatedAtMs)) {
+        return false;
+    }
+
+    return Date.now() - updatedAtMs >= STALE_AFTER_MS;
+};
 
 const getExistingReservation = async (
     supabaseAdmin: IdempotencyClient,
@@ -49,7 +61,7 @@ const getExistingReservation = async (
 ): Promise<IdempotencyRow | null> => {
     const { data, error } = await supabaseAdmin
         .from('api_idempotency_keys')
-        .select('id, request_hash, status, response_code, response_body')
+        .select('id, request_hash, status, response_code, response_body, updated_at')
         .eq('user_id', userId)
         .eq('action', action)
         .eq('idempotency_key', idempotencyKey)
@@ -82,7 +94,10 @@ const inspectExistingReservation = (
         };
     }
 
-    if (existingReservation.status === IN_PROGRESS) {
+    if (
+        existingReservation.status === IN_PROGRESS
+        && !isStaleReservation(existingReservation.updated_at)
+    ) {
         return {
             kind: 'conflict',
             code: 'REQUEST_IN_PROGRESS',
@@ -96,7 +111,10 @@ const inspectExistingReservation = (
 const interpretExistingReservation = async (
     supabaseAdmin: IdempotencyClient,
     existingReservation: IdempotencyRow,
-    requestHash: string
+    requestHash: string,
+    action: string,
+    userId: string,
+    idempotencyKey: string
 ): Promise<IdempotencyReservation> => {
     const inspection = inspectExistingReservation(existingReservation, requestHash);
 
@@ -104,7 +122,7 @@ const interpretExistingReservation = async (
         return inspection;
     }
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
         .from('api_idempotency_keys')
         .update({
             request_hash: requestHash,
@@ -113,13 +131,38 @@ const interpretExistingReservation = async (
             response_body: null,
             completed_at: null,
         })
-        .eq('id', existingReservation.id);
+        .eq('id', existingReservation.id)
+        .eq('updated_at', existingReservation.updated_at)
+        .select('id')
+        .maybeSingle();
 
     if (error) {
         throw error;
     }
 
-    return { kind: 'proceed' };
+    if (data?.id) {
+        return { kind: 'proceed' };
+    }
+
+    const latestReservation = await getExistingReservation(
+        supabaseAdmin,
+        userId,
+        action,
+        idempotencyKey
+    );
+
+    if (!latestReservation) {
+        throw new Error('Idempotency reservation disappeared during stale-claim recovery.');
+    }
+
+    return await interpretExistingReservation(
+        supabaseAdmin,
+        latestReservation,
+        requestHash,
+        action,
+        userId,
+        idempotencyKey
+    );
 };
 
 export const inspectIdempotentRequest = async ({
@@ -160,7 +203,14 @@ export const reserveIdempotentRequest = async ({
     );
 
     if (existingReservation) {
-        return interpretExistingReservation(supabaseAdmin, existingReservation, requestHash);
+        return interpretExistingReservation(
+            supabaseAdmin,
+            existingReservation,
+            requestHash,
+            action,
+            userId,
+            idempotencyKey
+        );
     }
 
     const { error } = await supabaseAdmin
@@ -192,7 +242,14 @@ export const reserveIdempotentRequest = async ({
         throw error;
     }
 
-    return interpretExistingReservation(supabaseAdmin, concurrentReservation, requestHash);
+    return interpretExistingReservation(
+        supabaseAdmin,
+        concurrentReservation,
+        requestHash,
+        action,
+        userId,
+        idempotencyKey
+    );
 };
 
 export const completeIdempotentRequest = async ({

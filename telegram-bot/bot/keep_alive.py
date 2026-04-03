@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from threading import Thread
 
 from flask import Flask, jsonify
+from bot.runtime_state import get_runtime_health
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +20,19 @@ app = Flask(__name__)
 @app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health() -> str:
-    """Root health check endpoint for UptimeRobot."""
-    logger.info("Health check pinged at %s", datetime.now(timezone.utc).isoformat())
+    """Root health check endpoint for Render/Uptime monitors."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    runtime_health = get_runtime_health()
+    is_ready = runtime_health["ready"] is True
+    status_code = 200 if is_ready else 503
+
+    logger.info("Health check pinged at %s (ready=%s)", timestamp, is_ready)
     return jsonify({
-        "status": "alive",
+        "status": "alive" if is_ready else "degraded",
         "service": "FinTechTerms Telegram Bot",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+        "timestamp": timestamp,
+        **runtime_health,
+    }), status_code
 
 
 def keep_alive() -> None:

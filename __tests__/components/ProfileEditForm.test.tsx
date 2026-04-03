@@ -12,6 +12,7 @@ const mockGetSupabaseClient = jest.fn();
 const mockShowToast = jest.fn();
 const mockShowToastAfterRefresh = jest.fn();
 const mockRefresh = jest.fn();
+const mockFetch = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
     getSupabaseClient: () => mockGetSupabaseClient(),
@@ -90,6 +91,7 @@ const createSupabaseMock = (options?: {
         getUser: jest.Mock;
         updateUser: jest.Mock;
         signInWithPassword: jest.Mock;
+        getSession: jest.Mock;
     };
     from: jest.Mock;
 } => {
@@ -107,6 +109,14 @@ const createSupabaseMock = (options?: {
     return {
         auth: {
             getUser: jest.fn().mockResolvedValue(options?.loadUserResponse ?? baseUserResponse),
+            getSession: jest.fn().mockResolvedValue({
+                data: {
+                    session: {
+                        access_token: 'access-token',
+                    },
+                },
+                error: null,
+            }),
             updateUser: jest.fn().mockResolvedValue({
                 error: options?.metadataError ?? null,
             }),
@@ -148,10 +158,19 @@ describe('ProfileEditForm timeout helpers', () => {
 describe('ProfileEditForm submit flow', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        global.fetch = mockFetch as unknown as typeof fetch;
     });
 
     it('shows full success when auth metadata and profile sync both succeed', async () => {
         mockGetSupabaseClient.mockReturnValue(createSupabaseMock());
+        mockFetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: jest.fn().mockResolvedValue({
+                status: 'ok',
+                message: 'Successfully saved',
+            }),
+        });
 
         render(
             <ProfileEditForm
@@ -239,6 +258,14 @@ describe('ProfileEditForm submit flow', () => {
                 message: 'RLS denied',
             },
         }));
+        mockFetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: jest.fn().mockResolvedValue({
+                status: 'partial_metadata_sync',
+                message: 'Profile details were saved, but the secondary auth sync did not complete.',
+            }),
+        });
 
         render(
             <ProfileEditForm
@@ -267,6 +294,13 @@ describe('ProfileEditForm submit flow', () => {
             },
         });
         mockGetSupabaseClient.mockReturnValue(supabaseMock);
+        mockFetch.mockResolvedValue({
+            ok: false,
+            status: 500,
+            json: jest.fn().mockResolvedValue({
+                message: 'Something went wrong. Please try again.',
+            }),
+        });
 
         render(
             <ProfileEditForm

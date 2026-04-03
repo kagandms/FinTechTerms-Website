@@ -80,7 +80,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
         }
     };
 
-    if (!isAuthenticated || !entitlements.canUseAdvancedAnalytics) {
+    if (!isAuthenticated || !entitlements.canUseAiFeatures) {
         return (
             <section className="rounded-3xl border border-primary-100 bg-primary-50 p-5 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20">
                 <div className="flex items-center gap-3">
