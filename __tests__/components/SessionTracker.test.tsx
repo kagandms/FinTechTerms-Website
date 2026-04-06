@@ -96,6 +96,17 @@ const readStoredSession = () => {
     };
 };
 
+const createDeferred = <T,>() => {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((nextResolve, nextReject) => {
+        resolve = nextResolve;
+        reject = nextReject;
+    });
+
+    return { promise, resolve, reject };
+};
+
 describe('SessionTracker', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -128,6 +139,32 @@ describe('SessionTracker', () => {
         await waitFor(() => {
             expect(readStoredSession().pageViews).toBe(1);
         });
+    });
+
+    it('logs a warning when persisting session state to sessionStorage fails', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        const originalSetItem = Storage.prototype.setItem;
+        const setItemSpy = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+            if (this === sessionStorage && key === `${SESSION_KEY}:tab_test`) {
+                throw new Error('quota exceeded');
+            }
+
+            return originalSetItem.call(this, key, value);
+        });
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(mockLoggerWarn).toHaveBeenCalledWith(
+                'SESSION_TRACKER_SESSION_STORAGE_WRITE_FAILED',
+                expect.objectContaining({
+                    route: 'SessionTracker',
+                })
+            );
+        });
+
+        setItemSpy.mockRestore();
     });
 
     it('counts the initial page once and increments once per route change', async () => {
@@ -185,7 +222,7 @@ describe('SessionTracker', () => {
         expect(authenticatedStartPayload.anonymousId).toBeNull();
     });
 
-    it('queues retryable session mutations and flushes them when the browser comes back online', async () => {
+    it('flushes retryable session mutations immediately while the browser is still online', async () => {
         jest.useFakeTimers();
         grantConsent();
 
@@ -209,23 +246,87 @@ describe('SessionTracker', () => {
         });
 
         await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(fetchMock).toHaveBeenCalledTimes(3);
         });
 
         const failedHeartbeatPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+        const retriedHeartbeatPayload = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
         expect(failedHeartbeatPayload.action).toBe('heartbeat');
+        expect(retriedHeartbeatPayload.action).toBe('heartbeat');
+        expect(retriedHeartbeatPayload.idempotency_key).toBe(failedHeartbeatPayload.idempotency_key);
+        expect(getCurrentRetryQueueKey() ? sessionStorage.getItem(getCurrentRetryQueueKey()!) : null).toBeNull();
+    });
 
-        await act(async () => {
-            window.dispatchEvent(new Event('online'));
+    it('keeps queued retry entries persisted while an online flush is still in flight', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`, JSON.stringify([
+            createQueuedHeartbeat('retry-heartbeat', Date.now()),
+        ]));
+
+        const deferredFlush = createDeferred<Response>();
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }))
+            .mockImplementationOnce(() => deferredFlush.promise);
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
         });
+
+        expect(JSON.parse(sessionStorage.getItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`) || '[]')).toEqual([
+            expect.objectContaining({
+                idempotencyKey: 'retry-heartbeat',
+            }),
+        ]);
+
+        deferredFlush.resolve(createFetchResponse({ success: true }));
+
+        await waitFor(() => {
+            expect(sessionStorage.getItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`)).toBeNull();
+        });
+    });
+
+    it('removes only acknowledged retry entries during a partial flush', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`, JSON.stringify([
+            createQueuedHeartbeat('retry-heartbeat-1', Date.now() - 1000),
+            createQueuedHeartbeat('retry-heartbeat-2', Date.now()),
+        ]));
+
+        const deferredFlush = createDeferred<Response>();
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }))
+            .mockResolvedValueOnce(createFetchResponse({ success: true }))
+            .mockImplementationOnce(() => deferredFlush.promise);
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledTimes(3);
         });
 
-        const retriedHeartbeatPayload = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
-        expect(retriedHeartbeatPayload.action).toBe('heartbeat');
-        expect(retriedHeartbeatPayload.idempotency_key).toBe(failedHeartbeatPayload.idempotency_key);
+        expect(JSON.parse(sessionStorage.getItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`) || '[]')).toEqual([
+            expect.objectContaining({
+                idempotencyKey: 'retry-heartbeat-2',
+            }),
+        ]);
+
+        deferredFlush.resolve(createFetchResponse({ success: true }));
+
+        await waitFor(() => {
+            expect(sessionStorage.getItem(`${RETRY_QUEUE_SESSION_KEY}:tab_test`)).toBeNull();
+        });
     });
 
     it('replays a pending end-session from the current tab storage before starting a new session', async () => {
@@ -266,6 +367,45 @@ describe('SessionTracker', () => {
             idempotency_key: 'pending-end-key',
         });
         expect(startedPayload.action).toBe('start');
+        expect(sessionStorage.getItem(`${PENDING_END_SESSION_KEY}:tab_test`)).toBeNull();
+    });
+
+    it('clears a stored pending end-session when replay returns a non-retryable error', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${PENDING_END_SESSION_KEY}:tab_test`, JSON.stringify({
+            payload: {
+                action: 'end',
+                sessionId: 'session_pending',
+                sessionToken: 'pending_token',
+                durationSeconds: 10,
+                pageViews: 2,
+                quizAttempts: 1,
+            },
+            idempotencyKey: 'pending-end-key',
+        }));
+
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                json: jest.fn().mockResolvedValue({
+                    code: 'STUDY_SESSION_FORBIDDEN',
+                    retryable: false,
+                }),
+            })
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }));
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
         expect(sessionStorage.getItem(`${PENDING_END_SESSION_KEY}:tab_test`)).toBeNull();
     });
 
@@ -320,7 +460,7 @@ describe('SessionTracker', () => {
         }
     });
 
-    it('keeps the pending end-session payload when the close request returns a non-retryable failure', async () => {
+    it('clears the pending end-session payload when the close request returns a non-retryable failure', async () => {
         grantConsent();
         const fetchMock = jest.fn()
             .mockResolvedValueOnce(createFetchResponse({
@@ -350,7 +490,7 @@ describe('SessionTracker', () => {
         });
 
         const pendingKey = getCurrentPendingEndKey();
-        expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).not.toBeNull();
+        expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).toBeNull();
     });
 
     it('increments quiz attempts only for the active tab session record', async () => {
@@ -431,6 +571,108 @@ describe('SessionTracker', () => {
             token: 'token_replayed',
         });
         expect(getCurrentPendingStartKey() ? sessionStorage.getItem(getCurrentPendingStartKey()!) : null).toBeNull();
+    });
+
+    it('starts a fresh session after a restored pending start fails non-retryably', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${SESSION_KEY}:tab_test`, JSON.stringify({
+            id: null,
+            token: null,
+            startTime: 1000,
+            pageViews: 0,
+            quizAttempts: 0,
+            authMode: 'anonymous',
+            anonymousId: 'anon_123',
+        }));
+        sessionStorage.setItem(`${PENDING_START_SESSION_KEY}:tab_test`, JSON.stringify({
+            payload: {
+                action: 'start',
+                anonymousId: 'anon_123',
+                deviceType: 'desktop',
+                userAgent: 'jest',
+                consentGiven: true,
+                previous_session_id: null,
+            },
+            sessionStartTime: 1000,
+            idempotencyKey: 'pending-start-key',
+        }));
+
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                json: jest.fn().mockResolvedValue({
+                    code: 'UNAUTHORIZED',
+                    retryable: false,
+                }),
+            })
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_fresh',
+                sessionToken: 'token_fresh',
+            }));
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        const replayedStartPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+        const freshStartPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+
+        expect(replayedStartPayload.idempotency_key).toBe('pending-start-key');
+        expect(freshStartPayload.idempotency_key).not.toBe('pending-start-key');
+        expect(readStoredSession()).toMatchObject({
+            id: 'session_fresh',
+            token: 'token_fresh',
+        });
+    });
+
+    it('does not let a resolved stale anonymous start overwrite a newer authenticated session start', async () => {
+        grantConsent();
+        const deferredAnonymousStart = createDeferred<Response>();
+        const fetchMock = jest.fn()
+            .mockImplementationOnce(() => deferredAnonymousStart.promise)
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'authenticated_session',
+                sessionToken: 'authenticated_token',
+            }))
+            .mockResolvedValue(createFetchResponse({ success: true }));
+        global.fetch = fetchMock as typeof fetch;
+
+        const { rerender } = render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        mockUseAuth.mockReturnValue({ isAuthenticated: true });
+        rerender(<SessionTracker />);
+
+        deferredAnonymousStart.resolve(createFetchResponse({
+            sessionId: 'anonymous_session',
+            sessionToken: 'anonymous_token',
+        }));
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        const authenticatedStartPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+
+        expect(authenticatedStartPayload).toMatchObject({
+            action: 'start',
+            anonymousId: null,
+        });
+
+        await waitFor(() => {
+            expect(readStoredSession()).toMatchObject({
+                id: 'authenticated_session',
+                token: 'authenticated_token',
+            });
+        });
     });
 
     it('logs and removes retry queue entries that expired before restore', async () => {

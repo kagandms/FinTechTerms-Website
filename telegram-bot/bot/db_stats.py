@@ -4,10 +4,9 @@ FinTechTerms Bot — Statistics helpers.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
-from bot.db_client import apply_academic_quarantine, get_public_client
+from bot.db_client import execute_public_query, get_public_client
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +18,14 @@ class StatsUnavailableError(RuntimeError):
 async def get_term_count() -> int:
     """Return total number of public terms in the database."""
     def _count():
-        return apply_academic_quarantine(
-            get_public_client().table("terms").select("id", count="exact")
-        ).execute()
+        return get_public_client().rpc("get_public_term_count").execute()
 
     try:
-        response = await asyncio.to_thread(_count)
-        return response.count or 0
+        response = await execute_public_query(_count)
+        if response.data is None:
+            return 0
+
+        return int(response.data)
     except Exception as e:
         logger.error("Failed to get term count: %s", e)
         raise StatsUnavailableError("Term count is temporarily unavailable.") from e
@@ -34,16 +34,19 @@ async def get_term_count() -> int:
 async def get_category_counts() -> dict[str, int]:
     """Return public term counts per category."""
     def _counts():
-        return apply_academic_quarantine(
-            get_public_client().table("terms").select("category")
-        ).execute()
+        return get_public_client().rpc("get_public_term_category_counts").execute()
 
     try:
-        response = await asyncio.to_thread(_counts)
+        response = await execute_public_query(_counts)
         counts: dict[str, int] = {}
         for row in response.data or []:
-            cat = row.get("category", "Unknown")
-            counts[cat] = counts.get(cat, 0) + 1
+            category = row.get("category", "Unknown")
+            raw_count = row.get("count", 0)
+
+            try:
+                counts[str(category)] = int(raw_count)
+            except (TypeError, ValueError):
+                counts[str(category)] = 0
         return counts
     except Exception as e:
         logger.error("Failed to get category counts: %s", e)

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getTranslationString } from '@/lib/i18n';
-import { calculateAgeFromCalendarDate, getLocalCalendarDate, parseIsoCalendarDate } from '@/lib/time';
+import { isAcceptedBirthDate } from '@/lib/profile-birth-date';
 import type { Language } from '@/types';
 
 /**
@@ -30,12 +30,7 @@ export function createProfileSchema(language: Language) {
         surname: z.string().min(2, msg.surnameMin),
         birthDate: z.string().optional().refine((val) => {
             if (!val || val.trim() === '') return true; // Boş/geçersiz gönderimlerde DB'ye boş gitmesine izin ver ya da bloklanmasını iptal et
-
-            const birthDate = parseIsoCalendarDate(val);
-            if (!birthDate) return false;
-
-            const age = calculateAgeFromCalendarDate(birthDate, getLocalCalendarDate());
-            return age >= 13 && age <= 120;
+            return isAcceptedBirthDate(val);
         }, msg.birthDateInvalid),
         email: nullableEmailSchema,
         // Password fields are optional unless the user wants to change them

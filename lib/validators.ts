@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { QUIZ_TYPE_VALUES } from '@/types';
 
+const isValidIsoTimestamp = (value: string): boolean => !Number.isNaN(Date.parse(value));
+
 const ContextTagValueSchema = z.union([
     z.string(),
     z.number(),
@@ -95,6 +97,7 @@ export const QuizAttemptSchema = z.object({
     is_correct: z.boolean(),
     response_time_ms: z.number().int().nonnegative(),
     quiz_type: z.enum(QUIZ_TYPE_VALUES).default('simulation'),
+    occurred_at: z.string().refine(isValidIsoTimestamp, 'occurred_at must be a valid ISO timestamp').optional(),
     session_id: z.string().uuid().optional(),
     session_token: z.string().min(32).optional(),
     anonymous_id: z.string().optional(),

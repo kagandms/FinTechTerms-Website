@@ -20,7 +20,10 @@ import {
     isRateLimiterUnavailable,
     quizMutationRateLimiter,
 } from '@/lib/rate-limiter';
-import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
+import {
+    createServiceRoleClient,
+    resolveAuthenticatedUser,
+} from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { hashStudySessionToken } from '@/lib/study-session-token';
 import { QuizAttemptSchema } from '@/lib/validators';
@@ -48,9 +51,10 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 };
 
 const WRITE_RATE_LIMIT = 20;
+type QuizMutationClient = ReturnType<typeof createServiceRoleClient>;
 
 const markQuizFailure = async (
-    routeSupabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    routeSupabase: QuizMutationClient,
     userId: string,
     idempotencyKey: string | null,
     statusCode: number,
@@ -78,9 +82,52 @@ const markQuizFailure = async (
     }
 };
 
+const getSessionScopedQuizError = (
+    error: { code?: string | null; message?: string | null },
+    sessionId: string | null | undefined
+): {
+    status: 404 | 403 | 409;
+    code: 'STUDY_SESSION_NOT_FOUND' | 'STUDY_SESSION_FORBIDDEN' | 'STUDY_SESSION_CONFLICT';
+    message: string;
+} | null => {
+    if (!sessionId) {
+        return null;
+    }
+
+    if (error.code === 'P0002') {
+        return {
+            status: 404,
+            code: 'STUDY_SESSION_NOT_FOUND',
+            message: 'Study session not found.',
+        };
+    }
+
+    if (error.code === '42501') {
+        return {
+            status: 403,
+            code: 'STUDY_SESSION_FORBIDDEN',
+            message: 'Study session does not belong to this requester.',
+        };
+    }
+
+    if (
+        error.code === '23505'
+        && (error.message || '').toLowerCase().includes('study session')
+    ) {
+        return {
+            status: 409,
+            code: 'STUDY_SESSION_CONFLICT',
+            message: 'Study session is already linked to a different quiz submission.',
+        };
+    }
+
+    return null;
+};
+
 export async function POST(request: NextRequest) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    let mutationClient: QuizMutationClient | null = null;
     let body: unknown;
     try {
         body = await request.json();
@@ -131,8 +178,15 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const routeSupabase = await createRequestScopedClient(request);
-    if (!routeSupabase) {
+    try {
+        mutationClient = createServiceRoleClient();
+    } catch (error) {
+        logger.error('QUIZ_ROUTE_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
+            requestId,
+            route: '/api/record-quiz',
+            error: error instanceof Error ? error : undefined,
+            retryable: true,
+        });
         return errorResponse({
             status: 503,
             code: 'QUIZ_PERSIST_FAILED',
@@ -142,11 +196,13 @@ export async function POST(request: NextRequest) {
             headers: GLOBAL_RATE_LIMIT_HEADERS,
         });
     }
+    const routeSupabase = mutationClient;
     const {
         term_id,
         is_correct,
         response_time_ms,
         quiz_type,
+        occurred_at,
         session_id,
         session_token,
         idempotencyKey,
@@ -162,6 +218,7 @@ export async function POST(request: NextRequest) {
             is_correct,
             response_time_ms,
             quiz_type,
+            occurred_at: occurred_at ?? null,
             session_id: session_id ?? null,
         },
     });
@@ -264,6 +321,7 @@ export async function POST(request: NextRequest) {
                 is_correct,
                 response_time_ms,
                 quiz_type,
+                occurred_at: occurred_at ?? null,
                 session_id: session_id ?? null,
             },
         });
@@ -291,7 +349,8 @@ export async function POST(request: NextRequest) {
         }
 
         const { data, error } = await routeSupabase
-            .rpc('record_my_study_event', {
+            .rpc('record_study_event', {
+                p_user_id: user.id,
                 p_term_id: term_id,
                 p_is_correct: is_correct,
                 p_response_time_ms: response_time_ms,
@@ -299,6 +358,7 @@ export async function POST(request: NextRequest) {
                 p_idempotency_key: idempotencyKey,
                 p_session_id: session_id ?? null,
                 p_session_token_hash: session_token ? hashStudySessionToken(session_token) : null,
+                p_occurred_at: occurred_at ?? null,
             });
 
         if (error) {
@@ -319,6 +379,22 @@ export async function POST(request: NextRequest) {
                     status: 409,
                     code: 'TERM_NOT_FAVORITED',
                     message: 'Term must be in favorites before review.',
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
+
+            const sessionScopedError = getSessionScopedQuizError(error, session_id ?? null);
+            if (sessionScopedError) {
+                await markQuizFailure(routeSupabase, user.id, idempotencyKey, sessionScopedError.status, {
+                    code: sessionScopedError.code,
+                    message: sessionScopedError.message,
+                });
+                return errorResponse({
+                    status: sessionScopedError.status,
+                    code: sessionScopedError.code,
+                    message: sessionScopedError.message,
                     requestId,
                     retryable: false,
                     headers: guardedHeaders,

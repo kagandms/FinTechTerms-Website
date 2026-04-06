@@ -151,6 +151,11 @@ Study-session analytics require `STUDY_SESSION_TOKEN_SECRET` at runtime. This
 must be a high-entropy server secret and must never reuse the Supabase service
 role key.
 
+AI routes are part of the production runtime contract. Staging and production
+must provide `OPENROUTER_API_KEY`, `AI_PRIMARY_MODEL`, and
+`AI_FALLBACK_MODELS` alongside the core web runtime secrets so
+`npm run validate:runtime-env` and production builds stay release-evaluable.
+
 Production-safe API throttling requires Upstash Redis. Staging and production
 must provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; the
 in-memory limiter is intended only for development and test environments.

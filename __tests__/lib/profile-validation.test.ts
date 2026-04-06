@@ -36,9 +36,9 @@ describe('profile validation', () => {
         expect(result.success).toBe(false);
     });
 
-    it('treats birth dates as calendar dates when enforcing the age floor', () => {
+    it('uses the same UTC calendar boundary as the server-side birth date guard', () => {
         jest.useFakeTimers();
-        jest.setSystemTime(new Date(2026, 2, 27, 12, 0, 0));
+        jest.setSystemTime(new Date('2026-03-27T23:30:00-07:00'));
 
         const schema = createProfileSchema('en');
         const basePayload = {
@@ -52,12 +52,12 @@ describe('profile validation', () => {
 
         const thirteenYearsOld = schema.safeParse({
             ...basePayload,
-            birthDate: '2013-03-27T00:00:00.000Z',
+            birthDate: '2013-03-28',
         });
 
         const stillTwelve = schema.safeParse({
             ...basePayload,
-            birthDate: '2013-03-28T00:00:00.000Z',
+            birthDate: '2013-03-29',
         });
 
         expect(thirteenYearsOld.success).toBe(true);

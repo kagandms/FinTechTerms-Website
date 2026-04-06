@@ -1,7 +1,10 @@
 import 'server-only';
 
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { mockTerms } from '@/data/mockData';
+import { createTimeoutFetch } from '@/lib/api-response';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
+import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
 import { normalizeSearchText } from '@/lib/search-normalization';
 import type { Category, RegionalMarket, Term } from '@/types';
 
@@ -22,6 +25,7 @@ interface SearchCatalogResult {
 }
 
 const TERM_CATALOG_LAST_MODIFIED = '2026-03-11T00:00:00.000Z';
+let publicCatalogRpcClient: SupabaseClient | null = null;
 
 const normalizedCatalog = filterAcademicTerms(mockTerms).map((term) => ({
     ...term,
@@ -92,7 +96,49 @@ export const listSitemapTerms = async (): Promise<Array<{ id: string; lastModifi
     }))
 );
 
-export const getPublicTermCount = async (): Promise<number> => normalizedCatalog.length;
+const getPublicCatalogRpcClient = (): SupabaseClient => {
+    if (publicCatalogRpcClient) {
+        return publicCatalogRpcClient;
+    }
+
+    const env = getPublicEnv();
+    if (!hasConfiguredPublicSupabaseEnv(env)) {
+        throw new Error('Public term count requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+    }
+
+    publicCatalogRpcClient = createClient(
+        env.supabaseUrl!,
+        env.supabaseAnonKey!,
+        {
+            global: {
+                fetch: createTimeoutFetch(),
+            },
+        }
+    );
+
+    return publicCatalogRpcClient;
+};
+
+export const getPublicTermCount = async (): Promise<number> => {
+    const { data, error } = await getPublicCatalogRpcClient().rpc('get_public_term_count');
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    if (typeof data === 'number') {
+        return data;
+    }
+
+    if (typeof data === 'string') {
+        const parsed = Number.parseInt(data, 10);
+        if (Number.isFinite(parsed)) {
+            return parsed;
+        }
+    }
+
+    throw new Error('Public term count RPC returned an invalid payload.');
+};
 
 export const searchPublicTerms = async (
     options: SearchCatalogOptions = {}

@@ -16,9 +16,9 @@
 
 Current production mutation model:
 
-- `/api/record-quiz` authenticates the caller server-side, then writes through a request-scoped authenticated RPC (`record_my_study_event`)
-- `/api/favorites` authenticates the caller server-side and writes through a request-scoped authenticated RPC (`toggle_my_favorite`)
-- `/api/study-sessions` writes only through the trusted backend and durable session tokens
+- `/api/record-quiz` authenticates the caller server-side, then writes through a service-role route boundary (`record_study_event`) with the user id derived from the request
+- `/api/favorites` authenticates the caller server-side and writes through a service-role route boundary (`toggle_user_favorite`) with the user id derived from the request
+- `/api/study-sessions` writes only through service-role server RPCs and durable session tokens
 - `/api/profile` authenticates the caller server-side, then updates `profiles` plus auth metadata through a single trusted route boundary
 
 The anon key must never be treated as sufficient authority for user-owned write tables.

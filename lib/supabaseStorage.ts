@@ -38,6 +38,13 @@ export interface RecordQuizResult {
     };
 }
 
+interface QuizAttemptSubmissionContext {
+    sessionId?: string | null;
+    sessionToken?: string | null;
+}
+
+type QuizAttemptSubmission = QuizAttempt & QuizAttemptSubmissionContext;
+
 export type SaveQuizAttemptResult =
     | { status: 'ok'; data: RecordQuizResult }
     | { status: 'auth_expired'; message: string }
@@ -739,10 +746,19 @@ export async function toggleFavoriteInSupabase(
  */
 export async function saveQuizAttemptToSupabase(
     _userId: string,
-    attempt: QuizAttempt
+    attempt: QuizAttemptSubmission
 ): Promise<SaveQuizAttemptResult> {
     try {
-        const sessionContext = readTrackedStudySessionContext();
+        const explicitSessionId = typeof attempt.sessionId === 'string' && attempt.sessionId.trim().length > 0
+            ? attempt.sessionId.trim()
+            : null;
+        const explicitSessionToken = typeof attempt.sessionToken === 'string' && attempt.sessionToken.trim().length > 0
+            ? attempt.sessionToken.trim()
+            : null;
+        const fallbackSessionContext = readTrackedStudySessionContext();
+        const resolvedSessionId = explicitSessionId ?? fallbackSessionContext?.sessionId ?? null;
+        const resolvedSessionToken = explicitSessionToken ?? fallbackSessionContext?.sessionToken ?? null;
+        const hasResolvedSessionContext = Boolean(resolvedSessionId && resolvedSessionToken);
         const response = await fetchWithAuthRetry('/api/record-quiz', {
             method: 'POST',
             body: JSON.stringify({
@@ -751,8 +767,9 @@ export async function saveQuizAttemptToSupabase(
                 response_time_ms: attempt.response_time_ms,
                 quiz_type: attempt.quiz_type,
                 idempotencyKey: attempt.id || createIdempotencyKey(),
-                session_id: sessionContext?.sessionId,
-                session_token: sessionContext?.sessionToken,
+                occurred_at: attempt.timestamp,
+                session_id: hasResolvedSessionContext ? resolvedSessionId : undefined,
+                session_token: hasResolvedSessionContext ? resolvedSessionToken : undefined,
             }),
         }, 'Failed to save quiz attempt.', {
             throwOnFinalUnauthorized: false,

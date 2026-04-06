@@ -95,6 +95,7 @@ interface PendingEndSessionMutation {
 }
 
 type RetryQueueDropReason = 'age' | 'capacity';
+type PendingStartReplayResult = 'none' | 'restored' | 'queued' | 'needs_new_session';
 
 const buildPendingStartSessionStorageKey = (tabId: string): string => `${PENDING_START_SESSION_KEY}:${tabId}`;
 const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
@@ -134,11 +135,14 @@ export default function SessionTracker() {
     const isFlushingQueueRef = useRef(false);
     const startKeyRef = useRef<string | null>(null);
     const endKeyRef = useRef<string | null>(null);
+    const startAttemptCounterRef = useRef(0);
+    const activeStartAttemptRef = useRef<number | null>(null);
     const pendingStartPayloadRef = useRef<PendingStartSessionMutation | null>(null);
     const pendingEndPayloadRef = useRef<PendingEndSessionMutation | null>(null);
     const startRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
     const heartbeatRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
     const endRequestRef = useRef<Promise<PersistSessionResult> | null>(null);
+    const scheduleRetryQueueFlushRef = useRef<(() => void) | null>(null);
 
     const logSessionTrackerWarning = useCallback((
         message: string,
@@ -261,9 +265,21 @@ export default function SessionTracker() {
         persistRetryQueue(retryQueueRef.current);
     }, [logDroppedRetryQueueEntries, persistRetryQueue]);
 
+    const removeRetryQueueEntry = useCallback((idempotencyKey: string) => {
+        const nextQueue = readRetryQueue().filter((entry) => entry.idempotencyKey !== idempotencyKey);
+        replaceRetryQueue(nextQueue);
+    }, [readRetryQueue, replaceRetryQueue]);
+
     const queueRetryableMutation = useCallback((
-        entry: Omit<QueuedSessionMutation, 'queuedAt'>
+        entry: Omit<QueuedSessionMutation, 'queuedAt'>,
+        reason: string
     ) => {
+        logger.warn('SESSION_TRACKER_RETRY_QUEUE_ENQUEUED', {
+            route: 'SessionTracker',
+            action: entry.payload.action,
+            idempotencyKey: entry.idempotencyKey,
+            reason,
+        });
         replaceRetryQueue([
             ...readRetryQueue(),
             {
@@ -271,6 +287,12 @@ export default function SessionTracker() {
                 queuedAt: Date.now(),
             },
         ]);
+
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return;
+        }
+
+        scheduleRetryQueueFlushRef.current?.();
     }, [readRetryQueue, replaceRetryQueue]);
 
     const clearPendingStartSession = useCallback((expectedIdempotencyKey?: string) => {
@@ -321,10 +343,13 @@ export default function SessionTracker() {
 
         try {
             sessionStorage.setItem(buildPendingStartSessionStorageKey(tabId), JSON.stringify(pending));
-        } catch {
-            // Best-effort persistence only.
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_PERSIST_FAILED', error, {
+                action: pending.payload.action,
+                idempotencyKey: pending.idempotencyKey,
+            });
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const readPendingStartSession = useCallback((): PendingStartSessionMutation | null => {
         if (pendingStartPayloadRef.current) {
@@ -356,10 +381,11 @@ export default function SessionTracker() {
             const pending = parsed as PendingStartSessionMutation;
             pendingStartPayloadRef.current = pending;
             return pending;
-        } catch {
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_RESTORE_FAILED', error);
             return null;
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const clearPendingEndSession = useCallback((expectedIdempotencyKey?: string) => {
         const currentPending = pendingEndPayloadRef.current;
@@ -408,10 +434,13 @@ export default function SessionTracker() {
 
         try {
             sessionStorage.setItem(buildPendingEndSessionStorageKey(tabId), JSON.stringify(pending));
-        } catch {
-            // Best-effort persistence only.
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_PERSIST_FAILED', error, {
+                action: pending.payload.action,
+                idempotencyKey: pending.idempotencyKey,
+            });
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const readPendingEndSession = useCallback((): PendingEndSessionMutation | null => {
         if (pendingEndPayloadRef.current) {
@@ -442,10 +471,11 @@ export default function SessionTracker() {
             const pending = parsed as PendingEndSessionMutation;
             pendingEndPayloadRef.current = pending;
             return pending;
-        } catch {
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_RESTORE_FAILED', error);
             return null;
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const saveSessionToStorage = useCallback((session: SessionData | null) => {
         const tabId = getCurrentTabId();
@@ -461,10 +491,14 @@ export default function SessionTracker() {
             }
 
             sessionStorage.removeItem(storageKey);
-        } catch {
-            // Silently fail
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_WRITE_FAILED', error, {
+                hasSession: Boolean(session),
+                sessionId: session?.id ?? null,
+                action: session ? 'persist' : 'clear',
+            });
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const hydrateSessionFromStorage = useCallback((session: SessionData): SessionData => {
         const tabId = getCurrentTabId();
@@ -490,10 +524,13 @@ export default function SessionTracker() {
                     : session.authMode,
                 anonymousId: typeof persisted.anonymousId === 'string' ? persisted.anonymousId : session.anonymousId,
             };
-        } catch {
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_RESTORE_FAILED', error, {
+                sessionId: session.id,
+            });
             return session;
         }
-    }, [getCurrentTabId]);
+    }, [getCurrentTabId, logSessionTrackerWarning]);
 
     const applyStartResponseToCurrentSession = useCallback((
         sessionStartTime: number | null,
@@ -657,7 +694,6 @@ export default function SessionTracker() {
 
         try {
             const pending = [...existingQueue];
-            replaceRetryQueue([]);
 
             for (let index = 0; index < pending.length; index += 1) {
                 const entry = pending[index];
@@ -681,15 +717,23 @@ export default function SessionTracker() {
                                 action: entry.payload.action,
                                 idempotencyKey: entry.idempotencyKey,
                             });
+                            if (endKeyRef.current === entry.idempotencyKey) {
+                                endKeyRef.current = null;
+                            }
+                            clearPendingEndSession(entry.idempotencyKey);
                         }
+
+                        removeRetryQueueEntry(entry.idempotencyKey);
                     }
 
-                    const remainingEntries = response.retryable
-                        ? pending.slice(index)
-                        : pending.slice(index + 1);
-                    replaceRetryQueue([...remainingEntries, ...readRetryQueue()]);
-                    break;
+                    if (response.retryable) {
+                        break;
+                    }
+
+                    continue;
                 }
+
+                removeRetryQueueEntry(entry.idempotencyKey);
 
                 if (
                     entry.payload.action === 'start'
@@ -724,8 +768,12 @@ export default function SessionTracker() {
         logSessionTrackerWarning,
         persistSessionMutation,
         readRetryQueue,
-        replaceRetryQueue,
+        removeRetryQueueEntry,
     ]);
+
+    scheduleRetryQueueFlushRef.current = () => {
+        void flushRetryQueue();
+    };
 
     // Generate anonymous ID for non-authenticated users
     const getAnonymousId = useCallback((): string => {
@@ -736,10 +784,11 @@ export default function SessionTracker() {
                 localStorage.setItem(ANONYMOUS_ID_KEY, anonId);
             }
             return anonId;
-        } catch {
+        } catch (error) {
+            logSessionTrackerWarning('SESSION_TRACKER_ANONYMOUS_ID_STORAGE_FAILED', error);
             return `anon_${Date.now()}`;
         }
-    }, []);
+    }, [logSessionTrackerWarning]);
 
     // Get device type
     const getDeviceType = useCallback((): string => {
@@ -828,20 +877,24 @@ export default function SessionTracker() {
                 payload: pending.payload,
                 sessionStartTime: null,
                 idempotencyKey: pending.idempotencyKey,
-            });
+            }, 'pending_end_retryable_replay');
             return;
         }
 
+        clearPendingEndSession(pending.idempotencyKey);
+        if (endKeyRef.current === pending.idempotencyKey) {
+            endKeyRef.current = null;
+        }
         logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_REQUIRES_MANUAL_RETRY', new Error('Pending end-session replay returned a non-retryable response.'), {
             action: pending.payload.action,
             idempotencyKey: pending.idempotencyKey,
         });
     }, [logSessionTrackerWarning, clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
 
-    const replayPendingStartSession = useCallback(async (): Promise<boolean> => {
+    const replayPendingStartSession = useCallback(async (): Promise<PendingStartReplayResult> => {
         const pending = readPendingStartSession();
         if (!pending) {
-            return false;
+            return 'none';
         }
 
         const currentTabId = getCurrentTabId();
@@ -874,24 +927,31 @@ export default function SessionTracker() {
             }
 
             clearPendingStartSession(pending.idempotencyKey);
-            return true;
+            return 'restored';
         }
 
         if (!response.retryable) {
+            logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_REQUIRES_NEW_SESSION', new Error('Pending start-session replay returned a non-retryable response.'), {
+                action: pending.payload.action,
+                idempotencyKey: pending.idempotencyKey,
+            });
             clearPendingStartSession(pending.idempotencyKey);
             if (startKeyRef.current === pending.idempotencyKey) {
                 startKeyRef.current = null;
             }
-            return true;
+            sessionRef.current = null;
+            lastTrackedPathnameRef.current = null;
+            saveSessionToStorage(null);
+            return 'needs_new_session';
         }
 
         queueRetryableMutation({
             payload: pending.payload,
             sessionStartTime: pending.sessionStartTime,
             idempotencyKey: pending.idempotencyKey,
-        });
+        }, 'pending_start_retryable_replay');
 
-        return true;
+        return 'queued';
     }, [
         applyStartResponseToCurrentSession,
         clearPendingStartSession,
@@ -899,6 +959,7 @@ export default function SessionTracker() {
         hydrateSessionFromStorage,
         logSessionTrackerWarning,
         persistSessionMutation,
+        saveSessionToStorage,
         queueRetryableMutation,
         readPendingStartSession,
     ]);
@@ -924,6 +985,15 @@ export default function SessionTracker() {
         previousSessionToken = null,
     }: StartSessionOptions = {}) => {
         if (!hasResearchConsent()) return;
+
+        const inFlightStart = startRequestRef.current;
+        if (inFlightStart) {
+            await inFlightStart.catch(() => undefined);
+        }
+
+        const startAttemptId = startAttemptCounterRef.current + 1;
+        startAttemptCounterRef.current = startAttemptId;
+        activeStartAttemptRef.current = startAttemptId;
 
         const requestAnonymousId = mode === 'anonymous'
             ? getAnonymousId()
@@ -960,16 +1030,14 @@ export default function SessionTracker() {
             idempotencyKey: startIdempotencyKey,
         });
 
-        const inFlightStart = startRequestRef.current;
-        if (inFlightStart) {
-            await inFlightStart.catch(() => undefined);
-            return;
-        }
-
         try {
             const request = persistSessionMutation(startPayload, startIdempotencyKey);
             startRequestRef.current = request;
             const response = await request;
+
+            if (activeStartAttemptRef.current !== startAttemptId) {
+                return;
+            }
 
             if (!response.ok) {
                 if (response.retryable) {
@@ -977,7 +1045,7 @@ export default function SessionTracker() {
                         payload: startPayload,
                         sessionStartTime: session.startTime,
                         idempotencyKey: startIdempotencyKey,
-                    });
+                    }, 'start_retryable_response');
                 } else if (startKeyRef.current === startIdempotencyKey) {
                     startKeyRef.current = null;
                     clearPendingStartSession(startIdempotencyKey);
@@ -985,10 +1053,13 @@ export default function SessionTracker() {
                 return;
             }
 
-            session.id = response.data?.sessionId || null;
-            session.token = response.data?.sessionToken || null;
-            sessionRef.current = session;
-            saveSessionToStorage(session);
+            const nextSession: SessionData = {
+                ...session,
+                id: response.data?.sessionId || null,
+                token: response.data?.sessionToken || null,
+            };
+            sessionRef.current = nextSession;
+            saveSessionToStorage(nextSession);
             if (startKeyRef.current === startIdempotencyKey) {
                 startKeyRef.current = null;
             }
@@ -1002,6 +1073,9 @@ export default function SessionTracker() {
                 idempotencyKey: startIdempotencyKey,
             });
         } finally {
+            if (activeStartAttemptRef.current === startAttemptId) {
+                activeStartAttemptRef.current = null;
+            }
             if (startRequestRef.current) {
                 startRequestRef.current = null;
             }
@@ -1057,7 +1131,7 @@ export default function SessionTracker() {
                         payload: heartbeatPayload,
                         sessionStartTime: session.startTime,
                         idempotencyKey: heartbeatIdempotencyKey,
-                    });
+                    }, 'heartbeat_retryable_response');
                 }
                 return;
             }
@@ -1123,12 +1197,16 @@ export default function SessionTracker() {
                         payload: endPayload,
                         sessionStartTime: session.startTime,
                         idempotencyKey: endIdempotencyKey,
-                    });
+                    }, 'end_retryable_response');
                 } else {
                     logSessionTrackerWarning('SESSION_TRACKER_END_REQUIRES_MANUAL_RETRY', new Error('End-session mutation returned a non-retryable response.'), {
                         action: 'end',
                         idempotencyKey: endIdempotencyKey,
                     });
+                    clearPendingEndSession(endIdempotencyKey);
+                    if (endKeyRef.current === endIdempotencyKey) {
+                        endKeyRef.current = null;
+                    }
                 }
                 return;
             }
@@ -1180,13 +1258,13 @@ export default function SessionTracker() {
         void (async () => {
             readRetryQueue();
             await replayPendingEndSession();
-            const reusedPendingStart = await replayPendingStartSession();
+            const pendingStartResult = await replayPendingStartSession();
 
             if (!isMounted) {
                 return;
             }
 
-            if (!reusedPendingStart && !sessionRef.current) {
+            if ((pendingStartResult === 'none' || pendingStartResult === 'needs_new_session') && !sessionRef.current) {
                 await startSession();
                 if (!isMounted) {
                     return;

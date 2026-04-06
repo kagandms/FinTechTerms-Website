@@ -35,6 +35,7 @@ import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { useToast } from '@/contexts/ToastContext';
 import { logger } from '@/lib/logger';
+import { readTrackedStudySessionContext } from '@/lib/study-session-storage';
 import {
     createSafeProgress,
     getErrorMessage,
@@ -652,11 +653,15 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 term_id: nextPendingReview.termId,
                 is_correct: nextPendingReview.isCorrect,
                 response_time_ms: nextPendingReview.responseTimeMs,
-                timestamp: new Date().toISOString(),
-                quiz_type: 'daily',
+                timestamp: nextPendingReview.occurredAt,
+                quiz_type: nextPendingReview.quizType,
             };
 
-            const result = await saveQuizAttemptToSupabase(userId, attempt);
+            const result = await saveQuizAttemptToSupabase(userId, {
+                ...attempt,
+                sessionId: nextPendingReview.sessionId,
+                sessionToken: nextPendingReview.sessionToken,
+            });
 
             if (result.status === 'ok') {
                 applyCommittedReview(nextPendingReview.termId, attempt, result.data);
@@ -909,12 +914,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         const idempotencyKey = getOrCreateReviewKey(reviewId);
         const normalizedResponseTimeMs = Math.max(0, Math.round(responseTimeMs));
+        const occurredAt = new Date().toISOString();
+        const sessionContext = readTrackedStudySessionContext();
         const attempt: QuizAttempt = {
             id: idempotencyKey,
             term_id: termId,
             is_correct: isCorrect,
             response_time_ms: normalizedResponseTimeMs,
-            timestamp: new Date().toISOString(),
+            timestamp: occurredAt,
             quiz_type: quizType,
         };
 
@@ -930,7 +937,11 @@ export function SRSProvider({ children }: SRSProviderProps) {
             return;
         }
 
-        const result = await saveQuizAttemptToSupabase(userId, attempt);
+        const result = await saveQuizAttemptToSupabase(userId, {
+            ...attempt,
+            sessionId: sessionContext?.sessionId ?? null,
+            sessionToken: sessionContext?.sessionToken ?? null,
+        });
 
         if (result.status === 'ok') {
             applyCommittedReview(termId, attempt, result.data);
@@ -954,6 +965,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 isCorrect,
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
+                quizType,
+                occurredAt,
+                sessionId: sessionContext?.sessionId ?? null,
+                sessionToken: sessionContext?.sessionToken ?? null,
             });
             showToast(AUTH_EXPIRED_PENDING_REVIEW_MESSAGE, 'warning');
             return;
@@ -966,6 +981,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 isCorrect,
                 responseTimeMs: normalizedResponseTimeMs,
                 idempotencyKey,
+                quizType,
+                occurredAt,
+                sessionId: sessionContext?.sessionId ?? null,
+                sessionToken: sessionContext?.sessionToken ?? null,
             });
             showToast(PENDING_REVIEW_SYNC_MESSAGE, 'warning');
             return;

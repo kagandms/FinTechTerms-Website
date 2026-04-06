@@ -20,6 +20,7 @@ import {
 } from '@/lib/rate-limiter';
 import {
     createRequestScopedClient,
+    createServiceRoleClient,
     resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
@@ -47,9 +48,10 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 const WRITE_RATE_LIMIT = 10;
 const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailable. Verify preview/staging runtime env includes UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.';
 const FAVORITES_LIMIT_REACHED_MESSAGE = 'Favorite limit reached. Complete your member setup to save more terms.';
+type FavoriteMutationClient = ReturnType<typeof createServiceRoleClient>;
 
 const markFavoriteFailure = async (
-    supabaseAdmin: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    supabaseAdmin: FavoriteMutationClient,
     userId: string,
     idempotencyKey: string | null,
     statusCode: number,
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
     const ip = getClientIp(request);
     let authenticatedUserId: string | null = null;
     let headers: HeadersInit = GLOBAL_RATE_LIMIT_HEADERS;
+    let mutationClient: FavoriteMutationClient | null = null;
 
     let body: unknown;
 
@@ -143,8 +146,14 @@ export async function POST(request: Request) {
             });
         }
         authenticatedUserId = user.id;
-        const supabaseAdmin = await createRequestScopedClient(request);
-        if (!supabaseAdmin) {
+        try {
+            mutationClient = createServiceRoleClient();
+        } catch (error) {
+            logger.error('POST_FAVORITES_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
+                route: 'POST /api/favorites',
+                error: error instanceof Error ? error : undefined,
+                userId: user.id,
+            });
             return errorResponse({
                 status: 503,
                 code: 'FAVORITES_UPDATE_FAILED',
@@ -154,11 +163,12 @@ export async function POST(request: Request) {
                 headers: GLOBAL_RATE_LIMIT_HEADERS,
             });
         }
+        const supabaseClient = mutationClient;
 
         const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
 
         const inspection = await inspectIdempotentRequest({
-            supabaseAdmin,
+            supabaseAdmin: supabaseClient,
             userId: user.id,
             action: 'favorite_mutation',
             idempotencyKey,
@@ -256,7 +266,7 @@ export async function POST(request: Request) {
         }
 
         const reservation = await reserveIdempotentRequest({
-            supabaseAdmin,
+            supabaseAdmin: supabaseClient,
             userId: user.id,
             action: 'favorite_mutation',
             idempotencyKey,
@@ -288,41 +298,10 @@ export async function POST(request: Request) {
             });
         }
 
-        if (shouldFavorite && Number.isFinite(memberState.entitlements.maxFavorites)) {
-            const existingFavoritesResponse = await supabaseAdmin
-                .from('user_favorites')
-                .select('term_id')
-                .eq('user_id', user.id);
-
-            if (existingFavoritesResponse.error) {
-                throw existingFavoritesResponse.error;
-            }
-
-            const existingFavorites = (existingFavoritesResponse.data || []).map((row) => row.term_id);
-            const isAlreadyFavorite = existingFavorites.includes(termId);
-
-            if (
-                !isAlreadyFavorite
-                && existingFavorites.length >= memberState.entitlements.maxFavorites
-            ) {
-                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 409, {
-                    code: 'FAVORITES_LIMIT_REACHED',
-                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
-                });
-                return errorResponse({
-                    status: 409,
-                    code: 'FAVORITES_LIMIT_REACHED',
-                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
-                    requestId,
-                    retryable: false,
-                    headers: guardedHeaders,
-                });
-            }
-        }
-
-        const { data: mutationData, error: mutationError } = await supabaseAdmin.rpc(
-            'toggle_my_favorite',
+        const { data: mutationData, error: mutationError } = await supabaseClient.rpc(
+            'toggle_user_favorite',
             {
+                p_user_id: user.id,
                 p_term_id: termId,
                 p_should_favorite: shouldFavorite,
             }
@@ -340,7 +319,7 @@ export async function POST(request: Request) {
                 || (mutationError.message || '').toLowerCase().includes('term not found');
 
             if (isMissingTermError) {
-                await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 404, {
+                await markFavoriteFailure(supabaseClient, user.id, idempotencyKey, 404, {
                     code: 'TERM_NOT_FOUND',
                     message: 'Term not found.',
                 });
@@ -354,7 +333,25 @@ export async function POST(request: Request) {
                 });
             }
 
-            await markFavoriteFailure(supabaseAdmin, user.id, idempotencyKey, 500, {
+            const isFavoriteLimitError = mutationError.code === '23514'
+                || (mutationError.message || '').toLowerCase().includes('favorite limit');
+
+            if (isFavoriteLimitError) {
+                await markFavoriteFailure(supabaseClient, user.id, idempotencyKey, 409, {
+                    code: 'FAVORITES_LIMIT_REACHED',
+                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
+                });
+                return errorResponse({
+                    status: 409,
+                    code: 'FAVORITES_LIMIT_REACHED',
+                    message: FAVORITES_LIMIT_REACHED_MESSAGE,
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
+
+            await markFavoriteFailure(supabaseClient, user.id, idempotencyKey, 500, {
                 code: 'FAVORITES_UPDATE_FAILED',
                 message: 'Unable to update favorites.',
             });
@@ -372,7 +369,7 @@ export async function POST(request: Request) {
 
         try {
             await completeIdempotentRequest({
-                supabaseAdmin,
+                supabaseAdmin: supabaseClient,
                 userId: user.id,
                 action: 'favorite_mutation',
                 idempotencyKey,
@@ -387,7 +384,7 @@ export async function POST(request: Request) {
             });
             try {
                 await deleteIdempotentRequest({
-                    supabaseAdmin,
+                    supabaseAdmin: supabaseClient,
                     userId: user.id,
                     action: 'favorite_mutation',
                     idempotencyKey,
@@ -407,15 +404,12 @@ export async function POST(request: Request) {
             { headers: guardedHeaders }
         );
     } catch (error) {
-        if (authenticatedUserId) {
-            const supabaseAdmin = await createRequestScopedClient(request);
-            if (supabaseAdmin) {
-                const { idempotencyKey } = validatedData.data;
-                await markFavoriteFailure(supabaseAdmin, authenticatedUserId, idempotencyKey, 500, {
-                    code: 'FAVORITES_UPDATE_FAILED',
-                    message: 'Unable to update favorites.',
-                });
-            }
+        if (authenticatedUserId && mutationClient) {
+            const { idempotencyKey } = validatedData.data;
+            await markFavoriteFailure(mutationClient, authenticatedUserId, idempotencyKey, 500, {
+                code: 'FAVORITES_UPDATE_FAILED',
+                message: 'Unable to update favorites.',
+            });
         }
 
         return handleRouteError(error, {

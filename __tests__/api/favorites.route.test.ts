@@ -8,6 +8,7 @@ export {};
 
 const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateRequestScopedClient = jest.fn();
+const mockCreateServiceRoleClient = jest.fn();
 const mockResolveRequestMemberEntitlements = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
@@ -17,6 +18,7 @@ const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createRequestScopedClient: (request: Request) => mockCreateRequestScopedClient(request),
+    createServiceRoleClient: () => mockCreateServiceRoleClient(),
     resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
 }));
 
@@ -65,6 +67,10 @@ describe('favorites route', () => {
             email: 'user@example.com',
         });
         mockCreateRequestScopedClient.mockResolvedValue({
+            rpc: jest.fn(),
+            from: jest.fn(),
+        });
+        mockCreateServiceRoleClient.mockReturnValue({
             rpc: jest.fn(),
             from: jest.fn(),
         });
@@ -144,7 +150,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({
+        mockCreateServiceRoleClient.mockReturnValue({
             rpc,
             from: jest.fn(),
         });
@@ -164,7 +170,9 @@ describe('favorites route', () => {
             termId: 'term-1',
             favorites: ['term-1'],
         });
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
+        expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
+        expect(rpc).toHaveBeenCalledWith('toggle_user_favorite', {
+            p_user_id: 'user-1',
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -200,7 +208,7 @@ describe('favorites route', () => {
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 
-    it('does not pass a user id through the favorite mutation RPC payload', async () => {
+    it('passes the resolved user id only through the trusted favorite RPC payload', async () => {
         const rpc = jest.fn().mockResolvedValue({
             data: {
                 success: true,
@@ -210,7 +218,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({
+        mockCreateServiceRoleClient.mockReturnValue({
             rpc,
             from: jest.fn(),
         });
@@ -223,10 +231,11 @@ describe('favorites route', () => {
         }));
 
         expect(response.status).toBe(200);
-        expect(rpc).toHaveBeenCalledWith(
-            'toggle_my_favorite',
-            expect.not.objectContaining({ p_user_id: expect.anything() })
-        );
+        expect(rpc).toHaveBeenCalledWith('toggle_user_favorite', {
+            p_user_id: 'user-1',
+            p_term_id: 'term-1',
+            p_should_favorite: true,
+        });
     });
 
     it('still returns 200 when idempotency completion fails after the favorite write succeeds', async () => {
@@ -239,7 +248,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({
+        mockCreateServiceRoleClient.mockReturnValue({
             rpc,
             from: jest.fn(),
         });
@@ -269,25 +278,17 @@ describe('favorites route', () => {
     });
 
     it('returns 409 when the server-side favorite limit is exhausted', async () => {
-        mockResolveRequestMemberEntitlements.mockResolvedValue({
-            user: {
-                id: 'user-1',
-                email: 'user@example.com',
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: '23514',
+                message: 'Favorite limit reached.',
             },
-            entitlements: {
-                maxFavorites: 1,
-            },
-            unavailable: null,
         });
-
-        const rpc = jest.fn();
-        const eq = jest.fn().mockResolvedValue({
-            data: [{ term_id: 'existing-term' }],
-            error: null,
+        mockCreateServiceRoleClient.mockReturnValue({
+            from: jest.fn(),
+            rpc,
         });
-        const select = jest.fn(() => ({ eq }));
-        const from = jest.fn(() => ({ select }));
-        mockCreateRequestScopedClient.mockResolvedValue({ from, rpc });
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -302,7 +303,11 @@ describe('favorites route', () => {
             code: 'FAVORITES_LIMIT_REACHED',
             retryable: false,
         });
-        expect(rpc).not.toHaveBeenCalled();
+        expect(rpc).toHaveBeenCalledWith('toggle_user_favorite', {
+            p_user_id: 'user-1',
+            p_term_id: 'term-2',
+            p_should_favorite: true,
+        });
         expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
             action: 'favorite_mutation',
             statusCode: 409,
@@ -310,5 +315,25 @@ describe('favorites route', () => {
                 code: 'FAVORITES_LIMIT_REACHED',
             }),
         }));
+    });
+
+    it('returns 503 when the service-role client is unavailable during write handling', async () => {
+        mockCreateServiceRoleClient.mockImplementationOnce(() => {
+            throw new Error('service role unavailable');
+        });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createPostRequest({
+            termId: 'term-1',
+            shouldFavorite: true,
+            idempotencyKey: '550e8400-e29b-41d4-a716-446655440000',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'FAVORITES_UPDATE_FAILED',
+            retryable: true,
+        });
     });
 });

@@ -6,7 +6,7 @@ import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter
 import { hashStudySessionToken } from '@/lib/study-session-token';
 
 const mockResolveAuthenticatedUser = jest.fn();
-const mockCreateRequestScopedClient = jest.fn();
+const mockCreateServiceRoleClient = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
 const mockCompleteIdempotentRequest = jest.fn();
@@ -14,7 +14,7 @@ const mockDeleteIdempotentRequest = jest.fn();
 const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
-    createRequestScopedClient: (...args: unknown[]) => mockCreateRequestScopedClient(...args),
+    createServiceRoleClient: () => mockCreateServiceRoleClient(),
     resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
 }));
 
@@ -55,7 +55,7 @@ describe('record-quiz route', () => {
         quizMutationRateLimiter.reset();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user_123' });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc: jest.fn() });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc: jest.fn() });
         mockInspectIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockReserveIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockCompleteIdempotentRequest.mockResolvedValue(undefined);
@@ -88,6 +88,20 @@ describe('record-quiz route', () => {
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload({
             session_id: '550e8400-e29b-41d4-a716-446655440001',
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'VALIDATION_ERROR',
+            retryable: false,
+        });
+    });
+
+    it('rejects invalid occurred_at values', async () => {
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            occurred_at: 'not-a-timestamp',
         })) as never);
         const body = await response.json();
 
@@ -131,7 +145,7 @@ describe('record-quiz route', () => {
 
     it('returns cached idempotent responses without calling the database RPC again', async () => {
         const rpc = jest.fn();
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
         mockReserveIdempotentRequest.mockResolvedValue({
             kind: 'replay',
             statusCode: 200,
@@ -161,7 +175,7 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload()) as never);
@@ -178,8 +192,11 @@ describe('record-quiz route', () => {
                 quiz_type: 'simulation',
             }),
         }));
-        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
+        expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_user_id: 'user_123',
             p_quiz_type: 'simulation',
+            p_occurred_at: null,
         }));
         expect(mockCompleteIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
             responseBody: body,
@@ -192,7 +209,7 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload({
@@ -206,7 +223,8 @@ describe('record-quiz route', () => {
             state: { ok: true },
             message: 'Recorded successfully',
         });
-        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_user_id: 'user_123',
             p_response_time_ms: 0,
         }));
     });
@@ -216,7 +234,7 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
         mockCompleteIdempotentRequest.mockRejectedValueOnce(new Error('idempotency completion failed'));
 
         const { POST } = await import('@/app/api/record-quiz/route');
@@ -237,22 +255,21 @@ describe('record-quiz route', () => {
         expect(mockFailIdempotentRequest).not.toHaveBeenCalled();
     });
 
-    it('does not use the service-role client shape for quiz writes', async () => {
+    it('uses the service-role client for trusted quiz writes', async () => {
         const rpc = jest.fn().mockResolvedValue({
             data: { ok: true },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload()) as never);
 
         expect(response.status).toBe(200);
-        expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
-        expect(rpc).toHaveBeenCalledWith(
-            'record_my_study_event',
-            expect.not.objectContaining({ p_user_id: expect.anything() })
-        );
+        expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_user_id: 'user_123',
+        }));
     });
 
     it('passes the active study-session context through to the quiz RPC', async () => {
@@ -260,10 +277,11 @@ describe('record-quiz route', () => {
             data: { ok: true },
             error: null,
         });
-        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
 
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload({
+            occurred_at: '2026-03-11T09:30:00.000Z',
             session_id: '550e8400-e29b-41d4-a716-446655440001',
             session_token: 'a'.repeat(32),
         })) as never);
@@ -271,13 +289,98 @@ describe('record-quiz route', () => {
         expect(response.status).toBe(200);
         expect(mockReserveIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
             payload: expect.objectContaining({
+                occurred_at: '2026-03-11T09:30:00.000Z',
                 session_id: '550e8400-e29b-41d4-a716-446655440001',
             }),
         }));
-        expect(rpc).toHaveBeenCalledWith('record_my_study_event', expect.objectContaining({
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_user_id: 'user_123',
+            p_occurred_at: '2026-03-11T09:30:00.000Z',
             p_session_id: '550e8400-e29b-41d4-a716-446655440001',
             p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
         }));
+    });
+
+    it('returns 404 when the linked study session does not exist', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: 'P0002',
+                message: 'Study session not found.',
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+            session_token: 'a'.repeat(32),
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(404);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_NOT_FOUND',
+            message: 'Study session not found.',
+            retryable: false,
+        });
+        expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            statusCode: 404,
+            responseBody: {
+                code: 'STUDY_SESSION_NOT_FOUND',
+                message: 'Study session not found.',
+            },
+        }));
+    });
+
+    it('returns 403 when the linked study session belongs to a different requester', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: '42501',
+                message: 'Study session does not belong to this requester.',
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+            session_token: 'a'.repeat(32),
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_FORBIDDEN',
+            message: 'Study session does not belong to this requester.',
+            retryable: false,
+        });
+    });
+
+    it('returns 409 when the idempotency key is already linked to a different study session', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: '23505',
+                message: 'Idempotency key already linked to a different study session.',
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+            session_token: 'a'.repeat(32),
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(409);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_CONFLICT',
+            message: 'Study session is already linked to a different quiz submission.',
+            retryable: false,
+        });
     });
 
     it('returns 503 when the route rate limiter is unavailable', async () => {
@@ -298,5 +401,21 @@ describe('record-quiz route', () => {
             retryable: true,
         });
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+    });
+
+    it('returns 503 when the service-role client is unavailable', async () => {
+        mockCreateServiceRoleClient.mockImplementationOnce(() => {
+            throw new Error('service role unavailable');
+        });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'QUIZ_PERSIST_FAILED',
+            retryable: true,
+        });
     });
 });

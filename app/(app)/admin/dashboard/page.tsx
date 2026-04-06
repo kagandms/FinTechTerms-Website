@@ -1,26 +1,49 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import DashboardClient, { type DashboardQueryState } from '@/components/DashboardClient';
+import DashboardClient, {
+    type DashboardQueryState,
+    type DistributionRecord,
+    type LatencyPoint,
+    type LearningCurvePoint,
+    type OrderedFatiguePoint,
+} from '@/components/DashboardClient';
 import { redirect } from 'next/navigation';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 import { getServerEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { isAdminUserId } from '@/lib/admin-access';
+import { createServiceRoleClient } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
-const ADMIN_SIMULATION_QUERY_LIMIT = 5000;
 
 const loadDashboardQuery = async <T,>(
     queryName: string,
     query: () => Promise<{ data: T[] | null; error: { message: string } | null }>
 ): Promise<DashboardQueryState<T>> => {
-    const { data, error } = await query();
+    try {
+        const { data, error } = await query();
 
-    if (error) {
-        logger.error(`[AdminDashboard] ${queryName} query failed`, {
+        if (error) {
+            logger.error(`[AdminDashboard] ${queryName} query failed`, {
+                route: 'AdminDashboard',
+                error: new Error(error.message),
+            });
+            return {
+                queryName,
+                status: 'error',
+                data: [],
+            };
+        }
+
+        return {
+            queryName,
+            status: 'ready',
+            data: data ?? [],
+        };
+    } catch (error) {
+        logger.error(`[AdminDashboard] ${queryName} query threw`, {
             route: 'AdminDashboard',
-            error: new Error(error.message),
+            error: error instanceof Error ? error : undefined,
         });
         return {
             queryName,
@@ -28,12 +51,6 @@ const loadDashboardQuery = async <T,>(
             data: [],
         };
     }
-
-    return {
-        queryName,
-        status: 'ready',
-        data: data ?? [],
-    };
 };
 
 export default async function AdminDashboard() {
@@ -56,38 +73,59 @@ export default async function AdminDashboard() {
         redirect('/dashboard');
     }
 
-    // 2. Data Fetching (Service Role for Admin Access)
-    const supabaseAdmin = createServiceClient(
-        env.supabaseUrl!,
-        env.serviceRoleKey!
-    );
+    let supabaseAdmin: ReturnType<typeof createServiceRoleClient> | null = null;
 
-    // 1. Learning Curve Data (Date vs Accuracy)
+    try {
+        supabaseAdmin = createServiceRoleClient();
+    } catch (error) {
+        logger.error('ADMIN_DASHBOARD_SERVICE_ROLE_CLIENT_ERROR', {
+            route: 'AdminDashboard',
+            error: error instanceof Error ? error : undefined,
+        });
+    }
+
+    // Aggregated analytics are computed in SQL so the dashboard reflects the full dataset.
     const [learningData, latencyData, fatigueRaw, distributionRaw] = await Promise.all([
-        loadDashboardQuery('Learning curve', async () => await supabaseAdmin
-            .from('quiz_attempts')
-            .select('created_at, is_correct')
-            .eq('quiz_type', 'simulation')
-            .order('created_at', { ascending: false })
-            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
-        loadDashboardQuery('Latency analysis', async () => await supabaseAdmin
-            .from('quiz_attempts')
-            .select('is_correct, response_time_ms')
-            .eq('quiz_type', 'simulation')
-            .order('created_at', { ascending: false })
-            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
-        loadDashboardQuery('Fatigue analysis', async () => await supabaseAdmin
-            .from('quiz_attempts')
-            .select('session_id, user_id, is_correct, created_at')
-            .eq('quiz_type', 'simulation')
-            .order('created_at', { ascending: false })
-            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
-        loadDashboardQuery('Class distribution', async () => await supabaseAdmin
-            .from('quiz_attempts')
-            .select('user_id, is_correct')
-            .eq('quiz_type', 'simulation')
-            .order('created_at', { ascending: false })
-            .limit(ADMIN_SIMULATION_QUERY_LIMIT)),
+        loadDashboardQuery<LearningCurvePoint>('Learning curve', async () => {
+            if (!supabaseAdmin) {
+                throw new Error('Service-role client unavailable.');
+            }
+            const response = await supabaseAdmin.rpc('get_admin_simulation_learning_curve');
+            return {
+                data: response.data as LearningCurvePoint[] | null,
+                error: response.error ? { message: response.error.message } : null,
+            };
+        }),
+        loadDashboardQuery<LatencyPoint>('Latency analysis', async () => {
+            if (!supabaseAdmin) {
+                throw new Error('Service-role client unavailable.');
+            }
+            const response = await supabaseAdmin.rpc('get_admin_simulation_latency_summary');
+            return {
+                data: response.data as LatencyPoint[] | null,
+                error: response.error ? { message: response.error.message } : null,
+            };
+        }),
+        loadDashboardQuery<OrderedFatiguePoint>('Fatigue analysis', async () => {
+            if (!supabaseAdmin) {
+                throw new Error('Service-role client unavailable.');
+            }
+            const response = await supabaseAdmin.rpc('get_admin_simulation_fatigue_curve');
+            return {
+                data: response.data as OrderedFatiguePoint[] | null,
+                error: response.error ? { message: response.error.message } : null,
+            };
+        }),
+        loadDashboardQuery<DistributionRecord>('Class distribution', async () => {
+            if (!supabaseAdmin) {
+                throw new Error('Service-role client unavailable.');
+            }
+            const response = await supabaseAdmin.rpc('get_admin_simulation_accuracy_distribution');
+            return {
+                data: response.data as DistributionRecord[] | null,
+                error: response.error ? { message: response.error.message } : null,
+            };
+        }),
     ]);
 
     return (

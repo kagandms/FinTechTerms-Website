@@ -1,4 +1,4 @@
-import type { UserProgress } from '@/types';
+import type { QuizType, UserProgress } from '@/types';
 import type { UserProgressLoadMissingSegment } from '@/lib/supabaseStorage';
 
 export interface PendingReview {
@@ -7,6 +7,10 @@ export interface PendingReview {
     isCorrect: boolean;
     responseTimeMs: number;
     idempotencyKey: string;
+    quizType: QuizType;
+    occurredAt: string;
+    sessionId: string | null;
+    sessionToken: string | null;
 }
 
 export interface QueuedPendingReview extends PendingReview {
@@ -18,6 +22,7 @@ export const LEGACY_PENDING_REVIEW_STORAGE_KEY = 'fintechterms_pending_review';
 export const MAX_PENDING_REVIEW_QUEUE_SIZE = 50;
 
 const GUEST_PENDING_REVIEW_SCOPE = 'guest';
+const DEFAULT_PENDING_REVIEW_QUIZ_TYPE: QuizType = 'daily';
 
 const resolvePendingReviewScope = (userId?: string | null): string => (
     typeof userId === 'string' && userId.trim().length > 0
@@ -57,6 +62,31 @@ export const hasCachedStudyData = (progress: UserProgress): boolean => (
     || progress.last_study_date !== null
 );
 
+const isQuizType = (value: unknown): value is QuizType => (
+    value === 'daily'
+    || value === 'practice'
+    || value === 'review'
+    || value === 'simulation'
+    || value === 'telegram_bot'
+);
+
+const normalizeSessionValue = (value: unknown): string | null => (
+    typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : null
+);
+
+const normalizeOccurredAt = (
+    value: unknown,
+    queuedAt: number
+): string => {
+    if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) {
+        return new Date(value).toISOString();
+    }
+
+    return new Date(queuedAt).toISOString();
+};
+
 export const isPendingReview = (value: unknown): value is PendingReview => {
     if (!value || typeof value !== 'object') {
         return false;
@@ -70,6 +100,27 @@ export const isPendingReview = (value: unknown): value is PendingReview => {
         && typeof candidate.responseTimeMs === 'number'
         && Number.isFinite(candidate.responseTimeMs)
         && typeof candidate.idempotencyKey === 'string'
+        && (
+            candidate.quizType === undefined
+            || isQuizType(candidate.quizType)
+        )
+        && (
+            candidate.occurredAt === undefined
+            || (
+                typeof candidate.occurredAt === 'string'
+                && !Number.isNaN(Date.parse(candidate.occurredAt))
+            )
+        )
+        && (
+            candidate.sessionId === undefined
+            || candidate.sessionId === null
+            || typeof candidate.sessionId === 'string'
+        )
+        && (
+            candidate.sessionToken === undefined
+            || candidate.sessionToken === null
+            || typeof candidate.sessionToken === 'string'
+        )
     );
 };
 
@@ -83,6 +134,27 @@ export const isQueuedPendingReview = (value: unknown): value is QueuedPendingRev
         && typeof value.queuedAt === 'number'
         && Number.isFinite(value.queuedAt)
     );
+};
+
+const normalizePendingReview = (value: unknown): QueuedPendingReview | null => {
+    if (!isQueuedPendingReview(value)) {
+        return null;
+    }
+
+    return {
+        reviewId: value.reviewId,
+        termId: value.termId,
+        isCorrect: value.isCorrect,
+        responseTimeMs: value.responseTimeMs,
+        idempotencyKey: value.idempotencyKey,
+        quizType: isQuizType(value.quizType)
+            ? value.quizType
+            : DEFAULT_PENDING_REVIEW_QUIZ_TYPE,
+        occurredAt: normalizeOccurredAt(value.occurredAt, value.queuedAt),
+        sessionId: normalizeSessionValue(value.sessionId),
+        sessionToken: normalizeSessionValue(value.sessionToken),
+        queuedAt: value.queuedAt,
+    };
 };
 
 const normalizePendingReviewQueue = (
@@ -135,10 +207,28 @@ export const readPendingReviewQueueFromStorage = (
         if (storedQueue) {
             const parsedQueue = JSON.parse(storedQueue) as unknown;
             if (Array.isArray(parsedQueue)) {
-                const normalizedQueue = normalizePendingReviewQueue(
-                    parsedQueue.filter(isQueuedPendingReview)
-                );
-                if (normalizedQueue.length !== parsedQueue.length) {
+                let shouldRewrite = false;
+                const normalizedEntries: QueuedPendingReview[] = [];
+
+                for (const entry of parsedQueue) {
+                    const normalizedEntry = normalizePendingReview(entry);
+                    if (!normalizedEntry) {
+                        shouldRewrite = true;
+                        continue;
+                    }
+
+                    normalizedEntries.push(normalizedEntry);
+                    if (JSON.stringify(entry) !== JSON.stringify(normalizedEntry)) {
+                        shouldRewrite = true;
+                    }
+                }
+
+                const normalizedQueue = normalizePendingReviewQueue(normalizedEntries);
+                if (normalizedQueue.length !== normalizedEntries.length) {
+                    shouldRewrite = true;
+                }
+
+                if (shouldRewrite) {
                     writePendingReviewQueueToStorage(userId, normalizedQueue);
                 }
                 return normalizedQueue;
@@ -164,10 +254,16 @@ export const readPendingReviewQueueFromStorage = (
             return [];
         }
 
-        const migratedQueue = writePendingReviewQueueToStorage(userId, [{
+        const normalizedLegacyEntry = normalizePendingReview({
             ...parsedLegacyEntry,
             queuedAt: Date.now(),
-        }]);
+        });
+        if (!normalizedLegacyEntry) {
+            window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
+            return [];
+        }
+
+        const migratedQueue = writePendingReviewQueueToStorage(userId, [normalizedLegacyEntry]);
         window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
         return migratedQueue;
     } catch {

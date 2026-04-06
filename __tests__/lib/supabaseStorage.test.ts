@@ -2,10 +2,13 @@
  * @jest-environment node
  */
 
+export {};
+
 const mockFrom = jest.fn();
 const mockRpc = jest.fn();
 const mockGetSession = jest.fn();
 const mockRefreshSession = jest.fn();
+const mockReadTrackedStudySessionContext = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
     getSupabaseClient: () => ({
@@ -18,9 +21,35 @@ jest.mock('@/lib/supabase', () => ({
     }),
 }));
 
+jest.mock('@/lib/study-session-storage', () => ({
+    readTrackedStudySessionContext: () => mockReadTrackedStudySessionContext(),
+}));
+
+const validQuizResponseBody = {
+    state: {
+        userProgress: {
+            current_streak: 1,
+            last_study_date: '2026-03-11T00:00:00.000Z',
+            total_words_learned: 0,
+            updated_at: '2026-03-11T00:00:00.000Z',
+        },
+        termSrs: {
+            term_id: 'term-1',
+            srs_level: 2,
+            next_review_date: '2026-03-12T00:00:00.000Z',
+            last_reviewed: '2026-03-11T00:00:00.000Z',
+            difficulty_score: 2.4,
+            retention_rate: 0.5,
+            times_reviewed: 1,
+            times_correct: 1,
+        },
+    },
+};
+
 describe('supabaseStorage response validation', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockReadTrackedStudySessionContext.mockReturnValue(null);
         mockGetSession.mockResolvedValue({
             data: {
                 session: {
@@ -57,6 +86,45 @@ describe('supabaseStorage response validation', () => {
             status: 'retryable',
             message: 'Quiz service returned malformed data.',
         });
+    });
+
+    it('prefers explicit replay session context and forwards occurred_at to the API route', async () => {
+        mockReadTrackedStudySessionContext.mockReturnValue({
+            sessionId: 'fallback-session',
+            sessionToken: 'f'.repeat(32),
+        });
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: jest.fn().mockResolvedValue(validQuizResponseBody),
+        }) as typeof fetch;
+
+        const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(saveQuizAttemptToSupabase('user-1', {
+            id: 'attempt-1',
+            term_id: 'term-1',
+            is_correct: true,
+            response_time_ms: 1200,
+            timestamp: '2026-03-11T09:30:00.000Z',
+            quiz_type: 'review',
+            sessionId: 'replayed-session',
+            sessionToken: 'r'.repeat(32),
+        })).resolves.toMatchObject({
+            status: 'ok',
+        });
+
+        const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+        expect(fetchCall).toBeDefined();
+        const requestBody = JSON.parse(fetchCall?.[1]?.body as string);
+
+        expect(requestBody).toMatchObject({
+            occurred_at: '2026-03-11T09:30:00.000Z',
+            quiz_type: 'review',
+            session_id: 'replayed-session',
+            session_token: 'r'.repeat(32),
+        });
+        expect(requestBody.session_id).not.toBe('fallback-session');
     });
 
     afterEach(() => {

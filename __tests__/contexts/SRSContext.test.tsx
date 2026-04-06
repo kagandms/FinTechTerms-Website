@@ -137,6 +137,7 @@ const recordQuizResult = {
 };
 
 const pendingReviewQueueKey = (userId = 'user-1') => `pending_review_queue:${userId}`;
+const studySessionStorageKey = (tabId = 'tab-1') => `fintechterms_session:${tabId}`;
 
 const okProgressResult = (overrides?: Partial<typeof baseProgress>) => ({
     status: 'ok' as const,
@@ -210,6 +211,11 @@ describe('SRSContext', () => {
         jest.clearAllMocks();
         localStorage.clear();
         sessionStorage.clear();
+        sessionStorage.setItem('fintechterms_session_tab_id', 'tab-1');
+        sessionStorage.setItem(studySessionStorageKey(), JSON.stringify({
+            id: 'session-1',
+            token: 's'.repeat(32),
+        }));
 
         authState = {
             entitlements: {
@@ -572,6 +578,10 @@ describe('SRSContext', () => {
         expect(mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]).toMatchObject({
             id: 'review-key-1',
             term_id: 'term-1',
+            timestamp: expect.any(String),
+            quiz_type: 'daily',
+            sessionId: 'session-1',
+            sessionToken: 's'.repeat(32),
         });
         expect(mockUpdateTermAfterReview).not.toHaveBeenCalled();
         expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
@@ -583,10 +593,15 @@ describe('SRSContext', () => {
             'warning'
         );
 
-        expect(JSON.parse(String(localStorage.getItem(pendingReviewQueueKey())))).toMatchObject([{
+        const queuedReview = JSON.parse(String(localStorage.getItem(pendingReviewQueueKey())));
+        expect(queuedReview).toMatchObject([{
             reviewId: 'review-1',
             idempotencyKey: 'review-key-1',
+            quizType: 'daily',
+            sessionId: 'session-1',
+            sessionToken: 's'.repeat(32),
         }]);
+        expect(queuedReview[0]?.occurredAt).toBe(mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]?.timestamp);
 
         unmount();
 
@@ -623,6 +638,10 @@ describe('SRSContext', () => {
         expect(mockSaveQuizAttemptToSupabase.mock.calls[1]?.[1]).toMatchObject({
             id: 'review-key-1',
             term_id: 'term-1',
+            timestamp: mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]?.timestamp,
+            quiz_type: 'daily',
+            sessionId: 'session-1',
+            sessionToken: 's'.repeat(32),
         });
         expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answers…', 'info');
         await waitFor(() => {
@@ -709,6 +728,10 @@ describe('SRSContext', () => {
             isCorrect: true,
             responseTimeMs: 0,
             idempotencyKey: 'review-key-1',
+            quizType: 'review',
+            occurredAt: '2026-03-11T08:00:00.000Z',
+            sessionId: 'queued-session',
+            sessionToken: 'q'.repeat(32),
             queuedAt: Date.now(),
         }]));
         mockSaveQuizAttemptToSupabase.mockResolvedValue({
@@ -729,6 +752,10 @@ describe('SRSContext', () => {
         expect(mockSaveQuizAttemptToSupabase.mock.calls[0]?.[1]).toMatchObject({
             id: 'review-key-1',
             response_time_ms: 0,
+            timestamp: '2026-03-11T08:00:00.000Z',
+            quiz_type: 'review',
+            sessionId: 'queued-session',
+            sessionToken: 'q'.repeat(32),
         });
         expect(mockShowToast).toHaveBeenCalledWith('Restoring your pending answers…', 'info');
 
