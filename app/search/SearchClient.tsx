@@ -7,6 +7,7 @@ import { useSRS } from '@/contexts/SRSContext';
 import SearchBar from '@/components/SearchBar';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { getSiteUrl } from '@/lib/site-url';
 import { RegionalMarket } from '@/types';
 import { Search as SearchIcon, Loader2, RefreshCw } from 'lucide-react';
@@ -113,7 +114,7 @@ export default function SearchPage({ nonce }: SearchPageProps) {
                 nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
+                    __html: serializeJsonLd({
                         '@context': 'https://schema.org',
                         '@type': 'WebSite',
                         potentialAction: {

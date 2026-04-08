@@ -7,7 +7,6 @@ import type {
     AiTermExplainResponse,
 } from '@/types/ai';
 import type { Language } from '@/types';
-import { getSupabaseClient } from '@/lib/supabase';
 import { getAiUiCopy } from '@/lib/ai-copy';
 
 const AI_REQUEST_TIMEOUT_MS = 10_000;
@@ -75,16 +74,11 @@ const fetchWithTimeout = async (
 };
 
 const postJson = async <T,>(input: string, body: unknown, language: Language, fallbackMessage: string): Promise<T> => {
-    const {
-        data: { session },
-    } = await getSupabaseClient().auth.getSession();
-
     const response = await fetchWithTimeout(input, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify(body),
     });

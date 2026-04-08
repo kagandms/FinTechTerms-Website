@@ -97,6 +97,8 @@ const teaserCopyByLanguage = {
     },
 } as const;
 
+const ANALYTICS_EXPORT_TIMEOUT_MS = 10_000;
+
 const downloadBlob = (filename: string, blob: Blob): void => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -224,11 +226,22 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
         setExportError(null);
 
         try {
-            const response = await fetch('/api/analytics/export?download=1', {
-                method: 'GET',
-                credentials: 'same-origin',
-                cache: 'no-store',
-            });
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => {
+                controller.abort();
+            }, ANALYTICS_EXPORT_TIMEOUT_MS);
+            let response: Response;
+
+            try {
+                response = await fetch('/api/analytics/export?download=1', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    signal: controller.signal,
+                });
+            } finally {
+                window.clearTimeout(timeoutId);
+            }
 
             if (!response.ok) {
                 const payload = await response.json();
@@ -246,9 +259,11 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
             );
         } catch (error) {
             setExportError(
-                error instanceof Error
-                    ? error.message
-                    : 'Unable to export analytics data.'
+                error instanceof Error && error.name === 'AbortError'
+                    ? 'Analytics export timed out. Please try again.'
+                    : error instanceof Error
+                        ? error.message
+                        : 'Unable to export analytics data.'
             );
         } finally {
             setIsExporting(false);

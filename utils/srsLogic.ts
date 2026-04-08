@@ -52,22 +52,17 @@ export function calculateNextReview(
 ): SRSResult {
     let newLevel: number;
     let difficultyDelta: number;
-    let retentionRateChange: number;
 
     if (isCorrect) {
         // Move to next box (max 5)
         newLevel = Math.min(currentLevel + 1, MAX_SRS_LEVEL);
         // Decrease difficulty slightly (easier word)
         difficultyDelta = -0.1;
-        // Improve retention rate
-        retentionRateChange = 0.05;
     } else {
         // Reset to box 1 (start over)
         newLevel = MIN_SRS_LEVEL;
         // Increase difficulty (harder word)
         difficultyDelta = 0.3;
-        // Decrease retention rate
-        retentionRateChange = -0.1;
     }
 
     // Calculate next review date
@@ -78,7 +73,6 @@ export function calculateNextReview(
         newLevel,
         nextReviewDate,
         difficultyDelta,
-        retentionRateChange,
     };
 }
 
@@ -119,12 +113,10 @@ export function updateTermAfterReview(term: Term, isCorrect: boolean): Term {
     // Calculate new difficulty (clamp between 0 and 5)
     const newDifficulty = Math.max(0, Math.min(5, term.difficulty_score + result.difficultyDelta));
 
-    // Calculate new retention rate (clamp between 0 and 1)
-    const newRetentionRate = Math.max(0, Math.min(1, term.retention_rate + result.retentionRateChange));
-
     // Update review counts
     const newTimesReviewed = term.times_reviewed + 1;
     const newTimesCorrect = isCorrect ? term.times_correct + 1 : term.times_correct;
+    const newRetentionRate = calculateRetentionRate(newTimesCorrect, newTimesReviewed);
 
     return {
         ...term,

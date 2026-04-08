@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { createTimeoutFetch } from '@/lib/api-response'
 import { getPublicEnv } from '@/lib/env'
 import { logger } from '@/lib/logger'
+import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const timeoutFetch = createTimeoutFetch()
@@ -21,6 +22,7 @@ export async function createOptionalClient(): Promise<ServerSupabaseClient | nul
         env.supabaseUrl,
         env.supabaseAnonKey,
         {
+            cookieOptions: getSupabaseServerCookieOptions(),
             cookies: {
                 getAll() {
                     return cookieStore.getAll()

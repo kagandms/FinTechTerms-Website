@@ -3,18 +3,20 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/contexts/ToastContext';
-import { getSupabaseClient } from '@/lib/supabase';
 import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
 import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 import { logger } from '@/lib/logger';
-import { createEmptyAuthForm, getSafeRedirectPath } from '@/hooks/use-auth-logic-helpers';
+import {
+    createEmptyAuthForm,
+    getSafeRedirectPath,
+    navigateAfterLogin,
+} from '@/hooks/use-auth-logic-helpers';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
 
 export function useAuthLogic() {
-    const supabase = getSupabaseClient();
     const {
         user, isAuthenticated, login, signInWithGoogle, register, logout,
         verifyOTP, resendOTP, pendingVerificationEmail,
@@ -25,6 +27,9 @@ export function useAuthLogic() {
     const { showToast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const loginRedirectTarget = getSafeRedirectPath(
+        searchParams.get('next') || searchParams.get('returnTo')
+    ) || '/profile';
 
     // UI State
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -56,15 +61,9 @@ export function useAuthLogic() {
             const isRecoveryInHash = hash.includes('type=recovery');
 
             if (isPasswordRecovery || isResetUrl || isRecoveryType || isRecoveryInHash) {
-                // Determine if we need to force modal open
-                // Give Supabase a moment to process hash
                 recoveryModalTimeoutRef.current = setTimeout(() => {
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-                        if (session || isPasswordRecovery) {
-                            setAuthMode('update-password');
-                            setShowAuthModal(true);
-                        }
-                    });
+                    setAuthMode('update-password');
+                    setShowAuthModal(true);
                 }, 500);
             }
         }
@@ -75,7 +74,7 @@ export function useAuthLogic() {
                 recoveryModalTimeoutRef.current = null;
             }
         };
-    }, [isAuthenticated, isPasswordRecovery, searchParams, supabase]);
+    }, [isAuthenticated, isPasswordRecovery, searchParams]);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -92,6 +91,21 @@ export function useAuthLogic() {
             setShowAuthModal(true);
         }
     }, [isAuthenticated, searchParams]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            return;
+        }
+
+        const authErrorCode = searchParams.get('authError');
+        if (!authErrorCode) {
+            return;
+        }
+
+        setAuthMode('login');
+        setShowAuthModal(true);
+        setAuthError(getLocalizedAuthError(authErrorCode, language));
+    }, [isAuthenticated, language, searchParams]);
 
     useEffect(() => () => {
         if (resendCooldownIntervalRef.current) {
@@ -200,19 +214,15 @@ export function useAuthLogic() {
                     resetForm();
 
                     if (authMode === 'login') {
-                        const redirectTarget = getSafeRedirectPath(
-                            searchParams.get('next') || searchParams.get('returnTo')
-                        ) || '/profile';
                         showToast(t('authFlow.loginSuccess'), 'success');
 
                         try {
-                            router.refresh();
-                            router.push(redirectTarget);
+                            navigateAfterLogin(loginRedirectTarget, router);
                         } catch (navError: unknown) {
                             logger.error('AUTH_LOGIN_NAVIGATION_FAILED', {
                                 route: 'useAuthLogic',
                                 error: navError instanceof Error ? navError : undefined,
-                                redirectTarget,
+                                redirectTarget: loginRedirectTarget,
                             });
                             const navErrorMsg = getLocalizedAuthError(navError, language);
                             setAuthError(navErrorMsg);
@@ -328,6 +338,7 @@ export function useAuthLogic() {
         language,
         t,
         showToast,
-        router
+        router,
+        loginRedirectTarget,
     };
 }

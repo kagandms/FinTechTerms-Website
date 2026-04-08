@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { NOTIFICATION_SETTINGS_STORAGE_KEY } from '@/components/NotificationSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getSupabaseClient } from '@/lib/supabase';
 import type { Language } from '@/types';
 import { logger } from '@/lib/logger';
 
@@ -13,7 +12,10 @@ interface BadgeRealtimePayload {
     id: string;
     badge_key: string;
     streak_days: number | null;
+    unlocked_at?: string;
 }
+
+const BADGE_POLL_INTERVAL_MS = 30_000;
 
 const copy = {
     tr: {
@@ -134,15 +136,17 @@ const showBadgeNotification = async (
 };
 
 export default function BadgeRealtimeNotifier() {
-    const supabase = getSupabaseClient();
     const { user } = useAuth();
     const { language } = useLanguage();
     const router = useRouter();
     const seenBadgeIds = useRef(new Set<string>());
+    const hasHydratedInitialSnapshot = useRef(false);
     const userId = user?.id ?? '';
 
     useEffect(() => {
         if (!userId) {
+            seenBadgeIds.current.clear();
+            hasHydratedInitialSnapshot.current = false;
             return;
         }
 
@@ -150,36 +154,80 @@ export default function BadgeRealtimeNotifier() {
             void navigator.serviceWorker.register('/notification-sw.js');
         }
 
-        const channel = supabase
-            .channel(`user-badges-${userId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'user_badges',
-                    filter: `user_id=eq.${userId}`,
-                },
-                (payload) => {
-                    const badge = payload.new as BadgeRealtimePayload;
+        let intervalId: number | null = null;
+        let isCancelled = false;
 
-                    if (!badge?.id || seenBadgeIds.current.has(badge.id)) {
-                        return;
+        const pollBadges = async () => {
+            if (document.visibilityState === 'hidden') {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile/badges/latest', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json() as { badges?: BadgeRealtimePayload[] };
+                const badges = Array.isArray(payload.badges)
+                    ? [...payload.badges].reverse()
+                    : [];
+
+                if (!hasHydratedInitialSnapshot.current) {
+                    badges.forEach((badge) => {
+                        if (badge?.id) {
+                            seenBadgeIds.current.add(badge.id);
+                        }
+                    });
+                    hasHydratedInitialSnapshot.current = true;
+                    return;
+                }
+
+                const newlySeenBadges = badges.filter((badge) => (
+                    Boolean(badge?.id) && !seenBadgeIds.current.has(badge.id)
+                ));
+
+                if (newlySeenBadges.length === 0) {
+                    return;
+                }
+
+                newlySeenBadges.forEach((badge) => {
+                    if (badge.id) {
+                        seenBadgeIds.current.add(badge.id);
+                        void showBadgeNotification(language, badge);
                     }
+                });
 
-                    seenBadgeIds.current.add(badge.id);
-                    void showBadgeNotification(language, badge);
+                if (!isCancelled) {
                     startTransition(() => {
                         router.refresh();
                     });
                 }
-            )
-            .subscribe();
+            } catch (error) {
+                logger.error('BADGE_NOTIFICATION_POLL_FAILED', {
+                    route: 'BadgeRealtimeNotifier',
+                    error: error instanceof Error ? error : undefined,
+                });
+            }
+        };
+
+        void pollBadges();
+        intervalId = window.setInterval(() => {
+            void pollBadges();
+        }, BADGE_POLL_INTERVAL_MS);
 
         return () => {
-            void supabase.removeChannel(channel);
+            isCancelled = true;
+            if (intervalId) {
+                window.clearInterval(intervalId);
+            }
         };
-    }, [language, router, supabase, userId]);
+    }, [language, router, userId]);
 
     return null;
 }

@@ -5,7 +5,7 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
     reactStrictMode: true,
     outputFileTracingRoot: path.resolve(__dirname),
-    // Explicitly empty for now as we force webpack in package.json
+    // Keep the dev/build bundler explicit and aligned until webpack-only release gates are retired.
     turbopack: {},
     // Security headers for production
     async headers() {

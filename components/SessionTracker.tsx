@@ -101,6 +101,39 @@ const buildPendingStartSessionStorageKey = (tabId: string): string => `${PENDING
 const buildPendingEndSessionStorageKey = (tabId: string): string => `${PENDING_END_SESSION_KEY}:${tabId}`;
 const buildRetryQueueStorageKey = (tabId: string): string => `${RETRY_QUEUE_SESSION_KEY}:${tabId}`;
 
+const readDurableSessionItem = (storageKey: string): string | null => {
+    try {
+        const durableValue = localStorage.getItem(storageKey);
+        if (durableValue) {
+            return durableValue;
+        }
+    } catch {
+        // Fall through to the legacy mirror lookup.
+    }
+
+    try {
+        const legacyValue = sessionStorage.getItem(storageKey);
+        if (legacyValue) {
+            localStorage.setItem(storageKey, legacyValue);
+            return legacyValue;
+        }
+    } catch {
+        // Ignore storage read failures and let the caller handle missing state.
+    }
+
+    return null;
+};
+
+const writeDurableSessionItem = (storageKey: string, value: string): void => {
+    localStorage.setItem(storageKey, value);
+    sessionStorage.setItem(storageKey, value);
+};
+
+const removeDurableSessionItem = (storageKey: string): void => {
+    localStorage.removeItem(storageKey);
+    sessionStorage.removeItem(storageKey);
+};
+
 const summarizeRetryQueueEntries = (entries: QueuedSessionMutation[]): {
     droppedCount: number;
     actions: SessionMutationPayload['action'][];
@@ -191,11 +224,11 @@ export default function SessionTracker() {
 
         try {
             if (queue.length === 0) {
-                sessionStorage.removeItem(buildRetryQueueStorageKey(tabId));
+                removeDurableSessionItem(buildRetryQueueStorageKey(tabId));
                 return;
             }
 
-            sessionStorage.setItem(buildRetryQueueStorageKey(tabId), JSON.stringify(queue));
+            writeDurableSessionItem(buildRetryQueueStorageKey(tabId), JSON.stringify(queue));
         } catch (error) {
             logSessionTrackerWarning('SESSION_TRACKER_RETRY_QUEUE_PERSIST_FAILED', error);
         }
@@ -212,7 +245,7 @@ export default function SessionTracker() {
         }
 
         try {
-            const stored = sessionStorage.getItem(buildRetryQueueStorageKey(tabId));
+            const stored = readDurableSessionItem(buildRetryQueueStorageKey(tabId));
             if (!stored) {
                 return [];
             }
@@ -314,7 +347,7 @@ export default function SessionTracker() {
         const storageKey = buildPendingStartSessionStorageKey(tabId);
 
         try {
-            const stored = sessionStorage.getItem(storageKey);
+            const stored = readDurableSessionItem(storageKey);
             if (!stored) {
                 return;
             }
@@ -328,9 +361,9 @@ export default function SessionTracker() {
                 return;
             }
 
-            sessionStorage.removeItem(storageKey);
+            removeDurableSessionItem(storageKey);
         } catch {
-            sessionStorage.removeItem(storageKey);
+            removeDurableSessionItem(storageKey);
         }
     }, [getCurrentTabId]);
 
@@ -342,7 +375,7 @@ export default function SessionTracker() {
         }
 
         try {
-            sessionStorage.setItem(buildPendingStartSessionStorageKey(tabId), JSON.stringify(pending));
+            writeDurableSessionItem(buildPendingStartSessionStorageKey(tabId), JSON.stringify(pending));
         } catch (error) {
             logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_PERSIST_FAILED', error, {
                 action: pending.payload.action,
@@ -362,7 +395,7 @@ export default function SessionTracker() {
         }
 
         try {
-            const stored = sessionStorage.getItem(buildPendingStartSessionStorageKey(tabId));
+            const stored = readDurableSessionItem(buildPendingStartSessionStorageKey(tabId));
             if (!stored) {
                 return null;
             }
@@ -405,7 +438,7 @@ export default function SessionTracker() {
         const storageKey = buildPendingEndSessionStorageKey(tabId);
 
         try {
-            const stored = sessionStorage.getItem(storageKey);
+            const stored = readDurableSessionItem(storageKey);
             if (!stored) {
                 return;
             }
@@ -419,9 +452,9 @@ export default function SessionTracker() {
                 return;
             }
 
-            sessionStorage.removeItem(storageKey);
+            removeDurableSessionItem(storageKey);
         } catch {
-            sessionStorage.removeItem(storageKey);
+            removeDurableSessionItem(storageKey);
         }
     }, [getCurrentTabId]);
 
@@ -433,7 +466,7 @@ export default function SessionTracker() {
         }
 
         try {
-            sessionStorage.setItem(buildPendingEndSessionStorageKey(tabId), JSON.stringify(pending));
+            writeDurableSessionItem(buildPendingEndSessionStorageKey(tabId), JSON.stringify(pending));
         } catch (error) {
             logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_PERSIST_FAILED', error, {
                 action: pending.payload.action,
@@ -453,7 +486,7 @@ export default function SessionTracker() {
         }
 
         try {
-            const stored = sessionStorage.getItem(buildPendingEndSessionStorageKey(tabId));
+            const stored = readDurableSessionItem(buildPendingEndSessionStorageKey(tabId));
             if (!stored) {
                 return null;
             }

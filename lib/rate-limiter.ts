@@ -235,6 +235,12 @@ export const aiAssistantRouteRateLimiter = createRateLimiter('ai-assistant', 12,
 export const aiCoachRouteRateLimiter = createRateLimiter('ai-coach', 6, 60000, '60 s', {
     strictInProduction: true,
 });
+export const analyticsExportRouteRateLimiter = createRateLimiter('analytics-export', 12, 60000, '60 s', {
+    strictInProduction: true,
+});
+export const analyticsExportDownloadRateLimiter = createRateLimiter('analytics-export-download', 2, 60000, '60 s', {
+    strictInProduction: true,
+});
 export const telegramLinkRateLimiter = createRateLimiter('telegram-link', 5, 10 * 60 * 1000, '10 m');
 
 export const globalRateLimiter = apiRouteRateLimiter;

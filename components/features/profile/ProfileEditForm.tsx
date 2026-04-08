@@ -5,13 +5,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createProfileSchema, ProfileFormValues } from '@/lib/validations/profile';
-import { getSupabaseClient } from '@/lib/supabase';
-import {
-    getSupabaseUserMetadataBirthDate,
-    getSupabaseUserMetadataName,
-    getSupabaseUserNameSeed,
-    supportsPasswordSignIn,
-} from '@/lib/auth/user';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
@@ -132,8 +125,9 @@ export const runWithAbortSignal = async <T,>(
     });
 };
 
+type TimedActionTimeoutMode = 'abort' | 'warn-only';
+
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData, onProfileSaved }) => {
-    const supabase = getSupabaseClient();
     const { user: authenticatedUser } = useAuth();
     const { showToast, showToastAfterRefresh } = useToast();
     const router = useRouter();
@@ -159,9 +153,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         () => buildProfileFormDefaults(shouldTrustInitialData ? initialData : null),
         [initialData, shouldTrustInitialData]
     );
-    const fallbackUserId = initialData?.userId ?? authenticatedUser?.id ?? null;
-    const fallbackDisplayName = authenticatedUser?.name?.trim() ?? '';
-    const fallbackDisplayEmail = authenticatedUser?.email ?? null;
+    const authenticatedUserId = authenticatedUser?.id ?? null;
+    const authenticatedUserName = authenticatedUser?.name?.trim() ?? '';
+    const authenticatedUserEmail = authenticatedUser?.email ?? null;
+    const authenticatedUserProviderKey = authenticatedUser?.providers.join(',') ?? '';
 
     const copy = (key: string, fallback: string): string => (
         getTranslationString(language, key) ?? fallback
@@ -189,6 +184,8 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         emailUnavailable: copy('profileForm.emailUnavailable', 'This sign-in method does not provide an email address.'),
         passwordManagedByProvider: copy('profileForm.passwordManagedByProvider', 'This account does not use a Supabase email-password credential. Change the password with the linked identity provider.'),
         requestTimeout: copy('profileForm.requestTimeout', 'Profile update timed out. Please try again.'),
+        passwordRequestTimeout: copy('profileForm.passwordRequestTimeout', 'Password update timed out. Please try again.'),
+        passwordRequestSlow: copy('profileForm.passwordRequestSlow', 'Password update is taking longer than expected. Please wait.'),
     };
 
     const {
@@ -218,99 +215,17 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         const loadProfileData = async () => {
             if (shouldTrustInitialData) {
                 resetWithInitialData();
+                if (isMounted) {
+                    setCanChangePassword(Boolean(
+                        authenticatedUserEmail
+                        && authenticatedUserProviderKey.split(',').includes('email')
+                    ));
+                }
+                return;
             }
 
-            const applyRecoveredProfile = async (
-                providedUserId: string | null,
-                providedName: string,
-                providedEmail: string | null
-            ): Promise<boolean> => {
-                if (!isMounted) {
-                    return false;
-                }
-
-                let recoveredFullName = '';
-                let recoveredBirthDate = fallbackInitialBirthDate;
-
-                if (providedUserId) {
-                    try {
-                        const { data: profile, error: profileError } = await supabase
-                            .from('profiles')
-                            .select('full_name, birth_date')
-                            .eq('id', providedUserId)
-                            .maybeSingle();
-
-                        if (profileError) {
-                            logger.warn('PROFILE_FORM_CONTEXT_PROFILE_FALLBACK_FAILED', {
-                                route: 'ProfileEditForm',
-                                error: new Error(profileError.message),
-                            });
-                        }
-
-                        if (typeof profile?.full_name === 'string' && profile.full_name.trim().length > 0) {
-                            recoveredFullName = String(profile.full_name).trim();
-                        }
-
-                        if (hasPersistedBirthDate(profile?.birth_date)) {
-                            recoveredBirthDate = toDateInputValue(profile.birth_date);
-                        }
-                    } catch (error) {
-                        logger.warn('PROFILE_FORM_CONTEXT_PROFILE_FALLBACK_FAILED', {
-                            route: 'ProfileEditForm',
-                            error: error instanceof Error ? error : undefined,
-                        });
-                    }
-                }
-
-                if (!recoveredFullName) {
-                    recoveredFullName = [fallbackInitialName, fallbackInitialSurname].filter(Boolean).join(' ').trim();
-                }
-
-                const nameParts = recoveredFullName ? recoveredFullName.split(' ') : [''];
-                const firstName = fallbackInitialName || nameParts[0] || '';
-                const lastName = fallbackInitialSurname || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
-                const recoveredEmail = fallbackInitialEmail ?? providedEmail ?? fallbackDisplayEmail;
-
-                if (!firstName && !lastName && !recoveredBirthDate && !recoveredEmail) {
-                    return false;
-                }
-
-                reset({
-                    name: firstName,
-                    surname: lastName,
-                    email: recoveredEmail,
-                    birthDate: recoveredBirthDate,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
-                });
-                return true;
-            };
-
             try {
-                const { data, error } = await supabase.auth.getUser();
-                if (error || !data.user) {
-                    logger.warn('PROFILE_FORM_SESSION_UNAVAILABLE', {
-                        route: 'ProfileEditForm',
-                        error: error ?? undefined,
-                    });
-                    if (shouldTrustInitialData) {
-                        resetWithInitialData();
-                        return;
-                    }
-                    const recoveredFromContext = await applyRecoveredProfile(
-                        fallbackUserId,
-                        fallbackDisplayName,
-                        fallbackDisplayEmail
-                    );
-
-                    if (recoveredFromContext) {
-                        return;
-                    }
-
-                    if (isMounted && initialData) {
-                        reset(buildProfileFormDefaults(initialData));
-                    }
+                if (!authenticatedUserId) {
                     if (isMounted) {
                         setCanChangePassword(false);
                         setFormError(dict.authRequired);
@@ -319,51 +234,21 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     return;
                 }
 
-                const supabaseUser = data.user;
-                if (isMounted) {
-                    setCanChangePassword(supportsPasswordSignIn(supabaseUser));
-                }
-
-                if (shouldTrustInitialData) {
-                    resetWithInitialData();
-                    return;
-                }
-
-                let fullName = '';
-                let birthDate = '';
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('full_name, birth_date')
-                    .eq('id', supabaseUser.id)
-                    .maybeSingle();
-
-                if (profileError) {
-                    logger.warn('PROFILE_FORM_PROFILE_LOAD_WARNING', {
-                        route: 'ProfileEditForm',
-                        userId: supabaseUser.id,
-                        error: new Error(profileError.message),
-                    });
-                } else if (profile) {
-                    if (typeof profile.full_name === 'string' && profile.full_name.trim().length > 0) {
-                        fullName = profile.full_name.trim();
-                    }
-
-                    if (hasPersistedBirthDate(profile.birth_date)) {
-                        birthDate = toDateInputValue(profile.birth_date);
-                    }
-                }
-
-                if (!fullName) fullName = getSupabaseUserMetadataName(supabaseUser);
-                if (!birthDate) birthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(supabaseUser));
-                if (!fullName) fullName = getSupabaseUserNameSeed(supabaseUser);
-
-                const nameParts = fullName ? fullName.split(' ') : [''];
+                const recoveredFullName = (
+                    [fallbackInitialName, fallbackInitialSurname].filter(Boolean).join(' ').trim()
+                    || authenticatedUserName
+                );
+                const nameParts = recoveredFullName ? recoveredFullName.split(' ') : [''];
                 const firstName = fallbackInitialName || nameParts[0] || '';
                 const lastName = fallbackInitialSurname || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
-                const recoveredBirthDate = fallbackInitialBirthDate || birthDate;
-                const recoveredEmail = fallbackInitialEmail ?? supabaseUser.email ?? null;
+                const recoveredBirthDate = fallbackInitialBirthDate;
+                const recoveredEmail = fallbackInitialEmail ?? authenticatedUserEmail ?? null;
 
                 if (isMounted) {
+                    setCanChangePassword(Boolean(
+                        authenticatedUserEmail
+                        && authenticatedUserProviderKey.split(',').includes('email')
+                    ));
                     reset({
                         name: firstName,
                         surname: lastName,
@@ -402,14 +287,14 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         fallbackInitialEmail,
         fallbackInitialName,
         fallbackInitialSurname,
-        fallbackDisplayEmail,
-        fallbackDisplayName,
-        fallbackUserId,
+        authenticatedUserEmail,
+        authenticatedUserId,
+        authenticatedUserName,
+        authenticatedUserProviderKey,
         initialData,
         reset,
         shouldTrustInitialData,
         showToast,
-        supabase,
     ]);
 
     useEffect(() => {
@@ -424,29 +309,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         setValue('confirmPassword', '');
     };
 
-    const loadAuthenticatedUser = async (
-        withTimeout: <T,>(operation: () => Promise<T>) => Promise<T>
-    ) => {
-        const { data: userResultData, error: userError } = await withTimeout(() => supabase.auth.getUser());
-
-        if (userError || !userResultData?.user) {
-            throw userError || new Error(dict.authRequired);
-        }
-
-        return userResultData.user;
-    };
-
-    const buildProfileUpdateHeaders = async (): Promise<Record<string, string>> => {
-        const {
-            data: { session },
-        } = await supabase.auth.getSession();
-
-        return {
-            'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        };
-    };
-
     const runTimedAction = async (
         action: 'profile' | 'password',
         operation: (
@@ -454,28 +316,40 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             timeoutSignal: AbortSignal
         ) => Promise<void>,
         options?: {
-            enableTimeout?: boolean;
+            slowMessage?: string;
+            timeoutMode?: TimedActionTimeoutMode;
         }
     ) => {
-        const enableTimeout = options?.enableTimeout ?? true;
+        const timeoutMode = options?.timeoutMode ?? 'abort';
+        const shouldAbortOnTimeout = timeoutMode === 'abort';
+        const slowMessage = options?.slowMessage ?? null;
+        const timeoutMessage = action === 'password'
+            ? dict.passwordRequestTimeout
+            : dict.requestTimeout;
         setPendingAction(action);
         setFormSuccess(null);
         setFormWarning(null);
         setFormError(null);
         const timeoutController = new AbortController();
-        const timeoutId = enableTimeout
-            ? globalThis.setTimeout(() => {
+        let hasShownSlowWarning = false;
+        const timeoutId = globalThis.setTimeout(() => {
+            if (slowMessage && !hasShownSlowWarning) {
+                hasShownSlowWarning = true;
+                setFormWarning(slowMessage);
+            }
+
+            if (shouldAbortOnTimeout) {
                 timeoutController.abort();
-            }, PROFILE_SUBMIT_TIMEOUT_MS)
-            : null;
+            }
+        }, PROFILE_SUBMIT_TIMEOUT_MS);
 
         try {
             const withTimeout = <T,>(callback: () => Promise<T>) => (
-                enableTimeout
+                shouldAbortOnTimeout
                     ? runWithAbortSignal(
                         timeoutController.signal,
                         callback,
-                        dict.requestTimeout
+                        timeoutMessage
                     )
                     : callback()
             );
@@ -489,15 +363,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const timedOut = error instanceof Error && error.name === 'AbortError';
             const safeError = toSafeUserError(error);
             const detailedMessage = timedOut
-                ? dict.requestTimeout
+                ? timeoutMessage
                 : safeError.message || dict.unknownError;
             setFormWarning(null);
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
-            if (timeoutId !== null) {
-                globalThis.clearTimeout(timeoutId);
-            }
+            globalThis.clearTimeout(timeoutId);
             setPendingAction(null);
         }
     };
@@ -517,7 +389,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             const response = await fetch('/api/profile', {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: await buildProfileUpdateHeaders(),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     fullName,
                     birthDate: normalizedBirthDate || null,
@@ -565,40 +439,49 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         const formValues = getValues();
 
         await runTimedAction('password', async (withTimeout) => {
-            const authUser = await loadAuthenticatedUser(withTimeout);
+            if (!authenticatedUserId) {
+                throw new Error(dict.authRequired);
+            }
 
-            if (!supportsPasswordSignIn(authUser)) {
+            if (!authenticatedUserEmail || !authenticatedUserProviderKey.split(',').includes('email')) {
                 throw new Error(dict.passwordManagedByProvider);
             }
 
-            const passwordAccountEmail = authUser.email ?? formValues.email;
-            if (!passwordAccountEmail) {
-                throw new Error(dict.emailUnavailable);
-            }
-
-            const { error: reauthError } = await withTimeout(() => supabase.auth.signInWithPassword({
-                email: passwordAccountEmail,
-                password: formValues.currentPassword || '',
+            const response = await withTimeout(() => fetch('/api/auth/update-password', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    currentPassword: formValues.currentPassword || '',
+                    password: formValues.newPassword,
+                }),
             }));
 
-            if (reauthError) {
-                throw new Error(dict.currentPasswordError);
+            let responseBody: { message?: string } | null = null;
+            try {
+                responseBody = await response.json() as { message?: string };
+            } catch {
+                responseBody = null;
             }
 
-            const { error: passwordError } = await withTimeout(() => supabase.auth.updateUser({
-                password: formValues.newPassword,
-            }));
+            if (!response.ok) {
+                if (responseBody?.message === 'Current password incorrect') {
+                    throw new Error(dict.currentPasswordError);
+                }
 
-            if (passwordError) {
-                throw passwordError;
+                throw new Error(responseBody?.message || dict.unknownError);
             }
 
             resetPasswordFields();
             setShowPasswordSection(false);
+            setFormWarning(null);
             setFormSuccess(dict.passwordUpdated);
             showToast(dict.passwordUpdated, 'success');
         }, {
-            enableTimeout: false,
+            timeoutMode: 'warn-only',
+            slowMessage: dict.passwordRequestSlow,
         });
     };
 

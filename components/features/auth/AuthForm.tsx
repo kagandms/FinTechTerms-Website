@@ -5,6 +5,7 @@ import { getLocalizedAuthError } from '@/lib/auth/error-messages';
 import { logger } from '@/lib/logger';
 
 export const AuthForm: React.FC<AuthFormProps> = ({
+    loginRedirectTarget: _loginRedirectTarget,
     authMode, setAuthMode, authForm, setAuthForm,
     authLoading, handleAuth, handleGoogleAuth, authError, setAuthError,
     showPassword, setShowPassword, showConfirmPassword,
@@ -211,6 +212,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 {/* Main Action Button */}
                 {authMode === 'forgot-password' ? (
                     <button
+                        type="button"
                         onClick={async () => {
                             setIsResetting(true);
                             setAuthError('');

@@ -28,6 +28,38 @@ const getSafeAuthErrorCode = (error: unknown): SafeAuthErrorCode => {
         return 'GENERIC';
     }
 
+    if (message === 'invalid_credentials') {
+        return 'INVALID_CREDENTIALS';
+    }
+
+    if (message === 'email_not_confirmed') {
+        return 'EMAIL_NOT_CONFIRMED';
+    }
+
+    if (message === 'email_already_registered') {
+        return 'EMAIL_ALREADY_REGISTERED';
+    }
+
+    if (message === 'otp_invalid_or_expired') {
+        return 'OTP_INVALID_OR_EXPIRED';
+    }
+
+    if (message === 'weak_password') {
+        return 'WEAK_PASSWORD';
+    }
+
+    if (message === 'rate_limited') {
+        return 'RATE_LIMITED';
+    }
+
+    if (message === 'session_expired') {
+        return 'SESSION_EXPIRED';
+    }
+
+    if (message === 'navigation_failed') {
+        return 'NAVIGATION_FAILED';
+    }
+
     if (message.includes('invalid login credentials')) {
         return 'INVALID_CREDENTIALS';
     }

@@ -115,7 +115,7 @@ const loadInitialProfileData = async (): Promise<{
         fullName = metadataFullName;
     }
 
-    if (!birthDate && metadataBirthDate) {
+    if (!birthDate && hasPersistedBirthDate(metadataBirthDate)) {
         birthDate = metadataBirthDate;
     }
 

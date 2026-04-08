@@ -17,162 +17,59 @@ export interface DashboardQueryState<T> {
     data: T[];
 }
 
-interface LearningCurveRecord {
-    created_at: string;
-    is_correct: boolean;
-}
-
-interface LatencyRecord {
-    is_correct: boolean;
-    response_time_ms: number;
-}
-
-interface FatigueRecord {
-    session_id: string | null;
-    user_id: string | null;
-    is_correct: boolean;
-    created_at: string;
-}
-
-interface DistributionRecord {
-    user_id: string | null;
-    is_correct: boolean;
-}
-
-interface GroupedLearningPoint {
+export interface LearningCurvePoint {
     date: string;
-    total: number;
-    correct: number;
+    accuracy: number;
 }
 
-interface OrderedFatiguePoint {
-    order: number;
-    total: number;
-    incorrect: number;
+export interface LatencyPoint {
+    name: string;
+    ms: number;
 }
 
-interface AccuracyBin {
+export interface DistributionRecord {
     range: string;
     count: number;
 }
 
-export const buildLearningCurveData = (records: LearningCurveRecord[]) => {
-    const grouped: Record<string, GroupedLearningPoint> = {};
-    records.forEach(item => {
-        const date = item.created_at.split('T')[0] ?? item.created_at;
-        if (!grouped[date]) grouped[date] = { date, total: 0, correct: 0 };
-        grouped[date].total++;
-        if (item.is_correct) grouped[date].correct++;
-    });
+export interface OrderedFatiguePoint {
+    order: number;
+    errorRate: number;
+}
 
-    return Object.values(grouped)
-        .sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
-        .map((group) => ({
-            date: group.date,
-            accuracy: (group.correct / group.total) * 100,
-        }));
-};
+export const buildLearningCurveData = (records: LearningCurvePoint[]): LearningCurvePoint[] => (
+    [...records].sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime())
+);
 
-export const buildFatigueChartData = (records: FatigueRecord[]) => {
-    if (!records.length) return [];
+export const buildLatencyChartData = (records: LatencyPoint[]): LatencyPoint[] => {
+    const byName = new Map(records.map((record) => [record.name, record]));
 
-    const sessions: Record<string, FatigueRecord[]> = {};
-    records.forEach(item => {
-        if (!item.created_at) {
-            return;
-        }
-
-        const day = item.created_at.split('T')[0] ?? item.created_at;
-        const sessionKey = item.session_id
-            || (item.user_id ? `${item.user_id}:${day}` : null);
-
-        if (!sessionKey) {
-            return;
-        }
-
-        if (!sessions[sessionKey]) sessions[sessionKey] = [];
-        sessions[sessionKey].push(item);
-    });
-
-    const statsByOrder: Record<number, OrderedFatiguePoint> = {};
-
-    Object.values(sessions).forEach((session) => {
-        session.sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime());
-
-        session.forEach((attempt, index) => {
-            const order = index + 1;
-            if (order > 25) return;
-            if (!statsByOrder[order]) statsByOrder[order] = { order, total: 0, incorrect: 0 };
-
-            statsByOrder[order].total++;
-            if (!attempt.is_correct) statsByOrder[order].incorrect++;
-        });
-    });
-
-    return Object.values(statsByOrder).map((point) => ({
-        order: point.order,
-        errorRate: (point.incorrect / point.total) * 100
+    return ['Correct', 'Incorrect'].map((name) => ({
+        name,
+        ms: byName.get(name)?.ms ?? 0,
     }));
 };
 
-export const buildDistributionChartData = (records: DistributionRecord[]): AccuracyBin[] => {
-    if (!records.length) return [];
+export const buildFatigueChartData = (records: OrderedFatiguePoint[]): OrderedFatiguePoint[] => (
+    [...records].sort((left, right) => left.order - right.order)
+);
 
-    const attemptsByUser: Record<string, { total: number; correct: number }> = {};
-    records.forEach((attempt) => {
-        if (!attempt.user_id) {
-            return;
-        }
+const parseDistributionRange = (range: string): number => {
+    if (range === '100%') {
+        return 100;
+    }
 
-        const userKey = attempt.user_id;
-        if (!attemptsByUser[userKey]) {
-            attemptsByUser[userKey] = { total: 0, correct: 0 };
-        }
-
-        attemptsByUser[userKey].total += 1;
-        if (attempt.is_correct) {
-            attemptsByUser[userKey].correct += 1;
-        }
-    });
-
-    const studentAccuracies: number[] = Object.values(attemptsByUser).map((userStats) => (
-        userStats.total > 0
-            ? (userStats.correct / userStats.total) * 100
-            : 0
-    ));
-
-    const bins: Record<number, number> = {};
-    for (let i = 0; i < 100; i += 5) bins[i] = 0;
-    bins[100] = 0;
-
-    studentAccuracies.forEach((accuracy) => {
-        if (accuracy === 100) {
-            bins[100] = (bins[100] || 0) + 1;
-            return;
-        }
-
-        const bin = Math.floor(accuracy / 5) * 5;
-        bins[bin] = (bins[bin] || 0) + 1;
-    });
-
-    return Object.entries(bins).map(([binKey, count]) => {
-        const numericBin = Number.parseInt(binKey, 10);
-
-        if (numericBin === 100) {
-            return { range: '100%', count };
-        }
-
-        return {
-            range: `${numericBin}-${numericBin + 5}%`,
-            count,
-        };
-    });
+    return Number.parseInt(range.split('-')[0] ?? '0', 10);
 };
 
+export const buildDistributionChartData = (records: DistributionRecord[]): DistributionRecord[] => (
+    [...records].sort((left, right) => parseDistributionRange(left.range) - parseDistributionRange(right.range))
+);
+
 interface Props {
-    learningData: DashboardQueryState<LearningCurveRecord>;
-    latencyData: DashboardQueryState<LatencyRecord>;
-    fatigueRaw: DashboardQueryState<FatigueRecord>;
+    learningData: DashboardQueryState<LearningCurvePoint>;
+    latencyData: DashboardQueryState<LatencyPoint>;
+    fatigueRaw: DashboardQueryState<OrderedFatiguePoint>;
     distributionRaw: DashboardQueryState<DistributionRecord>;
 }
 
@@ -180,34 +77,9 @@ export default function DashboardClient({ learningData, latencyData, fatigueRaw,
     const { logout } = useAuth();
     const { showToast } = useToast();
 
-    // 1. Process Learning Curve (Group by Date)
     const learningCurve = useMemo(() => buildLearningCurveData(learningData.data), [learningData.data]);
-
-    // 2. Process Latency (Correct vs Incorrect)
-    const latencyChart = useMemo(() => {
-        let corrSum = 0, corrCount = 0;
-        let incSum = 0, incCount = 0;
-
-        latencyData.data.forEach(item => {
-            if (item.is_correct) {
-                corrSum += item.response_time_ms;
-                corrCount++;
-            } else {
-                incSum += item.response_time_ms;
-                incCount++;
-            }
-        });
-
-        return [
-            { name: 'Correct', ms: corrCount ? Math.round(corrSum / corrCount) : 0 },
-            { name: 'Incorrect', ms: incCount ? Math.round(incSum / incCount) : 0 },
-        ];
-    }, [latencyData.data]);
-
-    // 3. Process Fatigue (Group by attempt order within a user-day run)
+    const latencyChart = useMemo(() => buildLatencyChartData(latencyData.data), [latencyData.data]);
     const fatigueChart = useMemo(() => buildFatigueChartData(fatigueRaw.data), [fatigueRaw.data]);
-
-    // 4. Process Class Distribution (Accuracy per user)
     const distributionChart = useMemo(
         () => buildDistributionChartData(distributionRaw.data),
         [distributionRaw.data]

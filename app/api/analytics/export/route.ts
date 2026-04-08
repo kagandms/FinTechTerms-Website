@@ -9,11 +9,24 @@ import {
     InvalidAnalyticsExportCursorError,
     loadLearningStatsExportAttempts,
 } from '@/lib/learning-stats';
+import {
+    analyticsExportDownloadRateLimiter,
+    analyticsExportRouteRateLimiter,
+    isRateLimiterUnavailable,
+} from '@/lib/rate-limiter';
 import { createRequestScopedClient } from '@/lib/supabaseAdmin';
 import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
 
 const EXPORT_PAGE_SIZE = 500;
 const MAX_EXPORT_ATTEMPTS = 10_000;
+const EXPORT_RATE_LIMIT_HEADERS = {
+    'X-RateLimit-Limit': '12',
+    'X-RateLimit-Policy': '12;w=60',
+};
+const EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS = {
+    'X-RateLimit-Limit': '2',
+    'X-RateLimit-Policy': '2;w=60',
+};
 
 const loadDownloadAttempts = async (
     supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
@@ -99,6 +112,43 @@ export async function GET(request: Request) {
             });
         }
 
+        const exportRateLimiter = shouldDownload
+            ? analyticsExportDownloadRateLimiter
+            : analyticsExportRouteRateLimiter;
+        const rateLimitHeaders = shouldDownload
+            ? EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS
+            : EXPORT_RATE_LIMIT_HEADERS;
+        const limitCheck = await exportRateLimiter.check(user.id);
+
+        if (isRateLimiterUnavailable(limitCheck)) {
+            return errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Analytics export is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: rateLimitHeaders,
+            });
+        }
+
+        if (!limitCheck.allowed) {
+            return errorResponse({
+                status: 429,
+                code: shouldDownload
+                    ? 'ANALYTICS_EXPORT_DOWNLOAD_RATE_LIMITED'
+                    : 'ANALYTICS_EXPORT_RATE_LIMITED',
+                message: shouldDownload
+                    ? 'Too many analytics download requests. Please try again later.'
+                    : 'Too many analytics export requests. Please try again later.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...rateLimitHeaders,
+                    'Retry-After': String(limitCheck.retryAfter),
+                },
+            });
+        }
+
         const supabase = await createRequestScopedClient(request);
         if (!supabase) {
             return errorResponse({
@@ -107,6 +157,7 @@ export async function GET(request: Request) {
                 message: 'Analytics export is temporarily unavailable.',
                 requestId,
                 retryable: false,
+                headers: rateLimitHeaders,
             });
         }
 
@@ -121,6 +172,7 @@ export async function GET(request: Request) {
                     message: 'Analytics export exceeds the maximum download size. Use the paginated export endpoint instead.',
                     requestId,
                     retryable: false,
+                    headers: rateLimitHeaders,
                 });
             }
 
@@ -130,6 +182,7 @@ export async function GET(request: Request) {
             }), {
                 status: 200,
                 headers: {
+                    ...rateLimitHeaders,
                     'Cache-Control': 'no-store',
                     'Content-Type': 'application/json; charset=utf-8',
                     'Content-Disposition': `attachment; filename="fintechterms-analytics-${exportedAt.slice(0, 10)}.json"`,
@@ -149,6 +202,7 @@ export async function GET(request: Request) {
             nextCursor,
         }, requestId, {
             headers: {
+                ...rateLimitHeaders,
                 'Cache-Control': 'no-store',
             },
         });
@@ -160,6 +214,9 @@ export async function GET(request: Request) {
                 message: 'Analytics export cursor is invalid.',
                 requestId,
                 retryable: false,
+                headers: shouldDownload
+                    ? EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS
+                    : EXPORT_RATE_LIMIT_HEADERS,
             });
         }
 
@@ -169,6 +226,9 @@ export async function GET(request: Request) {
             message: 'Unable to export analytics data.',
             timeoutCode: 'ANALYTICS_EXPORT_TIMEOUT',
             timeoutMessage: 'Analytics export timed out.',
+            headers: shouldDownload
+                ? EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS
+                : EXPORT_RATE_LIMIT_HEADERS,
             logLabel: 'GET_ANALYTICS_EXPORT_FAILED',
         });
     }

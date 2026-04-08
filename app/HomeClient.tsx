@@ -14,6 +14,7 @@ import AiChatPanel from '@/components/home/AiChatPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
+import { serializeJsonLd } from '@/lib/json-ld';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 import { getSiteUrl } from '@/lib/site-url';
 
@@ -126,7 +127,7 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
                 nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
+                    __html: serializeJsonLd({
                         '@context': 'https://schema.org',
                         '@type': 'WebSite',
                         name: 'FinTechTerms',

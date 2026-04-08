@@ -12,6 +12,7 @@ import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 import { createIdempotencyKey } from '@/lib/idempotency';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { resolveHomeHref } from '@/lib/navigation';
 import { buildMultipleChoiceQuestion } from '@/lib/quiz/multiple-choice';
 import type { QuizAnswerRequest, QuizAnswerResult } from '@/components/quiz-answer-types';
@@ -1061,7 +1062,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify({
+                    __html: serializeJsonLd({
                         '@context': 'https://schema.org',
                         '@type': 'Quiz',
                         name: 'FinTechTerms SRS Quiz',

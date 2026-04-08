@@ -22,11 +22,11 @@ import {
 } from '@/lib/rate-limiter';
 import {
     createServiceRoleClient,
-    resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { hashStudySessionToken } from '@/lib/study-session-token';
 import { QuizAttemptSchema } from '@/lib/validators';
+import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
 
 const RecordQuizRequestSchema = QuizAttemptSchema.extend({
     idempotencyKey: z.string().uuid(),
@@ -51,7 +51,46 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 };
 
 const WRITE_RATE_LIMIT = 20;
+const MAX_QUIZ_OCCURRED_AT_AGE_MS = 12 * 60 * 60 * 1000;
+const MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS = 5 * 60 * 1000;
 type QuizMutationClient = ReturnType<typeof createServiceRoleClient>;
+
+const normalizeOccurredAt = (
+    occurredAt: string | null | undefined,
+    receivedAtMs: number,
+    requestId: string,
+    userId: string
+): string | null => {
+    if (!occurredAt) {
+        return null;
+    }
+
+    const occurredAtMs = Date.parse(occurredAt);
+    if (!Number.isFinite(occurredAtMs)) {
+        return null;
+    }
+
+    const driftMs = occurredAtMs - receivedAtMs;
+    if (
+        driftMs < -MAX_QUIZ_OCCURRED_AT_AGE_MS
+        || driftMs > MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS
+    ) {
+        logger.warn('QUIZ_ROUTE_OCCURRED_AT_OUT_OF_WINDOW', {
+            requestId,
+            route: '/api/record-quiz',
+            userId,
+            occurredAt,
+            receivedAt: new Date(receivedAtMs).toISOString(),
+            driftDirection: driftMs > 0 ? 'future' : 'past',
+            driftSeconds: Math.round(Math.abs(driftMs) / 1000),
+            maxPastSeconds: MAX_QUIZ_OCCURRED_AT_AGE_MS / 1000,
+            maxFutureSeconds: MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS / 1000,
+        });
+        return null;
+    }
+
+    return new Date(occurredAtMs).toISOString();
+};
 
 const markQuizFailure = async (
     routeSupabase: QuizMutationClient,
@@ -127,6 +166,7 @@ const getSessionScopedQuizError = (
 export async function POST(request: NextRequest) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    const receivedAtMs = Date.now();
     let mutationClient: QuizMutationClient | null = null;
     let body: unknown;
     try {
@@ -166,12 +206,36 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const user = await resolveAuthenticatedUser(request);
+    const memberState = await resolveRequestMemberEntitlements(request);
+
+    if (memberState.unavailable) {
+        return errorResponse({
+            status: memberState.unavailable.status,
+            code: memberState.unavailable.code,
+            message: memberState.unavailable.message,
+            requestId,
+            retryable: true,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    const user = memberState.user;
     if (!user) {
         return errorResponse({
             status: 401,
             code: 'UNAUTHORIZED',
             message: AUTH_REQUIRED_MESSAGE,
+            requestId,
+            retryable: false,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+
+    if (!memberState.entitlements.canUseReviewMode) {
+        return errorResponse({
+            status: 403,
+            code: 'MEMBER_REQUIRED',
+            message: 'Complete your member setup to unlock review mode.',
             requestId,
             retryable: false,
             headers: GLOBAL_RATE_LIMIT_HEADERS,
@@ -207,6 +271,12 @@ export async function POST(request: NextRequest) {
         session_token,
         idempotencyKey,
     } = validatedData.data;
+    const normalizedOccurredAt = normalizeOccurredAt(
+        occurred_at,
+        receivedAtMs,
+        requestId,
+        user.id
+    );
 
     const inspection = await inspectIdempotentRequest({
         supabaseAdmin: routeSupabase,
@@ -218,7 +288,7 @@ export async function POST(request: NextRequest) {
             is_correct,
             response_time_ms,
             quiz_type,
-            occurred_at: occurred_at ?? null,
+            occurred_at: normalizedOccurredAt,
             session_id: session_id ?? null,
         },
     });
@@ -321,7 +391,7 @@ export async function POST(request: NextRequest) {
                 is_correct,
                 response_time_ms,
                 quiz_type,
-                occurred_at: occurred_at ?? null,
+                occurred_at: normalizedOccurredAt,
                 session_id: session_id ?? null,
             },
         });
@@ -358,7 +428,7 @@ export async function POST(request: NextRequest) {
                 p_idempotency_key: idempotencyKey,
                 p_session_id: session_id ?? null,
                 p_session_token_hash: session_token ? hashStudySessionToken(session_token) : null,
-                p_occurred_at: occurred_at ?? null,
+                p_occurred_at: normalizedOccurredAt,
             });
 
         if (error) {

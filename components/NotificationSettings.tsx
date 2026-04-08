@@ -72,6 +72,8 @@ interface NotificationConfig {
     minute: number;
 }
 
+const LAST_SENT_NOTIFICATION_DATE_KEY = 'ftt_last_notification_date';
+
 function readStoredConfig(): { config: NotificationConfig; error: string | null } {
     if (typeof window === 'undefined') {
         return { config: DEFAULT_NOTIFICATION_CONFIG, error: null };
@@ -157,16 +159,32 @@ export default function NotificationSettings({ language }: NotificationSettingsP
         setStorageError(null);
     }, [showToast, storageError, t.storageError]);
 
+    const persistConfig = useCallback((nextConfig: NotificationConfig): boolean => {
+        if (!saveConfig(nextConfig)) {
+            showToast(t.savingError, 'error');
+            return false;
+        }
+
+        setConfig(nextConfig);
+        return true;
+    }, [showToast, t.savingError]);
+
     // Schedule checker: runs every minute, fires notification at the right time
     const checkAndNotify = useCallback(() => {
         if (!config.enabled || permission !== 'granted') return;
         const now = new Date();
         if (now.getHours() === config.hour && now.getMinutes() === config.minute) {
-            // Check if already sent today
-            const lastSentKey = 'ftt_last_notification_date';
-            const today = now.toDateString();
-            if (localStorage.getItem(lastSentKey) === today) return;
-            localStorage.setItem(lastSentKey, today);
+            try {
+                const today = now.toDateString();
+                if (localStorage.getItem(LAST_SENT_NOTIFICATION_DATE_KEY) === today) return;
+                localStorage.setItem(LAST_SENT_NOTIFICATION_DATE_KEY, today);
+            } catch (error) {
+                logger.error('NOTIFICATION_SETTINGS_LAST_SENT_STORAGE_ERROR', {
+                    route: 'NotificationSettings',
+                    error: error instanceof Error ? error : undefined,
+                });
+                return;
+            }
 
             // Send notification
             const messages = {
@@ -198,10 +216,7 @@ export default function NotificationSettings({ language }: NotificationSettingsP
         if (config.enabled) {
             // Disable
             const newConfig = { ...config, enabled: false };
-            setConfig(newConfig);
-            if (!saveConfig(newConfig)) {
-                showToast(t.savingError, 'error');
-            }
+            persistConfig(newConfig);
             return;
         }
 
@@ -219,11 +234,7 @@ export default function NotificationSettings({ language }: NotificationSettingsP
 
             if (perm === 'granted') {
                 const newConfig = { ...config, enabled: true };
-                setConfig(newConfig);
-                if (!saveConfig(newConfig)) {
-                    showToast(t.savingError, 'error');
-                }
-
+                persistConfig(newConfig);
                 return;
             }
 
@@ -241,14 +252,18 @@ export default function NotificationSettings({ language }: NotificationSettingsP
         }
     };
 
-    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const parts = e.target.value.split(':').map(Number);
         const h = parts[0] ?? config.hour;
         const m = parts[1] ?? config.minute;
         const newConfig = { ...config, hour: h, minute: m };
-        setConfig(newConfig);
-        if (!saveConfig(newConfig)) {
-            showToast(t.savingError, 'error');
+        if (!persistConfig(newConfig)) {
+            setShowSaved(false);
+            if (savedIndicatorTimeoutRef.current) {
+                clearTimeout(savedIndicatorTimeoutRef.current);
+                savedIndicatorTimeoutRef.current = null;
+            }
+            return;
         }
         setShowSaved(true);
         if (savedIndicatorTimeoutRef.current) {
@@ -258,7 +273,7 @@ export default function NotificationSettings({ language }: NotificationSettingsP
             setShowSaved(false);
             savedIndicatorTimeoutRef.current = null;
         }, 2000);
-    };
+    }, [config, persistConfig]);
 
     const timeValue = `${String(config.hour).padStart(2, '0')}:${String(config.minute).padStart(2, '0')}`;
 

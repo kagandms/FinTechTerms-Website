@@ -20,6 +20,7 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     authMode: AuthMode;
+    loginRedirectTarget: string;
     setAuthMode: (mode: AuthMode) => void;
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;
@@ -165,6 +166,7 @@ export const AuthModal: React.FC<AuthModalProps> = (props) => {
                 ) : (
                     <AuthForm
                         authMode={authMode}
+                        loginRedirectTarget={props.loginRedirectTarget}
                         setAuthMode={props.setAuthMode}
                         authForm={authForm}
                         setAuthForm={setAuthForm}

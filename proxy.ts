@@ -5,6 +5,7 @@ import { buildContentSecurityPolicy, CSP_NONCE_HEADER } from '@/lib/csp';
 import { getPublicEnv } from '@/lib/env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
 import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
+import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options';
 
 // Intentionally empty: authenticated surfaces enforce access per page/API boundary, not here.
 const PROTECTED_PATHS: string[] = [];
@@ -201,10 +202,15 @@ export async function proxy(request: NextRequest) {
 
     let supabaseResponse = createPassThroughResponse(request, nonce);
 
+    if (!requiresAuth) {
+        return supabaseResponse;
+    }
+
     const supabase = createServerClient(
         supabaseUrl,
         supabaseAnonKey,
         {
+            cookieOptions: getSupabaseServerCookieOptions(),
             cookies: {
                 getAll() {
                     return request.cookies.getAll();
@@ -228,10 +234,6 @@ export async function proxy(request: NextRequest) {
         data: { user },
         error,
     } = await supabase.auth.getUser();
-
-    if (!requiresAuth) {
-        return supabaseResponse;
-    }
 
     if (error || !user) {
         const shouldClearAuthCookies = (

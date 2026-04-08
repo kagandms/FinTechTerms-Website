@@ -109,34 +109,6 @@ const recordQuizPayloadSchema = z.object({
     state: recordQuizResultSchema,
 }).passthrough();
 
-const userProgressRowSchema = z.object({
-    total_words_learned: z.number().finite().nonnegative().nullable().optional(),
-    created_at: z.string().min(1).nullable().optional(),
-    updated_at: z.string().min(1).nullable().optional(),
-}).passthrough();
-
-const favoriteRowSchema = z.object({
-    term_id: z.string().min(1),
-}).passthrough();
-
-const quizHistoryRowSchema = z.object({
-    id: z.string().min(1),
-    term_id: z.string().min(1),
-    is_correct: z.boolean(),
-    response_time_ms: z.number().finite().nonnegative(),
-    created_at: z.string().min(1),
-    quiz_type: z.enum(QUIZ_TYPE_VALUES),
-}).passthrough();
-
-const userSettingsRowSchema = z.object({
-    preferred_language: z.enum(['tr', 'en', 'ru']).nullable().optional(),
-}).passthrough();
-
-const streakSummaryRowSchema = z.object({
-    current_streak: z.number().int().nonnegative(),
-    last_study_date: z.string().min(1).nullable(),
-}).passthrough();
-
 const termSrsRowSchema = z.object({
     term_id: z.string().min(1),
     srs_level: z.number().int().nonnegative(),
@@ -148,18 +120,6 @@ const termSrsRowSchema = z.object({
     times_correct: z.number().int().nonnegative(),
 }).passthrough();
 
-const USER_TERM_SRS_QUERY_COLUMNS = [
-    'term_id',
-    'srs_level',
-    'next_review_date',
-    'last_reviewed',
-    'difficulty_score',
-    'retention_rate',
-    'times_reviewed',
-    'times_correct',
-].join(', ');
-
-const RECENT_QUIZ_HISTORY_LIMIT = 100;
 const USER_PROGRESS_SEGMENTS: readonly UserProgressLoadMissingSegment[] = [
     'user_progress',
     'favorites',
@@ -168,26 +128,8 @@ const USER_PROGRESS_SEGMENTS: readonly UserProgressLoadMissingSegment[] = [
     'streak_summary',
 ] as const;
 
-const chunkValues = <T,>(values: readonly T[], size: number): T[][] => {
-    const chunks: T[][] = [];
-
-    for (let index = 0; index < values.length; index += size) {
-        chunks.push(values.slice(index, index + size));
-    }
-
-    return chunks;
-};
-
 const REQUEST_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
-
-const USER_PROGRESS_SEGMENT_LABELS: Record<UserProgressLoadMissingSegment, string> = {
-    user_progress: 'progress summary',
-    favorites: 'favorites',
-    recent_quiz_history: 'recent quiz history',
-    user_settings: 'user settings',
-    streak_summary: 'streak summary',
-};
 
 const parseResponseOrThrow = <T>(
     schema: z.ZodType<T>,
@@ -205,27 +147,6 @@ const parseResponseOrThrow = <T>(
     }
 
     return result.data;
-};
-
-const safeParseResponse = <T>(
-    schema: z.ZodType<T>,
-    payload: unknown
-): T | null => {
-    const result = schema.safeParse(payload);
-
-    if (!result.success) {
-        return null;
-    }
-
-    return result.data;
-};
-
-const buildUserProgressLoadMessage = (
-    missingSegments: readonly UserProgressLoadMissingSegment[]
-): string => {
-    const labels = missingSegments.map((segment) => USER_PROGRESS_SEGMENT_LABELS[segment]);
-
-    return `Study progress loaded with gaps: ${labels.join(', ')}.`;
 };
 
 const withSupabaseReadTimeout = async <T,>(
@@ -255,6 +176,17 @@ const readApiError = async (response: Response, fallbackMessage: string): Promis
         return payload?.message || payload?.error || fallbackMessage;
     } catch {
         return fallbackMessage;
+    }
+};
+
+const readJsonResponse = async <T,>(
+    response: Response,
+    fallbackMessage: string
+): Promise<T> => {
+    try {
+        return await response.json() as T;
+    } catch {
+        throw new Error(fallbackMessage);
     }
 };
 
@@ -299,49 +231,6 @@ const readApiFailure = async (
     }
 };
 
-const sleep = (ms: number) => new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-});
-
-const waitForAccessToken = async (): Promise<string | null> => {
-    const supabase = getSupabaseClient();
-
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-        const {
-            data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.access_token) {
-            return session.access_token;
-        }
-
-        if (attempt === 1) {
-            try {
-                await supabase.auth.refreshSession();
-            } catch {
-                // Best-effort refresh only. If it fails we fall back to cookies.
-            }
-        }
-
-        await sleep(150);
-    }
-
-    return null;
-};
-
-const getAuthenticatedRequestHeaders = async (): Promise<Record<string, string>> => {
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    };
-
-    const accessToken = await waitForAccessToken();
-    if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    return headers;
-};
-
 const fetchWithTimeout = async (
     input: RequestInfo | URL,
     init: RequestInit,
@@ -370,7 +259,7 @@ const fetchWithTimeout = async (
     }
 };
 
-const fetchWithAuthRetry = async (
+const fetchWithSessionAuth = async (
     input: RequestInfo | URL,
     init: RequestInit,
     fallbackMessage: string,
@@ -378,296 +267,46 @@ const fetchWithAuthRetry = async (
         throwOnFinalUnauthorized?: boolean;
     }
 ): Promise<Response> => {
-    const supabase = getSupabaseClient();
-    let headers = await getAuthenticatedRequestHeaders();
     let response = await fetchWithTimeout(input, {
         ...init,
         credentials: 'same-origin',
-        headers: {
-            ...headers,
-            ...(init.headers || {}),
-        },
+        headers: init.headers,
     }, REQUEST_TIMEOUT_MESSAGE);
 
     if (response.status !== 401) {
         return response;
     }
 
-    try {
-        await supabase.auth.refreshSession();
-    } catch {
-        // Retry once with the freshest session state we can get.
+    if (options?.throwOnFinalUnauthorized === false) {
+        return response;
     }
 
-    headers = await getAuthenticatedRequestHeaders();
-    response = await fetchWithTimeout(input, {
-        ...init,
-        credentials: 'same-origin',
-        headers: {
-            ...headers,
-            ...(init.headers || {}),
-        },
-    }, REQUEST_TIMEOUT_MESSAGE);
-
-    if (!response.ok && response.status === 401) {
-        if (options?.throwOnFinalUnauthorized === false) {
-            return response;
-        }
-
-        const message = await readApiError(response, fallbackMessage);
-        throw new Error(message);
-    }
-
-    return response;
+    const message = await readApiError(response, fallbackMessage);
+    throw new Error(message);
 };
 
 /**
  * Fetch user progress from Supabase
  */
 export async function getUserProgressFromSupabase(userId: string): Promise<UserProgressLoadResult> {
-    const supabase = getSupabaseClient();
+    const response = await fetchWithTimeout('/api/progress', {
+        method: 'GET',
+        credentials: 'same-origin',
+    }, REQUEST_TIMEOUT_MESSAGE);
 
-    await waitForAccessToken();
-
-    const [
-        progressResult,
-        favoritesResult,
-        quizHistoryResult,
-        settingsResult,
-        streakResult,
-    ] = await withSupabaseReadTimeout(Promise.allSettled([
-        supabase
-            .from('user_progress')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle(),
-        supabase
-            .from('user_favorites')
-            .select('term_id')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false }),
-        supabase
-            .from('quiz_attempts')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(RECENT_QUIZ_HISTORY_LIMIT),
-        supabase
-            .from('user_settings')
-            .select('preferred_language')
-            .eq('user_id', userId)
-            .maybeSingle(),
-        supabase.rpc('get_user_streak_summary'),
-    ]));
-
-    const missingSegments = new Set<UserProgressLoadMissingSegment>();
-
-    const getFulfilledData = <T,>(
-        segment: UserProgressLoadMissingSegment,
-        settledResult: PromiseSettledResult<{ data: T | null; error: { message?: string | null } | null }>
-    ): T | null => {
-        if (settledResult.status === 'rejected') {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_REJECTED', {
-                route: 'supabaseStorage',
-                userId,
-                segment,
-                error: settledResult.reason instanceof Error ? settledResult.reason : undefined,
-            });
-            missingSegments.add(segment);
-            return null;
-        }
-
-        if (settledResult.value.error) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment,
-                error: new Error(settledResult.value.error.message ?? 'Unknown Supabase error'),
-            });
-            missingSegments.add(segment);
-            return null;
-        }
-
-        return settledResult.value.data;
-    };
-
-    const parsedProgressData = (() => {
-        const payload = getFulfilledData('user_progress', progressResult);
-        if (!payload) {
-            return null;
-        }
-
-        const parsed = safeParseResponse(
-            userProgressRowSchema,
-            payload
-        );
-
-        if (!parsed) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment: 'user_progress',
-            });
-            missingSegments.add('user_progress');
-            return null;
-        }
-
-        return parsed;
-    })();
-
-    const parsedFavoritesData = (() => {
-        const payload = getFulfilledData('favorites', favoritesResult);
-        if (!payload) {
-            return [];
-        }
-
-        const parsed = safeParseResponse(
-            z.array(favoriteRowSchema),
-            payload
-        );
-
-        if (!parsed) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment: 'favorites',
-            });
-            missingSegments.add('favorites');
-            return [];
-        }
-
-        return parsed;
-    })();
-
-    const parsedQuizData = (() => {
-        const payload = getFulfilledData('recent_quiz_history', quizHistoryResult);
-        if (!payload) {
-            return [];
-        }
-
-        const parsed = safeParseResponse(
-            z.array(quizHistoryRowSchema),
-            payload
-        );
-
-        if (!parsed) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment: 'recent_quiz_history',
-            });
-            missingSegments.add('recent_quiz_history');
-            return [];
-        }
-
-        return parsed;
-    })();
-
-    const parsedSettingsData = (() => {
-        const payload = getFulfilledData('user_settings', settingsResult);
-        if (!payload) {
-            return null;
-        }
-
-        const parsed = safeParseResponse(
-            userSettingsRowSchema,
-            payload
-        );
-
-        if (!parsed) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment: 'user_settings',
-            });
-            missingSegments.add('user_settings');
-            return null;
-        }
-
-        return parsed;
-    })();
-
-    const parsedStreakData = (() => {
-        const payload = getFulfilledData('streak_summary', streakResult);
-        if (!payload) {
-            return [];
-        }
-
-        const parsed = safeParseResponse(
-            z.array(streakSummaryRowSchema),
-            Array.isArray(payload) ? payload : []
-        );
-
-        if (!parsed) {
-            logger.error('SUPABASE_STORAGE_PROGRESS_SEGMENT_PARSE_FAILED', {
-                route: 'supabaseStorage',
-                userId,
-                segment: 'streak_summary',
-            });
-            missingSegments.add('streak_summary');
-            return [];
-        }
-
-        return parsed;
-    })();
-
-    const createdAt = parsedProgressData?.created_at || new Date().toISOString();
-    const updatedAt = parsedProgressData?.updated_at || createdAt;
-    const streakSummary = (parsedStreakData[0] || null) as StreakSummaryRow | null;
-
-    const result = userProgressSchema.safeParse({
-        user_id: userId,
-        favorites: parsedFavoritesData.map((row) => row.term_id),
-        current_language: parsedSettingsData?.preferred_language || 'ru',
-        quiz_history: parsedQuizData.map((q) => ({
-            id: q.id,
-            term_id: q.term_id,
-            is_correct: q.is_correct,
-            response_time_ms: q.response_time_ms,
-            timestamp: q.created_at,
-            quiz_type: q.quiz_type,
-        })),
-        total_words_learned: parsedProgressData?.total_words_learned ?? 0,
-        current_streak: streakSummary?.current_streak ?? 0,
-        last_study_date: streakSummary?.last_study_date ?? null,
-        created_at: createdAt,
-        updated_at: updatedAt,
-    });
-
-    if (!result.success) {
-        logger.error('SUPABASE_STORAGE_PROGRESS_PARSE_FAILED', {
-            route: 'supabaseStorage',
-            userId,
-            validation: result.error.flatten(),
-        });
+    if (response.status === 401) {
         return {
             status: 'error',
             missing: [...USER_PROGRESS_SEGMENTS],
-            message: 'Supabase returned malformed study progress data.',
+            message: 'Authentication required',
         };
     }
 
-    if (missingSegments.size === 0) {
-        return {
-            status: 'ok',
-            data: result.data,
-        };
+    if (!response.ok) {
+        throw new Error(await readApiError(response, 'Unable to load study progress.'));
     }
 
-    if (missingSegments.size === USER_PROGRESS_SEGMENTS.length) {
-        return {
-            status: 'error',
-            missing: [...missingSegments],
-            message: 'Unable to load study progress from Supabase.',
-        };
-    }
-
-    return {
-        status: 'partial',
-        data: result.data,
-        missing: [...missingSegments],
-        message: buildUserProgressLoadMessage([...missingSegments]),
-    };
+    return await readJsonResponse(response, 'Unable to load study progress.') as UserProgressLoadResult;
 }
 
 /**
@@ -679,8 +318,11 @@ export async function toggleFavoriteInSupabase(
     shouldFavorite: boolean
 ): Promise<FavoriteToggleMutationResult> {
     try {
-        const response = await fetchWithAuthRetry('/api/favorites', {
+        const response = await fetchWithSessionAuth('/api/favorites', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 termId,
                 shouldFavorite,
@@ -759,8 +401,11 @@ export async function saveQuizAttemptToSupabase(
         const resolvedSessionId = explicitSessionId ?? fallbackSessionContext?.sessionId ?? null;
         const resolvedSessionToken = explicitSessionToken ?? fallbackSessionContext?.sessionToken ?? null;
         const hasResolvedSessionContext = Boolean(resolvedSessionId && resolvedSessionToken);
-        const response = await fetchWithAuthRetry('/api/record-quiz', {
+        const response = await fetchWithSessionAuth('/api/record-quiz', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 term_id: attempt.term_id,
                 is_correct: attempt.is_correct,
@@ -826,27 +471,13 @@ export async function getTermSRSFromSupabase(
     userId: string,
     termId: string
 ): Promise<Partial<Term> | null> {
-    const supabase = getSupabaseClient();
-    const { data, error } = await withSupabaseReadTimeout(
-        supabase
-            .from('user_term_srs')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('term_id', termId)
-            .single()
-    );
+    const result = await getAllTermSRSFromSupabase(userId, [termId]);
 
-    if (error || !data) return null;
+    if (result.status !== 'ok') {
+        return null;
+    }
 
-    return {
-        srs_level: data.srs_level,
-        next_review_date: data.next_review_date,
-        last_reviewed: data.last_reviewed,
-        difficulty_score: data.difficulty_score,
-        retention_rate: data.retention_rate,
-        times_reviewed: data.times_reviewed,
-        times_correct: data.times_correct,
-    };
+    return result.data.get(termId) ?? null;
 }
 
 /**
@@ -863,29 +494,35 @@ export async function getAllTermSRSFromSupabase(
         };
     }
 
-    const supabase = getSupabaseClient();
-    const termIdChunks = chunkValues(Array.from(new Set(termIds)), 100);
-
     try {
-        const chunkResults = await withSupabaseReadTimeout(Promise.all(termIdChunks.map(async (termIdChunk) => {
-            const { data, error } = await supabase
-                .from('user_term_srs')
-                .select(USER_TERM_SRS_QUERY_COLUMNS)
-                .eq('user_id', userId)
-                .in('term_id', termIdChunk);
+        const response = await fetchWithTimeout('/api/progress/srs', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                termIds: Array.from(new Set(termIds)),
+            }),
+        }, REQUEST_TIMEOUT_MESSAGE);
 
-            if (error) {
-                throw new Error(error.message);
-            }
+        if (!response.ok) {
+            throw new Error(await readApiError(response, 'Failed to load SRS review data.'));
+        }
 
-            return parseResponseOrThrow(
-                z.array(termSrsRowSchema),
-                data ?? [],
-                'Supabase returned malformed SRS review data.'
-            );
-        })));
+        const payload = await response.json() as { status: 'ok' | 'error'; data?: unknown; message?: string };
+        if (payload.status !== 'ok') {
+            return {
+                status: 'error',
+                message: payload.message || 'Failed to load SRS review data.',
+            };
+        }
 
-        const parsedData = chunkResults.flat();
+        const parsedData = parseResponseOrThrow(
+            z.array(termSrsRowSchema),
+            payload.data ?? [],
+            'Supabase returned malformed SRS review data.'
+        );
 
         const srsMap = new Map<string, Partial<Term>>();
         parsedData.forEach((row) => {
@@ -918,25 +555,33 @@ export async function getAllTermSRSFromSupabase(
 export async function getAllTermSRSFromSupabaseUnbounded(
     userId: string
 ): Promise<UserTermSrsLoadResult> {
-    const supabase = getSupabaseClient();
-    const { data, error } = await withSupabaseReadTimeout(
-        supabase
-            .from('user_term_srs')
-            .select(USER_TERM_SRS_QUERY_COLUMNS)
-            .eq('user_id', userId)
-    );
-
-    if (error) {
-        return {
-            status: 'error',
-            message: error.message,
-        };
-    }
-
     try {
+        const response = await fetchWithTimeout('/api/progress/srs', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                unbounded: true,
+            }),
+        }, REQUEST_TIMEOUT_MESSAGE);
+
+        if (!response.ok) {
+            throw new Error(await readApiError(response, 'Failed to load SRS review data.'));
+        }
+
+        const payload = await response.json() as { status: 'ok' | 'error'; data?: unknown; message?: string };
+        if (payload.status !== 'ok') {
+            return {
+                status: 'error',
+                message: payload.message || 'Failed to load SRS review data.',
+            };
+        }
+
         const parsedData = parseResponseOrThrow(
             z.array(termSrsRowSchema),
-            data ?? [],
+            payload.data ?? [],
             'Supabase returned malformed SRS review data.'
         );
         const srsMap = new Map<string, Partial<Term>>();

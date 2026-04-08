@@ -27,6 +27,7 @@ export interface CommonAuthProps {
 
 export interface AuthFormProps extends CommonAuthProps {
     authMode: AuthMode;
+    loginRedirectTarget: string;
     setAuthMode: (mode: AuthMode) => void;
     authForm: AuthFormState;
     setAuthForm: (form: AuthFormState) => void;

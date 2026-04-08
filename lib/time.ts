@@ -66,6 +66,12 @@ export const getLocalCalendarDate = (value: Date = new Date()): CalendarDatePart
     day: value.getDate(),
 });
 
+export const getUtcCalendarDate = (value: Date = new Date()): CalendarDateParts => ({
+    year: value.getUTCFullYear(),
+    month: value.getUTCMonth() + 1,
+    day: value.getUTCDate(),
+});
+
 export const calculateAgeFromCalendarDate = (
     birthDate: CalendarDateParts,
     currentDate: CalendarDateParts

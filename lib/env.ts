@@ -42,6 +42,10 @@ export interface ServerEnv extends PublicEnv {
     readonly sentryProject: string | null;
 }
 
+const hasConfiguredEnvValue = (rawValue: string | null | undefined): boolean => (
+    typeof rawValue === 'string' && unwrapQuotedEnvValue(rawValue).trim().length > 0
+);
+
 const normalizeSiteUrl = (value: string): string => (
     value.endsWith('/')
         ? value.slice(0, -1)
@@ -274,6 +278,11 @@ export const hasConfiguredServiceRoleEnv = (
     env: ServerEnv = getServerEnv()
 ): boolean => Boolean(env.supabaseUrl && env.serviceRoleKey);
 
+export const hasConfiguredRateLimiterEnv = (): boolean => (
+    hasConfiguredEnvValue(process.env.UPSTASH_REDIS_REST_URL)
+    && hasConfiguredEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN)
+);
+
 export const hasConfiguredStudySessionEnv = (
     env: ServerEnv = getServerEnv()
 ): boolean => Boolean(
@@ -288,3 +297,17 @@ export const hasConfiguredAiEnv = (
     env.openRouterApiKey
     && env.aiPrimaryModel
 );
+
+export const assertProductionRateLimiterEnv = (): void => {
+    if (process.env.NODE_ENV !== 'production') {
+        return;
+    }
+
+    if (hasConfiguredRateLimiterEnv()) {
+        return;
+    }
+
+    throw new Error(
+        'Production runtime requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Configure distributed rate limiting before starting the app.'
+    );
+};

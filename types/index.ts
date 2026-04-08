@@ -232,7 +232,6 @@ export interface SRSResult {
     newLevel: number;
     nextReviewDate: Date;
     difficultyDelta: number;
-    retentionRateChange: number;
 }
 
 /**

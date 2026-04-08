@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
+import { isAcceptedBirthDate } from '@/lib/profile-birth-date';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import {
     isRateLimiterUnavailable,
@@ -20,6 +21,16 @@ const ProfileUpdateSchema = z.object({
         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         z.null(),
     ]),
+}).superRefine((value, context) => {
+    if (value.birthDate === null || isAcceptedBirthDate(value.birthDate)) {
+        return;
+    }
+
+    context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Birth date must be a valid calendar date for a user aged 13 to 120.',
+        path: ['birthDate'],
+    });
 });
 
 const PROFILE_RATE_LIMIT_HEADERS = {
