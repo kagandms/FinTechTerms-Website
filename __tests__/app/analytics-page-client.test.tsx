@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AnalyticsPageClient from '@/app/(app)/analytics/AnalyticsPageClient';
 
@@ -66,6 +66,8 @@ jest.mock('next/link', () => {
 });
 
 describe('AnalyticsPageClient', () => {
+    const originalFetch = global.fetch;
+
     beforeEach(() => {
         mockUseLanguage.mockReturnValue({
             language: 'en',
@@ -147,6 +149,11 @@ describe('AnalyticsPageClient', () => {
                 avgResponseTimeMs: null,
             },
         });
+    });
+
+    afterEach(() => {
+        global.fetch = originalFetch;
+        jest.useRealTimers();
     });
 
     it('computes category counts from favorites only', () => {
@@ -283,5 +290,50 @@ describe('AnalyticsPageClient', () => {
         expect(screen.getByText('This session attempts')).toBeInTheDocument();
         expect(screen.getByText('%75')).toBeInTheDocument();
         expect(screen.queryByText('Category analysis')).not.toBeInTheDocument();
+    });
+
+    it('shows a bounded timeout error when analytics export stalls', async () => {
+        jest.useFakeTimers();
+        global.fetch = jest.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => (
+            new Promise<Response>((_resolve, reject) => {
+                init?.signal?.addEventListener('abort', () => {
+                    const error = new Error('aborted');
+                    error.name = 'AbortError';
+                    reject(error);
+                }, { once: true });
+            })
+        )) as typeof fetch;
+
+        render(
+            <AnalyticsPageClient
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 3,
+                        correctReviews: 2,
+                        accuracy: 67,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Export/i }));
+
+        await act(async () => {
+            await jest.advanceTimersByTimeAsync(10_000);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Analytics export timed out. Please try again.')).toBeInTheDocument();
+        });
     });
 });

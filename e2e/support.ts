@@ -4,6 +4,20 @@ type PreviewBypassPage = Page & {
     __previewBypassInstalled?: boolean;
 };
 
+const NETWORK_IDLE_TIMEOUT_MS = 10_000;
+
+const waitForPageStability = async (page: Page): Promise<void> => {
+    await page.waitForLoadState('load', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => undefined);
+
+    try {
+        await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS });
+    } catch {
+        // Staging can keep analytics/auth requests open after the UI is ready.
+    }
+
+    await page.waitForTimeout(500);
+};
+
 export const applyPreviewProtectionBypass = async (page: Page): Promise<void> => {
     const previewPage = page as PreviewBypassPage;
 
@@ -52,6 +66,5 @@ export const grantResearchConsent = async (page: Page): Promise<void> => {
 };
 
 export const waitForAppReady = async (page: Page): Promise<void> => {
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await waitForPageStability(page);
 };

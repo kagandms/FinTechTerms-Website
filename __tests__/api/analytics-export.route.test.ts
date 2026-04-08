@@ -2,6 +2,11 @@
  * @jest-environment node
  */
 
+import {
+    analyticsExportDownloadRateLimiter,
+    analyticsExportRouteRateLimiter,
+} from '@/lib/rate-limiter';
+
 export {};
 
 const mockCreateRequestScopedClient = jest.fn();
@@ -29,6 +34,8 @@ jest.mock('@/lib/learning-stats', () => ({
 describe('analytics export route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        analyticsExportRouteRateLimiter.reset();
+        analyticsExportDownloadRateLimiter.reset();
         mockResolveRequestMemberEntitlements.mockResolvedValue({
             user: { id: 'user-1' },
             entitlements: {
@@ -176,6 +183,46 @@ describe('analytics export route', () => {
             code: 'MEMBER_STATE_UNAVAILABLE',
             retryable: true,
         });
+    });
+
+    it('returns 503 when the paginated export rate limiter is unavailable', async () => {
+        jest.spyOn(analyticsExportRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: true,
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export'));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            retryable: true,
+        });
+        expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
+    });
+
+    it('returns 429 when the downloadable export exceeds the user download limit', async () => {
+        jest.spyOn(analyticsExportDownloadRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: false,
+        });
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?download=1'));
+        const body = await response.json();
+
+        expect(response.status).toBe(429);
+        expect(body).toMatchObject({
+            code: 'ANALYTICS_EXPORT_DOWNLOAD_RATE_LIMITED',
+            retryable: true,
+        });
+        expect(mockLoadLearningStatsExportAttempts).not.toHaveBeenCalled();
     });
 
     it('streams a downloadable export without client-side pagination accumulation', async () => {

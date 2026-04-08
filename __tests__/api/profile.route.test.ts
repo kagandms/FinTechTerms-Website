@@ -29,6 +29,15 @@ const createRequest = (body: Record<string, unknown>) => new Request('http://loc
 });
 
 describe('profile route', () => {
+    beforeAll(() => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-04-05T12:00:00.000Z'));
+    });
+
+    afterAll(() => {
+        jest.useRealTimers();
+    });
+
     beforeEach(() => {
         jest.clearAllMocks();
         mockProfileMutationCheck.mockResolvedValue({
@@ -157,6 +166,32 @@ describe('profile route', () => {
         expect(body).toMatchObject({
             code: 'RATE_LIMITED',
             retryable: true,
+        });
+        expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        '2026-04-06',
+        '2014-04-06',
+        '1905-04-04',
+        '2026-02-31',
+    ])('rejects invalid or out-of-policy birth dates (%s)', async (birthDate) => {
+        mockResolveAuthenticatedUser.mockResolvedValue({
+            id: 'user-1',
+            email: 'alex@example.com',
+        });
+
+        const { POST } = await import('@/app/api/profile/route');
+        const response = await POST(createRequest({
+            fullName: 'Alex Stone',
+            birthDate,
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'VALIDATION_ERROR',
+            retryable: false,
         });
         expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
     });

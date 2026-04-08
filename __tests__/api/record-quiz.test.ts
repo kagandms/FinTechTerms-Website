@@ -5,8 +5,8 @@
 import { apiRouteRateLimiter, quizMutationRateLimiter } from '@/lib/rate-limiter';
 import { hashStudySessionToken } from '@/lib/study-session-token';
 
-const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateServiceRoleClient = jest.fn();
+const mockResolveRequestMemberEntitlements = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
 const mockCompleteIdempotentRequest = jest.fn();
@@ -15,7 +15,10 @@ const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createServiceRoleClient: () => mockCreateServiceRoleClient(),
-    resolveAuthenticatedUser: (...args: unknown[]) => mockResolveAuthenticatedUser(...args),
+}));
+
+jest.mock('@/lib/server-member-entitlements', () => ({
+    resolveRequestMemberEntitlements: (...args: unknown[]) => mockResolveRequestMemberEntitlements(...args),
 }));
 
 jest.mock('@/lib/api-idempotency', () => ({
@@ -46,15 +49,26 @@ const createValidPayload = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 });
 
+const createMemberState = (overrides: Record<string, unknown> = {}) => ({
+    user: { id: 'user_123' },
+    entitlements: {
+        canUseReviewMode: true,
+    },
+    unavailable: null,
+    ...overrides,
+});
+
 describe('record-quiz route', () => {
     let consoleErrorSpy: jest.SpyInstance;
+    let consoleWarnSpy: jest.SpyInstance;
 
     beforeEach(() => {
         jest.clearAllMocks();
         apiRouteRateLimiter.reset();
         quizMutationRateLimiter.reset();
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        mockResolveAuthenticatedUser.mockResolvedValue({ id: 'user_123' });
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        mockResolveRequestMemberEntitlements.mockResolvedValue(createMemberState());
         mockCreateServiceRoleClient.mockReturnValue({ rpc: jest.fn() });
         mockInspectIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
         mockReserveIdempotentRequest.mockResolvedValue({ kind: 'proceed' });
@@ -65,6 +79,8 @@ describe('record-quiz route', () => {
 
     afterEach(() => {
         consoleErrorSpy.mockRestore();
+        consoleWarnSpy.mockRestore();
+        jest.useRealTimers();
     });
 
     it('rejects invalid payloads via the real route handler', async () => {
@@ -273,6 +289,7 @@ describe('record-quiz route', () => {
     });
 
     it('passes the active study-session context through to the quiz RPC', async () => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-03-11T10:00:00.000Z'));
         const rpc = jest.fn().mockResolvedValue({
             data: { ok: true },
             error: null,
@@ -299,6 +316,44 @@ describe('record-quiz route', () => {
             p_session_id: '550e8400-e29b-41d4-a716-446655440001',
             p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
         }));
+    });
+
+    it('drops out-of-window occurred_at values and falls back to server time', async () => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-03-11T10:00:00.000Z'));
+        const rpc = jest.fn().mockResolvedValue({
+            data: { ok: true },
+            error: null,
+        });
+        mockCreateServiceRoleClient.mockReturnValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            occurred_at: '2026-03-10T00:00:00.000Z',
+        })) as never);
+
+        expect(response.status).toBe(200);
+        expect(mockInspectIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            payload: expect.objectContaining({
+                occurred_at: null,
+            }),
+        }));
+        expect(mockReserveIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            payload: expect.objectContaining({
+                occurred_at: null,
+            }),
+        }));
+        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
+            p_occurred_at: null,
+        }));
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+            'QUIZ_ROUTE_OCCURRED_AT_OUT_OF_WINDOW',
+            expect.objectContaining({
+                requestId: expect.any(String),
+                route: '/api/record-quiz',
+                userId: 'user_123',
+                driftDirection: 'past',
+            })
+        );
     });
 
     it('returns 404 when the linked study session does not exist', async () => {
@@ -417,5 +472,46 @@ describe('record-quiz route', () => {
             code: 'QUIZ_PERSIST_FAILED',
             retryable: true,
         });
+    });
+
+    it('returns 503 when member entitlements are unavailable', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValueOnce(createMemberState({
+            unavailable: {
+                status: 503,
+                code: 'MEMBER_STATE_UNAVAILABLE',
+                message: 'Member state is temporarily unavailable. Please try again.',
+            },
+        }));
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'MEMBER_STATE_UNAVAILABLE',
+            retryable: true,
+        });
+        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 when the member account is not allowed to use review mode', async () => {
+        mockResolveRequestMemberEntitlements.mockResolvedValueOnce(createMemberState({
+            entitlements: {
+                canUseReviewMode: false,
+            },
+        }));
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload()) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            code: 'MEMBER_REQUIRED',
+            message: 'Complete your member setup to unlock review mode.',
+            retryable: false,
+        });
+        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
     });
 });

@@ -11,7 +11,7 @@ const mockUseLanguage = jest.fn();
 const mockUseToast = jest.fn();
 const mockUseSearchParams = jest.fn();
 const mockUseRouter = jest.fn();
-const mockGetSession = jest.fn();
+const mockNavigateAfterLogin = jest.fn();
 
 const mockShowToast = jest.fn();
 const mockPush = jest.fn();
@@ -35,18 +35,18 @@ jest.mock('next/navigation', () => ({
     useRouter: () => mockUseRouter(),
 }));
 
-jest.mock('@/lib/supabase', () => ({
-    getSupabaseClient: () => ({
-        auth: {
-            getSession: (...args: unknown[]) => mockGetSession(...args),
-        },
-    }),
-}));
+jest.mock('@/hooks/use-auth-logic-helpers', () => {
+    const actual = jest.requireActual('@/hooks/use-auth-logic-helpers');
+
+    return {
+        ...actual,
+        navigateAfterLogin: (...args: unknown[]) => mockNavigateAfterLogin(...args),
+    };
+});
 
 describe('useAuthLogic', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockGetSession.mockResolvedValue({ data: { session: null } });
         mockUseToast.mockReturnValue({ showToast: mockShowToast });
         mockUseLanguage.mockReturnValue({
             t: (key: string) => ({
@@ -145,7 +145,11 @@ describe('useAuthLogic', () => {
         });
 
         expect(login).toHaveBeenCalledWith('alex@example.com', 'StrongPass1!');
-        expect(mockPush).toHaveBeenCalledWith('/favorites');
+        expect(mockNavigateAfterLogin).toHaveBeenCalledWith('/favorites', expect.objectContaining({
+            push: mockPush,
+            refresh: mockRefresh,
+        }));
+        expect(mockPush).not.toHaveBeenCalled();
     });
 
     it('shows a toast when logout fails', async () => {

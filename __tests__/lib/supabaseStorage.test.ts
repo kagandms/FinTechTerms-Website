@@ -4,22 +4,7 @@
 
 export {};
 
-const mockFrom = jest.fn();
-const mockRpc = jest.fn();
-const mockGetSession = jest.fn();
-const mockRefreshSession = jest.fn();
 const mockReadTrackedStudySessionContext = jest.fn();
-
-jest.mock('@/lib/supabase', () => ({
-    getSupabaseClient: () => ({
-        from: (...args: unknown[]) => mockFrom(...args),
-        rpc: (...args: unknown[]) => mockRpc(...args),
-        auth: {
-            getSession: (...args: unknown[]) => mockGetSession(...args),
-            refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
-        },
-    }),
-}));
 
 jest.mock('@/lib/study-session-storage', () => ({
     readTrackedStudySessionContext: () => mockReadTrackedStudySessionContext(),
@@ -46,32 +31,42 @@ const validQuizResponseBody = {
     },
 };
 
+const createJsonResponse = (
+    payload: unknown,
+    init?: {
+        ok?: boolean;
+        status?: number;
+    }
+) => ({
+    ok: init?.ok ?? true,
+    status: init?.status ?? 200,
+    json: jest.fn().mockResolvedValue(payload),
+}) as unknown as Response;
+
+const createAbortError = (): Error => {
+    const error = new Error('The operation was aborted.');
+    error.name = 'AbortError';
+    return error;
+};
+
 describe('supabaseStorage response validation', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockReadTrackedStudySessionContext.mockReturnValue(null);
-        mockGetSession.mockResolvedValue({
-            data: {
-                session: {
-                    access_token: 'token',
-                },
-            },
-        });
-        mockRefreshSession.mockResolvedValue({ data: {}, error: null });
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     it('returns a retryable result for malformed 200 OK quiz responses', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: jest.fn().mockResolvedValue({
-                state: {
-                    userProgress: {
-                        current_streak: 4,
-                    },
+        global.fetch = jest.fn().mockResolvedValue(createJsonResponse({
+            state: {
+                userProgress: {
+                    current_streak: 4,
                 },
-            }),
-        }) as typeof fetch;
+            },
+        })) as typeof fetch;
 
         const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
 
@@ -93,11 +88,9 @@ describe('supabaseStorage response validation', () => {
             sessionId: 'fallback-session',
             sessionToken: 'f'.repeat(32),
         });
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: jest.fn().mockResolvedValue(validQuizResponseBody),
-        }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(validQuizResponseBody)
+        ) as typeof fetch;
 
         const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
 
@@ -115,7 +108,6 @@ describe('supabaseStorage response validation', () => {
         });
 
         const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-        expect(fetchCall).toBeDefined();
         const requestBody = JSON.parse(fetchCall?.[1]?.body as string);
 
         expect(requestBody).toMatchObject({
@@ -124,25 +116,23 @@ describe('supabaseStorage response validation', () => {
             session_id: 'replayed-session',
             session_token: 'r'.repeat(32),
         });
+        expect(fetchCall?.[1]).toMatchObject({
+            credentials: 'same-origin',
+            method: 'POST',
+        });
         expect(requestBody.session_id).not.toBe('fallback-session');
     });
 
-    afterEach(() => {
-        jest.useRealTimers();
-    });
-
     it('classifies final 401 quiz responses as auth_expired', async () => {
-        global.fetch = jest.fn()
-            .mockResolvedValueOnce({
-                ok: false,
-                status: 401,
-                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
-            })
-            .mockResolvedValueOnce({
-                ok: false,
-                status: 401,
-                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
-            }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                { message: 'Unauthorized' },
+                {
+                    ok: false,
+                    status: 401,
+                }
+            )
+        ) as typeof fetch;
 
         const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
 
@@ -160,17 +150,15 @@ describe('supabaseStorage response validation', () => {
     });
 
     it('classifies final 401 favorite responses as auth_expired', async () => {
-        global.fetch = jest.fn()
-            .mockResolvedValueOnce({
-                ok: false,
-                status: 401,
-                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
-            })
-            .mockResolvedValueOnce({
-                ok: false,
-                status: 401,
-                json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
-            }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                { message: 'Unauthorized' },
+                {
+                    ok: false,
+                    status: 401,
+                }
+            )
+        ) as typeof fetch;
 
         const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
 
@@ -181,11 +169,15 @@ describe('supabaseStorage response validation', () => {
     });
 
     it('classifies 422 quiz responses as non_retryable', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: false,
-            status: 422,
-            json: jest.fn().mockResolvedValue({ message: 'Validation failed.' }),
-        }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                { message: 'Validation failed.' },
+                {
+                    ok: false,
+                    status: 422,
+                }
+            )
+        ) as typeof fetch;
 
         const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
 
@@ -203,14 +195,18 @@ describe('supabaseStorage response validation', () => {
     });
 
     it('classifies retryable 409 quiz responses as retryable', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: false,
-            status: 409,
-            json: jest.fn().mockResolvedValue({
-                message: 'An identical request is already being processed.',
-                retryable: true,
-            }),
-        }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                {
+                    message: 'An identical request is already being processed.',
+                    retryable: true,
+                },
+                {
+                    ok: false,
+                    status: 409,
+                }
+            )
+        ) as typeof fetch;
 
         const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
 
@@ -228,14 +224,18 @@ describe('supabaseStorage response validation', () => {
     });
 
     it('classifies retryable 409 favorite responses as retryable', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: false,
-            status: 409,
-            json: jest.fn().mockResolvedValue({
-                message: 'An identical request is already being processed.',
-                retryable: true,
-            }),
-        }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                {
+                    message: 'An identical request is already being processed.',
+                    retryable: true,
+                },
+                {
+                    ok: false,
+                    status: 409,
+                }
+            )
+        ) as typeof fetch;
 
         const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
 
@@ -246,15 +246,19 @@ describe('supabaseStorage response validation', () => {
     });
 
     it('classifies favorite limit 409 responses as limit_reached', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: false,
-            status: 409,
-            json: jest.fn().mockResolvedValue({
-                code: 'FAVORITES_LIMIT_REACHED',
-                message: 'Favorite limit reached. Complete your member setup to save more terms.',
-                retryable: false,
-            }),
-        }) as typeof fetch;
+        global.fetch = jest.fn().mockResolvedValue(
+            createJsonResponse(
+                {
+                    code: 'FAVORITES_LIMIT_REACHED',
+                    message: 'Favorite limit reached. Complete your member setup to save more terms.',
+                    retryable: false,
+                },
+                {
+                    ok: false,
+                    status: 409,
+                }
+            )
+        ) as typeof fetch;
 
         const { toggleFavoriteInSupabase } = await import('@/lib/supabaseStorage');
 
@@ -264,85 +268,45 @@ describe('supabaseStorage response validation', () => {
         });
     });
 
-    it('returns a partial progress result when only the canonical progress row is malformed', async () => {
-        const maybeSingle = jest.fn().mockResolvedValue({
-            data: {
-                total_words_learned: 'not-a-number',
-            },
-            error: null,
-        });
-        const favoritesOrder = jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
-        });
-        const quizLimit = jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
-        });
-        const quizOrder = jest.fn(() => ({
-            limit: quizLimit,
-        }));
-
-        mockFrom.mockImplementation((table: string) => {
-            if (table === 'user_progress') {
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            maybeSingle,
-                        })),
-                    })),
-                };
-            }
-
-            if (table === 'user_favorites' || table === 'quiz_attempts') {
-                const orderHandler = table === 'user_favorites' ? favoritesOrder : quizOrder;
-
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            order: orderHandler,
-                        })),
-                    })),
-                };
-            }
-
-            if (table === 'user_settings') {
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            maybeSingle: jest.fn().mockResolvedValue({
-                                data: null,
-                                error: null,
-                            }),
-                        })),
-                    })),
-                };
-            }
-
-            throw new Error(`Unexpected table ${table}`);
-        });
-
-        mockRpc.mockResolvedValue({
-            data: [],
-            error: null,
-        });
-
-        const { getUserProgressFromSupabase } = await import('@/lib/supabaseStorage');
-        await expect(getUserProgressFromSupabase('user-1')).resolves.toMatchObject({
+    it('returns the route partial result when progress loads with gaps', async () => {
+        global.fetch = jest.fn().mockResolvedValue(createJsonResponse({
             status: 'partial',
             missing: ['user_progress'],
             message: 'Study progress loaded with gaps: progress summary.',
             data: {
                 user_id: 'user-1',
                 favorites: [],
+                current_language: 'ru',
                 quiz_history: [],
                 total_words_learned: 0,
+                current_streak: 0,
+                last_study_date: null,
+                created_at: '2026-03-11T00:00:00.000Z',
+                updated_at: '2026-03-11T00:00:00.000Z',
+            },
+        })) as typeof fetch;
+
+        const { getUserProgressFromSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(getUserProgressFromSupabase('user-1')).resolves.toEqual({
+            status: 'partial',
+            missing: ['user_progress'],
+            message: 'Study progress loaded with gaps: progress summary.',
+            data: {
+                user_id: 'user-1',
+                favorites: [],
+                current_language: 'ru',
+                quiz_history: [],
+                total_words_learned: 0,
+                current_streak: 0,
+                last_study_date: null,
+                created_at: '2026-03-11T00:00:00.000Z',
+                updated_at: '2026-03-11T00:00:00.000Z',
             },
         });
     });
 
-    it('fails fast when the authenticated progress reads exceed the browser timeout budget', async () => {
-        const never = new Promise<never>(() => {});
+    it('fails fast when the authenticated progress route exceeds the browser timeout budget', async () => {
         const setTimeoutSpy = jest.spyOn(globalThis, 'setTimeout').mockImplementation((((callback: TimerHandler) => {
             if (typeof callback === 'function') {
                 callback();
@@ -352,45 +316,21 @@ describe('supabaseStorage response validation', () => {
         }) as unknown) as typeof globalThis.setTimeout);
         const clearTimeoutSpy = jest.spyOn(globalThis, 'clearTimeout').mockImplementation((((() => undefined) as unknown)) as typeof globalThis.clearTimeout);
 
-        mockFrom.mockImplementation((table: string) => {
-            if (table === 'user_progress' || table === 'user_settings') {
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            maybeSingle: jest.fn(() => never),
-                        })),
-                    })),
-                };
+        global.fetch = jest.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal as AbortSignal | undefined;
+
+            if (signal?.aborted) {
+                reject(createAbortError());
+                return;
             }
 
-            if (table === 'user_favorites') {
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            order: jest.fn(() => never),
-                        })),
-                    })),
-                };
-            }
-
-            if (table === 'quiz_attempts') {
-                return {
-                    select: jest.fn(() => ({
-                        eq: jest.fn(() => ({
-                            order: jest.fn(() => ({
-                                limit: jest.fn(() => never),
-                            })),
-                        })),
-                    })),
-                };
-            }
-
-            throw new Error(`Unexpected table ${table}`);
-        });
-
-        mockRpc.mockReturnValue(never);
+            signal?.addEventListener('abort', () => {
+                reject(createAbortError());
+            });
+        })) as typeof fetch;
 
         const { getUserProgressFromSupabase } = await import('@/lib/supabaseStorage');
+
         try {
             await expect(getUserProgressFromSupabase('user-1')).rejects.toThrow('Loading is taking too long — please try again');
         } finally {

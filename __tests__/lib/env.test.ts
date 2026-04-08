@@ -83,4 +83,28 @@ describe('getServerEnv', () => {
         });
         expect(hasConfiguredAiEnv()).toBe(true);
     });
+
+    it('should detect when distributed rate limiting env is configured', async () => {
+        process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io';
+        process.env.UPSTASH_REDIS_REST_TOKEN = 'upstash-token-12345678901234567890';
+
+        const { hasConfiguredRateLimiterEnv } = await import('@/lib/env');
+
+        expect(hasConfiguredRateLimiterEnv()).toBe(true);
+    });
+
+    it('should fail fast for production runtime when distributed rate limiting env is missing', async () => {
+        process.env = {
+            ...process.env,
+            NODE_ENV: 'production',
+        };
+        delete process.env.UPSTASH_REDIS_REST_URL;
+        delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+        const { assertProductionRateLimiterEnv } = await import('@/lib/env');
+
+        expect(() => assertProductionRateLimiterEnv()).toThrow(
+            'Production runtime requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Configure distributed rate limiting before starting the app.'
+        );
+    });
 });

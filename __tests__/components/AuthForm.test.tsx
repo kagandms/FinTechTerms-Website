@@ -79,6 +79,7 @@ const authTranslations: Record<string, Record<string, string>> = {
 
 const createBaseProps = (language: 'tr' | 'en' | 'ru') => ({
     authMode: 'register' as const,
+    loginRedirectTarget: '/profile',
     setAuthMode: jest.fn(),
     authForm: {
         email: '',

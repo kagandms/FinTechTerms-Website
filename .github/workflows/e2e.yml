@@ -141,8 +141,10 @@ jobs:
           npm ci
           npm pkg delete scripts.prepare
 
+      - name: Guard Local Secret Files
+        run: npm run guard:local-secrets
+
       - name: Validate release-gate environment
-        if: ${{ github.event_name != 'pull_request' }}
         env:
           STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

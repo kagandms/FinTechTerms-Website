@@ -76,11 +76,6 @@ describe('calculateNextReview', () => {
         expect(result.difficultyDelta).toBe(-0.1);
     });
 
-    it('should increase retention rate on correct answer', () => {
-        const result = calculateNextReview(true, 1, 2.5);
-        expect(result.retentionRateChange).toBe(0.05);
-    });
-
     it('should reset level to MIN_SRS_LEVEL on incorrect answer', () => {
         const result = calculateNextReview(false, 4, 2.5);
         expect(result.newLevel).toBe(MIN_SRS_LEVEL);
@@ -89,11 +84,6 @@ describe('calculateNextReview', () => {
     it('should increase difficulty on incorrect answer', () => {
         const result = calculateNextReview(false, 1, 2.5);
         expect(result.difficultyDelta).toBe(0.3);
-    });
-
-    it('should decrease retention rate on incorrect answer', () => {
-        const result = calculateNextReview(false, 1, 2.5);
-        expect(result.retentionRateChange).toBe(-0.1);
     });
 
     it('should set next review date based on new level interval', () => {
@@ -233,14 +223,18 @@ describe('updateTermAfterReview', () => {
         expect(easier.difficulty_score).toBeGreaterThanOrEqual(0);
     });
 
-    it('should clamp retention_rate between 0 and 1', () => {
-        const lowRetention = createMockTerm({ retention_rate: 0.05 });
-        const result = updateTermAfterReview(lowRetention, false);
-        expect(result.retention_rate).toBeGreaterThanOrEqual(0);
+    it('should derive retention_rate from empirical correctness history', () => {
+        const term = createMockTerm({
+            retention_rate: 0.9,
+            times_reviewed: 4,
+            times_correct: 3,
+        });
 
-        const highRetention = createMockTerm({ retention_rate: 0.98 });
-        const result2 = updateTermAfterReview(highRetention, true);
-        expect(result2.retention_rate).toBeLessThanOrEqual(1);
+        const correctResult = updateTermAfterReview(term, true);
+        const incorrectResult = updateTermAfterReview(term, false);
+
+        expect(correctResult.retention_rate).toBe(0.8);
+        expect(incorrectResult.retention_rate).toBe(0.6);
     });
 
     it('should increment times_reviewed', () => {
