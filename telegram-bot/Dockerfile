@@ -27,7 +27,7 @@ EXPOSE 8080
 
 # Health check for container orchestrators
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import os, socket; s=socket.create_connection(('localhost', int(os.environ.get('PORT', '8080'))), timeout=2); s.close()" || exit 1
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8080\")}/health', timeout=2)" || exit 1
 
 # Run the bot
 CMD ["python", "-m", "bot"]

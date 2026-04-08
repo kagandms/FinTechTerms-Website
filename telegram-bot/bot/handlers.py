@@ -915,6 +915,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
                                 # Auto-delete voice after 10 seconds to keep chat clean
                                 asyncio.create_task(_delete_later(sent, 10))
+                        else:
+                            logger.warning("TTS callback returned no audio path for %s [%s]", text_to_speak, tts_lang)
+                            callback_alert = _callback_error_message(tts_lang)
+                            show_alert = True
+                    except asyncio.TimeoutError as exc:
+                        logger.warning("TTS callback timed out: %s", exc)
+                        callback_alert = _busy_message(tts_lang)
+                        show_alert = True
                     except telegram.error.RetryAfter as exc:
                         logger.warning("TTS callback rate-limited: %s", exc)
                         callback_alert = _busy_message(tts_lang)

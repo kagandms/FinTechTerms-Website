@@ -56,6 +56,7 @@ const smokeAuthPassword = optionalEnv('SMOKE_AUTH_PASSWORD') || optionalEnv('E2E
 const sentrySmokeEmail = optionalEnv('SENTRY_SMOKE_EMAIL') || smokeAuthEmail;
 const sentrySmokePassword = optionalEnv('SENTRY_SMOKE_PASSWORD') || smokeAuthPassword;
 const vercelAutomationBypassSecret = optionalEnv('VERCEL_AUTOMATION_BYPASS_SECRET');
+const NETWORK_IDLE_TIMEOUT_MS = 10_000;
 
 const smokeChecks = [];
 
@@ -89,7 +90,14 @@ const grantResearchConsent = async (page) => {
 };
 
 const waitForPageSettle = async (page) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => undefined);
+
+    try {
+        await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS });
+    } catch {
+        // Staging can keep background requests open after the UI is already interactive.
+    }
+
     await page.waitForTimeout(500);
 };
 

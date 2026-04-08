@@ -5,6 +5,7 @@ Generates audio pronunciation for terms using edge-tts.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Optional
 from bot.config import config
 
 logger = logging.getLogger(__name__)
+TTS_GENERATION_TIMEOUT_SECONDS = 10.0
 
 # Language → edge-tts voice mapping
 VOICE_MAP: dict[str, str] = {
@@ -52,12 +54,21 @@ async def generate_tts_audio(text: str, lang: str = "en") -> Optional[Path]:
 
     try:
         communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(str(audio_path))
+        await asyncio.wait_for(
+            communicate.save(str(audio_path)),
+            timeout=TTS_GENERATION_TIMEOUT_SECONDS,
+        )
+        await cleanup_cache()
         logger.info("Generated TTS: '%s' [%s] → %s", text, lang, audio_path.name)
         return audio_path
+    except asyncio.TimeoutError as exc:
+        audio_path.unlink(missing_ok=True)
+        logger.error("TTS generation timed out for '%s' [%s]: %s", text, lang, exc)
+        raise
     except Exception as e:
+        audio_path.unlink(missing_ok=True)
         logger.error("TTS generation failed for '%s' [%s]: %s", text, lang, e)
-        return None
+        raise
 
 
 async def cleanup_cache(max_files: int = 500) -> int:

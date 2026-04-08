@@ -31,6 +31,8 @@
 26. Verify profile saves go only through `POST /api/profile`, and the client never performs direct profile/auth dual writes.
 27. Verify retryable quiz reviews persist in the device queue and replay successfully after reconnect or re-authentication.
 28. Verify preview release gates fail on same-repo pull requests when required staging secrets are missing.
+29. Verify local development and production build parity by running the explicit webpack paths: `npm run dev` and `npm run build`.
+30. Never ship or attach `.next/server/**/*.map` files to support bundles, exported debug archives, or customer-visible artifacts; treat server source maps as internal deployment-only material.
 
 ## Rollback
 
@@ -39,6 +41,12 @@
 3. Re-run the smoke suite against the rolled-back deployment:
    `verify:bootstrap-db`, `verify:release-db`, guest Playwright, auth Playwright, staging smoke.
 4. Check Sentry for error volume returning to baseline before closing the incident.
+
+## Destructive scripts
+
+- Scripts guarded by `scripts/destructive_target_guard.py` refuse to touch remote Supabase targets unless `ALLOW_REMOTE_DESTRUCTIVE_SCRIPTS=1` is set explicitly.
+- Leave `ALLOW_REMOTE_DESTRUCTIVE_SCRIPTS=0` for normal development, CI, and release verification.
+- Raise it only for an intentional, reviewed maintenance window, and unset it immediately afterwards.
 
 ## Final sign-off
 

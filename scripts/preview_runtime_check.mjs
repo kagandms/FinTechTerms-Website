@@ -19,6 +19,7 @@ const authPassword = requiredEnv('E2E_AUTH_PASSWORD');
 const sentrySmokeEmail = requiredEnv('SENTRY_SMOKE_EMAIL');
 const sentrySmokePassword = requiredEnv('SENTRY_SMOKE_PASSWORD');
 const vercelAutomationBypassSecret = optionalEnv('VERCEL_AUTOMATION_BYPASS_SECRET');
+const NETWORK_IDLE_TIMEOUT_MS = 10_000;
 
 const checks = [];
 
@@ -52,7 +53,14 @@ const grantResearchConsent = async (page) => {
 };
 
 const waitForPageSettle = async (page) => {
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => undefined);
+
+    try {
+        await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS });
+    } catch {
+        // Preview runtimes can keep background requests open after the UI is already interactive.
+    }
+
     await page.waitForTimeout(500);
 };
 

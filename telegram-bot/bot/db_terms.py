@@ -4,7 +4,6 @@ FinTechTerms Bot — Term lookup helpers.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import random
@@ -13,7 +12,11 @@ from time import monotonic
 from typing import Any, Optional
 
 from bot.config import SUPPORTED_LANGUAGES, config
-from bot.db_client import apply_academic_quarantine, get_public_client
+from bot.db_client import (
+    apply_academic_quarantine,
+    execute_public_query,
+    get_public_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +173,7 @@ async def fetch_all_terms_limited(limit: int | None) -> list[dict[str, Any]]:
         ).execute()
 
     try:
-        response = await asyncio.to_thread(_fetch)
+        response = await execute_public_query(_fetch)
         return normalize_public_terms(response.data)
     except Exception as e:
         logger.error("Failed to fetch all terms (Database Unreachable): %s", e)
@@ -204,7 +207,7 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
         sample_ids = await _load_cached_term_ids(limit=safe_limit, fetcher=_fetch_term_ids)
         if not sample_ids:
             return []
-        return await asyncio.to_thread(_fetch_terms, sample_ids)
+        return await execute_public_query(lambda: _fetch_terms(sample_ids))
     except Exception as e:
         logger.error("Failed to fetch bounded quiz terms (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -215,7 +218,7 @@ async def _load_cached_term_ids(limit: int, fetcher: Any) -> list[str]:
 
     now = monotonic()
     if not _TERM_ID_CACHE or (now - _TERM_ID_CACHE_LOADED_AT) > TERM_ID_CACHE_TTL_SECONDS:
-        _TERM_ID_CACHE = await asyncio.to_thread(fetcher)
+        _TERM_ID_CACHE = await execute_public_query(fetcher)
         _TERM_ID_CACHE_LOADED_AT = now
 
     if not _TERM_ID_CACHE:
@@ -233,7 +236,7 @@ async def fetch_term_by_id(term_id: str) -> Optional[dict[str, Any]]:
         ).eq("id", term_id).limit(1).execute()
 
     try:
-        response = await asyncio.to_thread(_fetch)
+        response = await execute_public_query(_fetch)
         data = normalize_public_terms(response.data)
         return data[0] if data else None
     except Exception as e:
@@ -293,7 +296,7 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
         return list(merged_rows.values())[:safe_limit]
 
     try:
-        return await asyncio.to_thread(_search)
+        return await execute_public_query(_search)
     except Exception as e:
         logger.error("Search failed for '%s' (Database Unreachable): %s", query, e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -329,7 +332,7 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
         ).eq("category", category).execute()
 
     try:
-        response = await asyncio.to_thread(_fetch)
+        response = await execute_public_query(_fetch)
         return normalize_public_terms(response.data)
     except Exception as e:
         logger.error("Failed to fetch terms for category %s: %s", category, e)
