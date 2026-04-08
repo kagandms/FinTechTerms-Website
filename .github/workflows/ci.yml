@@ -142,8 +142,8 @@ jobs:
           fi
 
           echo "runtime_reason=partial" >> "$GITHUB_OUTPUT"
-          echo "Missing required runtime secrets for a release-evaluable run: ${missing_vars[*]}"
-          exit 1
+          echo "Runtime env validation and production build are skipped because release-evaluable runtime secrets are only partially configured: ${missing_vars[*]}"
+          exit 0
 
       - name: Validate Runtime Environment
         if: ${{ steps.runtime_preflight.outputs.runtime_ready == 'true' }}

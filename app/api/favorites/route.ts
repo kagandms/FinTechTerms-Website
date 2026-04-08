@@ -300,25 +300,10 @@ export async function POST(request: Request) {
             });
         }
 
-        const mutationSupabase = await createRequestScopedClient(request);
-        if (!mutationSupabase) {
-            await markFavoriteFailure(supabaseClient, user.id, idempotencyKey, 503, {
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to update favorites.',
-            });
-            return errorResponse({
-                status: 503,
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to update favorites.',
-                requestId,
-                retryable: true,
-                headers: guardedHeaders,
-            });
-        }
-
-        const { data: mutationData, error: mutationError } = await mutationSupabase.rpc(
-            'toggle_my_favorite',
+        const { data: mutationData, error: mutationError } = await supabaseClient.rpc(
+            'toggle_my_favorite_server',
             {
+                p_user_id: user.id,
                 p_term_id: termId,
                 p_should_favorite: shouldFavorite,
             }

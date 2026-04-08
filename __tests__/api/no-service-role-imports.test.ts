@@ -42,7 +42,7 @@ describe('trusted server-side mutation boundaries', () => {
             'utf8'
         );
 
-        expect(favoritesSource).toMatch(/rpc\(\s*'toggle_my_favorite'/);
+        expect(favoritesSource).toMatch(/rpc\(\s*'toggle_my_favorite_server'/);
         expect(favoritesSource).not.toMatch(/rpc\(\s*'toggle_user_favorite'/);
         expect(recordQuizSource).toMatch(/rpc\(\s*'record_study_event'/);
         expect(studySessionsSource).toMatch(/rpc\(\s*'start_study_session_server'/);

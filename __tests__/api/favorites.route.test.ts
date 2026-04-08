@@ -151,10 +151,6 @@ describe('favorites route', () => {
             error: null,
         });
         mockCreateServiceRoleClient.mockReturnValue({
-            rpc: jest.fn(),
-            from: jest.fn(),
-        });
-        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -175,7 +171,8 @@ describe('favorites route', () => {
             favorites: ['term-1'],
         });
         expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
+            p_user_id: 'user-1',
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -211,7 +208,7 @@ describe('favorites route', () => {
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 
-    it('keeps the resolved user id out of the authenticated favorite wrapper payload', async () => {
+    it('passes the resolved user id into the trusted server favorite wrapper payload', async () => {
         const rpc = jest.fn().mockResolvedValue({
             data: {
                 success: true,
@@ -222,10 +219,6 @@ describe('favorites route', () => {
             error: null,
         });
         mockCreateServiceRoleClient.mockReturnValue({
-            rpc: jest.fn(),
-            from: jest.fn(),
-        });
-        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -238,7 +231,8 @@ describe('favorites route', () => {
         }));
 
         expect(response.status).toBe(200);
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
+            p_user_id: 'user-1',
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -255,10 +249,6 @@ describe('favorites route', () => {
             error: null,
         });
         mockCreateServiceRoleClient.mockReturnValue({
-            rpc: jest.fn(),
-            from: jest.fn(),
-        });
-        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -296,12 +286,8 @@ describe('favorites route', () => {
             },
         });
         mockCreateServiceRoleClient.mockReturnValue({
-            from: jest.fn(),
-            rpc: jest.fn(),
-        });
-        mockCreateRequestScopedClient.mockResolvedValue({
-            from: jest.fn(),
             rpc,
+            from: jest.fn(),
         });
 
         const { POST } = await import('@/app/api/favorites/route');
@@ -317,7 +303,8 @@ describe('favorites route', () => {
             code: 'FAVORITES_LIMIT_REACHED',
             retryable: false,
         });
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
+            p_user_id: 'user-1',
             p_term_id: 'term-2',
             p_should_favorite: true,
         });
@@ -350,8 +337,18 @@ describe('favorites route', () => {
         });
     });
 
-    it('returns 503 when the authenticated mutation client cannot be created', async () => {
-        mockCreateRequestScopedClient.mockResolvedValueOnce(null);
+    it('returns 404 when the trusted server favorite wrapper reports a missing term', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: 'P0002',
+                message: 'Term not found.',
+            },
+        });
+        mockCreateServiceRoleClient.mockReturnValue({
+            rpc,
+            from: jest.fn(),
+        });
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -361,14 +358,14 @@ describe('favorites route', () => {
         }));
         const body = await response.json();
 
-        expect(response.status).toBe(503);
+        expect(response.status).toBe(404);
         expect(body).toMatchObject({
-            code: 'FAVORITES_UPDATE_FAILED',
-            retryable: true,
+            code: 'TERM_NOT_FOUND',
+            retryable: false,
         });
         expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
             action: 'favorite_mutation',
-            statusCode: 503,
+            statusCode: 404,
         }));
     });
 });
