@@ -21,24 +21,57 @@ async function loginViaProfile(page: Page, email: string, password: string) {
     await grantResearchConsent(page);
     await page.goto('/profile?auth=login', { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
-
     await expect(page.getByTestId('auth-modal')).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId('auth-email').fill(email);
-    await page.getByTestId('auth-password').fill(password);
-    await page.getByTestId('auth-submit').click();
 
-    await page.waitForFunction(() => (
-        Boolean(document.querySelector('[data-testid="user-avatar"]'))
-        || Boolean(document.querySelector('[data-testid="auth-error"]'))
-    ), undefined, { timeout: 20_000 });
+    await page.evaluate(({ nextEmail, nextPassword }) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/api/auth/login/browser';
+        form.style.display = 'none';
 
-    const authError = await page.getByTestId('auth-error').textContent().catch(() => null);
-    expect(authError, `UI login failed: ${authError}`).toBeNull();
+        const appendHiddenInput = (name: string, value: string) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        };
 
-    await expect(page.getByTestId('user-avatar')).toBeVisible({ timeout: 20_000 });
+        appendHiddenInput('email', nextEmail);
+        appendHiddenInput('password', nextPassword);
+        appendHiddenInput('redirectTo', '/profile');
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForAppReady(page);
+        document.body.appendChild(form);
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            return;
+        }
+
+        form.submit();
+    }, {
+        nextEmail: email,
+        nextPassword: password,
+    });
+
+    await page.waitForURL(/\/profile(?:\?.*)?$/, { timeout: 20_000 });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        await waitForAppReady(page);
+
+        const currentUrl = new URL(page.url());
+        const authError = currentUrl.searchParams.get('authError');
+        expect(authError, `Browser login redirect returned authError=${authError}`).toBeNull();
+
+        const hasAvatar = await page.getByTestId('user-avatar').isVisible().catch(() => false);
+        if (hasAvatar) {
+            return;
+        }
+
+        if (attempt < 2) {
+            await page.reload({ waitUntil: 'domcontentloaded' });
+        }
+    }
+
     await expect(page.getByTestId('user-avatar')).toBeVisible({ timeout: 20_000 });
 }
 
