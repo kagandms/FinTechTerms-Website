@@ -17,23 +17,32 @@ const getRequiredEnv = (name: string): string => {
 
 const LOGIN_BASE_URL = 'http://127.0.0.1:3000';
 
-const parseSetCookieHeader = (headerValue: string) => {
+type ParsedBrowserCookie = {
+    name: string;
+    value: string;
+    url: string;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'Strict' | 'Lax' | 'None';
+    expires: number;
+};
+
+const parseSetCookieHeader = (headerValue: string): ParsedBrowserCookie | null => {
     const [nameValue, ...attributeParts] = headerValue.split(';').map((part) => part.trim());
+    if (!nameValue) {
+        return null;
+    }
+
     const separatorIndex = nameValue.indexOf('=');
 
     if (separatorIndex <= 0) {
         return null;
     }
 
-    const cookie = {
-        name: nameValue.slice(0, separatorIndex),
-        value: nameValue.slice(separatorIndex + 1),
-        url: LOGIN_BASE_URL,
-        httpOnly: false,
-        secure: false,
-        sameSite: 'Lax' as const,
-        expires: -1,
-    };
+    let expires = -1;
+    let httpOnly = false;
+    let secure = false;
+    let sameSite: ParsedBrowserCookie['sameSite'] = 'Lax';
 
     attributeParts.forEach((attributePart) => {
         const [rawKey, ...rawValueParts] = attributePart.split('=');
@@ -43,7 +52,7 @@ const parseSetCookieHeader = (headerValue: string) => {
         if (key === 'expires' && value) {
             const timestamp = Date.parse(value);
             if (!Number.isNaN(timestamp)) {
-                cookie.expires = Math.floor(timestamp / 1000);
+                expires = Math.floor(timestamp / 1000);
             }
             return;
         }
@@ -51,29 +60,37 @@ const parseSetCookieHeader = (headerValue: string) => {
         if (key === 'max-age' && value) {
             const seconds = Number.parseInt(value, 10);
             if (!Number.isNaN(seconds)) {
-                cookie.expires = Math.floor(Date.now() / 1000) + seconds;
+                expires = Math.floor(Date.now() / 1000) + seconds;
             }
             return;
         }
 
         if (key === 'httponly') {
-            cookie.httpOnly = true;
+            httpOnly = true;
             return;
         }
 
         if (key === 'secure') {
-            cookie.secure = true;
+            secure = true;
             return;
         }
 
         if (key === 'samesite' && value) {
             if (value === 'Strict' || value === 'Lax' || value === 'None') {
-                cookie.sameSite = value;
+                sameSite = value;
             }
         }
     });
 
-    return cookie;
+    return {
+        name: nameValue.slice(0, separatorIndex),
+        value: nameValue.slice(separatorIndex + 1),
+        url: LOGIN_BASE_URL,
+        httpOnly,
+        secure,
+        sameSite,
+        expires,
+    };
 };
 
 async function loginViaProfile(page: Page, email: string, password: string) {
