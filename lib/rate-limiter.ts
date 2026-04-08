@@ -2,7 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { logger } from '@/lib/logger';
 
-interface RateLimiterResult {
+export interface RateLimiterResult {
     allowed: boolean;
     remaining: number;
     retryAfter: number;
@@ -242,6 +242,21 @@ export const analyticsExportDownloadRateLimiter = createRateLimiter('analytics-e
     strictInProduction: true,
 });
 export const telegramLinkRateLimiter = createRateLimiter('telegram-link', 5, 10 * 60 * 1000, '10 m');
+export const authLoginRateLimiter = createRateLimiter('auth-login', 10, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
+export const authSignupRateLimiter = createRateLimiter('auth-signup', 5, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
+export const authResetPasswordRateLimiter = createRateLimiter('auth-reset-password', 5, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
+export const authResendOtpRateLimiter = createRateLimiter('auth-resend-otp', 5, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
+export const authVerifyOtpRateLimiter = createRateLimiter('auth-verify-otp', 10, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
 
 export const globalRateLimiter = apiRouteRateLimiter;
 

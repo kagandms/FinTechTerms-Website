@@ -1,8 +1,8 @@
 import * as Sentry from '@sentry/nextjs';
-import { assertProductionRateLimiterEnv } from '@/lib/env';
+import { assertProductionRuntimeEnv } from '@/lib/env';
 
 export async function register(): Promise<void> {
-    assertProductionRateLimiterEnv();
+    assertProductionRuntimeEnv();
 
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         await import('./sentry.server.config');

@@ -115,10 +115,15 @@ describe('QuizPage AI feedback', () => {
 
     it('shows AI feedback after a wrong answer in flashcard mode', async () => {
         mockFetchQuizFeedback.mockResolvedValue({
-            whyWrong: 'Wrong because you mixed the concept.',
-            whyCorrect: 'The correct answer points to the right definition.',
-            memoryHook: 'Think of the official definition first.',
-            confusedWith: 'Often confused with a close finance term.',
+            feedback: {
+                whyWrong: 'Wrong because you mixed the concept.',
+                whyCorrect: 'The correct answer points to the right definition.',
+                memoryHook: 'Think of the official definition first.',
+                confusedWith: 'Often confused with a close finance term.',
+            },
+            model: 'test-model',
+            usedFallback: false,
+            degraded: false,
         });
 
         render(<QuizPage />);

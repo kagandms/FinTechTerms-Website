@@ -1,3 +1,6 @@
+import { getUtcCalendarDate } from '@/lib/time';
+import { isAcceptedBirthDateForDate } from '@/lib/profile-birth-date';
+
 const DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export function parseDateInputAsLocalDate(value: string): Date | null {
@@ -29,27 +32,5 @@ export function isValidRegistrationBirthDate(
     birthDate: string,
     now: Date = new Date()
 ): boolean {
-    const parsedBirthDate = parseDateInputAsLocalDate(birthDate);
-
-    if (!parsedBirthDate) {
-        return false;
-    }
-
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (parsedBirthDate > today) {
-        return false;
-    }
-
-    let age = today.getFullYear() - parsedBirthDate.getFullYear();
-    const hasHadBirthdayThisYear = today.getMonth() > parsedBirthDate.getMonth()
-        || (
-            today.getMonth() === parsedBirthDate.getMonth()
-            && today.getDate() >= parsedBirthDate.getDate()
-        );
-
-    if (!hasHadBirthdayThisYear) {
-        age -= 1;
-    }
-
-    return age >= 13 && age <= 120;
+    return isAcceptedBirthDateForDate(birthDate, getUtcCalendarDate(now));
 }

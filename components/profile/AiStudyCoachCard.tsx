@@ -10,6 +10,12 @@ import { getAiUiCopy } from '@/lib/ai-copy';
 import { fetchStudyCoachResponse } from '@/lib/ai/client';
 import type { LearningStatsActionResult } from '@/types/gamification';
 
+const fallbackCoachNoticeByLanguage = {
+    tr: 'Yedek AI çalışma koçu gösteriliyor.',
+    en: 'Showing a fallback AI study coach.',
+    ru: 'Показан резервный AI-план обучения.',
+} as const;
+
 interface AiStudyCoachCardProps {
     learningStats: LearningStatsActionResult;
 }
@@ -22,6 +28,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [coachResponse, setCoachResponse] = useState<Awaited<ReturnType<typeof fetchStudyCoachResponse>> | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
     const profileHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
 
     const requestPayload = useMemo(() => {
@@ -70,9 +77,14 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
     const handleGenerate = async () => {
         setIsLoading(true);
         setError(null);
+        setNotice(null);
 
         try {
-            setCoachResponse(await fetchStudyCoachResponse(requestPayload));
+            const response = await fetchStudyCoachResponse(requestPayload);
+            setCoachResponse(response);
+            setNotice(response.degraded || response.usedFallback
+                ? fallbackCoachNoticeByLanguage[language] ?? fallbackCoachNoticeByLanguage.en
+                : null);
         } catch (nextError) {
             setError(nextError instanceof Error ? nextError.message : aiCopy.genericError);
         } finally {
@@ -133,12 +145,16 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
                 <p className="mt-4 text-sm text-red-600 dark:text-red-300">{error}</p>
             ) : null}
 
+            {notice ? (
+                <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">{notice}</p>
+            ) : null}
+
             {coachResponse ? (
                 <div className="mt-5 space-y-4 text-sm leading-6 text-gray-700 dark:text-gray-200">
                     <div>
                         <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.studyCoachFocusAreas}</p>
                         <ul className="mt-2 space-y-2">
-                            {coachResponse.focusAreas.map((item) => (
+                            {coachResponse.coach.focusAreas.map((item) => (
                                 <li key={item} className="rounded-xl bg-gray-50 px-3 py-2 dark:bg-slate-800/70">{item}</li>
                             ))}
                         </ul>
@@ -146,18 +162,18 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
                     <div>
                         <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.studyCoachPlan}</p>
                         <ul className="mt-2 space-y-2">
-                            {coachResponse.todayPlan.map((item) => (
+                            {coachResponse.coach.todayPlan.map((item) => (
                                 <li key={item} className="rounded-xl bg-gray-50 px-3 py-2 dark:bg-slate-800/70">{item}</li>
                             ))}
                         </ul>
                     </div>
                     <div>
                         <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.studyCoachReason}</p>
-                        <p>{coachResponse.reason}</p>
+                        <p>{coachResponse.coach.reason}</p>
                     </div>
                     <div>
                         <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.studyCoachNote}</p>
-                        <p>{coachResponse.encouragement}</p>
+                        <p>{coachResponse.coach.encouragement}</p>
                     </div>
                 </div>
             ) : null}

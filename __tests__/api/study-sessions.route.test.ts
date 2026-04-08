@@ -379,6 +379,41 @@ describe('study-sessions route', () => {
         });
     });
 
+    it('allows ghost-session heartbeat writes when a valid session token is present', async () => {
+        const { client, rpc } = createStudySessionClient();
+        mockResolveRequestAuthState.mockResolvedValue({
+            user: null,
+            hadCredentials: true,
+            ghostSession: true,
+        });
+        mockCreateServiceRoleClient.mockReturnValue(client);
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createRequest({
+            action: 'heartbeat',
+            sessionId: '550e8400-e29b-41d4-a716-446655440001',
+            sessionToken: 'a'.repeat(32),
+            durationSeconds: 12,
+            pageViews: 4,
+            quizAttempts: 2,
+            idempotency_key: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({ success: true });
+        expect(rpc).toHaveBeenCalledWith('update_study_session_by_token_server', {
+            p_requester_user_id: null,
+            p_session_id: '550e8400-e29b-41d4-a716-446655440001',
+            p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
+            p_duration_seconds: 12,
+            p_page_views: 4,
+            p_quiz_attempts: 2,
+            p_end_session: false,
+            p_ended_at: null,
+        });
+    });
+
     it('uses token-hash validated monotonic RPC updates for heartbeat writes', async () => {
         const { client, rpc } = createStudySessionClient();
         mockCreateServiceRoleClient.mockReturnValue(client);

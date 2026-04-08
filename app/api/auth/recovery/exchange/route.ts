@@ -3,6 +3,7 @@ import {
     createRequestId,
     errorResponse,
     handleRouteError,
+    readJsonRequest,
     successResponse,
 } from '@/lib/api-response';
 import {
@@ -10,19 +11,40 @@ import {
     createAuthUnavailableResponse,
     getAuthRouteHeaders,
 } from '@/lib/auth/route-handler';
+import {
+    enforceSameOriginRoute,
+    isJsonRequestValid,
+} from '@/lib/auth/route-protection';
 
 const RecoveryExchangeSchema = z.object({
     accessToken: z.string().min(1),
     refreshToken: z.string().min(1),
 });
 
+const RECOVERY_EXCHANGE_HEADERS = getAuthRouteHeaders();
+
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
+    const originResponse = enforceSameOriginRoute(request, {
+        requestId,
+        headers: RECOVERY_EXCHANGE_HEADERS,
+    });
+
+    if (originResponse) {
+        return originResponse;
+    }
 
     try {
-        const body = await request.json();
-        const parsed = RecoveryExchangeSchema.safeParse(body);
+        const jsonResult = await readJsonRequest<unknown>(request, {
+            requestId,
+            message: 'Invalid JSON payload.',
+            headers: RECOVERY_EXCHANGE_HEADERS,
+        });
+        if (!isJsonRequestValid(jsonResult)) {
+            return jsonResult.response;
+        }
 
+        const parsed = RecoveryExchangeSchema.safeParse(jsonResult.data);
         if (!parsed.success) {
             return errorResponse({
                 status: 400,
@@ -30,7 +52,7 @@ export async function POST(request: Request) {
                 message: 'Recovery exchange payload is invalid.',
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: RECOVERY_EXCHANGE_HEADERS,
             });
         }
 
@@ -38,8 +60,8 @@ export async function POST(request: Request) {
         if (!authContext) {
             return createAuthUnavailableResponse(requestId);
         }
-        const { supabase, applyCookies } = authContext;
 
+        const { supabase, applyCookies } = authContext;
         const { error } = await supabase.auth.setSession({
             access_token: parsed.data.accessToken,
             refresh_token: parsed.data.refreshToken,
@@ -52,12 +74,12 @@ export async function POST(request: Request) {
                 message: error.message,
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: RECOVERY_EXCHANGE_HEADERS,
             });
         }
 
         return applyCookies(successResponse({ success: true }, requestId, {
-            headers: getAuthRouteHeaders(),
+            headers: RECOVERY_EXCHANGE_HEADERS,
         }));
     } catch (error) {
         return handleRouteError(error, {
@@ -66,7 +88,7 @@ export async function POST(request: Request) {
             message: 'Unable to establish the recovery session.',
             retryable: true,
             status: 503,
-            headers: getAuthRouteHeaders(),
+            headers: RECOVERY_EXCHANGE_HEADERS,
             logLabel: 'AUTH_RECOVERY_EXCHANGE_ROUTE_FAILED',
         });
     }

@@ -1,9 +1,17 @@
 import { calculateAgeFromCalendarDate, getUtcCalendarDate, parseIsoCalendarDate } from '@/lib/time';
+import type { CalendarDateParts } from '@/lib/time';
 
 const MIN_PROFILE_AGE = 13;
 const MAX_PROFILE_AGE = 120;
 
 export const isAcceptedBirthDate = (value: unknown): value is string => {
+    return isAcceptedBirthDateForDate(value);
+};
+
+export const isAcceptedBirthDateForDate = (
+    value: unknown,
+    currentDate: CalendarDateParts = getUtcCalendarDate()
+): value is string => {
     if (typeof value !== 'string' || value.trim().length === 0) {
         return false;
     }
@@ -15,10 +23,10 @@ export const isAcceptedBirthDate = (value: unknown): value is string => {
 
     // Entitlement gating intentionally uses UTC calendar math so browser, server,
     // and database checks agree on age-boundary dates.
-    const age = calculateAgeFromCalendarDate(birthDate, getUtcCalendarDate());
+    const age = calculateAgeFromCalendarDate(birthDate, currentDate);
     return age >= MIN_PROFILE_AGE && age <= MAX_PROFILE_AGE;
 };
 
 export const hasPersistedBirthDate = (value: unknown): value is string => (
-    isAcceptedBirthDate(value)
+    isAcceptedBirthDateForDate(value)
 );

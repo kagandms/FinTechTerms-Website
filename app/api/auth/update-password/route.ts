@@ -4,6 +4,7 @@ import {
     createRequestId,
     errorResponse,
     handleRouteError,
+    readJsonRequest,
     successResponse,
 } from '@/lib/api-response';
 import {
@@ -11,6 +12,10 @@ import {
     createAuthUnavailableResponse,
     getAuthRouteHeaders,
 } from '@/lib/auth/route-handler';
+import {
+    enforceSameOriginRoute,
+    isJsonRequestValid,
+} from '@/lib/auth/route-protection';
 import { getPublicEnv } from '@/lib/env';
 import { supportsPasswordSignIn } from '@/lib/auth/user';
 
@@ -19,13 +24,30 @@ const UpdatePasswordSchema = z.object({
     currentPassword: z.string().min(1).optional(),
 });
 
+const UPDATE_PASSWORD_HEADERS = getAuthRouteHeaders();
+
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
+    const originResponse = enforceSameOriginRoute(request, {
+        requestId,
+        headers: UPDATE_PASSWORD_HEADERS,
+    });
+
+    if (originResponse) {
+        return originResponse;
+    }
 
     try {
-        const body = await request.json();
-        const parsed = UpdatePasswordSchema.safeParse(body);
+        const jsonResult = await readJsonRequest<unknown>(request, {
+            requestId,
+            message: 'Invalid JSON payload.',
+            headers: UPDATE_PASSWORD_HEADERS,
+        });
+        if (!isJsonRequestValid(jsonResult)) {
+            return jsonResult.response;
+        }
 
+        const parsed = UpdatePasswordSchema.safeParse(jsonResult.data);
         if (!parsed.success) {
             return errorResponse({
                 status: 400,
@@ -33,7 +55,7 @@ export async function POST(request: Request) {
                 message: 'Update-password payload is invalid.',
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: UPDATE_PASSWORD_HEADERS,
             });
         }
 
@@ -41,8 +63,8 @@ export async function POST(request: Request) {
         if (!authContext) {
             return createAuthUnavailableResponse(requestId);
         }
-        const { supabase, applyCookies } = authContext;
 
+        const { supabase, applyCookies } = authContext;
         const { data: userState, error: userError } = await supabase.auth.getUser();
         if (userError || !userState.user) {
             return errorResponse({
@@ -51,7 +73,7 @@ export async function POST(request: Request) {
                 message: 'Authentication required',
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: UPDATE_PASSWORD_HEADERS,
             });
         }
 
@@ -62,7 +84,7 @@ export async function POST(request: Request) {
                 message: 'This account does not use a Supabase email-password credential.',
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: UPDATE_PASSWORD_HEADERS,
             });
         }
 
@@ -91,7 +113,7 @@ export async function POST(request: Request) {
                     message: 'Current password incorrect',
                     requestId,
                     retryable: false,
-                    headers: getAuthRouteHeaders(),
+                    headers: UPDATE_PASSWORD_HEADERS,
                 });
             }
         }
@@ -107,12 +129,12 @@ export async function POST(request: Request) {
                 message: error.message,
                 requestId,
                 retryable: false,
-                headers: getAuthRouteHeaders(),
+                headers: UPDATE_PASSWORD_HEADERS,
             });
         }
 
         return applyCookies(successResponse({ success: true }, requestId, {
-            headers: getAuthRouteHeaders(),
+            headers: UPDATE_PASSWORD_HEADERS,
         }));
     } catch (error) {
         return handleRouteError(error, {
@@ -121,7 +143,7 @@ export async function POST(request: Request) {
             message: 'Unable to update the password.',
             retryable: true,
             status: 503,
-            headers: getAuthRouteHeaders(),
+            headers: UPDATE_PASSWORD_HEADERS,
             logLabel: 'AUTH_UPDATE_PASSWORD_ROUTE_FAILED',
         });
     }

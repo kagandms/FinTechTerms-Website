@@ -14,6 +14,12 @@ import {
 import type { AiChatMessage } from '@/types/ai';
 import ValueHintList from '@/components/membership/ValueHintList';
 
+const fallbackNoticeByLanguage = {
+    tr: 'Yedek AI yanıtı gösteriliyor.',
+    en: 'Showing a fallback AI response.',
+    ru: 'Показан резервный AI-ответ.',
+} as const;
+
 export default function AiChatPanel() {
     const { language, t } = useLanguage();
     const { entitlements, isAuthenticated } = useAuth();
@@ -22,6 +28,7 @@ export default function AiChatPanel() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
     const [isAiSessionHydrated, setIsAiSessionHydrated] = useState(false);
     const hasFullAiAccess = isAuthenticated && entitlements.canUseAiFeatures;
 
@@ -43,6 +50,7 @@ export default function AiChatPanel() {
     const handleResetChat = () => {
         setMessages([]);
         setError(null);
+        setNotice(null);
         clearAiChatHistory();
     };
 
@@ -71,6 +79,7 @@ export default function AiChatPanel() {
         setMessages(nextHistory);
         setInput('');
         setError(null);
+        setNotice(null);
         setIsLoading(true);
 
         try {
@@ -87,6 +96,9 @@ export default function AiChatPanel() {
                     content: response.answer,
                 },
             ]);
+            setNotice(response.degraded || response.usedFallback
+                ? fallbackNoticeByLanguage[language] ?? fallbackNoticeByLanguage.en
+                : null);
         } catch (nextError) {
             setError(nextError instanceof Error ? nextError.message : aiCopy.genericError);
         } finally {
@@ -154,6 +166,10 @@ export default function AiChatPanel() {
 
             {error ? (
                 <p className="mt-3 text-sm text-red-600 dark:text-red-300">{error}</p>
+            ) : null}
+
+            {notice ? (
+                <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{notice}</p>
             ) : null}
 
             <form onSubmit={handleSubmit} className="mt-4 flex gap-3">

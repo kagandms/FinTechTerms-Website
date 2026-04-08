@@ -6,11 +6,21 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
+import { enforceSameOriginRoute } from '@/lib/auth/route-protection';
+import { getAuthRouteHeaders } from '@/lib/auth/route-handler';
 import { isAuthSessionError } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
+    const originResponse = enforceSameOriginRoute(request, {
+        requestId,
+        headers: getAuthRouteHeaders(),
+    });
+
+    if (originResponse) {
+        return originResponse;
+    }
 
     try {
         try {
@@ -32,6 +42,7 @@ export async function POST(request: Request) {
                     message: 'Unable to sign out.',
                     requestId,
                     retryable: true,
+                    headers: getAuthRouteHeaders(),
                 });
             }
 
@@ -74,6 +85,7 @@ export async function POST(request: Request) {
             message: 'Unable to sign out.',
             timeoutCode: 'SIGNOUT_TIMEOUT',
             timeoutMessage: 'Sign-out request timed out.',
+            headers: getAuthRouteHeaders(),
             logLabel: 'SIGNOUT_ROUTE_FAILED',
         });
     }

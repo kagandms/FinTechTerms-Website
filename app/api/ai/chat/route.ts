@@ -122,6 +122,7 @@ export async function POST(request: Request) {
                 refused: true,
                 model: null,
                 usedFallback: false,
+                degraded: false,
             }, requestId, {
                 headers: RATE_LIMIT_HEADERS,
             });

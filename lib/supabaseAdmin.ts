@@ -33,6 +33,25 @@ const getBearerToken = (request: Request): string | null => {
     return token || null;
 };
 
+export const TRUSTED_SERVICE_ROLE_ROUTES = [
+    'AdminDashboard',
+    'POST /api/favorites',
+    'POST /api/record-quiz',
+    'POST /api/study-sessions',
+] as const;
+
+export type TrustedServiceRoleRoute = typeof TRUSTED_SERVICE_ROLE_ROUTES[number];
+
+const assertTrustedServiceRoleRoute = (
+    route: TrustedServiceRoleRoute
+): void => {
+    if (TRUSTED_SERVICE_ROLE_ROUTES.includes(route)) {
+        return;
+    }
+
+    throw new Error(`Service role client is not allowlisted for ${route}.`);
+};
+
 export const createRequestScopedClient = async (
     request: Request
 ): Promise<SupabaseClient | null> => {
@@ -61,30 +80,29 @@ export const createRequestScopedClient = async (
     );
 };
 
-export const createServiceRoleClient = () => createRouteSupabaseClient(
-    (() => {
-        const env = getServerEnv();
+interface TrustedServiceRoleClientOptions {
+    route: TrustedServiceRoleRoute;
+}
 
-        if (!env.supabaseUrl || !env.serviceRoleKey) {
-            throw new Error(
-                'Service role client requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
-            );
-        }
+export const createServiceRoleClient = (
+    {
+        route,
+    }: TrustedServiceRoleClientOptions
+) => {
+    assertTrustedServiceRoleRoute(route);
 
-        return env.supabaseUrl;
-    })(),
-    (() => {
-        const env = getServerEnv();
+    const env = getServerEnv();
+    if (!env.supabaseUrl || !env.serviceRoleKey) {
+        throw new Error(
+            'Service role client requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+        );
+    }
 
-        if (!env.serviceRoleKey) {
-            throw new Error(
-                'Service role client requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
-            );
-        }
-
-        return env.serviceRoleKey;
-    })()
-);
+    return createRouteSupabaseClient(
+        env.supabaseUrl,
+        env.serviceRoleKey
+    );
+};
 
 export interface RequestAuthState {
     user: User | null;

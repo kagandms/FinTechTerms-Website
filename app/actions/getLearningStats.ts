@@ -39,11 +39,13 @@ export async function getLearningStats(): Promise<LearningStatsActionResult> {
 
         const userId = authState.user.id;
         try {
-            const learningStatsData = await loadLearningStatsData(supabase, userId);
+            const learningStatsResult = await loadLearningStatsData(supabase, userId);
 
             return {
                 ok: true,
-                data: learningStatsData,
+                data: learningStatsResult.data,
+                degraded: learningStatsResult.degraded,
+                missing: learningStatsResult.missing,
             };
         } catch (error) {
             logger.error('GET_LEARNING_STATS_LOAD_FAILED', {

@@ -413,7 +413,9 @@ export async function POST(request: Request) {
 
         let supabase: StudySessionMutationClient;
         try {
-            supabase = createServiceRoleClient();
+            supabase = createServiceRoleClient({
+                route: 'POST /api/study-sessions',
+            });
         } catch (error) {
             logger.error('POST_STUDY_SESSIONS_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
                 requestId,
@@ -430,7 +432,7 @@ export async function POST(request: Request) {
             });
         }
 
-        if (hadCredentials && !user) {
+        if (hadCredentials && !user && payload.action === 'start') {
             return errorResponse({
                 status: 401,
                 code: 'UNAUTHORIZED',

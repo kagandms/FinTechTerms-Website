@@ -6,6 +6,7 @@ import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { getTranslationValue } from '@/lib/i18n';
+import { getLearningStatsPartialNotice } from '@/lib/learning-stats-ui';
 import type { LearningStatsActionResult } from '@/types/gamification';
 import {
     BarChart3,
@@ -117,6 +118,10 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
     const isAdvancedAnalyticsEnabled = entitlements.canUseAdvancedAnalytics;
     const [isExporting, setIsExporting] = useState(false);
     const [exportError, setExportError] = useState<string | null>(null);
+    const learningStatsMissingSegments = learningStats.ok ? (learningStats.missing ?? []) : [];
+    const partialLearningStatsNotice = learningStats.ok && (learningStats.degraded ?? false)
+        ? getLearningStatsPartialNotice(language, learningStatsMissingSegments)
+        : null;
     const favoriteTerms = useMemo(
         () => terms.filter((term) => userProgress.favorites.includes(term.id)),
         [terms, userProgress.favorites]
@@ -297,6 +302,13 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{copy.title}</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{copy.subtitle}</p>
             </header>
+
+            {isAdvancedAnalyticsEnabled && isAuthenticated && partialLearningStatsNotice ? (
+                <section className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                    <p className="font-semibold">{partialLearningStatsNotice.title}</p>
+                    <p className="mt-2 leading-6">{partialLearningStatsNotice.description}</p>
+                </section>
+            ) : null}
 
             {!isAdvancedAnalyticsEnabled ? (
                 <>

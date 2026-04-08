@@ -54,6 +54,7 @@ const stateMessages = {
         noQuestionsAvailable: 'Bu filtre icin uygun soru yok.',
         noQuestionsTooltip: 'Bu filtre icin soru bulunmadigi icin quiz baslatilamiyor.',
         retry: 'Tekrar Dene',
+        progressQueued: 'Esitleme icin kuyruga alindi',
         reviewLockedTitle: 'Tam SRS tekrarı üyelik gerektirir',
         reviewLockedDescription: 'Hızlı quiz kullanılabilir. Kalıcı aralıklı tekrar planı için hesap oluşturun veya profilinizi tamamlayın.',
         reviewLockedCta: 'Profili Aç',
@@ -79,6 +80,7 @@ const stateMessages = {
         noQuestionsAvailable: 'No questions match this filter.',
         noQuestionsTooltip: 'Start Quiz is disabled because there are no matching questions.',
         retry: 'Try Again',
+        progressQueued: 'Queued for sync',
         reviewLockedTitle: 'Full SRS review requires membership',
         reviewLockedDescription: 'Quick Quiz is available now. Create an account or complete your profile to unlock permanent spaced repetition.',
         reviewLockedCta: 'Open Profile',
@@ -104,6 +106,7 @@ const stateMessages = {
         noQuestionsAvailable: 'Для этого фильтра нет доступных вопросов.',
         noQuestionsTooltip: 'Кнопка запуска отключена, потому что подходящих вопросов нет.',
         retry: 'Повторить',
+        progressQueued: 'Поставлено в очередь на синхронизацию',
         reviewLockedTitle: 'Полный SRS-режим доступен только участникам',
         reviewLockedDescription: 'Быстрый квиз доступен уже сейчас. Создайте аккаунт или заполните профиль, чтобы открыть постоянное интервальное повторение.',
         reviewLockedCta: 'Открыть профиль',
@@ -112,6 +115,12 @@ const stateMessages = {
         noMistakeReviewTitle: 'Очередь повторения ошибок пуста',
         noMistakeReviewDescription: 'Пока нет недавних неправильных ответов. Сначала пройдите быстрый квиз.',
     },
+} as const;
+
+const fallbackQuizFeedbackNoticeByLanguage = {
+    tr: 'Yedek AI geri bildirimi gösteriliyor.',
+    en: 'Showing fallback AI feedback.',
+    ru: 'Показан резервный AI-разбор.',
 } as const;
 
 export default function QuizPage({ nonce }: QuizPageProps) {
@@ -153,10 +162,12 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const [isSubmissionSlow, setIsSubmissionSlow] = useState(false);
     const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
     const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+    const [showQueuedIndicator, setShowQueuedIndicator] = useState(false);
     const [pausedWrongAnswer, setPausedWrongAnswer] = useState<PausedWrongAnswerState | null>(null);
     const [quizFeedback, setQuizFeedback] = useState<AiQuizFeedback | null>(null);
     const [quizFeedbackStatus, setQuizFeedbackStatus] = useState<'idle' | 'loading' | 'ready' | 'locked' | 'error'>('idle');
     const [quizFeedbackError, setQuizFeedbackError] = useState<string | null>(null);
+    const [quizFeedbackNotice, setQuizFeedbackNotice] = useState<string | null>(null);
     const submissionSlowTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
     // Prevents dynamic shrinking of sessionTerms when dueTerms completes during a session
@@ -316,6 +327,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setIsPending(true);
         setSubmissionError(null);
         setIsSubmissionSlow(false);
+        setShowSavedIndicator(false);
+        setShowQueuedIndicator(false);
 
         if (submissionSlowTimerRef.current) {
             globalThis.clearTimeout(submissionSlowTimerRef.current);
@@ -327,7 +340,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         try {
             // Submit to SRS system (only for actual favorites, not quick quiz)
             if (!isQuickQuiz) {
-                await submitQuizAnswer(
+                const submissionResult = await submitQuizAnswer(
                     currentTerm.id,
                     isCorrect,
                     responseTimeMs,
@@ -335,7 +348,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     isMistakeReview ? 'review' : 'daily'
                 );
                 incrementQuizAttempt();
-                setShowSavedIndicator(true);
+                setShowSavedIndicator(submissionResult.persistence === 'persisted');
+                setShowQueuedIndicator(submissionResult.persistence === 'queued');
             } else if (!entitlements.canUseAdvancedAnalytics) {
                 recordQuizPreviewAttempt(isCorrect, responseTimeMs);
             }
@@ -362,14 +376,20 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     setQuizFeedbackStatus('loading');
                     setQuizFeedback(null);
                     setQuizFeedbackError(null);
+                    setQuizFeedbackNotice(null);
 
                     void fetchQuizFeedback({
                         termId: currentTerm.id,
                         language,
                         selectedWrongLabel: selectedOptionLabel ?? null,
                     })
-                        .then((feedback) => {
-                            setQuizFeedback(feedback);
+                        .then((feedbackResult) => {
+                            setQuizFeedback(feedbackResult.feedback);
+                            setQuizFeedbackNotice(
+                                feedbackResult.degraded || feedbackResult.usedFallback
+                                    ? fallbackQuizFeedbackNoticeByLanguage[language] ?? fallbackQuizFeedbackNoticeByLanguage.en
+                                    : null
+                            );
                             setQuizFeedbackStatus('ready');
                         })
                         .catch((error) => {
@@ -380,6 +400,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 } else {
                     setQuizFeedback(null);
                     setQuizFeedbackError(null);
+                    setQuizFeedbackNotice(null);
                     setQuizFeedbackStatus('locked');
                 }
 
@@ -409,6 +430,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setPausedWrongAnswer(null);
         setQuizFeedback(null);
         setQuizFeedbackError(null);
+        setQuizFeedbackNotice(null);
         setQuizFeedbackStatus('idle');
         advanceToNextTerm();
     };
@@ -433,6 +455,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         setIsSubmissionSlow(false);
         setCurrentReviewId(null);
         setShowSavedIndicator(false);
+        setShowQueuedIndicator(false);
         setPausedWrongAnswer(null);
         setQuizFeedback(null);
         setQuizFeedbackError(null);
@@ -1144,6 +1167,15 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                 </div>
             ) : null}
 
+            {showQueuedIndicator ? (
+                <div
+                    className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700"
+                    data-testid="quiz-queued-indicator"
+                >
+                    {stateCopy.progressQueued}
+                </div>
+            ) : null}
+
             {currentTerm && (
                 quizPresentationMode === 'multiple-choice' && currentMultipleChoiceQuestion ? (
                     <MultipleChoiceQuizCard
@@ -1186,6 +1218,10 @@ export default function QuizPage({ nonce }: QuizPageProps) {
 
                     {quizFeedbackStatus === 'error' && quizFeedbackError ? (
                         <p className="mt-3 text-sm text-red-600 dark:text-red-300">{quizFeedbackError}</p>
+                    ) : null}
+
+                    {quizFeedbackNotice ? (
+                        <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{quizFeedbackNotice}</p>
                     ) : null}
 
                     {quizFeedbackStatus === 'ready' && quizFeedback ? (

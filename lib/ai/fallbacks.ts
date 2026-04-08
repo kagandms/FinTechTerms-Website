@@ -203,53 +203,55 @@ export const buildChatFallback = (
 ): AiChatResponse => {
     const relevantTerms = findRelevantAiTerms(message, 3);
     const relatedTerms = relevantTerms.map((term) => term.slug);
+    const buildResponse = (answer: string, slugs: string[]): AiChatResponse => ({
+        answer,
+        relatedTerms: slugs,
+        refused: false,
+        model: null,
+        usedFallback: true,
+        degraded: true,
+    });
 
     if (relevantTerms.length === 0) {
         if (language === 'tr') {
-            return {
-                answer: 'Şu an ayrıntılı AI yanıtı üretemiyorum. Sorunu biraz daha belirgin bir finans, fintek veya teknoloji terimiyle tekrar deneyebilirsin.',
-                relatedTerms: [],
-                refused: false,
-            };
+            return buildResponse(
+                'Şu an ayrıntılı AI yanıtı üretemiyorum. Sorunu biraz daha belirgin bir finans, fintek veya teknoloji terimiyle tekrar deneyebilirsin.',
+                []
+            );
         }
 
         if (language === 'ru') {
-            return {
-                answer: 'Сейчас я не могу сгенерировать подробный AI-ответ. Попробуйте задать вопрос через более конкретный финансовый, финтех- или технологический термин.',
-                relatedTerms: [],
-                refused: false,
-            };
+            return buildResponse(
+                'Сейчас я не могу сгенерировать подробный AI-ответ. Попробуйте задать вопрос через более конкретный финансовый, финтех- или технологический термин.',
+                []
+            );
         }
 
-        return {
-            answer: 'I cannot generate a detailed AI answer right now. Try asking again with a more specific finance, fintech, or technology term.',
-            relatedTerms: [],
-            refused: false,
-        };
+        return buildResponse(
+            'I cannot generate a detailed AI answer right now. Try asking again with a more specific finance, fintech, or technology term.',
+            []
+        );
     }
 
     if (language === 'tr') {
         const summary = relevantTerms.map((term) => `${term.term_tr}: ${term.definition_tr}`).join(' ');
-        return {
-            answer: `AI yanıtı şu an tam üretilemedi, ancak sözlük bağlamına göre en yakın kavramlar şunlar: ${summary}`,
-            relatedTerms,
-            refused: false,
-        };
+        return buildResponse(
+            `AI yanıtı şu an tam üretilemedi, ancak sözlük bağlamına göre en yakın kavramlar şunlar: ${summary}`,
+            relatedTerms
+        );
     }
 
     if (language === 'ru') {
         const summary = relevantTerms.map((term) => `${term.term_ru}: ${term.definition_ru}`).join(' ');
-        return {
-            answer: `Сейчас полный AI-ответ недоступен, но по словарному контексту ближе всего подходят такие термины: ${summary}`,
-            relatedTerms,
-            refused: false,
-        };
+        return buildResponse(
+            `Сейчас полный AI-ответ недоступен, но по словарному контексту ближе всего подходят такие термины: ${summary}`,
+            relatedTerms
+        );
     }
 
     const summary = relevantTerms.map((term) => `${term.term_en}: ${term.definition_en}`).join(' ');
-    return {
-        answer: `A full AI answer is unavailable right now, but the closest glossary context is: ${summary}`,
-        relatedTerms,
-        refused: false,
-    };
+    return buildResponse(
+        `A full AI answer is unavailable right now, but the closest glossary context is: ${summary}`,
+        relatedTerms
+    );
 };

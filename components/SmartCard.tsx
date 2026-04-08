@@ -48,6 +48,12 @@ const categoryColors: Record<Term['category'], string> = {
     Technology: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200',
 };
 
+const fallbackExplainNoticeByLanguage = {
+    tr: 'Yedek AI açıklaması gösteriliyor.',
+    en: 'Showing a fallback AI explanation.',
+    ru: 'Показано резервное AI-объяснение.',
+} as const;
+
 export default function SmartCard({ term, showFullDetails = false }: SmartCardProps) {
     const {
         language,
@@ -79,6 +85,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
     const [aiExplainError, setAiExplainError] = useState<string | null>(null);
     const [aiExplainMode, setAiExplainMode] = useState<AiExplainMode | null>(null);
     const [aiExplainResponse, setAiExplainResponse] = useState<AiTermExplainResponse | null>(null);
+    const [aiExplainNotice, setAiExplainNotice] = useState<string | null>(null);
 
     useEffect(() => () => {
         if (limitWarningTimeoutRef.current) {
@@ -152,6 +159,7 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
         setIsAiExplainOpen(true);
         setAiExplainMode(mode);
         setAiExplainError(null);
+        setAiExplainNotice(null);
 
         if (cachedResponse) {
             setAiExplainResponse(cachedResponse);
@@ -175,8 +183,14 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 mode,
             });
 
-            setCachedTermExplainResponse(cacheKey, response);
-            setAiExplainResponse(response);
+            if (!response.degraded && !response.usedFallback) {
+                setCachedTermExplainResponse(cacheKey, response.explanation);
+            }
+
+            setAiExplainResponse(response.explanation);
+            setAiExplainNotice(response.degraded || response.usedFallback
+                ? fallbackExplainNoticeByLanguage[language] ?? fallbackExplainNoticeByLanguage.en
+                : null);
             setAiExplainStatus('ready');
         } catch (error) {
             setAiExplainStatus('error');
@@ -351,6 +365,10 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
 
                         {aiExplainStatus === 'error' && aiExplainError ? (
                             <p className="mt-3 text-sm text-red-600 dark:text-red-300">{aiExplainError}</p>
+                        ) : null}
+
+                        {aiExplainNotice ? (
+                            <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{aiExplainNotice}</p>
                         ) : null}
 
                         {aiExplainStatus === 'ready' && aiExplainResponse ? (

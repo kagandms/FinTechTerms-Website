@@ -147,7 +147,9 @@ export async function POST(request: Request) {
         }
         authenticatedUserId = user.id;
         try {
-            idempotencyClient = createServiceRoleClient();
+            idempotencyClient = createServiceRoleClient({
+                route: 'POST /api/favorites',
+            });
         } catch (error) {
             logger.error('POST_FAVORITES_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
                 route: 'POST /api/favorites',

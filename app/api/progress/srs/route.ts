@@ -3,6 +3,7 @@ import {
     createRequestId,
     errorResponse,
     handleRouteError,
+    readJsonRequest,
     successResponse,
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
@@ -32,7 +33,17 @@ export async function POST(request: Request) {
     const requestId = createRequestId(request);
 
     try {
-        const body = await request.json();
+        const requestBody = await readJsonRequest<unknown>(request, {
+            requestId,
+            message: 'SRS progress request body must be valid JSON.',
+            headers: PROGRESS_SRS_HEADERS,
+        });
+
+        if (!requestBody.ok) {
+            return requestBody.response;
+        }
+
+        const body = requestBody.data;
         const parsed = ProgressSrsRequestSchema.safeParse(body);
 
         if (!parsed.success) {

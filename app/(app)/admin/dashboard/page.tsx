@@ -76,7 +76,9 @@ export default async function AdminDashboard() {
     let supabaseAdmin: ReturnType<typeof createServiceRoleClient> | null = null;
 
     try {
-        supabaseAdmin = createServiceRoleClient();
+        supabaseAdmin = createServiceRoleClient({
+            route: 'AdminDashboard',
+        });
     } catch (error) {
         logger.error('ADMIN_DASHBOARD_SERVICE_ROLE_CLIENT_ERROR', {
             route: 'AdminDashboard',

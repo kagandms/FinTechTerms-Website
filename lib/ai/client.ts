@@ -3,8 +3,11 @@ import type {
     AiChatResponse,
     AiExplainMode,
     AiQuizFeedback,
+    AiQuizFeedbackResult,
     AiStudyCoachResponse,
+    AiStudyCoachResult,
     AiTermExplainResponse,
+    AiTermExplainResult,
 } from '@/types/ai';
 import type { Language } from '@/types';
 import { getAiUiCopy } from '@/lib/ai-copy';
@@ -96,16 +99,14 @@ export const fetchQuizFeedback = async (
         language: Language;
         selectedWrongLabel?: string | null;
     }
-): Promise<AiQuizFeedback> => {
+): Promise<AiQuizFeedbackResult> => {
     const copy = getAiUiCopy(input.language);
-    const payload = await postJson<{ feedback: AiQuizFeedback }>(
+    return await postJson<AiQuizFeedbackResult>(
         '/api/ai/quiz-feedback',
         input,
         input.language,
         copy.quizFeedbackGuestLimit
     );
-
-    return payload.feedback;
 };
 
 export const fetchTermExplainResponse = async (
@@ -114,16 +115,14 @@ export const fetchTermExplainResponse = async (
         language: Language;
         mode: AiExplainMode;
     }
-): Promise<AiTermExplainResponse> => {
+): Promise<AiTermExplainResult> => {
     const copy = getAiUiCopy(input.language);
-    const payload = await postJson<{ explanation: AiTermExplainResponse }>(
+    return await postJson<AiTermExplainResult>(
         '/api/ai/term-explain',
         input,
         input.language,
         copy.explainGuestLimit
     );
-
-    return payload.explanation;
 };
 
 export const fetchStudyCoachResponse = async (
@@ -136,16 +135,14 @@ export const fetchStudyCoachResponse = async (
         currentStreak: number;
         mistakeQueueCount: number;
     }
-): Promise<AiStudyCoachResponse> => {
+): Promise<AiStudyCoachResult> => {
     const copy = getAiUiCopy(input.language);
-    const payload = await postJson<{ coach: AiStudyCoachResponse }>(
+    return await postJson<AiStudyCoachResult>(
         '/api/ai/study-coach',
         input,
         input.language,
         copy.studyCoachCompleteProfile
     );
-
-    return payload.coach;
 };
 
 export const fetchAiChatResponse = async (

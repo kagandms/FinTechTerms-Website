@@ -107,4 +107,28 @@ describe('getServerEnv', () => {
             'Production runtime requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Configure distributed rate limiting before starting the app.'
         );
     });
+
+    it('should fail fast for production runtime when critical runtime env is missing', async () => {
+        process.env = {
+            ...process.env,
+            NODE_ENV: 'production',
+            NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
+            SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+            STUDY_SESSION_TOKEN_SECRET: 'study-session-secret',
+            OPENROUTER_API_KEY: 'openrouter-key',
+            AI_PRIMARY_MODEL: 'openai/gpt-oss-20b',
+            AI_FALLBACK_MODELS: '',
+            ADMIN_USER_IDS: '',
+            NEXT_PUBLIC_SENTRY_DSN: '',
+            UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+            UPSTASH_REDIS_REST_TOKEN: 'upstash-token-12345678901234567890',
+        };
+
+        const { assertProductionRuntimeEnv } = await import('@/lib/env');
+
+        expect(() => assertProductionRuntimeEnv()).toThrow(
+            'Production runtime is missing required environment variables: AI_FALLBACK_MODELS, ADMIN_USER_IDS, NEXT_PUBLIC_SENTRY_DSN.'
+        );
+    });
 });

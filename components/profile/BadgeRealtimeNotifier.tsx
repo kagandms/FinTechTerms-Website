@@ -16,6 +16,7 @@ interface BadgeRealtimePayload {
 }
 
 const BADGE_POLL_INTERVAL_MS = 30_000;
+const BADGE_POLL_TIMEOUT_MS = 10_000;
 
 const copy = {
     tr: {
@@ -141,10 +142,15 @@ export default function BadgeRealtimeNotifier() {
     const router = useRouter();
     const seenBadgeIds = useRef(new Set<string>());
     const hasHydratedInitialSnapshot = useRef(false);
+    const isPollInFlight = useRef(false);
+    const pollAbortController = useRef<AbortController | null>(null);
     const userId = user?.id ?? '';
 
     useEffect(() => {
         if (!userId) {
+            pollAbortController.current?.abort();
+            pollAbortController.current = null;
+            isPollInFlight.current = false;
             seenBadgeIds.current.clear();
             hasHydratedInitialSnapshot.current = false;
             return;
@@ -158,15 +164,23 @@ export default function BadgeRealtimeNotifier() {
         let isCancelled = false;
 
         const pollBadges = async () => {
-            if (document.visibilityState === 'hidden') {
+            if (document.visibilityState === 'hidden' || isPollInFlight.current) {
                 return;
             }
+
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => {
+                controller.abort();
+            }, BADGE_POLL_TIMEOUT_MS);
+            isPollInFlight.current = true;
+            pollAbortController.current = controller;
 
             try {
                 const response = await fetch('/api/profile/badges/latest', {
                     method: 'GET',
                     credentials: 'same-origin',
                     cache: 'no-store',
+                    signal: controller.signal,
                 });
 
                 if (!response.ok) {
@@ -209,10 +223,22 @@ export default function BadgeRealtimeNotifier() {
                     });
                 }
             } catch (error) {
+                const isAbortError = error instanceof Error && error.name === 'AbortError';
+
+                if (isCancelled && isAbortError) {
+                    return;
+                }
+
                 logger.error('BADGE_NOTIFICATION_POLL_FAILED', {
                     route: 'BadgeRealtimeNotifier',
                     error: error instanceof Error ? error : undefined,
                 });
+            } finally {
+                window.clearTimeout(timeoutId);
+                if (pollAbortController.current === controller) {
+                    pollAbortController.current = null;
+                }
+                isPollInFlight.current = false;
             }
         };
 
@@ -223,6 +249,9 @@ export default function BadgeRealtimeNotifier() {
 
         return () => {
             isCancelled = true;
+            pollAbortController.current?.abort();
+            pollAbortController.current = null;
+            isPollInFlight.current = false;
             if (intervalId) {
                 window.clearInterval(intervalId);
             }

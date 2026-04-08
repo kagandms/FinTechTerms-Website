@@ -58,6 +58,10 @@ interface FavoriteToggleResult {
     authExpired?: boolean;
 }
 
+export interface ReviewSubmissionResult {
+    persistence: 'persisted' | 'queued';
+}
+
 interface SRSContextType {
     terms: Term[];
     userProgress: UserProgress;
@@ -67,7 +71,7 @@ interface SRSContextType {
     toggleFavorite: (termId: string) => Promise<FavoriteToggleResult>;
     isFavorite: (termId: string) => boolean;
     isFavoriteUpdating: (termId: string) => boolean;
-    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string, quizType?: QuizType) => Promise<void>;
+    submitQuizAnswer: (termId: string, isCorrect: boolean, responseTimeMs: number | undefined, reviewId: string, quizType?: QuizType) => Promise<ReviewSubmissionResult>;
     recordQuizPreviewAttempt: (isCorrect: boolean, responseTimeMs: number) => void;
     recordMistakeReviewMiss: (termId: string) => void;
     clearMistakeReviewTerm: (termId: string) => void;
@@ -905,7 +909,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         responseTimeMs: number = 0,
         reviewId: string,
         quizType: QuizType = 'daily',
-    ): Promise<void> => {
+    ): Promise<ReviewSubmissionResult> => {
         if (!entitlements.canUseReviewMode) {
             removePendingReview(reviewId);
             clearReviewKey(reviewId);
@@ -934,7 +938,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             }
             clearReviewKey(reviewId);
             removePendingReview(reviewId);
-            return;
+            return { persistence: 'persisted' };
         }
 
         const result = await saveQuizAttemptToSupabase(userId, {
@@ -955,7 +959,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
             });
             removePendingReview(reviewId);
             clearReviewKey(reviewId);
-            return;
+            return { persistence: 'persisted' };
         }
 
         if (result.status === 'auth_expired') {
@@ -971,7 +975,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 sessionToken: sessionContext?.sessionToken ?? null,
             });
             showToast(AUTH_EXPIRED_PENDING_REVIEW_MESSAGE, 'warning');
-            return;
+            return { persistence: 'queued' };
         }
 
         if (result.status === 'retryable') {
@@ -987,7 +991,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 sessionToken: sessionContext?.sessionToken ?? null,
             });
             showToast(PENDING_REVIEW_SYNC_MESSAGE, 'warning');
-            return;
+            return { persistence: 'queued' };
         }
 
         removePendingReview(reviewId);

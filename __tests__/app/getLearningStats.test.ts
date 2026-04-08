@@ -153,10 +153,12 @@ describe('getLearningStats', () => {
                     },
                 ],
             },
+            degraded: false,
+            missing: [],
         });
     });
 
-    it('returns a 500 payload when the exact quiz metrics RPC fails', async () => {
+    it('returns partial analytics when the exact quiz metrics RPC fails', async () => {
         const badgesOrder = jest.fn().mockResolvedValue({
             data: [],
             error: null,
@@ -209,12 +211,23 @@ describe('getLearningStats', () => {
         const result = await getLearningStats();
 
         expect(result).toEqual({
-            ok: false,
-            error: {
-                code: 'LEARNING_STATS_UNAVAILABLE',
-                message: 'Unable to load learning stats.',
-                status: 500,
+            ok: true,
+            data: {
+                heatmap: [{ log_date: '2026-03-11', activity_count: 1 }],
+                currentStreak: 1,
+                lastStudyDate: '2026-03-11',
+                badges: [],
+                activeDays: 1,
+                totalActivity: 1,
+                todayActivity: 1,
+                totalReviews: null,
+                correctReviews: null,
+                accuracy: null,
+                avgResponseTimeMs: null,
+                recentAttempts: [],
             },
+            degraded: true,
+            missing: ['metrics'],
         });
     });
 
@@ -233,5 +246,76 @@ describe('getLearningStats', () => {
             },
         });
         expect(mockSafeGetSupabaseUser).not.toHaveBeenCalled();
+    });
+
+    it('returns a 500 payload only when every analytics segment fails', async () => {
+        const mockFrom = jest.fn((table: string) => {
+            if (table === 'user_badges') {
+                return {
+                    select: jest.fn(() => ({
+                        eq: jest.fn(() => ({
+                            order: jest.fn().mockResolvedValue({
+                                data: null,
+                                error: { message: 'badges failed' },
+                            }),
+                        })),
+                    })),
+                };
+            }
+
+            if (table === 'quiz_attempts') {
+                return {
+                    select: jest.fn(() => ({
+                        eq: jest.fn(() => ({
+                            order: jest.fn(() => ({
+                                order: jest.fn(() => ({
+                                    limit: jest.fn().mockResolvedValue({
+                                        data: null,
+                                        error: { message: 'recent attempts failed' },
+                                    }),
+                                })),
+                            })),
+                        })),
+                    })),
+                };
+            }
+
+            throw new Error(`Unexpected table ${table}`);
+        });
+        const mockRpc = jest.fn()
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: 'heatmap failed' },
+            })
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: 'streak failed' },
+            })
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: 'metrics failed' },
+            });
+
+        mockCreateOptionalClient.mockResolvedValue({
+            rpc: mockRpc,
+            from: mockFrom,
+        });
+        mockSafeGetSupabaseUser.mockResolvedValue({
+            user: { id: 'user-1' },
+            ghostSession: false,
+            message: null,
+        });
+
+        const { getLearningStats } = await import('@/app/actions/getLearningStats');
+        const result = await getLearningStats();
+
+        expect(result).toEqual({
+            ok: false,
+            error: {
+                code: 'LEARNING_STATS_UNAVAILABLE',
+                message: 'Unable to load learning stats.',
+                status: 500,
+            },
+        });
     });
 });

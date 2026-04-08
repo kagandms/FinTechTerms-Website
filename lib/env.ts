@@ -298,6 +298,25 @@ export const hasConfiguredAiEnv = (
     && env.aiPrimaryModel
 );
 
+const collectMissingProductionRuntimeKeys = (
+    env: ServerEnv = getServerEnv()
+): string[] => {
+    const missing: string[] = [];
+
+    if (!env.supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+    if (!env.supabaseAnonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    if (!env.serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (!env.studySessionTokenSecret) missing.push('STUDY_SESSION_TOKEN_SECRET');
+    if (!env.openRouterApiKey) missing.push('OPENROUTER_API_KEY');
+    if (!env.aiPrimaryModel) missing.push('AI_PRIMARY_MODEL');
+    if (env.aiFallbackModels.length === 0) missing.push('AI_FALLBACK_MODELS');
+    if (env.adminUserIds.length === 0) missing.push('ADMIN_USER_IDS');
+    if (!env.sentryDsn) missing.push('NEXT_PUBLIC_SENTRY_DSN');
+    if (!hasConfiguredRateLimiterEnv()) missing.push('UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN');
+
+    return missing;
+};
+
 export const assertProductionRateLimiterEnv = (): void => {
     if (process.env.NODE_ENV !== 'production') {
         return;
@@ -309,5 +328,22 @@ export const assertProductionRateLimiterEnv = (): void => {
 
     throw new Error(
         'Production runtime requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Configure distributed rate limiting before starting the app.'
+    );
+};
+
+export const assertProductionRuntimeEnv = (
+    env: ServerEnv = getServerEnv()
+): void => {
+    if (process.env.NODE_ENV !== 'production') {
+        return;
+    }
+
+    const missingKeys = collectMissingProductionRuntimeKeys(env);
+    if (missingKeys.length === 0) {
+        return;
+    }
+
+    throw new Error(
+        `Production runtime is missing required environment variables: ${missingKeys.join(', ')}.`
     );
 };

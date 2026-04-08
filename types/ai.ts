@@ -9,6 +9,12 @@ export interface AiQuizFeedback {
     confusedWith: string;
 }
 
+export interface AiResponseMeta {
+    model: string | null;
+    usedFallback: boolean;
+    degraded: boolean;
+}
+
 export interface AiTermExplainResponse {
     title: string;
     summary: string;
@@ -32,12 +38,27 @@ export interface AiChatResponse {
     answer: string;
     relatedTerms: string[];
     refused: boolean;
+    model: string | null;
+    usedFallback: boolean;
+    degraded: boolean;
 }
 
 export interface AiScopeRefusal {
     answer: string;
     refused: true;
     relatedTerms: string[];
+}
+
+export interface AiQuizFeedbackResult extends AiResponseMeta {
+    feedback: AiQuizFeedback;
+}
+
+export interface AiTermExplainResult extends AiResponseMeta {
+    explanation: AiTermExplainResponse;
+}
+
+export interface AiStudyCoachResult extends AiResponseMeta {
+    coach: AiStudyCoachResponse;
 }
 
 export interface AiRouteContext {

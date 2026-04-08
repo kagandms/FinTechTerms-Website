@@ -30,6 +30,16 @@ export interface HandleRouteErrorOptions {
     logLabel?: string;
 }
 
+export interface ReadJsonRequestOptions {
+    requestId: string;
+    message: string;
+    headers?: HeadersInit;
+}
+
+export type ReadJsonRequestResult<T> =
+    | { ok: true; data: T }
+    | { ok: false; response: NextResponse<ApiErrorResponseBody> };
+
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 8_000;
 
 export class UpstreamTimeoutError extends Error {
@@ -234,6 +244,34 @@ export const errorResponse = ({
         headers: withRequestIdHeaders(requestId, headers),
     }
 );
+
+export const readJsonRequest = async <T>(
+    request: Request,
+    {
+        requestId,
+        message,
+        headers,
+    }: ReadJsonRequestOptions
+): Promise<ReadJsonRequestResult<T>> => {
+    try {
+        return {
+            ok: true,
+            data: await request.json() as T,
+        };
+    } catch {
+        return {
+            ok: false,
+            response: errorResponse({
+                status: 400,
+                code: 'INVALID_JSON',
+                message,
+                requestId,
+                retryable: false,
+                headers,
+            }),
+        };
+    }
+};
 
 export const handleRouteError = (
     error: unknown,

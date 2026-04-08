@@ -243,7 +243,9 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        mutationClient = createServiceRoleClient();
+        mutationClient = createServiceRoleClient({
+            route: 'POST /api/record-quiz',
+        });
     } catch (error) {
         logger.error('QUIZ_ROUTE_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
             requestId,

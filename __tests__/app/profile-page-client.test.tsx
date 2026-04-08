@@ -205,6 +205,44 @@ describe('ProfilePageClient', () => {
         expect(screen.getByTestId('stats-grid')).toHaveTextContent('{"totalReviews":20,"accuracy":75}');
     });
 
+    it('shows a partial analytics banner and warning toast when only some learning stats are missing', async () => {
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 3,
+                        lastStudyDate: '2026-04-08',
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: null,
+                        correctReviews: null,
+                        accuracy: null,
+                        avgResponseTimeMs: null,
+                        recentAttempts: [],
+                    },
+                    degraded: true,
+                    missing: ['metrics', 'recentAttempts'],
+                }}
+            />
+        );
+
+        expect(screen.getByText('Showing partial learning analytics')).toBeInTheDocument();
+        expect(screen.getByText('Some sections are temporarily unavailable: review metrics, recent activity.')).toBeInTheDocument();
+
+        await waitFor(() => {
+            expect(mockShowToast).toHaveBeenCalledWith(
+                'Some sections are temporarily unavailable: review metrics, recent activity.',
+                'warning'
+            );
+        });
+    });
+
     it('shows placeholders and warning toast when authenticated analytics are unavailable', async () => {
         render(
             <ProfilePageClient

@@ -33,12 +33,32 @@ export interface LearningStatsData {
     recentAttempts: LearningRecentAttempt[];
 }
 
+export type LearningStatsMissingSegment =
+    | 'heatmap'
+    | 'streak'
+    | 'badges'
+    | 'metrics'
+    | 'recentAttempts';
+
+export interface LearningStatsLoadResult {
+    data: LearningStatsData;
+    degraded: boolean;
+    missing: LearningStatsMissingSegment[];
+}
+
 export interface ActionErrorPayload {
     code: string;
     message: string;
     status: number;
 }
 
+export interface LearningStatsSuccessPayload {
+    ok: true;
+    data: LearningStatsData;
+    degraded?: boolean;
+    missing?: LearningStatsMissingSegment[];
+}
+
 export type LearningStatsActionResult =
-    | { ok: true; data: LearningStatsData }
+    | LearningStatsSuccessPayload
     | { ok: false; error: ActionErrorPayload };

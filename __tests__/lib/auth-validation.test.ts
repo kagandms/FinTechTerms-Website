@@ -14,19 +14,20 @@ describe('auth birth date validation', () => {
     });
 
     it('accepts a user who is already 13', () => {
-        const now = new Date(2026, 2, 6);
+        const now = new Date('2026-03-06T12:00:00.000Z');
 
         expect(isValidRegistrationBirthDate('2013-03-06', now)).toBe(true);
     });
 
     it('rejects a user who is still 12', () => {
-        const now = new Date(2026, 2, 6);
+        const now = new Date('2026-03-06T12:00:00.000Z');
 
         expect(isValidRegistrationBirthDate('2013-03-07', now)).toBe(false);
     });
 
     it('rejects malformed dates', () => {
-        expect(isValidRegistrationBirthDate('2026-02-31', new Date(2026, 2, 6))).toBe(false);
-        expect(isValidRegistrationBirthDate('not-a-date', new Date(2026, 2, 6))).toBe(false);
+        const now = new Date('2026-03-06T12:00:00.000Z');
+        expect(isValidRegistrationBirthDate('2026-02-31', now)).toBe(false);
+        expect(isValidRegistrationBirthDate('not-a-date', now)).toBe(false);
     });
 });

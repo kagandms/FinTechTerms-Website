@@ -26,6 +26,7 @@ import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 import AiStudyCoachCard from '@/components/profile/AiStudyCoachCard';
 import ValueHintList from '@/components/membership/ValueHintList';
 import { formatTranslation } from '@/lib/i18n';
+import { getLearningStatsPartialNotice } from '@/lib/learning-stats-ui';
 import { logger } from '@/lib/logger';
 
 interface ProfilePageClientProps {
@@ -64,6 +65,11 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
 
     // Calculated fields
     const learningStatsData = learningStats.ok ? learningStats.data : null;
+    const learningStatsMissingSegments = learningStats.ok ? (learningStats.missing ?? []) : [];
+    const isLearningStatsDegraded = learningStats.ok && (learningStats.degraded ?? false);
+    const partialLearningStatsNotice = isLearningStatsDegraded
+        ? getLearningStatsPartialNotice(language, learningStatsMissingSegments)
+        : null;
     const totalReviews = entitlements.canUseAdvancedAnalytics
         ? learningStatsData?.totalReviews ?? (isAuthenticated ? null : 0)
         : null;
@@ -231,7 +237,14 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         />
                     </section>
 
-                    {isAuthenticated && entitlements.canUseAdvancedAnalytics && learningStatsData ? (
+                    {isAuthenticated && entitlements.canUseAdvancedAnalytics && partialLearningStatsNotice ? (
+                        <section className="order-2 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                            <p className="font-semibold">{partialLearningStatsNotice.title}</p>
+                            <p className="mt-2 leading-6">{partialLearningStatsNotice.description}</p>
+                        </section>
+                    ) : null}
+
+                    {isAuthenticated && entitlements.canUseAdvancedAnalytics && learningStatsData && !learningStatsMissingSegments.includes('heatmap') ? (
                         <section className="order-2">
                             <Heatmap entries={learningStatsData.heatmap} language={language} />
                         </section>
@@ -407,7 +420,33 @@ export default function ProfilePageClient({
     }, [language, profileWarningCode, showToast, t]);
 
     useEffect(() => {
-        if (learningStats.ok || !isAuthenticated || learningStats.error.code === 'UNAUTHORIZED') {
+        if (!isAuthenticated) {
+            return;
+        }
+
+        if (learningStats.ok) {
+            if (!(learningStats.degraded ?? false)) {
+                return;
+            }
+
+            const warningKey = `partial:${(learningStats.missing ?? []).join(',')}`;
+
+            if (lastLearningStatsErrorRef.current === warningKey) {
+                return;
+            }
+
+            const partialNotice = getLearningStatsPartialNotice(language, learningStats.missing ?? []);
+
+            logger.warn('PROFILE_PAGE_LEARNING_ANALYTICS_PARTIAL', {
+                route: 'ProfilePageClient',
+                missing: learningStats.missing ?? [],
+            });
+            showToast(partialNotice.description, 'warning');
+            lastLearningStatsErrorRef.current = warningKey;
+            return;
+        }
+
+        if (learningStats.error.code === 'UNAUTHORIZED') {
             return;
         }
 
@@ -421,7 +460,7 @@ export default function ProfilePageClient({
         });
         showToast(t('profile.learningAnalyticsUnavailable'), 'warning');
         lastLearningStatsErrorRef.current = learningStats.error.code;
-    }, [isAuthenticated, learningStats, showToast, t]);
+    }, [isAuthenticated, language, learningStats, showToast, t]);
 
     const handleBoundaryError = useCallback((error: Error) => {
         logger.error('PROFILE_PAGE_RENDER_ERROR', {

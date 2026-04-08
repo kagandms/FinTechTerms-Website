@@ -184,6 +184,37 @@ describe('AnalyticsPageClient', () => {
         expect(screen.queryByText('3 terms')).not.toBeInTheDocument();
     });
 
+    it('shows a partial analytics banner while continuing to render available server data', () => {
+        render(
+            <AnalyticsPageClient
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 5,
+                        lastStudyDate: '2026-04-08',
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: null,
+                        correctReviews: null,
+                        accuracy: null,
+                        avgResponseTimeMs: null,
+                        recentAttempts: [],
+                    },
+                    degraded: true,
+                    missing: ['metrics'],
+                }}
+            />
+        );
+
+        expect(screen.getByText('Showing partial learning analytics')).toBeInTheDocument();
+        expect(screen.getByText('Some sections are temporarily unavailable: review metrics.')).toBeInTheDocument();
+        expect(screen.getByText('5')).toBeInTheDocument();
+        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    });
+
     it('does not fall back to local authenticated quiz history when server aggregates are unavailable', () => {
         mockUseSRS.mockReturnValue({
             terms: [
