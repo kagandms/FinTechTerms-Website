@@ -15,7 +15,21 @@ const getRequiredEnv = (name: string): string => {
     return value;
 };
 
-const LOGIN_BASE_URL = 'http://127.0.0.1:3000';
+const LOGIN_BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000';
+const LOGIN_BASE_ORIGIN = new URL(LOGIN_BASE_URL).origin;
+
+const getPreviewBypassHeaders = (): Record<string, string> => {
+    const automationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+    if (!automationBypassSecret) {
+        return {};
+    }
+
+    return {
+        'x-vercel-protection-bypass': automationBypassSecret,
+        'x-vercel-set-bypass-cookie': 'true',
+    };
+};
 
 type ParsedBrowserCookie = {
     name: string;
@@ -85,7 +99,7 @@ const parseSetCookieHeader = (headerValue: string): ParsedBrowserCookie | null =
     return {
         name: nameValue.slice(0, separatorIndex),
         value: nameValue.slice(separatorIndex + 1),
-        url: LOGIN_BASE_URL,
+        url: LOGIN_BASE_ORIGIN,
         httpOnly,
         secure,
         sameSite,
@@ -102,10 +116,20 @@ async function loginViaProfile(page: Page, email: string, password: string) {
             email,
             password,
         },
+        headers: {
+            Origin: LOGIN_BASE_ORIGIN,
+            Referer: `${LOGIN_BASE_ORIGIN}/profile?auth=login`,
+            ...getPreviewBypassHeaders(),
+        },
         failOnStatusCode: false,
     });
 
-    expect(loginResponse.ok()).toBeTruthy();
+    const loginResponseBody = await loginResponse.json().catch(() => null);
+
+    expect(
+        loginResponse.ok(),
+        `Login failed with status ${loginResponse.status()}: ${JSON.stringify(loginResponseBody)}`
+    ).toBeTruthy();
     const cookies = loginResponse
         .headersArray()
         .filter((header) => header.name.toLowerCase() === 'set-cookie')
