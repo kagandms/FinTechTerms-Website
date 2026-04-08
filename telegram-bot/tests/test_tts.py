@@ -10,7 +10,7 @@ import pytest
 from bot import tts
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_generate_tts_audio_times_out_and_removes_partial_file(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -33,7 +33,7 @@ async def test_generate_tts_audio_times_out_and_removes_partial_file(
     assert list(tmp_path.glob("*.mp3")) == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_generate_tts_audio_triggers_cache_cleanup_after_new_file(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

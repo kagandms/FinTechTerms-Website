@@ -101,8 +101,8 @@ const waitForPageSettle = async (page) => {
     await page.waitForTimeout(500);
 };
 
-const readSupabaseAccessToken = async (page) => {
-    const accessToken = await page.evaluate(() => {
+const resolveSupabaseAccessTokenFromStorage = async (page) => (
+    await page.evaluate(() => {
         for (const key of Object.keys(window.localStorage)) {
             if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) {
                 continue;
@@ -137,14 +137,8 @@ const readSupabaseAccessToken = async (page) => {
         }
 
         return null;
-    });
-
-    if (!accessToken) {
-        throw new Error('Unable to resolve a Supabase access token from browser storage.');
-    }
-
-    return accessToken;
-};
+    })
+);
 
 const runGuestSmoke = async (page) => {
     await page.goto(`${stagingBaseUrl}/`, { waitUntil: 'domcontentloaded' });
@@ -207,6 +201,7 @@ const fetchWithBearer = async (page, path, token, init = {}) => (
     await page.evaluate(async ({ routePath, bearerToken, requestInit }) => {
         const response = await fetch(routePath, {
             ...requestInit,
+            credentials: 'same-origin',
             headers: {
                 ...(requestInit.headers || {}),
                 Authorization: `Bearer ${bearerToken}`,
@@ -224,15 +219,41 @@ const fetchWithBearer = async (page, path, token, init = {}) => (
     })
 );
 
+const fetchAuthenticatedJson = async (page, path, init = {}) => {
+    const cookieResponse = await page.evaluate(async ({ routePath, requestInit }) => {
+        const response = await fetch(routePath, {
+            credentials: 'same-origin',
+            ...requestInit,
+        });
+
+        return {
+            status: response.status,
+            body: await response.json(),
+        };
+    }, {
+        routePath: path,
+        requestInit: init,
+    });
+
+    if (cookieResponse.status !== 401) {
+        return cookieResponse;
+    }
+
+    const accessToken = await resolveSupabaseAccessTokenFromStorage(page);
+    if (!accessToken) {
+        return cookieResponse;
+    }
+
+    return await fetchWithBearer(page, path, accessToken, init);
+};
+
 const runSentrySmoke = async (page) => {
     if (!sentrySmokeEmail || !sentrySmokePassword) {
         throw new Error('Admin Sentry smoke requires SENTRY_SMOKE_EMAIL and SENTRY_SMOKE_PASSWORD.');
     }
 
     await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);
-    const accessToken = await readSupabaseAccessToken(page);
-
-    const capabilityResponse = await fetchWithBearer(page, '/api/auth/capabilities', accessToken, {
+    const capabilityResponse = await fetchAuthenticatedJson(page, '/api/auth/capabilities', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -245,7 +266,7 @@ const runSentrySmoke = async (page) => {
         'Sentry smoke user is authenticated but not admin. Verify ADMIN_USER_IDS in the Vercel preview environment includes the SENTRY_SMOKE_EMAIL user id.'
     );
 
-    const response = await fetchWithBearer(page, '/api/admin/sentry-smoke', accessToken, {
+    const response = await fetchAuthenticatedJson(page, '/api/admin/sentry-smoke', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -104,29 +104,45 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
         run: |
-          if [ -n "$NEXT_PUBLIC_SITE_URL" ] && \
-             [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && \
-             [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && \
-             [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && \
-             [ -n "$STUDY_SESSION_TOKEN_SECRET" ] && \
-             [ -n "$OPENROUTER_API_KEY" ] && \
-             [ -n "$ADMIN_USER_IDS" ] && \
-             [ -n "$UPSTASH_REDIS_REST_URL" ] && \
-             [ -n "$UPSTASH_REDIS_REST_TOKEN" ] && \
-             [ -n "$NEXT_PUBLIC_SENTRY_DSN" ]; then
+          required_vars=(
+            NEXT_PUBLIC_SITE_URL
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+            STUDY_SESSION_TOKEN_SECRET
+            OPENROUTER_API_KEY
+            ADMIN_USER_IDS
+            UPSTASH_REDIS_REST_URL
+            UPSTASH_REDIS_REST_TOKEN
+            NEXT_PUBLIC_SENTRY_DSN
+          )
+          present_count=0
+          missing_vars=()
+
+          for var_name in "${required_vars[@]}"; do
+            if [ -n "${!var_name}" ]; then
+              present_count=$((present_count + 1))
+            else
+              missing_vars+=("$var_name")
+            fi
+          done
+
+          if [ "$present_count" -eq "${#required_vars[@]}" ]; then
             echo "runtime_ready=true" >> "$GITHUB_OUTPUT"
+            echo "runtime_reason=ready" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "runtime_ready=false" >> "$GITHUB_OUTPUT"
 
-          if [ "${{ github.event_name }}" = "pull_request" ] && \
-             [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "Runtime env validation and production build are skipped for fork PRs because deploy secrets are unavailable."
+          if [ "$present_count" -eq 0 ]; then
+            echo "runtime_reason=not_configured" >> "$GITHUB_OUTPUT"
+            echo "Runtime env validation and production build are skipped because release-evaluable runtime secrets are not configured in this GitHub environment."
             exit 0
           fi
 
-          echo "Missing required runtime secrets for a release-evaluable run."
+          echo "runtime_reason=partial" >> "$GITHUB_OUTPUT"
+          echo "Missing required runtime secrets for a release-evaluable run: ${missing_vars[*]}"
           exit 1
 
       - name: Validate Runtime Environment

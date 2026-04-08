@@ -28,6 +28,8 @@ describe('operability guards', () => {
         expect(ciWorkflow).toContain('SUPABASE_SERVICE_ROLE_KEY: build-service-role-key-0123456789abcdefghijklmnop');
         expect(ciWorkflow).toContain('OPENROUTER_API_KEY: build-openrouter-key-0123456789abcdefghijklmnop');
         expect(ciWorkflow).toContain('runtime_ready=true');
+        expect(ciWorkflow).toContain('runtime_reason=not_configured');
+        expect(ciWorkflow).toContain('Runtime env validation and production build are skipped because release-evaluable runtime secrets are not configured in this GitHub environment.');
         expect(ciWorkflow).toContain("if: ${{ steps.runtime_preflight.outputs.runtime_ready == 'true' }}");
         expect(ciWorkflow).not.toContain('validation-service-role-key-0123456789abcdefghijklmnop');
         expect(ciWorkflow).not.toContain('validation-study-session-secret-0123456789abcdefghijklmnop');

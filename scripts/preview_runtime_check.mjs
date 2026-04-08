@@ -109,8 +109,8 @@ const loginViaProfile = async (page, email, password) => {
     await page.getByTestId('user-avatar').waitFor({ state: 'visible', timeout: 20_000 });
 };
 
-const readSupabaseAccessToken = async (page) => {
-    const accessToken = await page.evaluate(() => {
+const resolveSupabaseAccessTokenFromStorage = async (page) => (
+    await page.evaluate(() => {
         for (const key of Object.keys(window.localStorage)) {
             if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) {
                 continue;
@@ -140,19 +140,14 @@ const readSupabaseAccessToken = async (page) => {
         }
 
         return null;
-    });
-
-    if (!accessToken) {
-        throw new Error('Unable to resolve a Supabase access token from browser storage.');
-    }
-
-    return accessToken;
-};
+    })
+);
 
 const fetchWithBearer = async (page, path, token, init = {}) => (
     await page.evaluate(async ({ routePath, bearerToken, requestInit }) => {
         const response = await fetch(routePath, {
             ...requestInit,
+            credentials: 'same-origin',
             headers: {
                 ...(requestInit.headers || {}),
                 Authorization: `Bearer ${bearerToken}`,
@@ -179,7 +174,10 @@ const fetchWithBearer = async (page, path, token, init = {}) => (
 
 const fetchJson = async (page, path, init = {}) => (
     await page.evaluate(async ({ routePath, requestInit }) => {
-        const response = await fetch(routePath, requestInit);
+        const response = await fetch(routePath, {
+            credentials: 'same-origin',
+            ...requestInit,
+        });
 
         let body = null;
         try {
@@ -197,6 +195,21 @@ const fetchJson = async (page, path, init = {}) => (
         requestInit: init,
     })
 );
+
+const fetchAuthenticatedJson = async (page, path, init = {}) => {
+    const cookieResponse = await fetchJson(page, path, init);
+
+    if (cookieResponse.status !== 401) {
+        return cookieResponse;
+    }
+
+    const accessToken = await resolveSupabaseAccessTokenFromStorage(page);
+    if (!accessToken) {
+        return cookieResponse;
+    }
+
+    return await fetchWithBearer(page, path, accessToken, init);
+};
 
 const runGuestCheck = async (browser) => {
     const context = await createBypassedContext(browser);
@@ -220,9 +233,7 @@ const runFavoritesProbe = async (browser) => {
     try {
         await grantResearchConsent(page);
         await loginViaProfile(page, authEmail, authPassword);
-        const accessToken = await readSupabaseAccessToken(page);
-
-        const response = await fetchWithBearer(page, '/api/favorites', accessToken, {
+        const response = await fetchAuthenticatedJson(page, '/api/favorites', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -363,8 +374,7 @@ const runAiChatProbe = async (browser) => {
         );
 
         await loginViaProfile(page, authEmail, authPassword);
-        const accessToken = await readSupabaseAccessToken(page);
-        const memberResponse = await fetchWithBearer(page, '/api/ai/chat', accessToken, {
+        const memberResponse = await fetchAuthenticatedJson(page, '/api/ai/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -422,8 +432,7 @@ const runSentryCapabilityProbe = async (browser) => {
     try {
         await grantResearchConsent(page);
         await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);
-        const accessToken = await readSupabaseAccessToken(page);
-        const response = await fetchWithBearer(page, '/api/auth/capabilities', accessToken, {
+        const response = await fetchAuthenticatedJson(page, '/api/auth/capabilities', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
