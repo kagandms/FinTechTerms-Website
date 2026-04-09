@@ -36,8 +36,11 @@ describe('operability guards', () => {
         expect(ciWorkflow).toContain('AI_PRIMARY_MODEL: mistralai/mistral-small-2603');
         expect(ciWorkflow).toContain('AI_FALLBACK_MODELS: deepseek/deepseek-chat-v3.1,openai/gpt-oss-20b');
         expect(ciWorkflow).toContain('runtime_ready=true');
-        expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a same-repo pull request.');
-        expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a protected branch run.');
+        expect(ciWorkflow).toContain('vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL');
+        expect(ciWorkflow).toContain('vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS');
+        expect(ciWorkflow).toContain('missing_runtime_vars=');
+        expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a same-repo pull request:');
+        expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a protected branch run:');
         expect(ciWorkflow).toContain("if: ${{ steps.runtime_preflight.outputs.runtime_ready == 'true' }}");
         expect(ciWorkflow).not.toContain('validation-service-role-key-0123456789abcdefghijklmnop');
         expect(ciWorkflow).not.toContain('validation-study-session-secret-0123456789abcdefghijklmnop');
@@ -53,6 +56,9 @@ describe('operability guards', () => {
         expect(previewWorkflow).toContain('OPENROUTER_API_KEY');
         expect(previewWorkflow).toContain('AI_PRIMARY_MODEL');
         expect(previewWorkflow).toContain('AI_FALLBACK_MODELS');
+        expect(previewWorkflow).toContain('vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL');
+        expect(previewWorkflow).toContain('vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS');
+        expect(previewWorkflow).toContain('missing_core_vars=');
     });
 
     it('checks bot container health against the readiness endpoint', () => {

@@ -19,63 +19,117 @@ jobs:
       core_ready: ${{ steps.check.outputs.core_ready }}
       auth_ready: ${{ steps.check.outputs.auth_ready }}
       sentry_ready: ${{ steps.check.outputs.sentry_ready }}
+      missing_core_vars: ${{ steps.check.outputs.missing_core_vars }}
+      missing_auth_vars: ${{ steps.check.outputs.missing_auth_vars }}
+      missing_sentry_vars: ${{ steps.check.outputs.missing_sentry_vars }}
     steps:
       - id: check
         run: |
+          core_vars=(
+            NEXT_PUBLIC_SITE_URL
+            STAGING_BASE_URL
+            SUPABASE_DB_URL
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+            STUDY_SESSION_TOKEN_SECRET
+            OPENROUTER_API_KEY
+            AI_PRIMARY_MODEL
+            AI_FALLBACK_MODELS
+            ADMIN_USER_IDS
+            UPSTASH_REDIS_REST_URL
+            UPSTASH_REDIS_REST_TOKEN
+          )
+          auth_vars=(
+            E2E_AUTH_EMAIL
+            E2E_AUTH_PASSWORD
+          )
+          sentry_vars=(
+            SENTRY_SMOKE_EMAIL
+            SENTRY_SMOKE_PASSWORD
+            NEXT_PUBLIC_SENTRY_DSN
+          )
+          missing_core_vars=()
+          missing_auth_vars=()
+          missing_sentry_vars=()
+
           if [ -n "${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}" ] && \
-             [ -n "${{ secrets.STAGING_BASE_URL }}" ] && \
+             [ -n "${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}" ] && \
              [ -n "${{ secrets.SUPABASE_DB_URL }}" ] && \
-             [ -n "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] && \
-             [ -n "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && \
+             [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] && \
+             [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && \
              [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ] && \
              [ -n "${{ secrets.STUDY_SESSION_TOKEN_SECRET }}" ] && \
              [ -n "${{ secrets.OPENROUTER_API_KEY }}" ] && \
-             [ -n "${{ secrets.AI_PRIMARY_MODEL }}" ] && \
-             [ -n "${{ secrets.AI_FALLBACK_MODELS }}" ] && \
-             [ -n "${{ secrets.ADMIN_USER_IDS }}" ] && \
-             [ -n "${{ secrets.UPSTASH_REDIS_REST_URL }}" ] && \
+             [ -n "${{ vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL }}" ] && \
+             [ -n "${{ vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS }}" ] && \
+             [ -n "${{ vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS }}" ] && \
+             [ -n "${{ vars.UPSTASH_REDIS_REST_URL || secrets.UPSTASH_REDIS_REST_URL }}" ] && \
              [ -n "${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" ]; then
             echo "core_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "core_ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ -n "${{ secrets.E2E_AUTH_EMAIL }}" ] && \
+          if [ -n "${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}" ] && \
              [ -n "${{ secrets.E2E_AUTH_PASSWORD }}" ]; then
             echo "auth_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "auth_ready=false" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ -n "${{ secrets.SENTRY_SMOKE_EMAIL }}" ] && \
+          if [ -n "${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}" ] && \
              [ -n "${{ secrets.SENTRY_SMOKE_PASSWORD }}" ] && \
-             [ -n "${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" ]; then
+             [ -n "${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN }}" ]; then
             echo "sentry_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "sentry_ready=false" >> "$GITHUB_OUTPUT"
           fi
+
+          [ -n "${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}" ] || missing_core_vars+=("NEXT_PUBLIC_SITE_URL")
+          [ -n "${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}" ] || missing_core_vars+=("STAGING_BASE_URL")
+          [ -n "${{ secrets.SUPABASE_DB_URL }}" ] || missing_core_vars+=("SUPABASE_DB_URL")
+          [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] || missing_core_vars+=("NEXT_PUBLIC_SUPABASE_URL")
+          [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] || missing_core_vars+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+          [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ] || missing_core_vars+=("SUPABASE_SERVICE_ROLE_KEY")
+          [ -n "${{ secrets.STUDY_SESSION_TOKEN_SECRET }}" ] || missing_core_vars+=("STUDY_SESSION_TOKEN_SECRET")
+          [ -n "${{ secrets.OPENROUTER_API_KEY }}" ] || missing_core_vars+=("OPENROUTER_API_KEY")
+          [ -n "${{ vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL }}" ] || missing_core_vars+=("AI_PRIMARY_MODEL")
+          [ -n "${{ vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS }}" ] || missing_core_vars+=("AI_FALLBACK_MODELS")
+          [ -n "${{ vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS }}" ] || missing_core_vars+=("ADMIN_USER_IDS")
+          [ -n "${{ vars.UPSTASH_REDIS_REST_URL || secrets.UPSTASH_REDIS_REST_URL }}" ] || missing_core_vars+=("UPSTASH_REDIS_REST_URL")
+          [ -n "${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" ] || missing_core_vars+=("UPSTASH_REDIS_REST_TOKEN")
+          [ -n "${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}" ] || missing_auth_vars+=("E2E_AUTH_EMAIL")
+          [ -n "${{ secrets.E2E_AUTH_PASSWORD }}" ] || missing_auth_vars+=("E2E_AUTH_PASSWORD")
+          [ -n "${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}" ] || missing_sentry_vars+=("SENTRY_SMOKE_EMAIL")
+          [ -n "${{ secrets.SENTRY_SMOKE_PASSWORD }}" ] || missing_sentry_vars+=("SENTRY_SMOKE_PASSWORD")
+          [ -n "${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN }}" ] || missing_sentry_vars+=("NEXT_PUBLIC_SENTRY_DSN")
+
+          echo "missing_core_vars=${missing_core_vars[*]}" >> "$GITHUB_OUTPUT"
+          echo "missing_auth_vars=${missing_auth_vars[*]}" >> "$GITHUB_OUTPUT"
+          echo "missing_sentry_vars=${missing_sentry_vars[*]}" >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: echo "Preview release gate is not release-evaluable for fork PRs because staging preview secrets are unavailable."
 
       - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          echo "Missing required preview release gate secrets on a same-repo pull request."
+          echo "Missing required preview release gate secrets on a same-repo pull request: ${{ steps.check.outputs.missing_core_vars }}"
           exit 1
 
       - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name != 'pull_request' }}
         run: |
-          echo "Missing required preview release gate secrets on a protected branch run."
+          echo "Missing required preview release gate secrets on a protected branch run: ${{ steps.check.outputs.missing_core_vars }}"
           exit 1
 
       - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.auth_ready != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         run: |
-          echo "Missing required authenticated Playwright secrets."
+          echo "Missing required authenticated Playwright secrets: ${{ steps.check.outputs.missing_auth_vars }}"
           exit 1
 
       - if: ${{ steps.check.outputs.core_ready == 'true' && steps.check.outputs.sentry_ready != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         run: |
-          echo "Missing required Sentry smoke credentials."
+          echo "Missing required Sentry smoke credentials: ${{ steps.check.outputs.missing_sentry_vars }}"
           exit 1
 
   bootstrap-db-smoke:
@@ -120,15 +174,15 @@ jobs:
     env:
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      AI_PRIMARY_MODEL: ${{ secrets.AI_PRIMARY_MODEL }}
-      AI_FALLBACK_MODELS: ${{ secrets.AI_FALLBACK_MODELS }}
-      ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
-      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      AI_PRIMARY_MODEL: ${{ vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL }}
+      AI_FALLBACK_MODELS: ${{ vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS }}
+      ADMIN_USER_IDS: ${{ vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS }}
+      UPSTASH_REDIS_REST_URL: ${{ vars.UPSTASH_REDIS_REST_URL || secrets.UPSTASH_REDIS_REST_URL }}
       UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
     steps:
@@ -155,22 +209,22 @@ jobs:
       - name: Validate release-gate environment
         env:
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
-          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          AI_PRIMARY_MODEL: ${{ secrets.AI_PRIMARY_MODEL }}
-          AI_FALLBACK_MODELS: ${{ secrets.AI_FALLBACK_MODELS }}
-          ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          AI_PRIMARY_MODEL: ${{ vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL }}
+          AI_FALLBACK_MODELS: ${{ vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS }}
+          ADMIN_USER_IDS: ${{ vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS }}
+          UPSTASH_REDIS_REST_URL: ${{ vars.UPSTASH_REDIS_REST_URL || secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-          E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          E2E_AUTH_EMAIL: ${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}
           E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
-          SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+          SENTRY_SMOKE_EMAIL: ${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}
           SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
         run: npm run validate:release-gate-env
 
@@ -190,10 +244,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-      E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
+      E2E_AUTH_EMAIL: ${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}
       E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
-      SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+      SENTRY_SMOKE_EMAIL: ${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}
       SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
@@ -225,7 +279,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
     steps:
@@ -264,8 +318,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-      E2E_AUTH_EMAIL: ${{ secrets.E2E_AUTH_EMAIL }}
+      PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
+      E2E_AUTH_EMAIL: ${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}
       E2E_AUTH_PASSWORD: ${{ secrets.E2E_AUTH_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
@@ -305,8 +359,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
-      SENTRY_SMOKE_EMAIL: ${{ secrets.SENTRY_SMOKE_EMAIL }}
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
+      SENTRY_SMOKE_EMAIL: ${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}
       SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
