@@ -1,6 +1,8 @@
 import type { QuizType, UserProgress } from '@/types';
 import type { UserProgressLoadMissingSegment } from '@/lib/supabaseStorage';
 
+export type PendingReviewStatus = 'pending_retry' | 'action_required';
+
 export interface PendingReview {
     reviewId: string;
     termId: string;
@@ -11,10 +13,24 @@ export interface PendingReview {
     occurredAt: string;
     sessionId: string | null;
     sessionToken: string | null;
+    status?: PendingReviewStatus;
+    reason?: string | null;
+    firstSeenAt?: number;
+    lastTriedAt?: number | null;
 }
 
 export interface QueuedPendingReview extends PendingReview {
+    status: PendingReviewStatus;
+    reason: string | null;
+    firstSeenAt: number;
+    lastTriedAt: number | null;
     queuedAt: number;
+}
+
+export interface PendingReviewQueueSnapshot {
+    queue: QueuedPendingReview[];
+    invalidEntryCount: number;
+    storageCorrupted: boolean;
 }
 
 export const PENDING_REVIEW_QUEUE_STORAGE_PREFIX = 'pending_review_queue';
@@ -23,6 +39,7 @@ export const MAX_PENDING_REVIEW_QUEUE_SIZE = 50;
 
 const GUEST_PENDING_REVIEW_SCOPE = 'guest';
 const DEFAULT_PENDING_REVIEW_QUIZ_TYPE: QuizType = 'daily';
+const DEFAULT_PENDING_REVIEW_STATUS: PendingReviewStatus = 'pending_retry';
 
 const resolvePendingReviewScope = (userId?: string | null): string => (
     typeof userId === 'string' && userId.trim().length > 0
@@ -68,6 +85,10 @@ const isQuizType = (value: unknown): value is QuizType => (
     || value === 'review'
     || value === 'simulation'
     || value === 'telegram_bot'
+);
+
+const isPendingReviewStatus = (value: unknown): value is PendingReviewStatus => (
+    value === 'pending_retry' || value === 'action_required'
 );
 
 const normalizeSessionValue = (value: unknown): string | null => (
@@ -121,6 +142,30 @@ export const isPendingReview = (value: unknown): value is PendingReview => {
             || candidate.sessionToken === null
             || typeof candidate.sessionToken === 'string'
         )
+        && (
+            candidate.status === undefined
+            || isPendingReviewStatus(candidate.status)
+        )
+        && (
+            candidate.reason === undefined
+            || candidate.reason === null
+            || typeof candidate.reason === 'string'
+        )
+        && (
+            candidate.firstSeenAt === undefined
+            || (
+                typeof candidate.firstSeenAt === 'number'
+                && Number.isFinite(candidate.firstSeenAt)
+            )
+        )
+        && (
+            candidate.lastTriedAt === undefined
+            || candidate.lastTriedAt === null
+            || (
+                typeof candidate.lastTriedAt === 'number'
+                && Number.isFinite(candidate.lastTriedAt)
+            )
+        )
     );
 };
 
@@ -153,6 +198,18 @@ const normalizePendingReview = (value: unknown): QueuedPendingReview | null => {
         occurredAt: normalizeOccurredAt(value.occurredAt, value.queuedAt),
         sessionId: normalizeSessionValue(value.sessionId),
         sessionToken: normalizeSessionValue(value.sessionToken),
+        status: isPendingReviewStatus(value.status)
+            ? value.status
+            : DEFAULT_PENDING_REVIEW_STATUS,
+        reason: typeof value.reason === 'string' && value.reason.trim().length > 0
+            ? value.reason.trim()
+            : null,
+        firstSeenAt: typeof value.firstSeenAt === 'number' && Number.isFinite(value.firstSeenAt)
+            ? value.firstSeenAt
+            : value.queuedAt,
+        lastTriedAt: typeof value.lastTriedAt === 'number' && Number.isFinite(value.lastTriedAt)
+            ? value.lastTriedAt
+            : value.queuedAt,
         queuedAt: value.queuedAt,
     };
 };
@@ -167,7 +224,7 @@ const normalizePendingReviewQueue = (
     }
 
     return Array.from(deduped.values())
-        .sort((left, right) => left.queuedAt - right.queuedAt)
+        .sort((left, right) => left.firstSeenAt - right.firstSeenAt)
         .slice(-MAX_PENDING_REVIEW_QUEUE_SIZE);
 };
 
@@ -193,14 +250,23 @@ const writePendingReviewQueueToStorage = (
     return normalizedQueue;
 };
 
-export const readPendingReviewQueueFromStorage = (
+export const hasPendingRetryEntries = (
+    queue: readonly QueuedPendingReview[]
+): boolean => queue.some((entry) => entry.status === 'pending_retry');
+
+export const readPendingReviewQueueSnapshotFromStorage = (
     userId?: string | null
-): QueuedPendingReview[] => {
+): PendingReviewQueueSnapshot => {
     if (!canUseStorage()) {
-        return [];
+        return {
+            queue: [],
+            invalidEntryCount: 0,
+            storageCorrupted: false,
+        };
     }
 
     const storageKey = buildPendingReviewQueueStorageKey(userId);
+    let invalidEntryCount = 0;
 
     try {
         const storedQueue = window.localStorage.getItem(storageKey);
@@ -214,6 +280,7 @@ export const readPendingReviewQueueFromStorage = (
                     const normalizedEntry = normalizePendingReview(entry);
                     if (!normalizedEntry) {
                         shouldRewrite = true;
+                        invalidEntryCount += 1;
                         continue;
                     }
 
@@ -231,27 +298,55 @@ export const readPendingReviewQueueFromStorage = (
                 if (shouldRewrite) {
                     writePendingReviewQueueToStorage(userId, normalizedQueue);
                 }
-                return normalizedQueue;
+                return {
+                    queue: normalizedQueue,
+                    invalidEntryCount,
+                    storageCorrupted: false,
+                };
             }
+
+            window.localStorage.removeItem(storageKey);
+            return {
+                queue: [],
+                invalidEntryCount: 0,
+                storageCorrupted: true,
+            };
         }
     } catch {
         window.localStorage.removeItem(storageKey);
+        return {
+            queue: [],
+            invalidEntryCount: 0,
+            storageCorrupted: true,
+        };
     }
 
     if (resolvePendingReviewScope(userId) === GUEST_PENDING_REVIEW_SCOPE) {
-        return [];
+        return {
+            queue: [],
+            invalidEntryCount: 0,
+            storageCorrupted: false,
+        };
     }
 
     try {
         const legacyEntry = window.sessionStorage.getItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
         if (!legacyEntry) {
-            return [];
+            return {
+                queue: [],
+                invalidEntryCount: 0,
+                storageCorrupted: false,
+            };
         }
 
         const parsedLegacyEntry = JSON.parse(legacyEntry) as unknown;
         if (!isPendingReview(parsedLegacyEntry)) {
             window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
-            return [];
+            return {
+                queue: [],
+                invalidEntryCount: 1,
+                storageCorrupted: true,
+            };
         }
 
         const normalizedLegacyEntry = normalizePendingReview({
@@ -260,17 +355,33 @@ export const readPendingReviewQueueFromStorage = (
         });
         if (!normalizedLegacyEntry) {
             window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
-            return [];
+            return {
+                queue: [],
+                invalidEntryCount: 1,
+                storageCorrupted: true,
+            };
         }
 
         const migratedQueue = writePendingReviewQueueToStorage(userId, [normalizedLegacyEntry]);
         window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
-        return migratedQueue;
+        return {
+            queue: migratedQueue,
+            invalidEntryCount: 0,
+            storageCorrupted: false,
+        };
     } catch {
         window.sessionStorage.removeItem(LEGACY_PENDING_REVIEW_STORAGE_KEY);
-        return [];
+        return {
+            queue: [],
+            invalidEntryCount: 0,
+            storageCorrupted: true,
+        };
     }
 };
+
+export const readPendingReviewQueueFromStorage = (
+    userId?: string | null
+): QueuedPendingReview[] => readPendingReviewQueueSnapshotFromStorage(userId).queue;
 
 export const upsertPendingReviewQueueEntry = (
     userId: string | null | undefined,
@@ -278,12 +389,21 @@ export const upsertPendingReviewQueueEntry = (
 ): QueuedPendingReview[] => {
     const existingQueue = readPendingReviewQueueFromStorage(userId);
     const existingEntry = existingQueue.find((entry) => entry.reviewId === pendingReview.reviewId);
+    const now = Date.now();
 
     return writePendingReviewQueueToStorage(userId, [
         ...existingQueue.filter((entry) => entry.reviewId !== pendingReview.reviewId),
         {
             ...pendingReview,
-            queuedAt: existingEntry?.queuedAt ?? Date.now(),
+            status: isPendingReviewStatus(pendingReview.status)
+                ? pendingReview.status
+                : existingEntry?.status ?? DEFAULT_PENDING_REVIEW_STATUS,
+            reason: typeof pendingReview.reason === 'string' && pendingReview.reason.trim().length > 0
+                ? pendingReview.reason.trim()
+                : existingEntry?.reason ?? null,
+            firstSeenAt: pendingReview.firstSeenAt ?? existingEntry?.firstSeenAt ?? now,
+            lastTriedAt: pendingReview.lastTriedAt ?? now,
+            queuedAt: existingEntry?.queuedAt ?? pendingReview.firstSeenAt ?? now,
         },
     ]);
 };
@@ -295,6 +415,46 @@ export const removePendingReviewQueueEntry = (
     userId,
     readPendingReviewQueueFromStorage(userId).filter((entry) => entry.reviewId !== reviewId)
 );
+
+export const markPendingReviewActionRequired = (
+    userId: string | null | undefined,
+    reviewId: string,
+    reason: string
+): QueuedPendingReview[] => {
+    const existingQueue = readPendingReviewQueueFromStorage(userId);
+    const nextQueue = existingQueue.map((entry) => (
+        entry.reviewId === reviewId
+            ? {
+                ...entry,
+                status: 'action_required' as const,
+                reason,
+                lastTriedAt: Date.now(),
+            }
+            : entry
+    ));
+
+    return writePendingReviewQueueToStorage(userId, nextQueue);
+};
+
+export const markPendingReviewRetryPending = (
+    userId: string | null | undefined,
+    reviewId: string,
+    reason: string
+): QueuedPendingReview[] => {
+    const existingQueue = readPendingReviewQueueFromStorage(userId);
+    const nextQueue = existingQueue.map((entry) => (
+        entry.reviewId === reviewId
+            ? {
+                ...entry,
+                status: 'pending_retry' as const,
+                reason,
+                lastTriedAt: Date.now(),
+            }
+            : entry
+    ));
+
+    return writePendingReviewQueueToStorage(userId, nextQueue);
+};
 
 export const mergeUserProgressSnapshot = (
     localProgress: UserProgress,

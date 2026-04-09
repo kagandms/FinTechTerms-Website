@@ -2,6 +2,7 @@
 # Keep this file human-readable; refresh requirements.txt with pip-compile.
 anyio<4.13
 aiohttp>=3.13.4
+cryptography>=46.0.7
 python-telegram-bot[ext]
 supabase
 python-dotenv

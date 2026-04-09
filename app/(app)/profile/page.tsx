@@ -4,7 +4,6 @@ import { createOptionalClient } from '@/utils/supabase/server';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileWarningCode } from '@/app/profile/ProfilePageClient';
 import {
-    getSupabaseUserMetadataBirthDate,
     getSupabaseUserMetadataName,
     getSupabaseUserNameSeed,
 } from '@/lib/auth/user';
@@ -87,7 +86,6 @@ const loadInitialProfileData = async (): Promise<{
     let fullName = '';
     let birthDate = '';
     const metadataFullName = getSupabaseUserMetadataName(user);
-    const metadataBirthDate = toDateInputValue(getSupabaseUserMetadataBirthDate(user));
 
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -113,10 +111,6 @@ const loadInitialProfileData = async (): Promise<{
 
     if (!fullName && metadataFullName) {
         fullName = metadataFullName;
-    }
-
-    if (!birthDate && hasPersistedBirthDate(metadataBirthDate)) {
-        birthDate = metadataBirthDate;
     }
 
     if (!fullName) {

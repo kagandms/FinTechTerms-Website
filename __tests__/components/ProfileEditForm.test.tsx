@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import {
     createAbortError,
+    PROFILE_PASSWORD_HARD_TIMEOUT_MS,
     PROFILE_SUBMIT_TIMEOUT_MS,
     ProfileEditForm,
     runWithAbortSignal,
@@ -310,6 +311,60 @@ describe('ProfileEditForm submit flow', () => {
         });
 
         expect(mockShowToast).not.toHaveBeenCalledWith('Password update timed out. Please try again.', 'error');
+        jest.useRealTimers();
+    });
+
+    it('aborts a hanging password update after the hard timeout window', async () => {
+        jest.useFakeTimers();
+        mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+            const url = String(input);
+
+            if (url.includes('/api/auth/update-password')) {
+                return new Promise((_, reject) => {
+                    init?.signal?.addEventListener('abort', () => {
+                        reject(new DOMException('The operation was aborted.', 'AbortError'));
+                    }, { once: true });
+                });
+            }
+
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: jest.fn().mockResolvedValue({ success: true }),
+            } as unknown as Response);
+        });
+
+        render(
+            <ProfileEditForm
+                language="en"
+                initialData={initialData}
+            />
+        );
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Change Password' })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change Password' }));
+        fireEvent.change(screen.getByLabelText('Current Password'), {
+            target: { value: 'OldPassword1!' },
+        });
+        fireEvent.change(screen.getByLabelText('New Password'), {
+            target: { value: 'NewPassword1!' },
+        });
+        fireEvent.change(screen.getByLabelText('Confirm New Password'), {
+            target: { value: 'NewPassword1!' },
+        });
+        fireEvent.click(screen.getByTestId('profile-password-save'));
+
+        await act(async () => {
+            await jest.advanceTimersByTimeAsync(PROFILE_PASSWORD_HARD_TIMEOUT_MS);
+        });
+
+        await waitFor(() => {
+            expect(mockShowToast).toHaveBeenCalledWith('Password update timed out. Please try again.', 'error');
+        });
+
         jest.useRealTimers();
     });
 });

@@ -8,7 +8,7 @@ import QuizCard from '@/components/QuizCard';
 import MultipleChoiceQuizCard from '@/components/MultipleChoiceQuizCard';
 import DataStateCard from '@/components/DataStateCard';
 import Link from 'next/link';
-import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X, Loader2, RefreshCw } from 'lucide-react';
+import { Trophy, ArrowRight, Heart, Sparkles, Flame, Zap, BookOpen, Star, Target, X, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 
 import { incrementQuizAttempt } from '@/components/SessionTracker';
 import { createIdempotencyKey } from '@/lib/idempotency';
@@ -123,6 +123,24 @@ const fallbackQuizFeedbackNoticeByLanguage = {
     ru: 'Показан резервный AI-разбор.',
 } as const;
 
+const actionRequiredQueueCopy = {
+    tr: {
+        title: 'Kuyruktaki cevaplar manuel ilgi bekliyor',
+        summarySingular: '1 kuyruktaki cevap senkronize olmadan önce manuel ilgi bekliyor.',
+        summaryPlural: '{count} kuyruktaki cevap senkronize olmadan önce manuel ilgi bekliyor.',
+    },
+    en: {
+        title: 'Queued answers need attention',
+        summarySingular: '1 queued answer needs manual attention before it can sync.',
+        summaryPlural: '{count} queued answers need manual attention before they can sync.',
+    },
+    ru: {
+        title: 'Ответы в очереди требуют внимания',
+        summarySingular: '1 ответ в очереди требует ручной проверки перед синхронизацией.',
+        summaryPlural: '{count} ответов в очереди требуют ручной проверки перед синхронизацией.',
+    },
+} as const;
+
 export default function QuizPage({ nonce }: QuizPageProps) {
     const { t, language } = useLanguage();
     const { entitlements, isAuthenticated, requiresProfileCompletion } = useAuth();
@@ -140,9 +158,12 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         termsStatus,
         progressStatus,
         refreshData,
+        actionRequiredReviewCount = 0,
+        actionRequiredReviewMessage = null,
     } = useSRS();
     const stateCopy = stateMessages[language] ?? stateMessages.en;
     const aiCopy = getAiUiCopy(language);
+    const actionRequiredCopy = actionRequiredQueueCopy[language] ?? actionRequiredQueueCopy.en;
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -191,7 +212,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
             || (progressStatus === 'degraded' && hasCachedProgressData));
     const isRouteLoading = termsStatus === 'loading' && terms.length === 0;
     const showProgressSyncNotice = canUseReviewMode && progressStatus === 'loading' && terms.length > 0;
-    const recentWrongTerms = userProgress.quiz_history
+    const recentQuizHistory = userProgress.quiz_history;
+    const recentWrongTerms = recentQuizHistory
         .filter((attempt) => !attempt.is_correct)
         .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
     const queuedMistakeTerms = mistakeReviewQueue
@@ -246,6 +268,28 @@ export default function QuizPage({ nonce }: QuizPageProps) {
         t('quiz.favoritesMinimumRequired'),
         { count: favoritesOnlyMinimumRequired }
     );
+    const actionRequiredSummary = actionRequiredReviewCount === 1
+        ? actionRequiredCopy.summarySingular
+        : actionRequiredCopy.summaryPlural.replace('{count}', String(actionRequiredReviewCount));
+    const actionRequiredBanner = actionRequiredReviewCount > 0 ? (
+        <section
+            data-testid="quiz-action-required-banner"
+            className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-100"
+        >
+            <div className="flex items-start gap-3">
+                <div className="rounded-full bg-amber-200/70 p-2 dark:bg-amber-700/40">
+                    <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                    <p className="font-semibold">{actionRequiredCopy.title}</p>
+                    <p className="text-sm leading-6">{actionRequiredSummary}</p>
+                    {actionRequiredReviewMessage ? (
+                        <p className="text-sm leading-6">{actionRequiredReviewMessage}</p>
+                    ) : null}
+                </div>
+            </div>
+        </section>
+    ) : null;
 
     // Initialize session terms only AFTER user has chosen SRS mode
     useEffect(() => {
@@ -486,6 +530,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         {dueTerms.length}
                     </span>
                 </header>
+
+                {actionRequiredBanner}
 
                 {isRouteLoading ? (
                     <DataStateCard
@@ -1137,6 +1183,8 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                     />
                 </div>
             </header>
+
+            {actionRequiredBanner}
 
             {submissionError ? (
                 <div className="mb-4">

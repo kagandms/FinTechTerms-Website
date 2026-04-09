@@ -71,7 +71,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 400,
                 code: 'RECOVERY_EXCHANGE_FAILED',
-                message: error.message,
+                message: 'Unable to establish the recovery session.',
                 requestId,
                 retryable: false,
                 headers: RECOVERY_EXCHANGE_HEADERS,

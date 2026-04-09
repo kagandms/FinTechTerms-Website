@@ -57,8 +57,15 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordProps> = ({
 
                             const res = await updatePassword(authForm.password);
                             if (res.success) {
+                                const logoutResult = await logout();
+                                if (!logoutResult.success) {
+                                    const logoutError = logoutResult.error || dict.error;
+                                    setAuthError(logoutError);
+                                    showToast(logoutError, 'error');
+                                    return;
+                                }
+
                                 showToast(dict.success, 'success');
-                                void Promise.resolve(logout());
                                 onSuccess();
                                 return;
                             }

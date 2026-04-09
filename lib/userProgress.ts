@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { QUIZ_TYPE_VALUES, UserProgress } from '@/types';
 
+export const RECENT_QUIZ_HISTORY_LIMIT = 100;
+
 export const quizAttemptSchema = z.object({
     id: z.string().min(1),
     term_id: z.string().min(1),
@@ -15,6 +17,7 @@ export const userProgressSchema = z.object({
     user_id: z.string().min(1),
     favorites: z.array(z.string().min(1)),
     current_language: z.enum(['tr', 'en', 'ru']),
+    // This is intentionally a bounded recent-attempt window, not a lifetime ledger.
     quiz_history: z.array(quizAttemptSchema),
     total_words_learned: z.number().finite().nonnegative(),
     current_streak: z.number().int().nonnegative(),

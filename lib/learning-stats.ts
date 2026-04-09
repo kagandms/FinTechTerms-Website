@@ -327,16 +327,18 @@ export async function loadLearningStatsExportAttempts(
     options?: {
         cursor?: string | null;
         limit?: number;
+        snapshotCreatedAt?: string;
     }
 ): Promise<{
     attempts: LearningRecentAttempt[];
     nextCursor: string | null;
+    snapshotCreatedAt: string;
 }> {
     const cursorState = (() => {
         const rawCursor = options?.cursor?.trim();
         if (!rawCursor) {
             return {
-                snapshotCreatedAt: new Date().toISOString(),
+                snapshotCreatedAt: options?.snapshotCreatedAt ?? new Date().toISOString(),
                 lastCreatedAt: null,
                 lastId: null,
             } satisfies ExportCursorState;
@@ -376,5 +378,6 @@ export async function loadLearningStatsExportAttempts(
     return {
         attempts,
         nextCursor,
+        snapshotCreatedAt: cursorState.snapshotCreatedAt,
     };
 }

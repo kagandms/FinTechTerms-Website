@@ -13,11 +13,33 @@ const requiredEnv = (name) => {
 
 const optionalEnv = (name) => process.env[name]?.trim() || null;
 
+const readOptionalCredentialPair = (emailKey, passwordKey) => {
+    const email = optionalEnv(emailKey);
+    const password = optionalEnv(passwordKey);
+
+    if ((email && !password) || (!email && password)) {
+        throw new Error(`Set both ${emailKey} and ${passwordKey}, or neither.`);
+    }
+
+    if (!email || !password) {
+        return null;
+    }
+
+    return { email, password };
+};
+
 const stagingBaseUrl = requiredEnv('STAGING_BASE_URL').replace(/\/$/, '');
-const authEmail = requiredEnv('E2E_AUTH_EMAIL');
-const authPassword = requiredEnv('E2E_AUTH_PASSWORD');
-const sentrySmokeEmail = requiredEnv('SENTRY_SMOKE_EMAIL');
-const sentrySmokePassword = requiredEnv('SENTRY_SMOKE_PASSWORD');
+const e2eAuthCredentials = {
+    email: requiredEnv('E2E_AUTH_EMAIL'),
+    password: requiredEnv('E2E_AUTH_PASSWORD'),
+};
+const smokeAuthCredentials = readOptionalCredentialPair('SMOKE_AUTH_EMAIL', 'SMOKE_AUTH_PASSWORD');
+const sentrySmokeCredentials = {
+    email: requiredEnv('SENTRY_SMOKE_EMAIL'),
+    password: requiredEnv('SENTRY_SMOKE_PASSWORD'),
+};
+const memberProbeCredentials = smokeAuthCredentials || sentrySmokeCredentials;
+const memberProbeCredentialSource = smokeAuthCredentials ? 'SMOKE_AUTH_EMAIL' : 'SENTRY_SMOKE_EMAIL';
 const vercelAutomationBypassSecret = optionalEnv('VERCEL_AUTOMATION_BYPASS_SECRET');
 const NETWORK_IDLE_TIMEOUT_MS = 10_000;
 
@@ -232,7 +254,7 @@ const runFavoritesProbe = async (browser) => {
 
     try {
         await grantResearchConsent(page);
-        await loginViaProfile(page, authEmail, authPassword);
+        await loginViaProfile(page, e2eAuthCredentials.email, e2eAuthCredentials.password);
         const response = await fetchAuthenticatedJson(page, '/api/favorites', {
             method: 'POST',
             headers: {
@@ -373,7 +395,7 @@ const runAiChatProbe = async (browser) => {
             'Preview runtime guest AI chat did not return the UNAUTHORIZED guard response.'
         );
 
-        await loginViaProfile(page, authEmail, authPassword);
+        await loginViaProfile(page, memberProbeCredentials.email, memberProbeCredentials.password);
         const memberResponse = await fetchAuthenticatedJson(page, '/api/ai/chat', {
             method: 'POST',
             headers: {
@@ -395,8 +417,8 @@ const runAiChatProbe = async (browser) => {
 
         if (memberResponse.status === 403 && memberResponse.body?.code === 'MEMBER_REQUIRED') {
             throw new Error(
-                'Preview runtime AI chat denied the configured E2E user with MEMBER_REQUIRED. ' +
-                'Verify E2E_AUTH_EMAIL belongs to a full member with completed profile setup.'
+                'Preview runtime AI chat denied the configured member probe user with MEMBER_REQUIRED. ' +
+                `Verify ${memberProbeCredentialSource} belongs to a full member with completed profile setup.`
             );
         }
 
@@ -431,7 +453,7 @@ const runSentryCapabilityProbe = async (browser) => {
 
     try {
         await grantResearchConsent(page);
-        await loginViaProfile(page, sentrySmokeEmail, sentrySmokePassword);
+        await loginViaProfile(page, sentrySmokeCredentials.email, sentrySmokeCredentials.password);
         const response = await fetchAuthenticatedJson(page, '/api/auth/capabilities', {
             method: 'GET',
             headers: {

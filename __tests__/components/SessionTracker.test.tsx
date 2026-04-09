@@ -292,6 +292,33 @@ describe('SessionTracker', () => {
         });
     });
 
+    it('clears local session state when the start request returns a non-retryable failure', async () => {
+        grantConsent();
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            json: jest.fn().mockResolvedValue({
+                retryable: false,
+                message: 'Authentication required',
+            }),
+        });
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        await waitFor(() => {
+            expect(readStoredSession()).toBeNull();
+        });
+
+        const pendingStartKey = getCurrentPendingStartKey();
+        expect(pendingStartKey ? localStorage.getItem(pendingStartKey) : null).toBeNull();
+        expect(pendingStartKey ? sessionStorage.getItem(pendingStartKey) : null).toBeNull();
+    });
+
     it('removes only acknowledged retry entries during a partial flush', async () => {
         grantConsent();
         sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');

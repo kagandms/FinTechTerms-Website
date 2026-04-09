@@ -99,6 +99,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           STUDY_SESSION_TOKEN_SECRET: ${{ secrets.STUDY_SESSION_TOKEN_SECRET }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AI_PRIMARY_MODEL: ${{ secrets.AI_PRIMARY_MODEL }}
+          AI_FALLBACK_MODELS: ${{ secrets.AI_FALLBACK_MODELS }}
           ADMIN_USER_IDS: ${{ vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
@@ -111,6 +113,8 @@ jobs:
             SUPABASE_SERVICE_ROLE_KEY
             STUDY_SESSION_TOKEN_SECRET
             OPENROUTER_API_KEY
+            AI_PRIMARY_MODEL
+            AI_FALLBACK_MODELS
             ADMIN_USER_IDS
             UPSTASH_REDIS_REST_URL
             UPSTASH_REDIS_REST_TOKEN
@@ -144,6 +148,19 @@ jobs:
           echo "runtime_reason=partial" >> "$GITHUB_OUTPUT"
           echo "Runtime env validation and production build are skipped because release-evaluable runtime secrets are only partially configured: ${missing_vars[*]}"
           exit 0
+
+      - if: ${{ steps.runtime_preflight.outputs.runtime_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: echo "Release-evaluable runtime validation is not available for fork pull requests because GitHub secrets are unavailable."
+
+      - if: ${{ steps.runtime_preflight.outputs.runtime_ready != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          echo "Missing required release-evaluable runtime secrets on a same-repo pull request."
+          exit 1
+
+      - if: ${{ steps.runtime_preflight.outputs.runtime_ready != 'true' && github.event_name != 'pull_request' }}
+        run: |
+          echo "Missing required release-evaluable runtime secrets on a protected branch run."
+          exit 1
 
       - name: Validate Runtime Environment
         if: ${{ steps.runtime_preflight.outputs.runtime_ready == 'true' }}

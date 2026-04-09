@@ -205,7 +205,7 @@ export interface UserProgress {
     user_id: string;
     favorites: string[];         // Term IDs
     current_language: Language;
-    quiz_history: QuizAttempt[];
+    quiz_history: QuizAttempt[]; // Recent bounded window, not the full lifetime history
     total_words_learned: number;
     current_streak: number;      // Days in a row
     last_study_date: string | null;

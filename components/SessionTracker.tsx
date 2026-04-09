@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import {
     buildStudySessionStorageKey,
     getOrCreateStudySessionTabId,
+    STUDY_SESSION_READY_EVENT,
 } from '@/lib/study-session-storage';
 
 const PENDING_START_SESSION_KEY = 'fintechterms_pending_start_session';
@@ -148,6 +149,19 @@ const summarizeRetryQueueEntries = (entries: QueuedSessionMutation[]): {
         oldestQueuedAt: queuedAtValues.length > 0 ? Math.min(...queuedAtValues) : null,
         newestQueuedAt: queuedAtValues.length > 0 ? Math.max(...queuedAtValues) : null,
     };
+};
+
+const dispatchStudySessionReadyEvent = (session: SessionData): void => {
+    if (typeof window === 'undefined' || !session.id || !session.token) {
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent(STUDY_SESSION_READY_EVENT, {
+        detail: {
+            sessionId: session.id,
+            sessionToken: session.token,
+        },
+    }));
 };
 
 /**
@@ -540,7 +554,8 @@ export default function SessionTracker() {
         }
 
         try {
-            const stored = sessionStorage.getItem(buildStudySessionStorageKey(tabId));
+            const storageKey = buildStudySessionStorageKey(tabId);
+            const stored = sessionStorage.getItem(storageKey);
             if (!stored) {
                 return session;
             }
@@ -558,6 +573,7 @@ export default function SessionTracker() {
                 anonymousId: typeof persisted.anonymousId === 'string' ? persisted.anonymousId : session.anonymousId,
             };
         } catch (error) {
+            sessionStorage.removeItem(buildStudySessionStorageKey(tabId));
             logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_RESTORE_FAILED', error, {
                 sessionId: session.id,
             });
@@ -594,6 +610,7 @@ export default function SessionTracker() {
 
         sessionRef.current = updatedSession;
         saveSessionToStorage(updatedSession);
+        dispatchStudySessionReadyEvent(updatedSession);
     }, [saveSessionToStorage]);
 
     const buildMutationBody = useCallback((
@@ -933,11 +950,13 @@ export default function SessionTracker() {
         const currentTabId = getCurrentTabId();
         if (currentTabId && !sessionRef.current) {
             try {
-                const stored = sessionStorage.getItem(buildStudySessionStorageKey(currentTabId));
+                const storageKey = buildStudySessionStorageKey(currentTabId);
+                const stored = sessionStorage.getItem(storageKey);
                 if (stored) {
                     sessionRef.current = JSON.parse(stored) as SessionData;
                 }
             } catch (error) {
+                sessionStorage.removeItem(buildStudySessionStorageKey(currentTabId));
                 logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_HYDRATE_FAILED', error);
             }
         }
@@ -1082,6 +1101,9 @@ export default function SessionTracker() {
                 } else if (startKeyRef.current === startIdempotencyKey) {
                     startKeyRef.current = null;
                     clearPendingStartSession(startIdempotencyKey);
+                    sessionRef.current = null;
+                    lastTrackedPathnameRef.current = null;
+                    saveSessionToStorage(null);
                 }
                 return;
             }
@@ -1093,6 +1115,7 @@ export default function SessionTracker() {
             };
             sessionRef.current = nextSession;
             saveSessionToStorage(nextSession);
+            dispatchStudySessionReadyEvent(nextSession);
             if (startKeyRef.current === startIdempotencyKey) {
                 startKeyRef.current = null;
             }

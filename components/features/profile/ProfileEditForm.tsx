@@ -83,6 +83,7 @@ const toDateInputValue = (value: unknown): string => {
 };
 
 export const PROFILE_SUBMIT_TIMEOUT_MS = 12_000;
+export const PROFILE_PASSWORD_HARD_TIMEOUT_MS = 24_000;
 
 export const createAbortError = (message: string): Error => {
     const error = new Error(message);
@@ -124,8 +125,6 @@ export const runWithAbortSignal = async <T,>(
         );
     });
 };
-
-type TimedActionTimeoutMode = 'abort' | 'warn-only';
 
 export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, initialData, onProfileSaved }) => {
     const { user: authenticatedUser } = useAuth();
@@ -317,12 +316,13 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         ) => Promise<void>,
         options?: {
             slowMessage?: string;
-            timeoutMode?: TimedActionTimeoutMode;
+            slowAfterMs?: number;
+            hardTimeoutMs?: number;
         }
     ) => {
-        const timeoutMode = options?.timeoutMode ?? 'abort';
-        const shouldAbortOnTimeout = timeoutMode === 'abort';
         const slowMessage = options?.slowMessage ?? null;
+        const slowAfterMs = options?.slowAfterMs ?? null;
+        const hardTimeoutMs = options?.hardTimeoutMs ?? PROFILE_SUBMIT_TIMEOUT_MS;
         const timeoutMessage = action === 'password'
             ? dict.passwordRequestTimeout
             : dict.requestTimeout;
@@ -332,26 +332,24 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
         setFormError(null);
         const timeoutController = new AbortController();
         let hasShownSlowWarning = false;
-        const timeoutId = globalThis.setTimeout(() => {
-            if (slowMessage && !hasShownSlowWarning) {
+        const slowWarningTimeoutId = slowMessage && slowAfterMs !== null
+            ? globalThis.setTimeout(() => {
                 hasShownSlowWarning = true;
                 setFormWarning(slowMessage);
-            }
+            }, slowAfterMs)
+            : null;
+        const hardTimeoutId = globalThis.setTimeout(() => {
+            timeoutController.abort();
+        }, hardTimeoutMs);
 
-            if (shouldAbortOnTimeout) {
-                timeoutController.abort();
-            }
-        }, PROFILE_SUBMIT_TIMEOUT_MS);
 
         try {
             const withTimeout = <T,>(callback: () => Promise<T>) => (
-                shouldAbortOnTimeout
-                    ? runWithAbortSignal(
-                        timeoutController.signal,
-                        callback,
-                        timeoutMessage
-                    )
-                    : callback()
+                runWithAbortSignal(
+                    timeoutController.signal,
+                    callback,
+                    timeoutMessage
+                )
             );
             await operation(withTimeout, timeoutController.signal);
 
@@ -369,7 +367,10 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             setFormError(detailedMessage);
             showToast(detailedMessage, 'error');
         } finally {
-            globalThis.clearTimeout(timeoutId);
+            if (slowWarningTimeoutId !== null) {
+                globalThis.clearTimeout(slowWarningTimeoutId);
+            }
+            globalThis.clearTimeout(hardTimeoutId);
             setPendingAction(null);
         }
     };
@@ -480,8 +481,9 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
             setFormSuccess(dict.passwordUpdated);
             showToast(dict.passwordUpdated, 'success');
         }, {
-            timeoutMode: 'warn-only',
             slowMessage: dict.passwordRequestSlow,
+            slowAfterMs: PROFILE_SUBMIT_TIMEOUT_MS,
+            hardTimeoutMs: PROFILE_PASSWORD_HARD_TIMEOUT_MS,
         });
     };
 

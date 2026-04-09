@@ -136,18 +136,9 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 400,
                 code: 'SIGNUP_FAILED',
-                message: error.message,
-                requestId,
-                retryable: false,
-                headers: SIGNUP_RATE_LIMIT_HEADERS,
-            });
-        }
-
-        if (data.user && !data.session && data.user.identities && data.user.identities.length === 0) {
-            return errorResponse({
-                status: 409,
-                code: 'EMAIL_ALREADY_REGISTERED',
-                message: 'This email is already registered. Please log in instead.',
+                message: safeCode === 'WEAK_PASSWORD'
+                    ? 'WEAK_PASSWORD'
+                    : 'SIGNUP_FAILED',
                 requestId,
                 retryable: false,
                 headers: SIGNUP_RATE_LIMIT_HEADERS,

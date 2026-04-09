@@ -318,7 +318,7 @@ describe('record-quiz route', () => {
         }));
     });
 
-    it('drops out-of-window occurred_at values and falls back to server time', async () => {
+    it('rejects out-of-window occurred_at values instead of silently normalizing them', async () => {
         jest.useFakeTimers().setSystemTime(new Date('2026-03-11T10:00:00.000Z'));
         const rpc = jest.fn().mockResolvedValue({
             data: { ok: true },
@@ -330,21 +330,17 @@ describe('record-quiz route', () => {
         const response = await POST(createRequest(createValidPayload({
             occurred_at: '2026-03-10T00:00:00.000Z',
         })) as never);
+        const body = await response.json();
 
-        expect(response.status).toBe(200);
-        expect(mockInspectIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
-            payload: expect.objectContaining({
-                occurred_at: null,
-            }),
-        }));
-        expect(mockReserveIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
-            payload: expect.objectContaining({
-                occurred_at: null,
-            }),
-        }));
-        expect(rpc).toHaveBeenCalledWith('record_study_event', expect.objectContaining({
-            p_occurred_at: null,
-        }));
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'OCCURRED_AT_OUT_OF_WINDOW',
+            message: 'Quiz attempt timestamp is outside the allowed replay window.',
+            retryable: false,
+        });
+        expect(mockInspectIdempotentRequest).not.toHaveBeenCalled();
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+        expect(rpc).not.toHaveBeenCalled();
         expect(consoleWarnSpy).toHaveBeenCalledWith(
             'QUIZ_ROUTE_OCCURRED_AT_OUT_OF_WINDOW',
             expect.objectContaining({

@@ -119,8 +119,10 @@ cd telegram-bot && python -m pytest tests/ -v
 ```
 
 The authenticated Playwright flow uses `E2E_AUTH_EMAIL` and `E2E_AUTH_PASSWORD`.
-This account must be a full member account, because preview/runtime AI probes now verify guest denial plus authenticated-member access.
-Set them in local `.env.local` for `npx playwright test`,
+This account only needs to cover baseline authenticated flows.
+Member-only preview/runtime AI probes use `SMOKE_AUTH_EMAIL` and `SMOKE_AUTH_PASSWORD` when present,
+and otherwise fall back to `SENTRY_SMOKE_EMAIL` and `SENTRY_SMOKE_PASSWORD`.
+Set the credential pairs in local `.env.local` for `npx playwright test`,
 and in GitHub Actions as repository secrets for `.github/workflows/e2e.yml`.
 
 Preview release verification uses:
@@ -162,8 +164,9 @@ in-memory limiter is intended only for development and test environments.
 
 When preview E2E or Sentry smoke runs against a Vercel preview deployment,
 mirror the GitHub Actions values into the Vercel preview runtime for:
-`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
-`ADMIN_USER_IDS`, `NEXT_PUBLIC_SENTRY_DSN`, and `STUDY_SESSION_TOKEN_SECRET`.
+`NEXT_PUBLIC_SITE_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`,
+`ADMIN_USER_IDS`, `NEXT_PUBLIC_SENTRY_DSN`, `STUDY_SESSION_TOKEN_SECRET`,
+`OPENROUTER_API_KEY`, `AI_PRIMARY_MODEL`, and `AI_FALLBACK_MODELS`.
 
 `npm run verify:release-db` now validates both database release readiness and
 the mirror integrity between the repo term corpus and `public.terms`.
@@ -171,6 +174,10 @@ the mirror integrity between the repo term corpus and `public.terms`.
 Runtime validation (`npm run validate:runtime-env`) assumes
 `ADMIN_USER_IDS` is present alongside the core web runtime secrets so admin
 surfaces and Sentry smoke paths do not ship half-configured.
+
+Release validation commands intentionally ignore workspace `.env.local` and `.env`
+unless `ALLOW_LOCAL_ENV_VALIDATION=1` is set explicitly for a local dry run.
+Do not use that override for CI, preview, staging, or production approval.
 
 ## 📚 Documentation
 

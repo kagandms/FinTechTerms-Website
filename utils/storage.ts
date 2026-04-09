@@ -7,7 +7,7 @@ import { Term, UserProgress, QuizAttempt } from '@/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME, normalizeLanguage } from '@/lib/language';
 import { mockTerms, defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
-import { userProgressSchema } from '@/lib/userProgress';
+import { RECENT_QUIZ_HISTORY_LIMIT, userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
 import { startOfUtcDay, toUtcDateKey } from '@/lib/time';
 import { logger } from '@/lib/logger';
@@ -27,8 +27,8 @@ const STORAGE_KEYS = {
 
 const GUEST_PROGRESS_SCOPE = 'guest';
 const GUEST_PROGRESS_USER_IDS = new Set(['guest', 'guest_user']);
-const MAX_LOCAL_QUIZ_HISTORY = 500;
-const MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY = 100;
+const MAX_LOCAL_QUIZ_HISTORY = RECENT_QUIZ_HISTORY_LIMIT;
+const MIN_LOCAL_QUIZ_HISTORY_ON_QUOTA_RETRY = 25;
 const GUEST_ENTITLEMENT_POLICY_VERSION = '2026-03-28-v1';
 const MAX_MISTAKE_REVIEW_TERMS = 20;
 

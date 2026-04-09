@@ -57,8 +57,9 @@ interface AuthRouteErrorPayload {
 const SIGNOUT_FAILED_MESSAGE = 'Unable to sign out. Please try again.';
 const AUTH_INIT_TIMEOUT_MS = 4_000;
 const AUTH_ROUTE_TIMEOUT_MS = 4_000;
-const AUTH_SESSION_SYNC_ATTEMPTS = 24;
-const AUTH_SESSION_SYNC_DELAY_MS = 350;
+const AUTH_SESSION_SYNC_ATTEMPTS = 5;
+const AUTH_SESSION_SYNC_DELAY_MS = 250;
+const AUTH_SESSION_SYNC_ROUTE_TIMEOUT_MS = 1_500;
 const DEFAULT_AUTH_SESSION_STATE: AuthSessionState = {
     user: null,
     isAuthenticated: false,
@@ -172,12 +173,13 @@ const readJsonResponse = async <T,>(response: Response, fallbackMessage: string)
 const fetchWithTimeout = async (
     input: RequestInfo | URL,
     init: RequestInit,
-    timeoutMessage: string
+    timeoutMessage: string,
+    timeoutMs = AUTH_ROUTE_TIMEOUT_MS
 ): Promise<Response> => {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
         controller.abort();
-    }, AUTH_ROUTE_TIMEOUT_MS);
+    }, timeoutMs);
 
     try {
         return await fetch(input, {
@@ -234,13 +236,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setRequiresProfileCompletion(sessionState.requiresProfileCompletion);
     }, []);
 
-    const loadSessionState = useCallback(async (): Promise<AuthSessionState> => {
+    const loadSessionState = useCallback(async (
+        timeoutMs = AUTH_ROUTE_TIMEOUT_MS
+    ): Promise<AuthSessionState> => {
         const response = await fetchWithTimeout(
             '/api/auth/session',
             {
                 method: 'GET',
             },
-            'Unable to load the current session.'
+            'Unable to load the current session.',
+            timeoutMs
         );
 
         if (!response.ok) {
@@ -269,7 +274,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         for (let attempt = 0; attempt < AUTH_SESSION_SYNC_ATTEMPTS; attempt += 1) {
             try {
-                latestState = await loadSessionState();
+                latestState = await loadSessionState(AUTH_SESSION_SYNC_ROUTE_TIMEOUT_MS);
                 applySessionState(latestState);
 
                 if (latestState.isAuthenticated === expectedAuthenticated) {

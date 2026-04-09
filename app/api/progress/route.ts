@@ -7,7 +7,7 @@ import {
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
-import { userProgressSchema } from '@/lib/userProgress';
+import { RECENT_QUIZ_HISTORY_LIMIT, userProgressSchema } from '@/lib/userProgress';
 
 const PROGRESS_ROUTE_HEADERS = {
     'Cache-Control': 'no-store',
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
-                .limit(100),
+                .limit(RECENT_QUIZ_HISTORY_LIMIT),
             supabase
                 .from('user_settings')
                 .select('preferred_language')
@@ -175,11 +175,12 @@ export async function GET(request: Request) {
                 userId: user.id,
                 validation: result.error.flatten(),
             });
-            return successResponse({
-                status: 'error',
-                missing: [...USER_PROGRESS_SEGMENTS],
+            return errorResponse({
+                status: 503,
+                code: 'PROGRESS_LOAD_FAILED',
                 message: 'Supabase returned malformed study progress data.',
-            }, requestId, {
+                requestId,
+                retryable: true,
                 headers: PROGRESS_ROUTE_HEADERS,
             });
         }
@@ -194,11 +195,12 @@ export async function GET(request: Request) {
         }
 
         if (missingSegments.size === USER_PROGRESS_SEGMENTS.length) {
-            return successResponse({
-                status: 'error',
-                missing: [...missingSegments],
+            return errorResponse({
+                status: 503,
+                code: 'PROGRESS_LOAD_FAILED',
                 message: 'Unable to load study progress from Supabase.',
-            }, requestId, {
+                requestId,
+                retryable: true,
                 headers: PROGRESS_ROUTE_HEADERS,
             });
         }

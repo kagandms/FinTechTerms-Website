@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+export const ALLOW_LOCAL_ENV_VALIDATION_FLAG = 'ALLOW_LOCAL_ENV_VALIDATION';
+
 const PLACEHOLDER_VALUES = new Set([
     '',
     'your_anon_key_here',
@@ -30,7 +32,21 @@ const candidateFiles = [
     path.resolve(process.cwd(), '.env'),
 ];
 
-export const loadLocalEnv = () => {
+export const isLocalEnvValidationAllowed = (
+    env = process.env
+) => env[ALLOW_LOCAL_ENV_VALIDATION_FLAG]?.trim() === '1';
+
+export const loadLocalEnv = (
+    options = {}
+) => {
+    const allowLocalEnv = options.allowLocalEnv ?? isLocalEnvValidationAllowed();
+
+    if (!allowLocalEnv) {
+        return [];
+    }
+
+    const loadedFiles = [];
+
     for (const candidateFile of candidateFiles) {
         if (!fs.existsSync(candidateFile)) {
             continue;
@@ -56,7 +72,11 @@ export const loadLocalEnv = () => {
             const rawValue = line.slice(separatorIndex + 1).trim();
             process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
         }
+
+        loadedFiles.push(candidateFile);
     }
+
+    return loadedFiles;
 };
 
 const validateUrl = (value) => {
@@ -152,8 +172,8 @@ const validateSemanticValue = (key, value) => {
     return null;
 };
 
-export const runValidation = (requiredKeys) => {
-    loadLocalEnv();
+export const runValidation = (requiredKeys, options = {}) => {
+    loadLocalEnv(options);
 
     const failures = [];
 

@@ -13,18 +13,24 @@ import {
     getAuthRouteHeaders,
 } from '@/lib/auth/route-handler';
 import {
+    createAuthRateLimitError,
     enforceSameOriginRoute,
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
 import { getPublicEnv } from '@/lib/env';
 import { supportsPasswordSignIn } from '@/lib/auth/user';
+import { authUpdatePasswordRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 
 const UpdatePasswordSchema = z.object({
     password: z.string().min(8),
     currentPassword: z.string().min(1).optional(),
 });
 
-const UPDATE_PASSWORD_HEADERS = getAuthRouteHeaders();
+const UPDATE_PASSWORD_HEADERS = {
+    ...getAuthRouteHeaders(),
+    'X-RateLimit-Limit': '5',
+    'X-RateLimit-Policy': '5;w=600',
+};
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
@@ -88,6 +94,20 @@ export async function POST(request: Request) {
             });
         }
 
+        const limitCheck = await authUpdatePasswordRateLimiter.check(userState.user.id);
+        if (isRateLimiterUnavailable(limitCheck) || !limitCheck.allowed) {
+            return createAuthRateLimitError(limitCheck, {
+                requestId,
+                headers: UPDATE_PASSWORD_HEADERS,
+                code: isRateLimiterUnavailable(limitCheck)
+                    ? 'RATE_LIMITER_UNAVAILABLE'
+                    : 'RATE_LIMITED',
+                message: isRateLimiterUnavailable(limitCheck)
+                    ? 'Authentication is temporarily unavailable.'
+                    : 'RATE_LIMITED',
+            });
+        }
+
         if (parsed.data.currentPassword) {
             const env = getPublicEnv();
             const verificationClient = createSupabaseClient(
@@ -126,7 +146,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 400,
                 code: 'UPDATE_PASSWORD_FAILED',
-                message: error.message,
+                message: 'Unable to update the password.',
                 requestId,
                 retryable: false,
                 headers: UPDATE_PASSWORD_HEADERS,

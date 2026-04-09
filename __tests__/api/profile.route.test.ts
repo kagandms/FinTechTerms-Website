@@ -67,7 +67,11 @@ describe('profile route', () => {
 
     it('returns ok when both canonical profile and metadata sync succeed', async () => {
         const upsert = jest.fn().mockResolvedValue({ error: null });
-        const from = jest.fn(() => ({ upsert }));
+        const clearSyncStatus = jest.fn().mockResolvedValue({ error: null });
+        const update = jest.fn(() => ({
+            eq: clearSyncStatus,
+        }));
+        const from = jest.fn(() => ({ upsert, update }));
         const updateUser = jest.fn().mockResolvedValue({ error: null });
 
         mockResolveAuthenticatedUser.mockResolvedValue({
@@ -97,6 +101,9 @@ describe('profile route', () => {
             id: 'user-1',
             full_name: 'Alex Stone',
             birth_date: '2000-01-01',
+            metadata_sync_pending: true,
+            metadata_sync_error: null,
+            metadata_sync_attempted_at: '2026-04-05T12:00:00.000Z',
         }, {
             onConflict: 'id',
         });
@@ -107,11 +114,21 @@ describe('profile route', () => {
                 birth_date: '2000-01-01',
             },
         });
+        expect(update).toHaveBeenCalledWith({
+            metadata_sync_pending: false,
+            metadata_sync_error: null,
+            metadata_synced_at: '2026-04-05T12:00:00.000Z',
+        });
+        expect(clearSyncStatus).toHaveBeenCalledWith('id', 'user-1');
     });
 
     it('returns partial_metadata_sync when auth metadata update fails', async () => {
         const upsert = jest.fn().mockResolvedValue({ error: null });
-        const from = jest.fn(() => ({ upsert }));
+        const markSyncPending = jest.fn().mockResolvedValue({ error: null });
+        const update = jest.fn(() => ({
+            eq: markSyncPending,
+        }));
+        const from = jest.fn(() => ({ upsert, update }));
         const updateUser = jest.fn().mockResolvedValue({
             error: {
                 message: 'metadata sync failed',
@@ -141,6 +158,11 @@ describe('profile route', () => {
             status: 'partial_metadata_sync',
             message: 'Profile details were saved, but the secondary auth sync did not complete.',
         });
+        expect(update).toHaveBeenCalledWith({
+            metadata_sync_pending: true,
+            metadata_sync_error: 'metadata sync failed',
+        });
+        expect(markSyncPending).toHaveBeenCalledWith('id', 'user-1');
     });
 
     it('returns 429 when the profile mutation rate limit is exceeded', async () => {

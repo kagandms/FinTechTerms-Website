@@ -6,7 +6,9 @@ import {
     readJsonRequest,
     successResponse,
 } from '@/lib/api-response';
+import { isAdminUserId } from '@/lib/admin-access';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { isRateLimiterUnavailable, srsProgressRouteRateLimiter } from '@/lib/rate-limiter';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 
 const ProgressSrsRequestSchema = z.object({
@@ -16,6 +18,8 @@ const ProgressSrsRequestSchema = z.object({
 
 const PROGRESS_SRS_HEADERS = {
     'Cache-Control': 'no-store',
+    'X-RateLimit-Limit': '30',
+    'X-RateLimit-Policy': '30;w=60',
 };
 
 const USER_TERM_SRS_QUERY_COLUMNS = [
@@ -69,6 +73,35 @@ export async function POST(request: Request) {
             });
         }
 
+        const limitCheck = await srsProgressRouteRateLimiter.check(user.id);
+        if (isRateLimiterUnavailable(limitCheck)) {
+            return errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'SRS progress is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...PROGRESS_SRS_HEADERS,
+                    'Retry-After': String(limitCheck.retryAfter),
+                },
+            });
+        }
+
+        if (!limitCheck.allowed) {
+            return errorResponse({
+                status: 429,
+                code: 'RATE_LIMITED',
+                message: 'Too many SRS progress requests. Please try again later.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...PROGRESS_SRS_HEADERS,
+                    'Retry-After': String(limitCheck.retryAfter),
+                },
+            });
+        }
+
         const supabase = await createRequestScopedClient(request);
         if (!supabase) {
             return errorResponse({
@@ -91,6 +124,17 @@ export async function POST(request: Request) {
             });
         }
 
+        if (parsed.data.unbounded && !isAdminUserId(user.id)) {
+            return errorResponse({
+                status: 403,
+                code: 'FORBIDDEN',
+                message: 'Unbounded SRS diagnostics require admin access.',
+                requestId,
+                retryable: false,
+                headers: PROGRESS_SRS_HEADERS,
+            });
+        }
+
         let query = supabase
             .from('user_term_srs')
             .select(USER_TERM_SRS_QUERY_COLUMNS)
@@ -103,10 +147,12 @@ export async function POST(request: Request) {
         const { data, error } = await query;
 
         if (error) {
-            return successResponse({
-                status: 'error',
-                message: error.message,
-            }, requestId, {
+            return errorResponse({
+                status: 503,
+                code: 'SRS_PROGRESS_UNAVAILABLE',
+                message: 'Unable to load SRS progress.',
+                requestId,
+                retryable: true,
                 headers: PROGRESS_SRS_HEADERS,
             });
         }

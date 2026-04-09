@@ -35,12 +35,15 @@ import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { createIdempotencyKey } from '@/lib/idempotency';
 import { useToast } from '@/contexts/ToastContext';
 import { logger } from '@/lib/logger';
-import { readTrackedStudySessionContext } from '@/lib/study-session-storage';
+import { readTrackedStudySessionContext, STUDY_SESSION_READY_EVENT } from '@/lib/study-session-storage';
 import {
     createSafeProgress,
     getErrorMessage,
     hasCachedStudyData,
-    readPendingReviewQueueFromStorage,
+    hasPendingRetryEntries,
+    markPendingReviewActionRequired,
+    markPendingReviewRetryPending,
+    readPendingReviewQueueSnapshotFromStorage,
     removePendingReviewQueueEntry,
     upsertPendingReviewQueueEntry,
     mergeUserProgressSnapshot,
@@ -84,6 +87,8 @@ interface SRSContextType {
     progressStatus: AsyncDataStatus;
     termsError: string | null;
     progressError: string | null;
+    actionRequiredReviewCount: number;
+    actionRequiredReviewMessage: string | null;
     stats: {
         totalFavorites: number;
         mastered: number;
@@ -99,6 +104,9 @@ const SRS_SYNC_CHANNEL = 'srs_sync';
 const SRS_SYNC_STORAGE_KEY = 'fintechterms_srs_sync';
 const PENDING_REVIEW_SYNC_MESSAGE = 'This answer was queued for sync on this device.';
 const AUTH_EXPIRED_PENDING_REVIEW_MESSAGE = 'Session expired. This answer will retry after you sign in again.';
+const PENDING_REVIEW_CORRUPTION_WARNING = 'Some queued answers could not be restored on this device because stored data was corrupted.';
+const PENDING_REVIEW_PARTIAL_RESTORE_WARNING = 'Some queued answers were restored, but corrupted entries were dropped.';
+const PENDING_REVIEW_ACTION_REQUIRED_MESSAGE = 'A queued answer now needs manual attention before it can be synced.';
 
 interface SrsSyncMessage {
     type: 'REVIEW_COMMITTED';
@@ -213,16 +221,25 @@ export function SRSProvider({ children }: SRSProviderProps) {
         const nextQueue = removePendingReviewQueueEntry(userId, reviewId);
         clearReviewKey(reviewId);
         syncPendingReviewQueue(nextQueue);
-        if (nextQueue.length === 0) {
+        if (!hasPendingRetryEntries(nextQueue)) {
             pendingReviewReplayReadyRef.current = false;
         }
     }, [clearReviewKey, syncPendingReviewQueue, userId]);
 
     const restorePendingReviewQueue = useCallback(() => {
-        const nextQueue = readPendingReviewQueueFromStorage(userId);
-        syncPendingReviewQueue(nextQueue);
-        pendingReviewReplayReadyRef.current = nextQueue.length > 0;
-    }, [syncPendingReviewQueue, userId]);
+        const restoredSnapshot = readPendingReviewQueueSnapshotFromStorage(userId);
+        syncPendingReviewQueue(restoredSnapshot.queue);
+        pendingReviewReplayReadyRef.current = hasPendingRetryEntries(restoredSnapshot.queue);
+
+        if (restoredSnapshot.storageCorrupted) {
+            showToast(PENDING_REVIEW_CORRUPTION_WARNING, 'warning');
+            return;
+        }
+
+        if (restoredSnapshot.invalidEntryCount > 0) {
+            showToast(PENDING_REVIEW_PARTIAL_RESTORE_WARNING, 'warning');
+        }
+    }, [showToast, syncPendingReviewQueue, userId]);
 
     const applyCommittedReview = useCallback((
         termId: string,
@@ -565,7 +582,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         }
 
         const handleOnline = () => {
-            if (pendingReviewQueueRef.current.length === 0) {
+            if (!hasPendingRetryEntries(pendingReviewQueueRef.current)) {
                 return;
             }
 
@@ -577,6 +594,27 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
         return () => {
             window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const handleStudySessionReady = () => {
+            if (!hasPendingRetryEntries(pendingReviewQueueRef.current)) {
+                return;
+            }
+
+            pendingReviewReplayReadyRef.current = true;
+            setPendingReviewQueueVersion((value) => value + 1);
+        };
+
+        window.addEventListener(STUDY_SESSION_READY_EVENT, handleStudySessionReady);
+
+        return () => {
+            window.removeEventListener(STUDY_SESSION_READY_EVENT, handleStudySessionReady);
         };
     }, []);
 
@@ -637,7 +675,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         let hasShownReplayMessage = false;
 
         while (pendingReviewQueueRef.current.length > 0) {
-            const nextPendingReview = pendingReviewQueueRef.current[0];
+            const nextPendingReview = pendingReviewQueueRef.current.find((entry) => entry.status === 'pending_retry');
             if (!nextPendingReview) {
                 return;
             }
@@ -682,10 +720,22 @@ export function SRSProvider({ children }: SRSProviderProps) {
             }
 
             if (result.status === 'non_retryable') {
-                removePendingReview(nextPendingReview.reviewId);
-                showToast('Progress could not be saved. Please try again.', 'error');
+                const nextQueue = markPendingReviewActionRequired(
+                    userId,
+                    nextPendingReview.reviewId,
+                    result.message
+                );
+                syncPendingReviewQueue(nextQueue);
+                showToast(PENDING_REVIEW_ACTION_REQUIRED_MESSAGE, 'warning');
                 continue;
             }
+
+            const nextQueue = markPendingReviewRetryPending(
+                userId,
+                nextPendingReview.reviewId,
+                result.message
+            );
+            syncPendingReviewQueue(nextQueue);
 
             showToast(
                 result.status === 'auth_expired'
@@ -699,6 +749,7 @@ export function SRSProvider({ children }: SRSProviderProps) {
         applyCommittedReview,
         broadcastCommittedReview,
         isAuthenticated,
+        syncPendingReviewQueue,
         removePendingReview,
         showToast,
         userId,
@@ -713,6 +764,10 @@ export function SRSProvider({ children }: SRSProviderProps) {
         ...safeProgress,
         favorites: optimisticFavorites,
     }), [optimisticFavorites, safeProgress]);
+    const actionRequiredReviews = pendingReviewQueueRef.current
+        .filter((entry) => entry.status === 'action_required');
+    const actionRequiredReviewCount = actionRequiredReviews.length;
+    const actionRequiredReviewMessage = actionRequiredReviews[0]?.reason ?? null;
 
     // Calculate due terms
     const dueTerms = entitlements.canUseReviewMode
@@ -1083,6 +1138,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 progressStatus,
                 termsError,
                 progressError,
+                actionRequiredReviewCount,
+                actionRequiredReviewMessage,
                 stats,
             }}
         >

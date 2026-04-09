@@ -7,6 +7,7 @@
 
 import { Term, UserProgress } from '@/types';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME } from '@/lib/language';
+import { RECENT_QUIZ_HISTORY_LIMIT } from '@/lib/userProgress';
 
 // ── Mock localStorage ─────────────────────────────────────
 const localStorageMock = (() => {
@@ -221,6 +222,27 @@ describe('getUserProgress', () => {
         expect(localStorageMock.getItem('globalfinterm_user_progress')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_user_progress:auth:user_99')).not.toBeNull();
     });
+
+    it('should keep only the shared recent quiz history window', () => {
+        const history = Array.from({ length: RECENT_QUIZ_HISTORY_LIMIT + 5 }, (_value, index) => ({
+            id: `attempt-${index + 1}`,
+            term_id: `term-${index + 1}`,
+            is_correct: index % 2 === 0,
+            response_time_ms: 1000 + index,
+            timestamp: new Date(Date.UTC(2026, 2, 1, 0, index, 0)).toISOString(),
+            quiz_type: 'daily' as const,
+        }));
+
+        saveUserProgress(createProgress({
+            quiz_history: history,
+        }), 'user_77');
+
+        const progress = getUserProgress('user_77');
+
+        expect(progress.quiz_history).toHaveLength(RECENT_QUIZ_HISTORY_LIMIT);
+        expect(progress.quiz_history[0]?.id).toBe('attempt-6');
+        expect(progress.quiz_history.at(-1)?.id).toBe(`attempt-${RECENT_QUIZ_HISTORY_LIMIT + 5}`);
+    });
 });
 
 // ══════════════════════════════════════════════════════════
@@ -295,8 +317,8 @@ describe('addQuizAttempt', () => {
         expect(progress.last_study_date).not.toBeNull();
     });
 
-    it('should keep only the latest 500 quiz attempts in local progress', () => {
-        const seedHistory = Array.from({ length: 500 }, (_, index) => ({
+    it('should keep only the shared recent quiz history window in local progress', () => {
+        const seedHistory = Array.from({ length: RECENT_QUIZ_HISTORY_LIMIT }, (_, index) => ({
             id: `attempt_${index}`,
             term_id: `term_${index}`,
             is_correct: true,
@@ -319,9 +341,9 @@ describe('addQuizAttempt', () => {
             quiz_type: 'daily' as const,
         }, 'user_99');
 
-        expect(progress.quiz_history).toHaveLength(500);
+        expect(progress.quiz_history).toHaveLength(RECENT_QUIZ_HISTORY_LIMIT);
         expect(progress.quiz_history[0]?.id).toBe('attempt_1');
-        expect(progress.quiz_history[499]?.id).toBe('attempt_latest');
+        expect(progress.quiz_history[RECENT_QUIZ_HISTORY_LIMIT - 1]?.id).toBe('attempt_latest');
     });
 });
 

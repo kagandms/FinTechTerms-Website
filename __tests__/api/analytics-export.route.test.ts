@@ -240,6 +240,7 @@ describe('analytics export route', () => {
                     },
                 ],
                 nextCursor: 'cursor-2',
+                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
             })
             .mockResolvedValueOnce({
                 attempts: [
@@ -253,6 +254,35 @@ describe('analytics export route', () => {
                     },
                 ],
                 nextCursor: null,
+                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
+            })
+            .mockResolvedValueOnce({
+                attempts: [
+                    {
+                        id: 'attempt-1',
+                        termId: 'term-1',
+                        createdAt: '2026-03-20T10:00:00.000Z',
+                        isCorrect: true,
+                        responseTimeMs: 1200,
+                        quizType: 'daily',
+                    },
+                ],
+                nextCursor: 'cursor-2',
+                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
+            })
+            .mockResolvedValueOnce({
+                attempts: [
+                    {
+                        id: 'attempt-2',
+                        termId: 'term-2',
+                        createdAt: '2026-03-20T11:00:00.000Z',
+                        isCorrect: false,
+                        responseTimeMs: 900,
+                        quizType: 'review',
+                    },
+                ],
+                nextCursor: null,
+                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
             });
 
         const { GET } = await import('@/app/api/analytics/export/route');
@@ -274,6 +304,16 @@ describe('analytics export route', () => {
         expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(2, { supabase: true }, 'user-1', {
             cursor: 'cursor-2',
             limit: 500,
+        });
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(3, { supabase: true }, 'user-1', {
+            cursor: null,
+            limit: 500,
+            snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
+        });
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(4, { supabase: true }, 'user-1', {
+            cursor: 'cursor-2',
+            limit: 500,
+            snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
         });
     });
 

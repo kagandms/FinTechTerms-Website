@@ -57,6 +57,8 @@ interface MockSrsState {
     termsStatus: MockStatus;
     progressStatus: MockStatus;
     refreshData: jest.Mock;
+    actionRequiredReviewCount: number;
+    actionRequiredReviewMessage: string | null;
 }
 
 const mockAuthState: MockAuthState = {
@@ -97,6 +99,8 @@ const mockSrsState: MockSrsState = {
     termsStatus: 'ready',
     progressStatus: 'ready',
     refreshData: jest.fn(),
+    actionRequiredReviewCount: 0,
+    actionRequiredReviewMessage: null,
 };
 
 jest.mock('@/contexts/LanguageContext', () => ({
@@ -168,6 +172,8 @@ describe('QuizPage UX', () => {
         };
         mockSrsState.termsStatus = 'ready';
         mockSrsState.progressStatus = 'ready';
+        mockSrsState.actionRequiredReviewCount = 0;
+        mockSrsState.actionRequiredReviewMessage = null;
     });
 
     it('shows the locked-review CTA while keeping quick quiz available for guests', () => {
@@ -197,5 +203,23 @@ describe('QuizPage UX', () => {
 
         expect(screen.getByTestId('start-mistake-review')).toBeInTheDocument();
         expect(screen.queryByText('There are no recent incorrect answers yet. Use Quick Quiz first to build this queue.')).not.toBeInTheDocument();
+    });
+
+    it('shows an action-required banner when queued answers need manual attention', () => {
+        mockAuthState.entitlements = {
+            canUseAiFeatures: true,
+            canUseAdvancedAnalytics: true,
+            canUseMistakeReview: true,
+            canUseReviewMode: true,
+        };
+        mockAuthState.isAuthenticated = true;
+        mockSrsState.actionRequiredReviewCount = 1;
+        mockSrsState.actionRequiredReviewMessage = 'Term must be in favorites before review.';
+
+        render(<QuizPage />);
+
+        expect(screen.getByTestId('quiz-action-required-banner')).toBeInTheDocument();
+        expect(screen.getByText('1 queued answer needs manual attention before it can sync.')).toBeInTheDocument();
+        expect(screen.getByText('Term must be in favorites before review.')).toBeInTheDocument();
     });
 });

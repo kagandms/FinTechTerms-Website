@@ -8,6 +8,8 @@ const navigateToRoute = async (page: Page, href: string) => {
 };
 
 test.describe('@auth-required Authenticated happy path', () => {
+    const logoutButtonPattern = /Выйти|Logout|Sign out|Çıkış/i;
+
     test.skip(
         !process.env.E2E_AUTH_EMAIL || !process.env.E2E_AUTH_PASSWORD,
         'Authenticated E2E requires E2E_AUTH_EMAIL and E2E_AUTH_PASSWORD.'
@@ -16,7 +18,7 @@ test.describe('@auth-required Authenticated happy path', () => {
     test('loads authenticated profile, favorites, and quiz surfaces', async ({ authenticatedPage: page }) => {
         await waitForAppReady(page);
         await expect(page).toHaveURL(/\/profile(?:\?.*)?$/);
-        await expect(page.getByTestId('user-avatar')).toBeVisible();
+        await expect(page.getByRole('button', { name: logoutButtonPattern })).toBeVisible();
         await expect(page.getByTestId('open-auth-login')).toHaveCount(0);
         await expect(page.getByRole('heading', {
             name: /Профиль|Profile/i,

@@ -1,12 +1,16 @@
 import { runValidation } from './env-validation-utils.mjs';
 
 runValidation([
+    'NEXT_PUBLIC_SITE_URL',
     'STAGING_BASE_URL',
     'SUPABASE_DB_URL',
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
     'STUDY_SESSION_TOKEN_SECRET',
+    'OPENROUTER_API_KEY',
+    'AI_PRIMARY_MODEL',
+    'AI_FALLBACK_MODELS',
     'ADMIN_USER_IDS',
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',

@@ -2,8 +2,8 @@
  * Supabase Pagination Helper (M25)
  * Skill: database-architect, typescript-pro
  *
- * Provides paginated term fetching to replace the unlimited
- * fetchTermsFromSupabase() which currently loads ALL terms at once.
+ * Provides paginated term fetching for any future database-backed
+ * term catalog views that cannot rely on the repo-backed public catalog.
  *
  * Usage:
  *   const { data, hasMore } = await fetchTermsPaginated({ page: 1, pageSize: 50 });

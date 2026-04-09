@@ -257,6 +257,12 @@ export const authResendOtpRateLimiter = createRateLimiter('auth-resend-otp', 5, 
 export const authVerifyOtpRateLimiter = createRateLimiter('auth-verify-otp', 10, 10 * 60 * 1000, '10 m', {
     strictInProduction: true,
 });
+export const authUpdatePasswordRateLimiter = createRateLimiter('auth-update-password', 5, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
+export const srsProgressRouteRateLimiter = createRateLimiter('progress-srs', 30, 60000, '60 s', {
+    strictInProduction: true,
+});
 
 export const globalRateLimiter = apiRouteRateLimiter;
 

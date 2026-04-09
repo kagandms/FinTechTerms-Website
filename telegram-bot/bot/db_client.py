@@ -5,6 +5,7 @@ FinTechTerms Bot — Supabase client helpers.
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
 from typing import Any, Optional, TypeVar
 
@@ -15,7 +16,12 @@ from bot.config import config
 _public_client: Optional[Client] = None
 ACADEMIC_QUARANTINE_FILTER = "is_academic.is.null,is_academic.neq.false"
 SUPABASE_REQUEST_TIMEOUT_SECONDS = 5.0
+QUERY_EXECUTOR_MAX_WORKERS = 4
 T = TypeVar("T")
+_query_executor = ThreadPoolExecutor(
+    max_workers=QUERY_EXECUTOR_MAX_WORKERS,
+    thread_name_prefix="ftt-supabase",
+)
 
 
 def get_public_client() -> Client:
@@ -44,8 +50,15 @@ async def execute_public_query(
     *,
     timeout_seconds: float = SUPABASE_REQUEST_TIMEOUT_SECONDS,
 ) -> T:
-    """Run a blocking public Supabase query with a bounded caller-side timeout."""
+    """
+    Run a blocking public Supabase query with a bounded caller-side timeout.
+
+    Supabase Python calls are synchronous. Timing out the await does not cancel
+    the underlying work immediately, so we keep the executor bounded to prevent
+    timeouts from growing into unbounded background thread pressure.
+    """
+    loop = asyncio.get_running_loop()
     return await asyncio.wait_for(
-        asyncio.to_thread(operation),
+        loop.run_in_executor(_query_executor, operation),
         timeout=timeout_seconds,
     )

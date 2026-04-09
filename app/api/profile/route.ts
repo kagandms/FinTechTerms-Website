@@ -38,6 +38,8 @@ const PROFILE_RATE_LIMIT_HEADERS = {
     'X-RateLimit-Policy': '10;w=600',
 };
 
+const getMetadataSyncTimestamp = (): string => new Date().toISOString();
+
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
 
         const { fullName, birthDate } = parsedBody.data;
         const normalizedBirthDate = birthDate ?? null;
+        const metadataSyncTimestamp = getMetadataSyncTimestamp();
 
         const { error: profileError } = await supabase
             .from('profiles')
@@ -141,6 +144,9 @@ export async function POST(request: Request) {
                 id: user.id,
                 full_name: fullName,
                 birth_date: normalizedBirthDate,
+                metadata_sync_pending: true,
+                metadata_sync_error: null,
+                metadata_sync_attempted_at: metadataSyncTimestamp,
             }, {
                 onConflict: 'id',
             });
@@ -158,16 +164,43 @@ export async function POST(request: Request) {
         });
 
         if (metadataError) {
+            const { error: syncFlagError } = await supabase
+                .from('profiles')
+                .update({
+                    metadata_sync_pending: true,
+                    metadata_sync_error: metadataError.message ?? 'metadata sync failed',
+                })
+                .eq('id', user.id);
+
             logger.warn('PROFILE_ROUTE_METADATA_SYNC_WARNING', {
                 requestId,
                 route: '/api/profile',
                 userId: user.id,
                 error: metadataError,
+                syncFlagError: syncFlagError instanceof Error ? syncFlagError : undefined,
             });
             return successResponse({
                 status: 'partial_metadata_sync',
                 message: 'Profile details were saved, but the secondary auth sync did not complete.',
             }, requestId);
+        }
+
+        const { error: syncFinalizeError } = await supabase
+            .from('profiles')
+            .update({
+                metadata_sync_pending: false,
+                metadata_sync_error: null,
+                metadata_synced_at: metadataSyncTimestamp,
+            })
+            .eq('id', user.id);
+
+        if (syncFinalizeError) {
+            logger.warn('PROFILE_ROUTE_METADATA_SYNC_FINALIZE_WARNING', {
+                requestId,
+                route: '/api/profile',
+                userId: user.id,
+                error: syncFinalizeError instanceof Error ? syncFinalizeError : undefined,
+            });
         }
 
         return successResponse({

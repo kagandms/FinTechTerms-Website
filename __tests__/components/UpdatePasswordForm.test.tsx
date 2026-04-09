@@ -81,4 +81,41 @@ describe('UpdatePasswordForm', () => {
             expect(showToast).toHaveBeenCalledWith('Session expired. Please try again.', 'error');
         });
     });
+
+    it('surfaces logout failures instead of silently continuing after a successful password reset', async () => {
+        const updatePassword = jest.fn().mockResolvedValue({
+            success: true,
+        });
+        const logout = jest.fn().mockResolvedValue({
+            success: false,
+            error: 'Unable to sign out. Please try again.',
+        });
+        const onSuccess = jest.fn();
+        const showToast = jest.fn();
+
+        render(<UpdatePasswordForm
+            {...createProps('en')}
+            authForm={{
+                email: '',
+                password: 'StrongPass1!',
+                confirmPassword: '',
+                name: '',
+                surname: '',
+                birthDate: '',
+            }}
+            updatePassword={updatePassword}
+            logout={logout}
+            onSuccess={onSuccess}
+            showToast={showToast}
+        />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Update Password' }));
+
+        await waitFor(() => {
+            expect(updatePassword).toHaveBeenCalledWith('StrongPass1!');
+            expect(logout).toHaveBeenCalledTimes(1);
+            expect(onSuccess).not.toHaveBeenCalled();
+            expect(showToast).toHaveBeenCalledWith('Unable to sign out. Please try again.', 'error');
+        });
+    });
 });

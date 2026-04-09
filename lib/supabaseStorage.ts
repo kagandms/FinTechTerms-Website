@@ -4,13 +4,15 @@
 // ============================================
 
 import { z } from 'zod';
-import { getSupabaseClient } from './supabase';
 import { QUIZ_TYPE_VALUES, UserProgress, QuizAttempt, Term } from '@/types';
 import { createIdempotencyKey } from '@/lib/idempotency';
-import { filterAcademicTerms, isMissingAcademicColumnError } from '@/lib/academicQuarantine';
 import { userProgressSchema } from '@/lib/userProgress';
 import { logger } from '@/lib/logger';
-import { readTrackedStudySessionContext } from '@/lib/study-session-storage';
+import {
+    readTrackedStudySessionContext,
+    readTrackedStudySessionState,
+    waitForTrackedStudySessionContext,
+} from '@/lib/study-session-storage';
 
 interface FavoriteToggleResponse {
     favorites: string[];
@@ -130,6 +132,7 @@ const USER_PROGRESS_SEGMENTS: readonly UserProgressLoadMissingSegment[] = [
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MESSAGE = 'Loading is taking too long — please try again';
+const CORRUPTED_STUDY_SESSION_MESSAGE = 'Study session state is corrupted. This answer will retry after the session recovers.';
 
 const parseResponseOrThrow = <T>(
     schema: z.ZodType<T>,
@@ -147,27 +150,6 @@ const parseResponseOrThrow = <T>(
     }
 
     return result.data;
-};
-
-const withSupabaseReadTimeout = async <T,>(
-    operation: PromiseLike<T> | Promise<T>,
-    timeoutMessage = REQUEST_TIMEOUT_MESSAGE
-): Promise<T> => {
-    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
-
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-        timeoutId = globalThis.setTimeout(() => {
-            reject(new Error(timeoutMessage));
-        }, REQUEST_TIMEOUT_MS);
-    });
-
-    try {
-        return await Promise.race([Promise.resolve(operation), timeoutPromise]);
-    } finally {
-        if (timeoutId !== undefined) {
-            globalThis.clearTimeout(timeoutId);
-        }
-    }
 };
 
 const readApiError = async (response: Response, fallbackMessage: string): Promise<string> => {
@@ -397,10 +379,41 @@ export async function saveQuizAttemptToSupabase(
         const explicitSessionToken = typeof attempt.sessionToken === 'string' && attempt.sessionToken.trim().length > 0
             ? attempt.sessionToken.trim()
             : null;
-        const fallbackSessionContext = readTrackedStudySessionContext();
+        const trackedSessionState = readTrackedStudySessionState();
+        let fallbackSessionContext = readTrackedStudySessionContext();
+
+        if (!explicitSessionId && !explicitSessionToken && trackedSessionState.status === 'pending') {
+            fallbackSessionContext = await waitForTrackedStudySessionContext() ?? null;
+        }
+
+        if (!explicitSessionId && !explicitSessionToken && trackedSessionState.status === 'corrupt') {
+            return {
+                status: 'retryable',
+                message: CORRUPTED_STUDY_SESSION_MESSAGE,
+            };
+        }
+
         const resolvedSessionId = explicitSessionId ?? fallbackSessionContext?.sessionId ?? null;
         const resolvedSessionToken = explicitSessionToken ?? fallbackSessionContext?.sessionToken ?? null;
         const hasResolvedSessionContext = Boolean(resolvedSessionId && resolvedSessionToken);
+
+        if (!explicitSessionId && !explicitSessionToken && !hasResolvedSessionContext) {
+            const nextTrackedSessionState = readTrackedStudySessionState();
+            if (nextTrackedSessionState.status === 'corrupt') {
+                return {
+                    status: 'retryable',
+                    message: CORRUPTED_STUDY_SESSION_MESSAGE,
+                };
+            }
+        }
+
+        if (!explicitSessionId && !explicitSessionToken && trackedSessionState.status === 'pending' && !hasResolvedSessionContext) {
+            return {
+                status: 'retryable',
+                message: 'Study session is still syncing. This answer will retry shortly.',
+            };
+        }
+
         const response = await fetchWithSessionAuth('/api/record-quiz', {
             method: 'POST',
             headers: {
@@ -607,71 +620,4 @@ export async function getAllTermSRSFromSupabaseUnbounded(
             message: error instanceof Error ? error.message : 'Failed to load SRS review data.',
         };
     }
-}
-/**
- * Fetch all static terms from Supabase
- * Returns just the content, not user SRS data
- */
-export async function fetchTermsFromSupabase(): Promise<Partial<Term>[]> {
-    const supabase = getSupabaseClient();
-
-    const runTermsQuery = async (filterAcademicOnly: boolean) => {
-        let query = supabase
-            .from('terms')
-            .select('*');
-
-        if (filterAcademicOnly) {
-            query = query.eq('is_academic', true);
-        }
-
-        return await query;
-    };
-
-    let { data, error } = await withSupabaseReadTimeout(runTermsQuery(true));
-
-    if (isMissingAcademicColumnError(error)) {
-        logger.warn('SUPABASE_STORAGE_MISSING_ACADEMIC_COLUMN', {
-            route: 'supabaseStorage',
-        });
-        ({ data, error } = await withSupabaseReadTimeout(runTermsQuery(false)));
-    }
-
-    if (error) {
-        logger.error('SUPABASE_STORAGE_FETCH_TERMS_FAILED', {
-            route: 'supabaseStorage',
-            error: error,
-        });
-        throw error;
-    }
-
-    // Map DB columns to Term interface (partial, as SRS data is separate)
-    // Note: The DB columns match the Term interface fields exactly for content
-    return filterAcademicTerms(data as unknown as Partial<Term>[]);
-}
-
-/**
- * Fetch a single term by ID from Supabase
- */
-export async function getTermById(termId: string): Promise<Partial<Term> | null> {
-    const supabase = getSupabaseClient();
-    const { data, error } = await withSupabaseReadTimeout(
-        supabase
-            .from('terms')
-            .select('*')
-            .eq('id', termId)
-            .single()
-    );
-
-    if (error) {
-        // If error is "PGRST116" (no rows), return null
-        if (error.code === 'PGRST116') return null;
-        logger.error('SUPABASE_STORAGE_FETCH_TERM_FAILED', {
-            route: 'supabaseStorage',
-            termId,
-            error,
-        });
-        return null;
-    }
-
-    return data as unknown as Partial<Term>;
 }

@@ -53,21 +53,27 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 const WRITE_RATE_LIMIT = 20;
 const MAX_QUIZ_OCCURRED_AT_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS = 5 * 60 * 1000;
+const OCCURRED_AT_OUT_OF_WINDOW_CODE = 'OCCURRED_AT_OUT_OF_WINDOW';
+const OCCURRED_AT_OUT_OF_WINDOW_MESSAGE = 'Quiz attempt timestamp is outside the allowed replay window.';
 type QuizMutationClient = ReturnType<typeof createServiceRoleClient>;
+
+type OccurredAtNormalizationResult =
+    | { ok: true; value: string | null }
+    | { ok: false; driftDirection: 'future' | 'past'; driftSeconds: number };
 
 const normalizeOccurredAt = (
     occurredAt: string | null | undefined,
     receivedAtMs: number,
     requestId: string,
     userId: string
-): string | null => {
+): OccurredAtNormalizationResult => {
     if (!occurredAt) {
-        return null;
+        return { ok: true, value: null };
     }
 
     const occurredAtMs = Date.parse(occurredAt);
     if (!Number.isFinite(occurredAtMs)) {
-        return null;
+        return { ok: true, value: null };
     }
 
     const driftMs = occurredAtMs - receivedAtMs;
@@ -86,10 +92,17 @@ const normalizeOccurredAt = (
             maxPastSeconds: MAX_QUIZ_OCCURRED_AT_AGE_MS / 1000,
             maxFutureSeconds: MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS / 1000,
         });
-        return null;
+        return {
+            ok: false,
+            driftDirection: driftMs > 0 ? 'future' : 'past',
+            driftSeconds: Math.round(Math.abs(driftMs) / 1000),
+        };
     }
 
-    return new Date(occurredAtMs).toISOString();
+    return {
+        ok: true,
+        value: new Date(occurredAtMs).toISOString(),
+    };
 };
 
 const markQuizFailure = async (
@@ -162,6 +175,13 @@ const getSessionScopedQuizError = (
 
     return null;
 };
+
+const isOccurredAtWindowError = (
+    error: { code?: string | null; message?: string | null }
+): boolean => (
+    error.code === '22023'
+    && (error.message || '').toLowerCase().includes('allowed replay window')
+);
 
 export async function POST(request: NextRequest) {
     const requestId = createRequestId(request);
@@ -273,12 +293,23 @@ export async function POST(request: NextRequest) {
         session_token,
         idempotencyKey,
     } = validatedData.data;
-    const normalizedOccurredAt = normalizeOccurredAt(
+    const occurredAtResult = normalizeOccurredAt(
         occurred_at,
         receivedAtMs,
         requestId,
         user.id
     );
+    if (!occurredAtResult.ok) {
+        return errorResponse({
+            status: 400,
+            code: OCCURRED_AT_OUT_OF_WINDOW_CODE,
+            message: OCCURRED_AT_OUT_OF_WINDOW_MESSAGE,
+            requestId,
+            retryable: false,
+            headers: GLOBAL_RATE_LIMIT_HEADERS,
+        });
+    }
+    const normalizedOccurredAt = occurredAtResult.value;
 
     const inspection = await inspectIdempotentRequest({
         supabaseAdmin: routeSupabase,
@@ -451,6 +482,21 @@ export async function POST(request: NextRequest) {
                     status: 409,
                     code: 'TERM_NOT_FAVORITED',
                     message: 'Term must be in favorites before review.',
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
+
+            if (isOccurredAtWindowError(error)) {
+                await markQuizFailure(routeSupabase, user.id, idempotencyKey, 400, {
+                    code: OCCURRED_AT_OUT_OF_WINDOW_CODE,
+                    message: OCCURRED_AT_OUT_OF_WINDOW_MESSAGE,
+                });
+                return errorResponse({
+                    status: 400,
+                    code: OCCURRED_AT_OUT_OF_WINDOW_CODE,
+                    message: OCCURRED_AT_OUT_OF_WINDOW_MESSAGE,
                     requestId,
                     retryable: false,
                     headers: guardedHeaders,

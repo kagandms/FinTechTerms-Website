@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import React from 'react';
+import React, { act } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
@@ -374,6 +374,47 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('verify-result')).toHaveTextContent('"success":true');
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('true');
         });
+    });
+
+    it('fails OTP verification after a bounded session-sync window when the session never becomes authenticated', async () => {
+        jest.useFakeTimers();
+        let sessionFetchCount = 0;
+        mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
+            const url = String(input);
+
+            if (url.includes('/api/auth/session')) {
+                sessionFetchCount += 1;
+                return createJsonResponse(buildGuestSessionState());
+            }
+
+            if (url.includes('/api/auth/verify-otp')) {
+                return createJsonResponse({ success: true });
+            }
+
+            return createJsonResponse({ success: true });
+        });
+
+        render(
+            <AuthProvider>
+                <AuthContextConsumer />
+            </AuthProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'verify-otp' }));
+
+        await act(async () => {
+            await jest.advanceTimersByTimeAsync(2_000);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByTestId('verify-result')).toHaveTextContent('"success":false');
+        });
+
+        expect(sessionFetchCount).toBeLessThanOrEqual(6);
     });
 
     it('refreshes the canonical profile-completion state from the session endpoint', async () => {

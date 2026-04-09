@@ -27,6 +27,8 @@ interface SearchCatalogResult {
 const TERM_CATALOG_LAST_MODIFIED = '2026-03-11T00:00:00.000Z';
 let publicCatalogRpcClient: SupabaseClient | null = null;
 
+// Public app-shell term content is intentionally rendered from the repo catalog.
+// The database remains a release-verified mirror for selected runtime checks only.
 const normalizedCatalog = filterAcademicTerms(mockTerms).map((term) => ({
     ...term,
 }));

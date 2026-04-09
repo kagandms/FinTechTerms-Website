@@ -5,9 +5,13 @@
 export {};
 
 const mockReadTrackedStudySessionContext = jest.fn();
+const mockReadTrackedStudySessionState = jest.fn();
+const mockWaitForTrackedStudySessionContext = jest.fn();
 
 jest.mock('@/lib/study-session-storage', () => ({
     readTrackedStudySessionContext: () => mockReadTrackedStudySessionContext(),
+    readTrackedStudySessionState: () => mockReadTrackedStudySessionState(),
+    waitForTrackedStudySessionContext: (...args: unknown[]) => mockWaitForTrackedStudySessionContext(...args),
 }));
 
 const validQuizResponseBody = {
@@ -53,6 +57,11 @@ describe('supabaseStorage response validation', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockReadTrackedStudySessionContext.mockReturnValue(null);
+        mockReadTrackedStudySessionState.mockReturnValue({
+            status: 'none',
+            context: null,
+        });
+        mockWaitForTrackedStudySessionContext.mockResolvedValue(null);
     });
 
     afterEach(() => {
@@ -147,6 +156,56 @@ describe('supabaseStorage response validation', () => {
             status: 'auth_expired',
             message: 'Session expired. Please sign in again to save this answer.',
         });
+    });
+
+    it('returns retryable when the tracked study session is still pending', async () => {
+        global.fetch = jest.fn() as typeof fetch;
+        mockReadTrackedStudySessionState.mockReturnValue({
+            status: 'pending',
+            context: null,
+        });
+        mockWaitForTrackedStudySessionContext.mockResolvedValue(null);
+
+        const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(saveQuizAttemptToSupabase('user-1', {
+            id: 'attempt-1',
+            term_id: 'term-1',
+            is_correct: true,
+            response_time_ms: 1200,
+            timestamp: '2026-03-11T00:00:00.000Z',
+            quiz_type: 'daily',
+        })).resolves.toEqual({
+            status: 'retryable',
+            message: 'Study session is still syncing. This answer will retry shortly.',
+        });
+
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns retryable when the tracked study session state is corrupted', async () => {
+        global.fetch = jest.fn() as typeof fetch;
+        mockReadTrackedStudySessionState.mockReturnValue({
+            status: 'corrupt',
+            context: null,
+        });
+
+        const { saveQuizAttemptToSupabase } = await import('@/lib/supabaseStorage');
+
+        await expect(saveQuizAttemptToSupabase('user-1', {
+            id: 'attempt-1',
+            term_id: 'term-1',
+            is_correct: true,
+            response_time_ms: 1200,
+            timestamp: '2026-03-11T00:00:00.000Z',
+            quiz_type: 'daily',
+        })).resolves.toEqual({
+            status: 'retryable',
+            message: 'Study session state is corrupted. This answer will retry after the session recovers.',
+        });
+
+        expect(mockWaitForTrackedStudySessionContext).not.toHaveBeenCalled();
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('classifies final 401 favorite responses as auth_expired', async () => {

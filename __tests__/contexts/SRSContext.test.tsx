@@ -7,6 +7,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import { SRSProvider, useSRS } from '@/contexts/SRSContext';
 import type { UserProgress } from '@/types';
+import { STUDY_SESSION_READY_EVENT } from '@/lib/study-session-storage';
 
 const mockUseAuth = jest.fn();
 const mockShowToast = jest.fn();
@@ -816,7 +817,7 @@ describe('SRSContext', () => {
         expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
     });
 
-    it('clears a queued review without changing local study state when replay fails non-retryably', async () => {
+    it('marks a queued review as action-required instead of deleting it when replay fails non-retryably', async () => {
         mockSaveQuizAttemptToSupabase
             .mockResolvedValueOnce({
                 status: 'retryable',
@@ -851,15 +852,66 @@ describe('SRSContext', () => {
             expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
         });
 
+        const persistedQueue = JSON.parse(localStorage.getItem(pendingReviewQueueKey()) ?? '[]') as Array<Record<string, unknown>>;
+
         await waitFor(() => {
-            expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
             expect(screen.getByTestId('due-count')).toHaveTextContent('1');
             expect(screen.getByTestId('current-streak')).toHaveTextContent('0');
             expect(screen.getByTestId('quiz-history-count')).toHaveTextContent('0');
         });
 
+        expect(persistedQueue).toHaveLength(1);
+        expect(persistedQueue[0]).toMatchObject({
+            reviewId: 'review-1',
+            status: 'action_required',
+            reason: 'Term must be in favorites before review.',
+        });
         expect(mockUpdateTermAfterReview).not.toHaveBeenCalled();
         expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
-        expect(mockShowToast).toHaveBeenCalledWith('Progress could not be saved. Please try again.', 'error');
+        expect(mockShowToast).toHaveBeenCalledWith(
+            'A queued answer now needs manual attention before it can be synced.',
+            'warning'
+        );
+    });
+
+    it('replays a queued review when the study session becomes ready', async () => {
+        mockSaveQuizAttemptToSupabase
+            .mockResolvedValueOnce({
+                status: 'retryable',
+                message: 'Study session is still syncing. This answer will retry shortly.',
+            })
+            .mockResolvedValueOnce({
+                status: 'ok',
+                data: recordQuizResult,
+            });
+
+        render(
+            <SRSProvider>
+                <TestConsumer />
+            </SRSProvider>
+        );
+
+        await waitFor(() => {
+            expect(screen.getByTestId('due-count')).toHaveTextContent('1');
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'answer' }));
+
+        await waitFor(() => {
+            expect(localStorage.getItem(pendingReviewQueueKey())).not.toBeNull();
+        });
+
+        act(() => {
+            window.dispatchEvent(new Event(STUDY_SESSION_READY_EVENT));
+        });
+
+        await waitFor(() => {
+            expect(mockSaveQuizAttemptToSupabase).toHaveBeenCalledTimes(2);
+        });
+
+        await waitFor(() => {
+            expect(localStorage.getItem(pendingReviewQueueKey())).toBeNull();
+            expect(screen.getByTestId('due-count')).toHaveTextContent('0');
+        });
     });
 });

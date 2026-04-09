@@ -12,6 +12,8 @@ import { seoTopics } from '@/data/seo/topics';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import type { Contributor, Language, LocalizedText, PriorityTermRecord, RegionalMarket, SourceRef, Term, Topic } from '@/types';
 
+// SEO surfaces intentionally render the repo catalog. `public.terms` is expected
+// to stay mirrored through release verification, not as the canonical authoring source.
 interface SeoCatalog {
     readonly terms: readonly Term[];
     readonly termById: ReadonlyMap<string, Term>;

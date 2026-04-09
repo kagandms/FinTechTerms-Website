@@ -31,20 +31,22 @@ const EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS = {
 const loadDownloadAttempts = async (
     supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
     userId: string
-): Promise<{ attempts: Awaited<ReturnType<typeof loadLearningStatsExportAttempts>>['attempts']; tooLarge: boolean }> => {
+): Promise<{ snapshotCreatedAt: string; tooLarge: boolean }> => {
     let cursor: string | null = null;
-    const attempts: Awaited<ReturnType<typeof loadLearningStatsExportAttempts>>['attempts'] = [];
+    let totalAttempts = 0;
+    let snapshotCreatedAt: string | null = null;
 
     do {
         const page = await loadLearningStatsExportAttempts(supabase, userId, {
             cursor,
             limit: EXPORT_PAGE_SIZE,
         });
-        attempts.push(...page.attempts);
+        snapshotCreatedAt ??= page.snapshotCreatedAt;
+        totalAttempts += page.attempts.length;
 
-        if (attempts.length > MAX_EXPORT_ATTEMPTS) {
+        if (totalAttempts > MAX_EXPORT_ATTEMPTS) {
             return {
-                attempts: attempts.slice(0, MAX_EXPORT_ATTEMPTS),
+                snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
                 tooLarge: true,
             };
         }
@@ -53,9 +55,50 @@ const loadDownloadAttempts = async (
     } while (cursor);
 
     return {
-        attempts,
+        snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
         tooLarge: false,
     };
+};
+
+const createDownloadStream = (
+    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    userId: string,
+    exportedAt: string,
+    snapshotCreatedAt: string
+): ReadableStream<Uint8Array> => {
+    const encoder = new TextEncoder();
+
+    return new ReadableStream<Uint8Array>({
+        async start(controller) {
+            let cursor: string | null = null;
+            let isFirstAttempt = true;
+
+            try {
+                controller.enqueue(encoder.encode(`{"exportedAt":${JSON.stringify(exportedAt)},"attempts":[`));
+
+                do {
+                    const page = await loadLearningStatsExportAttempts(supabase, userId, {
+                        cursor,
+                        limit: EXPORT_PAGE_SIZE,
+                        snapshotCreatedAt,
+                    });
+
+                    for (const attempt of page.attempts) {
+                        const prefix = isFirstAttempt ? '' : ',';
+                        controller.enqueue(encoder.encode(`${prefix}${JSON.stringify(attempt)}`));
+                        isFirstAttempt = false;
+                    }
+
+                    cursor = page.nextCursor;
+                } while (cursor);
+
+                controller.enqueue(encoder.encode(']}'));
+                controller.close();
+            } catch (error) {
+                controller.error(error);
+            }
+        },
+    });
 };
 
 /**
@@ -163,7 +206,7 @@ export async function GET(request: Request) {
 
         if (shouldDownload) {
             const exportedAt = new Date().toISOString();
-            const { attempts, tooLarge } = await loadDownloadAttempts(supabase, user.id);
+            const { snapshotCreatedAt, tooLarge } = await loadDownloadAttempts(supabase, user.id);
 
             if (tooLarge) {
                 return errorResponse({
@@ -176,10 +219,12 @@ export async function GET(request: Request) {
                 });
             }
 
-            return new Response(JSON.stringify({
+            return new Response(createDownloadStream(
+                supabase,
+                user.id,
                 exportedAt,
-                attempts,
-            }), {
+                snapshotCreatedAt
+            ), {
                 status: 200,
                 headers: {
                     ...rateLimitHeaders,

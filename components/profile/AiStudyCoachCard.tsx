@@ -32,6 +32,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
     const profileHref = requiresProfileCompletion ? '/profile?complete=1' : '/profile';
 
     const requestPayload = useMemo(() => {
+        const recentQuizHistory = userProgress.quiz_history;
         const favorites = terms
             .filter((term) => userProgress.favorites.includes(term.id))
             .slice(0, 10)
@@ -40,7 +41,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
                 category: term.category,
             }));
 
-        const wrongCounts = userProgress.quiz_history
+        const wrongCounts = recentQuizHistory
             .filter((attempt) => !attempt.is_correct)
             .reduce<Map<string, number>>((map, attempt) => {
                 map.set(attempt.term_id, (map.get(attempt.term_id) ?? 0) + 1);

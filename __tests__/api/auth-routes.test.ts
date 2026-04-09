@@ -17,6 +17,7 @@ const mockAuthSignupCheck = jest.fn();
 const mockAuthResetPasswordCheck = jest.fn();
 const mockAuthResendOtpCheck = jest.fn();
 const mockAuthVerifyOtpCheck = jest.fn();
+const mockAuthUpdatePasswordCheck = jest.fn();
 
 jest.mock('@/lib/auth/route-handler', () => ({
     createAuthRouteClient: () => mockCreateAuthRouteClient(),
@@ -49,6 +50,10 @@ jest.mock('@/lib/rate-limiter', () => ({
     },
     authVerifyOtpRateLimiter: {
         check: (...args: unknown[]) => mockAuthVerifyOtpCheck(...args),
+        reset: jest.fn(),
+    },
+    authUpdatePasswordRateLimiter: {
+        check: (...args: unknown[]) => mockAuthUpdatePasswordCheck(...args),
         reset: jest.fn(),
     },
     isRateLimiterUnavailable: (result: { unavailable?: boolean }) => result.unavailable === true,
@@ -102,6 +107,12 @@ describe('auth routes hardening', () => {
         mockAuthVerifyOtpCheck.mockResolvedValue({
             allowed: true,
             remaining: 9,
+            retryAfter: 0,
+            unavailable: false,
+        });
+        mockAuthUpdatePasswordCheck.mockResolvedValue({
+            allowed: true,
+            remaining: 4,
             retryAfter: 0,
             unavailable: false,
         });
@@ -235,6 +246,84 @@ describe('auth routes hardening', () => {
         expect(body).toMatchObject({
             code: 'VALIDATION_ERROR',
             retryable: false,
+        });
+    });
+
+    it('keeps signup responses account-neutral when the provider suppresses identities', async () => {
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    signUp: jest.fn().mockResolvedValue({
+                        data: {
+                            user: {
+                                id: 'user-1',
+                                identities: [],
+                            },
+                            session: null,
+                        },
+                        error: null,
+                    }),
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/signup/route');
+        const response = await POST(createJsonRequest('/api/auth/signup', {
+            email: 'existing@example.com',
+            password: 'Secret123!',
+            name: 'Alex Stone',
+            birthDate: '2000-01-01',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            needsOTPVerification: true,
+        });
+    });
+
+    it('rate limits update-password requests after authentication', async () => {
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    getUser: jest.fn().mockResolvedValue({
+                        data: {
+                            user: {
+                                id: 'user-1',
+                                email: 'user@example.com',
+                                app_metadata: {
+                                    provider: 'email',
+                                    providers: ['email'],
+                                },
+                            },
+                        },
+                        error: null,
+                    }),
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+        mockAuthUpdatePasswordCheck.mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: false,
+        });
+
+        const { POST } = await import('@/app/api/auth/update-password/route');
+        const response = await POST(createJsonRequest('/api/auth/update-password', {
+            currentPassword: 'OldPassword1!',
+            password: 'NewPassword1!',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(429);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITED',
+            message: 'RATE_LIMITED',
+            retryable: true,
         });
     });
 });
