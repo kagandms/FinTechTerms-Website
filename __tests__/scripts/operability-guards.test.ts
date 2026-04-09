@@ -38,6 +38,8 @@ describe('operability guards', () => {
         expect(ciWorkflow).toContain('runtime_ready=true');
         expect(ciWorkflow).toContain('vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL');
         expect(ciWorkflow).toContain('vars.AI_FALLBACK_MODELS || secrets.AI_FALLBACK_MODELS');
+        expect(ciWorkflow).toContain("environment: ${{ vars.CI_RUNTIME_ENVIRONMENT_NAME || 'production' }}");
+        expect(ciWorkflow).toContain("Checked GitHub environment: ${{ vars.CI_RUNTIME_ENVIRONMENT_NAME || 'production' }}");
         expect(ciWorkflow).toContain('missing_runtime_vars=');
         expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a same-repo pull request:');
         expect(ciWorkflow).toContain('Missing required release-evaluable runtime secrets on a protected branch run:');
@@ -58,6 +60,8 @@ describe('operability guards', () => {
         expect(previewWorkflow).toContain('AI_FALLBACK_MODELS');
         expect(previewWorkflow).toContain('vars.AI_PRIMARY_MODEL || secrets.AI_PRIMARY_MODEL');
         expect(previewWorkflow).toContain('vars.ADMIN_USER_IDS || secrets.ADMIN_USER_IDS');
+        expect(previewWorkflow).toContain("environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}");
+        expect(previewWorkflow).toContain("Checked GitHub environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}");
         expect(previewWorkflow).toContain('missing_core_vars=');
     });
 

@@ -15,6 +15,7 @@ jobs:
   preflight:
     name: Preview Gate Preflight
     runs-on: ubuntu-latest
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     outputs:
       core_ready: ${{ steps.check.outputs.core_ready }}
       auth_ready: ${{ steps.check.outputs.auth_ready }}
@@ -119,6 +120,7 @@ jobs:
 
       - if: ${{ steps.check.outputs.core_ready != 'true' && github.event_name != 'pull_request' }}
         run: |
+          echo "Checked GitHub environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}"
           echo "Missing required preview release gate secrets on a protected branch run: ${{ steps.check.outputs.missing_core_vars }}"
           exit 1
 
@@ -138,6 +140,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     services:
       postgres:
         image: postgres:16
@@ -171,6 +174,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     env:
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -243,6 +247,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.auth_ready == 'true' && needs.preflight.outputs.sentry_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
       E2E_AUTH_EMAIL: ${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}
@@ -278,6 +283,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     env:
       PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -317,6 +323,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.auth_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     env:
       PLAYWRIGHT_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
       E2E_AUTH_EMAIL: ${{ vars.E2E_AUTH_EMAIL || secrets.E2E_AUTH_EMAIL }}
@@ -358,6 +365,7 @@ jobs:
     if: ${{ needs.preflight.outputs.core_ready == 'true' && needs.preflight.outputs.sentry_ready == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ vars.PREVIEW_GATE_ENVIRONMENT_NAME || 'staging' }}
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL || secrets.STAGING_BASE_URL }}
       SENTRY_SMOKE_EMAIL: ${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}

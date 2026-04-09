@@ -52,6 +52,7 @@ jobs:
     needs: bootstrap-db-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ vars.CI_RUNTIME_ENVIRONMENT_NAME || 'production' }}
 
     steps:
       - name: Checkout
@@ -161,6 +162,7 @@ jobs:
 
       - if: ${{ steps.runtime_preflight.outputs.runtime_ready != 'true' && github.event_name != 'pull_request' }}
         run: |
+          echo "Checked GitHub environment: ${{ vars.CI_RUNTIME_ENVIRONMENT_NAME || 'production' }}"
           echo "Missing required release-evaluable runtime secrets on a protected branch run: ${{ steps.runtime_preflight.outputs.missing_runtime_vars }}"
           exit 1
 
