@@ -80,8 +80,10 @@ describe('getTerms', () => {
     it('should preserve compatible local SRS fields when migrating cached terms to a new data version', () => {
         const baselineTerms = getTerms();
         const baselineTerm = baselineTerms[0];
+        const baselineVersion = localStorageMock.getItem('globalfinterm_data_version:guest');
 
         expect(baselineTerm).toBeDefined();
+        expect(baselineVersion).not.toBeNull();
         if (!baselineTerm) {
             throw new Error('Expected at least one baseline term.');
         }
@@ -116,9 +118,51 @@ describe('getTerms', () => {
             times_correct: 11,
         });
         expect(localStorageMock.getItem('globalfinterm_terms:guest')).not.toBeNull();
-        expect(localStorageMock.getItem('globalfinterm_data_version:guest')).toBe('2026-03-25-v5');
+        expect(localStorageMock.getItem('globalfinterm_data_version:guest')).toBe(baselineVersion);
         expect(localStorageMock.getItem('globalfinterm_terms')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_data_version')).toBeNull();
+    });
+
+    it('should repair a truncated cached catalog even when the data version matches', () => {
+        const baselineTerms = getTerms();
+        const baselineTerm = baselineTerms[0];
+        const baselineVersion = localStorageMock.getItem('globalfinterm_data_version:guest');
+
+        expect(baselineTerm).toBeDefined();
+        expect(baselineVersion).not.toBeNull();
+        if (!baselineTerm || !baselineVersion) {
+            throw new Error('Expected a seeded guest catalog with a version.');
+        }
+
+        const truncatedCachedTerm = {
+            ...baselineTerm,
+            srs_level: 5,
+            next_review_date: '2099-02-01T00:00:00.000Z',
+            last_reviewed: '2026-04-20T00:00:00.000Z',
+            difficulty_score: 1.25,
+            retention_rate: 0.96,
+            times_reviewed: 14,
+            times_correct: 13,
+        };
+
+        localStorageMock.setItem('globalfinterm_terms:guest', JSON.stringify([truncatedCachedTerm]));
+        localStorageMock.setItem('globalfinterm_data_version:guest', baselineVersion);
+
+        const repairedTerms = getTerms();
+        const repairedTerm = repairedTerms.find((term) => term.id === baselineTerm.id);
+
+        expect(repairedTerms).toHaveLength(baselineTerms.length);
+        expect(repairedTerm).toMatchObject({
+            id: baselineTerm.id,
+            srs_level: 5,
+            next_review_date: '2099-02-01T00:00:00.000Z',
+            last_reviewed: '2026-04-20T00:00:00.000Z',
+            difficulty_score: 1.25,
+            retention_rate: 0.96,
+            times_reviewed: 14,
+            times_correct: 13,
+        });
+        expect(JSON.parse(localStorageMock.getItem('globalfinterm_terms:guest') ?? '[]')).toHaveLength(baselineTerms.length);
     });
 
     it('should isolate authenticated terms from guest cached term state', () => {

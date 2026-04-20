@@ -1,7 +1,4 @@
-import { Term } from '../../types';
-import { assignUniqueSlugs } from './catalog-utils';
-import { testCatalogTerms } from './test-catalog';
+import type { Term } from '../../types';
+import { fullRepoTerms } from './repo-catalog';
 
-export const terms: Term[] = assignUniqueSlugs([
-    ...testCatalogTerms,
-]);
+export const terms: Term[] = fullRepoTerms;

@@ -4,8 +4,9 @@
 // ============================================
 
 import { Term, UserProgress, QuizAttempt } from '@/types';
+import { terms as catalogTerms } from '@/data/terms';
 import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME, normalizeLanguage } from '@/lib/language';
-import { mockTerms, defaultUserProgress } from '@/data/mockData';
+import { defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { RECENT_QUIZ_HISTORY_LIMIT, userProgressSchema } from '@/lib/userProgress';
 import { createSafeTerm } from '@/utils/termUtils';
@@ -63,7 +64,7 @@ function isSessionStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-03-25-v5'; // Force refresh after the catalog was reduced to the 5-term test set
+const DATA_VERSION = '2026-04-09-v6'; // Force refresh after restoring the full runtime catalog
 
 const TERM_STATE_FIELDS = [
     'srs_level',
@@ -214,6 +215,33 @@ const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[]
     });
 };
 
+const hasCatalogDrift = (fallbackTerms: readonly Term[], storedTerms: readonly Term[]): boolean => {
+    if (storedTerms.length !== fallbackTerms.length) {
+        return true;
+    }
+
+    const fallbackTermIds = new Set(fallbackTerms.map((term) => term.id));
+    return storedTerms.some((term) => !fallbackTermIds.has(term.id));
+};
+
+const persistReconciledTerms = (
+    fallbackTerms: Term[],
+    storedTerms: Term[],
+    termsStorageKey: string,
+    versionStorageKey: string,
+    isGuestScope: boolean
+): Term[] => {
+    const reconciledTerms = mergeTermStudyState(fallbackTerms, storedTerms);
+    localStorage.setItem(termsStorageKey, JSON.stringify(reconciledTerms));
+    localStorage.setItem(versionStorageKey, DATA_VERSION);
+
+    if (isGuestScope) {
+        clearLegacyTermsCache();
+    }
+
+    return reconciledTerms;
+};
+
 const applyGuestEntitlementPolicyMigration = (fallbackTerms: Term[]): void => {
     if (!isLocalStorageAvailable()) {
         return;
@@ -299,7 +327,7 @@ const migrateLegacyUserProgress = (userId?: string | null): void => {
  * Refresh cached data only when the schema version changes
  */
 export function getTerms(userId?: string | null): Term[] {
-    const fallbackTerms = filterAcademicTerms(mockTerms);
+    const fallbackTerms = filterAcademicTerms(catalogTerms);
 
     if (!isLocalStorageAvailable()) return fallbackTerms;
 
@@ -323,16 +351,26 @@ export function getTerms(userId?: string | null): Term[] {
 
         // Refresh content schema while preserving compatible local SRS state.
         if (storedVersion !== DATA_VERSION) {
-            const migratedTerms = mergeTermStudyState(fallbackTerms, parsedTerms);
-            localStorage.setItem(termsStorageKey, JSON.stringify(migratedTerms));
-            localStorage.setItem(versionStorageKey, DATA_VERSION);
-            if (isGuestScope) {
-                clearLegacyTermsCache();
-            }
-            return migratedTerms;
+            return persistReconciledTerms(
+                fallbackTerms,
+                parsedTerms,
+                termsStorageKey,
+                versionStorageKey,
+                isGuestScope
+            );
         }
 
         if (parsedTerms.length > 0) {
+            if (hasCatalogDrift(fallbackTerms, parsedTerms)) {
+                return persistReconciledTerms(
+                    fallbackTerms,
+                    parsedTerms,
+                    termsStorageKey,
+                    versionStorageKey,
+                    isGuestScope
+                );
+            }
+
             localStorage.setItem(termsStorageKey, JSON.stringify(parsedTerms));
             localStorage.setItem(versionStorageKey, storedVersion ?? DATA_VERSION);
             if (isGuestScope) {
@@ -396,7 +434,7 @@ export function getUserProgress(userId?: string | null): UserProgress {
 
     try {
         if (resolveProgressScopeUserId(userId) === null) {
-            applyGuestEntitlementPolicyMigration(filterAcademicTerms(mockTerms));
+            applyGuestEntitlementPolicyMigration(filterAcademicTerms(catalogTerms));
         }
 
         migrateLegacyUserProgress(userId);

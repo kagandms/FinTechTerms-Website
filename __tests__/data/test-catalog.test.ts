@@ -1,4 +1,5 @@
-import { terms as fullCatalogTerms } from '@/data/terms';
+import { terms as activeCatalogTerms } from '@/data/terms';
+import { fullRepoTerms } from '@/data/terms/repo-catalog';
 import { testCatalogTerms } from '@/data/terms/test-catalog';
 
 describe('test catalog', () => {
@@ -12,9 +13,10 @@ describe('test catalog', () => {
         ]);
     });
 
-    it('uses the locked test catalog as the active repo catalog', () => {
-        expect(fullCatalogTerms.map((term) => term.id)).toEqual(
-            testCatalogTerms.map((term) => term.id)
+    it('keeps the dedicated test catalog isolated from the active runtime catalog', () => {
+        expect(activeCatalogTerms.map((term) => term.id)).toEqual(
+            fullRepoTerms.map((term) => term.id)
         );
+        expect(activeCatalogTerms.length).toBeGreaterThan(testCatalogTerms.length);
     });
 });

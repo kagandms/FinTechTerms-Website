@@ -420,8 +420,8 @@ export function SRSProvider({ children }: SRSProviderProps) {
                 logger.warn('SRS_LOAD_TERMS_EMPTY_RELOAD', {
                     route: 'SRSProvider',
                 });
-                const { mockTerms } = await import('@/data/mockData');
-                currentTerms = filterAcademicTerms(mockTerms);
+                const { terms } = await import('@/data/terms');
+                currentTerms = filterAcademicTerms(terms);
                 saveTerms(currentTerms, userId);
                 nextTermsStatus = 'ready';
             }

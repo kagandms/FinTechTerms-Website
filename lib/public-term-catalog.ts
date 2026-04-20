@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { mockTerms } from '@/data/mockData';
+import { terms as catalogTerms } from '@/data/terms';
 import { createTimeoutFetch } from '@/lib/api-response';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
@@ -29,7 +29,7 @@ let publicCatalogRpcClient: SupabaseClient | null = null;
 
 // Public app-shell term content is intentionally rendered from the repo catalog.
 // The database remains a release-verified mirror for selected runtime checks only.
-const normalizedCatalog = filterAcademicTerms(mockTerms).map((term) => ({
+const normalizedCatalog = filterAcademicTerms(catalogTerms).map((term) => ({
     ...term,
 }));
 
