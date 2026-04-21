@@ -54,13 +54,14 @@ describe('createServiceRoleClient', () => {
         });
     });
 
-    it('creates a service-role client only for allowlisted routes', async () => {
-        const { createServiceRoleClient } = await import('@/lib/supabaseAdmin');
+    it('creates a service-role client only for the admin dashboard route', async () => {
+        const { createServiceRoleClient, TRUSTED_SERVICE_ROLE_ROUTES } = await import('@/lib/supabaseAdmin');
 
         createServiceRoleClient({
-            route: 'POST /api/favorites',
+            route: 'AdminDashboard',
         });
 
+        expect(TRUSTED_SERVICE_ROLE_ROUTES).toEqual(['AdminDashboard']);
         expect(mockCreateSupabaseClient).toHaveBeenCalledTimes(1);
         expect(mockCreateSupabaseClient).toHaveBeenCalledWith(
             'https://project.supabase.co',

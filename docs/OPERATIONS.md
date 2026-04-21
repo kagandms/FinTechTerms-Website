@@ -34,7 +34,8 @@
 28. Verify retryable quiz reviews persist in the device queue and replay successfully after reconnect or re-authentication.
 29. Verify preview release gates fail on same-repo pull requests when required staging secrets are missing.
 30. Verify local development and production build parity by running the explicit webpack paths: `npm run dev` and `npm run build`.
-31. Never ship or attach `.next/server/**/*.map` files to support bundles, exported debug archives, or customer-visible artifacts; treat server source maps as internal deployment-only material.
+31. Before packaging any support bundle or exported debug archive, run `npm run guard:artifact-sourcemaps -- path/to/artifact-manifest.txt` against the candidate file list or unzip listing.
+32. Never ship or attach `.next/server/**/*.map` files to support bundles, exported debug archives, or customer-visible artifacts; treat server source maps as internal deployment-only material.
 
 Validation note:
 

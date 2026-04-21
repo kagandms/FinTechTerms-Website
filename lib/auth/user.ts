@@ -9,6 +9,12 @@ export interface AuthenticatedUser {
     providers: string[];
 }
 
+interface GetSupabaseUserDisplayNameOptions {
+    displayNameOverride?: string | null;
+}
+
+interface MapSupabaseUserOptions extends GetSupabaseUserDisplayNameOptions {}
+
 const DISPLAY_NAME_METADATA_KEYS = [
     'full_name',
     'name',
@@ -108,8 +114,14 @@ export const getSupabaseUserMetadataBirthDate = (
 };
 
 export const getSupabaseUserDisplayName = (
-    supabaseUser: Pick<SupabaseUser, 'id' | 'user_metadata' | 'email'> | null | undefined
+    supabaseUser: Pick<SupabaseUser, 'id' | 'user_metadata' | 'email'> | null | undefined,
+    options: GetSupabaseUserDisplayNameOptions = {}
 ): string => {
+    const displayNameOverride = normalizeString(options.displayNameOverride);
+    if (displayNameOverride) {
+        return displayNameOverride;
+    }
+
     const nameSeed = getSupabaseUserNameSeed(supabaseUser);
     if (nameSeed) {
         return nameSeed;
@@ -119,13 +131,16 @@ export const getSupabaseUserDisplayName = (
     return fallbackId ? `User ${fallbackId}` : 'User';
 };
 
-export const mapSupabaseUser = (supabaseUser: SupabaseUser): AuthenticatedUser => {
+export const mapSupabaseUser = (
+    supabaseUser: SupabaseUser,
+    options: MapSupabaseUserOptions = {}
+): AuthenticatedUser => {
     const providers = getSupabaseUserProviders(supabaseUser);
 
     return {
         id: supabaseUser.id,
         email: supabaseUser.email ?? null,
-        name: getSupabaseUserDisplayName(supabaseUser),
+        name: getSupabaseUserDisplayName(supabaseUser, options),
         createdAt: supabaseUser.created_at,
         primaryProvider: providers[0] ?? null,
         providers,

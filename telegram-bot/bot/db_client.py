@@ -10,12 +10,14 @@ from collections.abc import Callable
 from typing import Any, Optional, TypeVar
 
 from supabase import create_client, Client
+from supabase.lib.client_options import SyncClientOptions
 
 from bot.config import config
 
 _public_client: Optional[Client] = None
 ACADEMIC_QUARANTINE_FILTER = "is_academic.is.null,is_academic.neq.false"
 SUPABASE_REQUEST_TIMEOUT_SECONDS = 5.0
+SUPABASE_EXECUTOR_TIMEOUT_GRACE_SECONDS = 0.5
 QUERY_EXECUTOR_MAX_WORKERS = 4
 T = TypeVar("T")
 _query_executor = ThreadPoolExecutor(
@@ -28,7 +30,13 @@ def get_public_client() -> Client:
     """Lazy-initialise the bot's public Supabase client with the required anon key."""
     global _public_client
     if _public_client is None:
-        _public_client = create_client(config.supabase_url, config.supabase_anon_key)
+        _public_client = create_client(
+            config.supabase_url,
+            config.supabase_anon_key,
+            options=SyncClientOptions(
+                postgrest_client_timeout=SUPABASE_REQUEST_TIMEOUT_SECONDS,
+            ),
+        )
     return _public_client
 
 
@@ -58,7 +66,11 @@ async def execute_public_query(
     timeouts from growing into unbounded background thread pressure.
     """
     loop = asyncio.get_running_loop()
+    effective_timeout = timeout_seconds
+    if timeout_seconds == SUPABASE_REQUEST_TIMEOUT_SECONDS:
+        effective_timeout += SUPABASE_EXECUTOR_TIMEOUT_GRACE_SECONDS
+
     return await asyncio.wait_for(
         loop.run_in_executor(_query_executor, operation),
-        timeout=timeout_seconds,
+        timeout=effective_timeout,
     )

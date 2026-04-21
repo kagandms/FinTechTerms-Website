@@ -8,7 +8,6 @@ export {};
 
 const mockResolveAuthenticatedUser = jest.fn();
 const mockCreateRequestScopedClient = jest.fn();
-const mockCreateServiceRoleClient = jest.fn();
 const mockResolveRequestMemberEntitlements = jest.fn();
 const mockInspectIdempotentRequest = jest.fn();
 const mockReserveIdempotentRequest = jest.fn();
@@ -18,7 +17,6 @@ const mockFailIdempotentRequest = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
     createRequestScopedClient: (request: Request) => mockCreateRequestScopedClient(request),
-    createServiceRoleClient: () => mockCreateServiceRoleClient(),
     resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
 }));
 
@@ -67,10 +65,6 @@ describe('favorites route', () => {
             email: 'user@example.com',
         });
         mockCreateRequestScopedClient.mockResolvedValue({
-            rpc: jest.fn(),
-            from: jest.fn(),
-        });
-        mockCreateServiceRoleClient.mockReturnValue({
             rpc: jest.fn(),
             from: jest.fn(),
         });
@@ -150,7 +144,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({
+        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -170,9 +164,8 @@ describe('favorites route', () => {
             termId: 'term-1',
             favorites: ['term-1'],
         });
-        expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
-            p_user_id: 'user-1',
+        expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -218,7 +211,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({
+        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -231,8 +224,7 @@ describe('favorites route', () => {
         }));
 
         expect(response.status).toBe(200);
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
-            p_user_id: 'user-1',
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
             p_term_id: 'term-1',
             p_should_favorite: true,
         });
@@ -248,7 +240,7 @@ describe('favorites route', () => {
             },
             error: null,
         });
-        mockCreateServiceRoleClient.mockReturnValue({
+        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -285,7 +277,7 @@ describe('favorites route', () => {
                 message: 'Favorite limit reached.',
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue({
+        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });
@@ -303,8 +295,7 @@ describe('favorites route', () => {
             code: 'FAVORITES_LIMIT_REACHED',
             retryable: false,
         });
-        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite_server', {
-            p_user_id: 'user-1',
+        expect(rpc).toHaveBeenCalledWith('toggle_my_favorite', {
             p_term_id: 'term-2',
             p_should_favorite: true,
         });
@@ -317,10 +308,8 @@ describe('favorites route', () => {
         }));
     });
 
-    it('returns 503 when the service-role client is unavailable during write handling', async () => {
-        mockCreateServiceRoleClient.mockImplementationOnce(() => {
-            throw new Error('service role unavailable');
-        });
+    it('returns 503 when the request-scoped client is unavailable during write handling', async () => {
+        mockCreateRequestScopedClient.mockResolvedValueOnce(null);
 
         const { POST } = await import('@/app/api/favorites/route');
         const response = await POST(createPostRequest({
@@ -345,7 +334,7 @@ describe('favorites route', () => {
                 message: 'Term not found.',
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue({
+        mockCreateRequestScopedClient.mockResolvedValue({
             rpc,
             from: jest.fn(),
         });

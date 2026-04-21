@@ -47,4 +47,19 @@ describe('study-session storage recovery', () => {
             context: null,
         });
     });
+
+    it('restores a ready session context from the durable localStorage mirror', () => {
+        localStorage.setItem(buildStudySessionStorageKey('tab-1'), JSON.stringify({
+            id: 'session-1',
+            token: 'token-1',
+        }));
+
+        expect(readTrackedStudySessionState()).toEqual({
+            status: 'ready',
+            context: {
+                sessionId: 'session-1',
+                sessionToken: 'token-1',
+            },
+        });
+    });
 });

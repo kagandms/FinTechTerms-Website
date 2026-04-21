@@ -35,9 +35,6 @@ const getBearerToken = (request: Request): string | null => {
 
 export const TRUSTED_SERVICE_ROLE_ROUTES = [
     'AdminDashboard',
-    'POST /api/favorites',
-    'POST /api/record-quiz',
-    'POST /api/study-sessions',
 ] as const;
 
 export type TrustedServiceRoleRoute = typeof TRUSTED_SERVICE_ROLE_ROUTES[number];

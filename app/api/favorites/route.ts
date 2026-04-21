@@ -20,7 +20,6 @@ import {
 } from '@/lib/rate-limiter';
 import {
     createRequestScopedClient,
-    createServiceRoleClient,
     resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
@@ -48,10 +47,10 @@ const GLOBAL_RATE_LIMIT_HEADERS = {
 const WRITE_RATE_LIMIT = 10;
 const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailable. Verify preview/staging runtime env includes UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.';
 const FAVORITES_LIMIT_REACHED_MESSAGE = 'Favorite limit reached. Complete your member setup to save more terms.';
-type FavoriteIdempotencyClient = ReturnType<typeof createServiceRoleClient>;
+type FavoriteMutationClient = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
 const markFavoriteFailure = async (
-    supabaseAdmin: FavoriteIdempotencyClient,
+    supabaseAdmin: FavoriteMutationClient,
     userId: string,
     idempotencyKey: string | null,
     statusCode: number,
@@ -84,7 +83,7 @@ export async function POST(request: Request) {
     const ip = getClientIp(request);
     let authenticatedUserId: string | null = null;
     let headers: HeadersInit = GLOBAL_RATE_LIMIT_HEADERS;
-    let idempotencyClient: FavoriteIdempotencyClient | null = null;
+    let requestScopedClient: FavoriteMutationClient | null = null;
 
     let body: unknown;
 
@@ -146,14 +145,10 @@ export async function POST(request: Request) {
             });
         }
         authenticatedUserId = user.id;
-        try {
-            idempotencyClient = createServiceRoleClient({
+        requestScopedClient = await createRequestScopedClient(request);
+        if (!requestScopedClient) {
+            logger.error('POST_FAVORITES_REQUEST_CLIENT_UNAVAILABLE', {
                 route: 'POST /api/favorites',
-            });
-        } catch (error) {
-            logger.error('POST_FAVORITES_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
-                route: 'POST /api/favorites',
-                error: error instanceof Error ? error : undefined,
                 userId: user.id,
             });
             return errorResponse({
@@ -165,7 +160,7 @@ export async function POST(request: Request) {
                 headers: GLOBAL_RATE_LIMIT_HEADERS,
             });
         }
-        const supabaseClient = idempotencyClient;
+        const supabaseClient = requestScopedClient;
 
         const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
 
@@ -301,9 +296,8 @@ export async function POST(request: Request) {
         }
 
         const { data: mutationData, error: mutationError } = await supabaseClient.rpc(
-            'toggle_my_favorite_server',
+            'toggle_my_favorite',
             {
-                p_user_id: user.id,
                 p_term_id: termId,
                 p_should_favorite: shouldFavorite,
             }
@@ -406,9 +400,9 @@ export async function POST(request: Request) {
             { headers: guardedHeaders }
         );
     } catch (error) {
-        if (authenticatedUserId && idempotencyClient) {
+        if (authenticatedUserId && requestScopedClient) {
             const { idempotencyKey } = validatedData.data;
-            await markFavoriteFailure(idempotencyClient, authenticatedUserId, idempotencyKey, 500, {
+            await markFavoriteFailure(requestScopedClient, authenticatedUserId, idempotencyKey, 500, {
                 code: 'FAVORITES_UPDATE_FAILED',
                 message: 'Unable to update favorites.',
             });

@@ -5,7 +5,7 @@ aiohttp>=3.13.4
 cryptography>=46.0.7
 python-telegram-bot[ext]
 supabase
-python-dotenv
+python-dotenv>=1.2.2
 edge-tts
 flask
 redis

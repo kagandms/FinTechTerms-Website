@@ -436,6 +436,46 @@ describe('SessionTracker', () => {
         expect(sessionStorage.getItem(`${PENDING_END_SESSION_KEY}:tab_test`)).toBeNull();
     });
 
+    it('does not start a replacement session while a pending end-session replay is still retryable', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        sessionStorage.setItem(`${PENDING_END_SESSION_KEY}:tab_test`, JSON.stringify({
+            payload: {
+                action: 'end',
+                sessionId: 'session_pending',
+                sessionToken: 'pending_token',
+                durationSeconds: 10,
+                pageViews: 2,
+                quizAttempts: 1,
+            },
+            idempotencyKey: 'pending-end-key',
+        }));
+
+        const fetchMock = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 503,
+            json: jest.fn().mockResolvedValue({
+                code: 'STUDY_SESSION_UNAVAILABLE',
+                retryable: true,
+            }),
+        });
+        global.fetch = fetchMock as typeof fetch;
+
+        render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        });
+
+        const replayedEndPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+        expect(replayedEndPayload).toMatchObject({
+            action: 'end',
+            sessionId: 'session_pending',
+            idempotency_key: 'pending-end-key',
+        });
+        expect(sessionStorage.getItem(`${PENDING_END_SESSION_KEY}:tab_test`)).not.toBeNull();
+    });
+
     it('does not persist or beacon an end-session payload when the page is hidden', async () => {
         grantConsent();
         const sendBeacon = jest.fn().mockReturnValue(true);
@@ -518,6 +558,95 @@ describe('SessionTracker', () => {
 
         const pendingKey = getCurrentPendingEndKey();
         expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).toBeNull();
+    });
+
+    it('keeps the active session mirrored locally when the close request returns a retryable failure', async () => {
+        grantConsent();
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }))
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 503,
+                json: jest.fn().mockResolvedValue({
+                    code: 'STUDY_SESSION_UNAVAILABLE',
+                    retryable: true,
+                }),
+            });
+        global.fetch = fetchMock as typeof fetch;
+
+        const view = render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(readStoredSession()).toMatchObject({
+                id: 'session_1',
+                token: 'token_1',
+            });
+        });
+
+        view.unmount();
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        expect(readStoredSession()).toMatchObject({
+            id: 'session_1',
+            token: 'token_1',
+        });
+        const pendingKey = getCurrentPendingEndKey();
+        expect(pendingKey ? sessionStorage.getItem(pendingKey) : null).not.toBeNull();
+    });
+
+    it('keeps the active session mirrored locally when pending end-session persistence fails', async () => {
+        grantConsent();
+        sessionStorage.setItem(SESSION_TAB_ID_KEY, 'tab_test');
+        const fetchMock = jest.fn()
+            .mockResolvedValueOnce(createFetchResponse({
+                sessionId: 'session_1',
+                sessionToken: 'token_1',
+            }))
+            .mockRejectedValueOnce(new TypeError('network unavailable'));
+        global.fetch = fetchMock as typeof fetch;
+
+        const view = render(<SessionTracker />);
+
+        await waitFor(() => {
+            expect(readStoredSession()).toMatchObject({
+                id: 'session_1',
+                token: 'token_1',
+            });
+        });
+
+        const originalSetItem = Storage.prototype.setItem;
+        const setItemSpy = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+            if (key === `${PENDING_END_SESSION_KEY}:tab_test`) {
+                throw new Error('quota exceeded');
+            }
+
+            return originalSetItem.call(this, key, value);
+        });
+
+        view.unmount();
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        expect(readStoredSession()).toMatchObject({
+            id: 'session_1',
+            token: 'token_1',
+        });
+        expect(mockLoggerWarn).toHaveBeenCalledWith(
+            'SESSION_TRACKER_PENDING_END_PERSIST_FAILED',
+            expect.objectContaining({
+                route: 'SessionTracker',
+            })
+        );
+
+        setItemSpy.mockRestore();
     });
 
     it('increments quiz attempts only for the active tab session record', async () => {

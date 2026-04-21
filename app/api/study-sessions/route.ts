@@ -23,7 +23,7 @@ import {
     createStudySessionToken,
     hashStudySessionToken,
 } from '@/lib/study-session-token';
-import { createServiceRoleClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
+import { createRequestScopedClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
 import { hasConfiguredStudySessionEnv } from '@/lib/env';
 
 const StartSessionSchema = z.object({
@@ -64,7 +64,7 @@ const STUDY_SESSION_RATE_LIMIT_HEADERS = {
 type SessionAction = z.infer<typeof SessionActionSchema>;
 type StartSessionAction = z.infer<typeof StartSessionSchema>;
 type SessionFollowUpAction = Extract<SessionAction, { action: 'heartbeat' | 'end' }>;
-type StudySessionMutationClient = ReturnType<typeof createServiceRoleClient>;
+type StudySessionMutationClient = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
 type CachedApiErrorBody = {
     code: string;
@@ -222,12 +222,11 @@ const buildStartSessionResponse = async (
     sessionId: string
 ): Promise<StartSessionResponseBody> => {
     const sessionToken = createStudySessionToken(sessionId, payload.idempotency_key);
-    const { error } = await supabase.rpc('bind_study_session_token_server', {
-        p_requester_user_id: requesterUserId,
-        p_requester_anonymous_id: payload.anonymousId ?? null,
+    const { error } = await supabase.rpc('bind_study_session_token', {
         p_session_id: sessionId,
         p_idempotency_key: payload.idempotency_key,
         p_session_token_hash: hashStudySessionToken(sessionToken),
+        p_anonymous_id: requesterUserId ? null : (payload.anonymousId ?? null),
     });
 
     if (error) {
@@ -248,9 +247,8 @@ const startStudySession = async (
     const previousSessionTokenHash = payload.previous_session_token
         ? hashStudySessionToken(payload.previous_session_token)
         : null;
-    const { data, error } = await supabase.rpc('start_study_session_server', {
-        p_requester_user_id: requesterUserId,
-        p_requester_anonymous_id: payload.anonymousId ?? null,
+    const { data, error } = await supabase.rpc('start_study_session', {
+        p_anonymous_id: requesterUserId ? null : (payload.anonymousId ?? null),
         p_device_type: payload.deviceType,
         p_user_agent: payload.userAgent ?? null,
         p_consent_given: true,
@@ -276,8 +274,7 @@ const updateStudySession = async (
     payload: SessionFollowUpAction,
     requesterUserId: string | null
 ): Promise<void> => {
-    const { error } = await supabase.rpc('update_study_session_by_token_server', {
-        p_requester_user_id: requesterUserId,
+    const { error } = await supabase.rpc('update_study_session_by_token', {
         p_session_id: payload.sessionId,
         p_session_token_hash: hashStudySessionToken(payload.sessionToken),
         p_duration_seconds: payload.durationSeconds,
@@ -411,16 +408,11 @@ export async function POST(request: Request) {
             });
         }
 
-        let supabase: StudySessionMutationClient;
-        try {
-            supabase = createServiceRoleClient({
-                route: 'POST /api/study-sessions',
-            });
-        } catch (error) {
-            logger.error('POST_STUDY_SESSIONS_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
+        const supabase = await createRequestScopedClient(request);
+        if (!supabase) {
+            logger.error('POST_STUDY_SESSIONS_REQUEST_CLIENT_UNAVAILABLE', {
                 requestId,
                 route: '/api/study-sessions',
-                error: error instanceof Error ? error : undefined,
                 retryable: true,
             });
             return errorResponse({

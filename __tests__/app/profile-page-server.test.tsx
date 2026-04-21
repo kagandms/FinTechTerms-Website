@@ -88,4 +88,44 @@ describe('profile page server loader', () => {
             profileWarningCode: 'PROFILE_DATA_PARTIAL',
         }));
     });
+
+    it('prefers the persisted profile full_name over stale auth metadata for form defaults', async () => {
+        const maybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                full_name: 'Meryem Kaya',
+                birth_date: '2000-01-01',
+            },
+            error: null,
+        });
+        const select = jest.fn(() => ({
+            eq: jest.fn(() => ({
+                maybeSingle,
+            })),
+        }));
+        const from = jest.fn(() => ({ select }));
+
+        mockCreateOptionalClient.mockResolvedValue({ from });
+        mockSafeGetSupabaseUser.mockResolvedValue({
+            user: {
+                id: 'user-1',
+                email: 'meryem@example.com',
+                user_metadata: {
+                    name: 'Old Metadata Name',
+                },
+            },
+        });
+
+        const ProfilePage = (await import('@/app/(app)/profile/page')).default;
+        const view = await ProfilePage();
+        render(view);
+
+        expect(profilePageClientSpy).toHaveBeenCalledWith(expect.objectContaining({
+            initialProfileData: expect.objectContaining({
+                name: 'Meryem',
+                surname: 'Kaya',
+                birthDate: '2000-01-01',
+            }),
+            profileWarningCode: null,
+        }));
+    });
 });

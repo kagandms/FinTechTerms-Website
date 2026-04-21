@@ -389,6 +389,54 @@ describe('addQuizAttempt', () => {
         expect(progress.quiz_history[0]?.id).toBe('attempt_1');
         expect(progress.quiz_history[RECENT_QUIZ_HISTORY_LIMIT - 1]?.id).toBe('attempt_latest');
     });
+
+    it('recalculates mastered words when a local favorite term is promoted and later demoted', () => {
+        const seededTerm = getTerms()[0];
+
+        expect(seededTerm).toBeDefined();
+        if (!seededTerm) {
+            throw new Error('Expected at least one seeded term.');
+        }
+
+        saveUserProgress(createProgress({
+            user_id: 'guest',
+            favorites: [seededTerm.id],
+            total_words_learned: 0,
+        }));
+
+        updateTerm({
+            ...seededTerm,
+            srs_level: 4,
+        });
+
+        const promotedProgress = addQuizAttempt({
+            id: 'attempt_promoted',
+            term_id: seededTerm.id,
+            is_correct: true,
+            response_time_ms: 900,
+            timestamp: new Date().toISOString(),
+            quiz_type: 'daily' as const,
+        });
+
+        expect(promotedProgress.total_words_learned).toBe(1);
+
+        updateTerm({
+            ...getTerms()[0]!,
+            id: seededTerm.id,
+            srs_level: 1,
+        });
+
+        const demotedProgress = addQuizAttempt({
+            id: 'attempt_demoted',
+            term_id: seededTerm.id,
+            is_correct: false,
+            response_time_ms: 1100,
+            timestamp: new Date().toISOString(),
+            quiz_type: 'daily' as const,
+        });
+
+        expect(demotedProgress.total_words_learned).toBe(0);
+    });
 });
 
 describe('guest quiz preview', () => {

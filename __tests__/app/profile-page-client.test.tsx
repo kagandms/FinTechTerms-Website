@@ -205,6 +205,52 @@ describe('ProfilePageClient', () => {
         expect(screen.getByTestId('stats-grid')).toHaveTextContent('{"totalReviews":20,"accuracy":75}');
     });
 
+    it('renders the same authenticated display name in the welcome header and avatar', () => {
+        mockUseAuthLogic.mockReturnValue({
+            user: { id: 'user-1', name: 'Meryem Kaya' },
+            isAuthenticated: true,
+            language: 'en',
+            t: (key: string) => profileTranslationMap[key] ?? key,
+            showAuthModal: false,
+            setShowAuthModal: jest.fn(),
+            setAuthMode: jest.fn(),
+            showResetConfirm: false,
+            setShowResetConfirm: jest.fn(),
+            handleDataReset: jest.fn(),
+            logout: jest.fn(),
+            router: {
+                push: jest.fn(),
+            },
+        });
+
+        render(
+            <ProfilePageClient
+                initialProfileData={null}
+                profileWarningCode={null}
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 10,
+                        correctReviews: 8,
+                        accuracy: 80,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        expect(screen.getByText('Welcome back, Meryem Kaya')).toBeInTheDocument();
+        expect(screen.getByTestId('user-avatar')).toHaveTextContent('MK');
+    });
+
     it('shows a partial analytics banner and warning toast when only some learning stats are missing', async () => {
         render(
             <ProfilePageClient

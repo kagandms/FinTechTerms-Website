@@ -439,7 +439,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
 
         const formValues = getValues();
 
-        await runTimedAction('password', async (withTimeout) => {
+        await runTimedAction('password', async (withTimeout, timeoutSignal) => {
             if (!authenticatedUserId) {
                 throw new Error(dict.authRequired);
             }
@@ -458,6 +458,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ language, init
                     currentPassword: formValues.currentPassword || '',
                     password: formValues.newPassword,
                 }),
+                signal: timeoutSignal,
             }));
 
             let responseBody: { message?: string } | null = null;

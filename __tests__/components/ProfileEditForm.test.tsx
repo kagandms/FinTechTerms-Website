@@ -316,12 +316,14 @@ describe('ProfileEditForm submit flow', () => {
 
     it('aborts a hanging password update after the hard timeout window', async () => {
         jest.useFakeTimers();
+        let requestSignal: AbortSignal | undefined;
         mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
 
             if (url.includes('/api/auth/update-password')) {
+                requestSignal = init?.signal as AbortSignal | undefined;
                 return new Promise((_, reject) => {
-                    init?.signal?.addEventListener('abort', () => {
+                    requestSignal?.addEventListener('abort', () => {
                         reject(new DOMException('The operation was aborted.', 'AbortError'));
                     }, { once: true });
                 });
@@ -364,6 +366,8 @@ describe('ProfileEditForm submit flow', () => {
         await waitFor(() => {
             expect(mockShowToast).toHaveBeenCalledWith('Password update timed out. Please try again.', 'error');
         });
+        expect(requestSignal).toBeDefined();
+        expect(requestSignal?.aborted).toBe(true);
 
         jest.useRealTimers();
     });

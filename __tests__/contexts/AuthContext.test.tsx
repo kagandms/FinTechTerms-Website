@@ -129,6 +129,12 @@ const AuthContextConsumer = () => {
     );
 };
 
+const clickButton = async (name: string): Promise<void> => {
+    await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name }));
+    });
+};
+
 describe('AuthProvider', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -192,7 +198,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('recovery-state')).toHaveTextContent('true');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'update-password' }));
+        await clickButton('update-password');
 
         await waitFor(() => {
             expect(screen.getByTestId('update-result')).toHaveTextContent('"success":false');
@@ -213,7 +219,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('recovery-state')).toHaveTextContent('true');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'update-password' }));
+        await clickButton('update-password');
 
         await waitFor(() => {
             expect(screen.getByTestId('update-result')).toHaveTextContent('"success":true');
@@ -251,7 +257,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('true');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'logout' }));
+        await clickButton('logout');
 
         await waitFor(() => {
             expect(screen.getByTestId('logout-result')).toHaveTextContent('"success":false');
@@ -289,7 +295,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('true');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'logout' }));
+        await clickButton('logout');
         await jest.advanceTimersByTimeAsync(4_000);
 
         await waitFor(() => {
@@ -328,7 +334,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'verify-otp' }));
+        await clickButton('verify-otp');
 
         await waitFor(() => {
             expect(screen.getByTestId('verify-result')).toHaveTextContent('"success":false');
@@ -368,7 +374,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'verify-otp' }));
+        await clickButton('verify-otp');
 
         await waitFor(() => {
             expect(screen.getByTestId('verify-result')).toHaveTextContent('"success":true');
@@ -404,7 +410,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('authenticated-state')).toHaveTextContent('false');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'verify-otp' }));
+        await clickButton('verify-otp');
 
         await act(async () => {
             await jest.advanceTimersByTimeAsync(2_000);
@@ -448,7 +454,7 @@ describe('AuthProvider', () => {
             expect(screen.getByTestId('profile-completion-state')).toHaveTextContent('false');
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'refresh-member-state' }));
+        await clickButton('refresh-member-state');
 
         await waitFor(() => {
             expect(screen.getByTestId('profile-completion-state')).toHaveTextContent('true');

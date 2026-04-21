@@ -27,7 +27,9 @@ export const buildAuthSessionState = async (request: Request): Promise<AuthSessi
     }
 
     return {
-        user: mapSupabaseUser(user),
+        user: mapSupabaseUser(user, {
+            displayNameOverride: memberState.profile?.fullName ?? null,
+        }),
         isAuthenticated: true,
         isAdmin: isAdminUserId(user.id),
         entitlements: memberState.entitlements,

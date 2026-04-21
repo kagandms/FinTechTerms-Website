@@ -5,9 +5,15 @@ import { logger } from '@/lib/logger';
 import { resolveMemberEntitlements, type MemberEntitlements } from '@/lib/member-entitlements';
 import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
+export interface RequestMemberProfileSnapshot {
+    fullName: string | null;
+    birthDate: string | null;
+}
+
 export interface RequestMemberEntitlementsResult {
     user: Awaited<ReturnType<typeof resolveAuthenticatedUser>>;
     entitlements: MemberEntitlements;
+    profile?: RequestMemberProfileSnapshot | null;
     unavailable:
         | {
             status: 503;
@@ -33,6 +39,15 @@ const MEMBER_STATE_UNAVAILABLE = {
     message: 'Member state is temporarily unavailable. Please try again.',
 };
 
+const normalizeProfileField = (value: unknown): string | null => {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalizedValue = value.trim();
+    return normalizedValue || null;
+};
+
 export const resolveRequestMemberEntitlements = async (
     request: Request
 ): Promise<RequestMemberEntitlementsResult> => {
@@ -45,6 +60,7 @@ export const resolveRequestMemberEntitlements = async (
                 isAuthenticated: false,
                 requiresProfileCompletion: false,
             }),
+            profile: null,
             unavailable: null,
         };
     }
@@ -61,13 +77,14 @@ export const resolveRequestMemberEntitlements = async (
                 isAuthenticated: true,
                 requiresProfileCompletion: true,
             }),
+            profile: null,
             unavailable: MEMBER_STATE_UNAVAILABLE,
         };
     }
 
     const { data, error } = await supabase
         .from('profiles')
-        .select('birth_date')
+        .select('full_name, birth_date')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -83,11 +100,16 @@ export const resolveRequestMemberEntitlements = async (
                 isAuthenticated: true,
                 requiresProfileCompletion: true,
             }),
+            profile: null,
             unavailable: MEMBER_STATE_UNAVAILABLE,
         };
     }
 
     const requiresProfileCompletion = !hasPersistedBirthDate(data?.birth_date);
+    const profile = {
+        fullName: normalizeProfileField(data?.full_name),
+        birthDate: normalizeProfileField(data?.birth_date),
+    };
 
     return {
         user,
@@ -95,6 +117,7 @@ export const resolveRequestMemberEntitlements = async (
             isAuthenticated: true,
             requiresProfileCompletion,
         }),
+        profile,
         unavailable: null,
     };
 };

@@ -124,6 +124,19 @@ const getMistakeReviewQueueStorageKey = (userId: string | null | undefined): str
     return `${STORAGE_KEYS.MISTAKE_REVIEW_QUEUE_PREFIX}:auth:${scopeUserId}`;
 };
 
+const countMasteredFavoriteTerms = (
+    terms: readonly Term[],
+    favoriteIds: readonly string[]
+): number => {
+    const favoriteIdSet = new Set(favoriteIds);
+
+    return terms.reduce((count, term) => (
+        favoriteIdSet.has(term.id) && term.srs_level >= 4
+            ? count + 1
+            : count
+    ), 0);
+};
+
 const createDefaultProgress = (userId?: string | null): UserProgress => {
     const now = new Date().toISOString();
     const scopeUserId = resolveProgressScopeUserId(userId);
@@ -561,19 +574,10 @@ export function addQuizAttempt(attempt: QuizAttempt, userId?: string | null): Us
         updatedProgress.last_study_date = toUtcDateKey(new Date());
     }
 
-    // Update words learned count
-    if (attempt.is_correct) {
-        const term = getTerms(userId).find(t => t.id === attempt.term_id);
-        if (term && term.srs_level >= 4) {
-            updatedProgress.total_words_learned = Math.max(
-                updatedProgress.total_words_learned,
-                updatedProgress.favorites.filter(id => {
-                    const t = getTerms(userId).find(tm => tm.id === id);
-                    return t && t.srs_level >= 4;
-                }).length
-            );
-        }
-    }
+    updatedProgress.total_words_learned = countMasteredFavoriteTerms(
+        getTerms(userId),
+        updatedProgress.favorites
+    );
 
     saveUserProgress(updatedProgress, userId);
     return updatedProgress;

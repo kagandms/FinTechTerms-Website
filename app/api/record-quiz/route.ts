@@ -21,7 +21,7 @@ import {
     quizMutationRateLimiter,
 } from '@/lib/rate-limiter';
 import {
-    createServiceRoleClient,
+    createRequestScopedClient,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import { hashStudySessionToken } from '@/lib/study-session-token';
@@ -55,7 +55,7 @@ const MAX_QUIZ_OCCURRED_AT_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS = 5 * 60 * 1000;
 const OCCURRED_AT_OUT_OF_WINDOW_CODE = 'OCCURRED_AT_OUT_OF_WINDOW';
 const OCCURRED_AT_OUT_OF_WINDOW_MESSAGE = 'Quiz attempt timestamp is outside the allowed replay window.';
-type QuizMutationClient = ReturnType<typeof createServiceRoleClient>;
+type QuizMutationClient = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
 type OccurredAtNormalizationResult =
     | { ok: true; value: string | null }
@@ -262,15 +262,11 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    try {
-        mutationClient = createServiceRoleClient({
-            route: 'POST /api/record-quiz',
-        });
-    } catch (error) {
-        logger.error('QUIZ_ROUTE_SERVICE_ROLE_CLIENT_UNAVAILABLE', {
+    mutationClient = await createRequestScopedClient(request);
+    if (!mutationClient) {
+        logger.error('QUIZ_ROUTE_REQUEST_CLIENT_UNAVAILABLE', {
             requestId,
             route: '/api/record-quiz',
-            error: error instanceof Error ? error : undefined,
             retryable: true,
         });
         return errorResponse({
@@ -452,8 +448,7 @@ export async function POST(request: NextRequest) {
         }
 
         const { data, error } = await routeSupabase
-            .rpc('record_study_event', {
-                p_user_id: user.id,
+            .rpc('record_my_study_event', {
                 p_term_id: term_id,
                 p_is_correct: is_correct,
                 p_response_time_ms: response_time_ms,

@@ -367,4 +367,57 @@ describe('AnalyticsPageClient', () => {
             expect(screen.getByText('Analytics export timed out. Please try again.')).toBeInTheDocument();
         });
     });
+
+    it('shows a bounded timeout error when analytics export body reading stalls', async () => {
+        jest.useFakeTimers();
+        let requestSignal: AbortSignal | undefined;
+        global.fetch = jest.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
+            requestSignal = init?.signal as AbortSignal | undefined;
+
+            return Promise.resolve({
+                ok: true,
+                blob: () => new Promise<Blob>((_resolve, reject) => {
+                    requestSignal?.addEventListener('abort', () => {
+                        const error = new Error('aborted');
+                        error.name = 'AbortError';
+                        reject(error);
+                    }, { once: true });
+                }),
+            } as unknown as Response);
+        }) as typeof fetch;
+
+        render(
+            <AnalyticsPageClient
+                learningStats={{
+                    ok: true,
+                    data: {
+                        heatmap: [],
+                        currentStreak: 0,
+                        lastStudyDate: null,
+                        badges: [],
+                        activeDays: 0,
+                        totalActivity: 0,
+                        todayActivity: 0,
+                        totalReviews: 3,
+                        correctReviews: 2,
+                        accuracy: 67,
+                        avgResponseTimeMs: 1200,
+                        recentAttempts: [],
+                    },
+                }}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Export/i }));
+
+        await act(async () => {
+            await jest.advanceTimersByTimeAsync(10_000);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Analytics export timed out. Please try again.')).toBeInTheDocument();
+        });
+        expect(requestSignal).toBeDefined();
+        expect(requestSignal?.aborted).toBe(true);
+    });
 });

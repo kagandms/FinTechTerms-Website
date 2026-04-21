@@ -91,6 +91,13 @@ jobs:
           NEXT_PUBLIC_SENTRY_ENVIRONMENT: ci-secret-free
           SENTRY_TRACES_SAMPLE_RATE: '0.1'
 
+      - name: Guard Support Artifact Source Maps
+        run: |
+          artifact_manifest="$(mktemp)"
+          find public -type f > "$artifact_manifest"
+          find .next/static -type f >> "$artifact_manifest"
+          npm run guard:artifact-sourcemaps -- "$artifact_manifest"
+
       - name: Check Release-Evaluable Runtime Secrets
         id: runtime_preflight
         env:

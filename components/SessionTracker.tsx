@@ -472,20 +472,22 @@ export default function SessionTracker() {
         }
     }, [getCurrentTabId]);
 
-    const persistPendingEndSession = useCallback((pending: PendingEndSessionMutation) => {
+    const persistPendingEndSession = useCallback((pending: PendingEndSessionMutation): boolean => {
         pendingEndPayloadRef.current = pending;
         const tabId = getCurrentTabId();
         if (!tabId) {
-            return;
+            return false;
         }
 
         try {
             writeDurableSessionItem(buildPendingEndSessionStorageKey(tabId), JSON.stringify(pending));
+            return true;
         } catch (error) {
             logSessionTrackerWarning('SESSION_TRACKER_PENDING_END_PERSIST_FAILED', error, {
                 action: pending.payload.action,
                 idempotencyKey: pending.idempotencyKey,
             });
+            return false;
         }
     }, [getCurrentTabId, logSessionTrackerWarning]);
 
@@ -524,6 +526,48 @@ export default function SessionTracker() {
         }
     }, [getCurrentTabId, logSessionTrackerWarning]);
 
+    const readSessionFromStorage = useCallback((): SessionData | null => {
+        const tabId = getCurrentTabId();
+        if (!tabId) {
+            return null;
+        }
+
+        try {
+            const storageKey = buildStudySessionStorageKey(tabId);
+            const stored = readDurableSessionItem(storageKey);
+            if (!stored) {
+                return null;
+            }
+
+            const persisted = JSON.parse(stored) as Partial<SessionData>;
+            if (
+                !persisted
+                || typeof persisted !== 'object'
+                || typeof persisted.startTime !== 'number'
+                || typeof persisted.pageViews !== 'number'
+                || typeof persisted.quizAttempts !== 'number'
+                || (persisted.authMode !== 'anonymous' && persisted.authMode !== 'authenticated')
+            ) {
+                removeDurableSessionItem(storageKey);
+                return null;
+            }
+
+            return {
+                id: typeof persisted.id === 'string' ? persisted.id : null,
+                token: typeof persisted.token === 'string' ? persisted.token : null,
+                startTime: persisted.startTime,
+                pageViews: persisted.pageViews,
+                quizAttempts: persisted.quizAttempts,
+                authMode: persisted.authMode,
+                anonymousId: typeof persisted.anonymousId === 'string' ? persisted.anonymousId : null,
+            };
+        } catch (error) {
+            removeDurableSessionItem(buildStudySessionStorageKey(tabId));
+            logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_RESTORE_FAILED', error);
+            return null;
+        }
+    }, [getCurrentTabId, logSessionTrackerWarning]);
+
     const saveSessionToStorage = useCallback((session: SessionData | null) => {
         const tabId = getCurrentTabId();
         if (!tabId) {
@@ -533,11 +577,11 @@ export default function SessionTracker() {
 
         try {
             if (session) {
-                sessionStorage.setItem(storageKey, JSON.stringify(session));
+                writeDurableSessionItem(storageKey, JSON.stringify(session));
                 return;
             }
 
-            sessionStorage.removeItem(storageKey);
+            removeDurableSessionItem(storageKey);
         } catch (error) {
             logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_WRITE_FAILED', error, {
                 hasSession: Boolean(session),
@@ -555,7 +599,7 @@ export default function SessionTracker() {
 
         try {
             const storageKey = buildStudySessionStorageKey(tabId);
-            const stored = sessionStorage.getItem(storageKey);
+            const stored = readDurableSessionItem(storageKey);
             if (!stored) {
                 return session;
             }
@@ -573,13 +617,36 @@ export default function SessionTracker() {
                 anonymousId: typeof persisted.anonymousId === 'string' ? persisted.anonymousId : session.anonymousId,
             };
         } catch (error) {
-            sessionStorage.removeItem(buildStudySessionStorageKey(tabId));
+            removeDurableSessionItem(buildStudySessionStorageKey(tabId));
             logSessionTrackerWarning('SESSION_TRACKER_SESSION_STORAGE_RESTORE_FAILED', error, {
                 sessionId: session.id,
             });
             return session;
         }
     }, [getCurrentTabId, logSessionTrackerWarning]);
+
+    const clearLocalSessionState = useCallback(() => {
+        sessionRef.current = null;
+        lastTrackedPathnameRef.current = null;
+        saveSessionToStorage(null);
+    }, [saveSessionToStorage]);
+
+    const clearLocalSessionStateForEndedPayload = useCallback((payload: EndSessionMutationPayload) => {
+        const currentSession = sessionRef.current;
+        if (
+            currentSession
+            && currentSession.id
+            && currentSession.token
+            && (
+                currentSession.id !== payload.sessionId
+                || currentSession.token !== payload.sessionToken
+            )
+        ) {
+            return;
+        }
+
+        clearLocalSessionState();
+    }, [clearLocalSessionState]);
 
     const applyStartResponseToCurrentSession = useCallback((
         sessionStartTime: number | null,
@@ -806,6 +873,7 @@ export default function SessionTracker() {
                         endKeyRef.current = null;
                     }
                     clearPendingEndSession(entry.idempotencyKey);
+                    clearLocalSessionStateForEndedPayload(entry.payload);
                 }
             }
         } finally {
@@ -814,6 +882,7 @@ export default function SessionTracker() {
     }, [
         applyStartResponseToCurrentSession,
         clearPendingEndSession,
+        clearLocalSessionStateForEndedPayload,
         clearPendingStartSession,
         logSessionTrackerWarning,
         persistSessionMutation,
@@ -919,6 +988,7 @@ export default function SessionTracker() {
             if (endKeyRef.current === pending.idempotencyKey) {
                 endKeyRef.current = null;
             }
+            clearLocalSessionStateForEndedPayload(pending.payload);
             return;
         }
 
@@ -939,7 +1009,14 @@ export default function SessionTracker() {
             action: pending.payload.action,
             idempotencyKey: pending.idempotencyKey,
         });
-    }, [logSessionTrackerWarning, clearPendingEndSession, persistSessionMutation, queueRetryableMutation, readPendingEndSession]);
+    }, [
+        clearLocalSessionStateForEndedPayload,
+        logSessionTrackerWarning,
+        clearPendingEndSession,
+        persistSessionMutation,
+        queueRetryableMutation,
+        readPendingEndSession,
+    ]);
 
     const replayPendingStartSession = useCallback(async (): Promise<PendingStartReplayResult> => {
         const pending = readPendingStartSession();
@@ -950,13 +1027,12 @@ export default function SessionTracker() {
         const currentTabId = getCurrentTabId();
         if (currentTabId && !sessionRef.current) {
             try {
-                const storageKey = buildStudySessionStorageKey(currentTabId);
-                const stored = sessionStorage.getItem(storageKey);
-                if (stored) {
-                    sessionRef.current = JSON.parse(stored) as SessionData;
+                const storedSession = readSessionFromStorage();
+                if (storedSession) {
+                    sessionRef.current = storedSession;
                 }
             } catch (error) {
-                sessionStorage.removeItem(buildStudySessionStorageKey(currentTabId));
+                removeDurableSessionItem(buildStudySessionStorageKey(currentTabId));
                 logSessionTrackerWarning('SESSION_TRACKER_PENDING_START_HYDRATE_FAILED', error);
             }
         }
@@ -1011,6 +1087,7 @@ export default function SessionTracker() {
         hydrateSessionFromStorage,
         logSessionTrackerWarning,
         persistSessionMutation,
+        readSessionFromStorage,
         saveSessionToStorage,
         queueRetryableMutation,
         readPendingStartSession,
@@ -1037,6 +1114,10 @@ export default function SessionTracker() {
         previousSessionToken = null,
     }: StartSessionOptions = {}) => {
         if (!hasResearchConsent()) return;
+
+        if (readPendingEndSession()) {
+            return;
+        }
 
         const inFlightStart = startRequestRef.current;
         if (inFlightStart) {
@@ -1145,6 +1226,7 @@ export default function SessionTracker() {
         persistPendingStartSession,
         persistSessionMutation,
         queueRetryableMutation,
+        readPendingEndSession,
         saveSessionToStorage,
     ]);
 
@@ -1237,10 +1319,11 @@ export default function SessionTracker() {
         const endPayload = buildEndPayload(session);
         const endIdempotencyKey = endKeyRef.current ?? createIdempotencyKey();
         endKeyRef.current = endIdempotencyKey;
-        persistPendingEndSession({
+        const pendingEndPersisted = persistPendingEndSession({
             payload: endPayload,
             idempotencyKey: endIdempotencyKey,
         });
+        let shouldClearLocalState = false;
 
         try {
             const request = persistSessionMutation(endPayload, endIdempotencyKey);
@@ -1254,6 +1337,9 @@ export default function SessionTracker() {
                         sessionStartTime: session.startTime,
                         idempotencyKey: endIdempotencyKey,
                     }, 'end_retryable_response');
+                    if (!pendingEndPersisted) {
+                        saveSessionToStorage(session);
+                    }
                 } else {
                     logSessionTrackerWarning('SESSION_TRACKER_END_REQUIRES_MANUAL_RETRY', new Error('End-session mutation returned a non-retryable response.'), {
                         action: 'end',
@@ -1263,6 +1349,7 @@ export default function SessionTracker() {
                     if (endKeyRef.current === endIdempotencyKey) {
                         endKeyRef.current = null;
                     }
+                    shouldClearLocalState = true;
                 }
                 return;
             }
@@ -1270,6 +1357,7 @@ export default function SessionTracker() {
             if (endKeyRef.current === endIdempotencyKey) {
                 endKeyRef.current = null;
             }
+            shouldClearLocalState = true;
             if (retryQueueRef.current.length > 0) {
                 void flushRetryQueue();
             }
@@ -1278,17 +1366,23 @@ export default function SessionTracker() {
                 action: 'end',
                 idempotencyKey: endIdempotencyKey,
             });
+            saveSessionToStorage(session);
         } finally {
             if (endRequestRef.current) {
                 endRequestRef.current = null;
             }
-            sessionRef.current = null;
-            lastTrackedPathnameRef.current = null;
-            saveSessionToStorage(null);
+            if (shouldClearLocalState) {
+                clearLocalSessionStateForEndedPayload(endPayload);
+                return;
+            }
+
+            sessionRef.current = session;
+            saveSessionToStorage(session);
         }
     }, [
         buildEndPayload,
         clearPendingEndSession,
+        clearLocalSessionStateForEndedPayload,
         flushRetryQueue,
         hydrateSessionFromStorage,
         logSessionTrackerWarning,
@@ -1318,6 +1412,13 @@ export default function SessionTracker() {
 
             if (!isMounted) {
                 return;
+            }
+
+            if (!sessionRef.current && !readPendingEndSession()) {
+                const restoredSession = readSessionFromStorage();
+                if (restoredSession) {
+                    sessionRef.current = restoredSession;
+                }
             }
 
             if ((pendingStartResult === 'none' || pendingStartResult === 'needs_new_session') && !sessionRef.current) {
@@ -1359,6 +1460,10 @@ export default function SessionTracker() {
             void (async () => {
                 await replayPendingStartSession();
                 await flushRetryQueue();
+                if (!sessionRef.current && !readPendingEndSession() && !readPendingStartSession()) {
+                    await startSession();
+                    trackPageView(pathnameRef.current);
+                }
             })();
         };
 
@@ -1383,7 +1488,10 @@ export default function SessionTracker() {
         endSession,
         flushRetryQueue,
         getPendingEndSessionForCurrentState,
+        readPendingEndSession,
+        readPendingStartSession,
         readRetryQueue,
+        readSessionFromStorage,
         replayPendingStartSession,
         replayPendingEndSession,
         sendPendingEndWithBeacon,
@@ -1433,11 +1541,14 @@ export function incrementQuizAttempt() {
             return;
         }
 
-        const stored = sessionStorage.getItem(buildStudySessionStorageKey(tabId));
+        const storageKey = buildStudySessionStorageKey(tabId);
+        const stored = localStorage.getItem(storageKey) ?? sessionStorage.getItem(storageKey);
         if (stored) {
             const session: SessionData = JSON.parse(stored);
             session.quizAttempts += 1;
-            sessionStorage.setItem(buildStudySessionStorageKey(tabId), JSON.stringify(session));
+            const serializedSession = JSON.stringify(session);
+            localStorage.setItem(storageKey, serializedSession);
+            sessionStorage.setItem(storageKey, serializedSession);
         }
     } catch (error) {
         logger.warn('SESSION_TRACKER_INCREMENT_QUIZ_ATTEMPT_FAILED', {

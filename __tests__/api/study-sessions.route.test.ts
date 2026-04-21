@@ -7,11 +7,11 @@ import { studySessionRouteRateLimiter } from '@/lib/rate-limiter';
 import { createStudySessionToken, hashStudySessionToken } from '@/lib/study-session-token';
 
 const mockResolveRequestAuthState = jest.fn();
-const mockCreateServiceRoleClient = jest.fn();
+const mockCreateRequestScopedClient = jest.fn();
 const mockHasConfiguredStudySessionEnv = jest.fn();
 
 jest.mock('@/lib/supabaseAdmin', () => ({
-    createServiceRoleClient: () => mockCreateServiceRoleClient(),
+    createRequestScopedClient: () => mockCreateRequestScopedClient(),
     resolveRequestAuthState: (request: Request) => mockResolveRequestAuthState(request),
 }));
 
@@ -51,7 +51,7 @@ const createStudySessionClient = (options?: {
     updateResult?: { error: { code?: string; message?: string } | null };
 }) => {
     const rpc = jest.fn().mockImplementation((name: string) => {
-        if (name === 'start_study_session_server') {
+        if (name === 'start_study_session') {
             return Promise.resolve(
                 options?.startResult ?? {
                     data: 'session_1',
@@ -60,13 +60,13 @@ const createStudySessionClient = (options?: {
             );
         }
 
-        if (name === 'bind_study_session_token_server') {
+        if (name === 'bind_study_session_token') {
             return Promise.resolve(
                 options?.bindResult ?? { error: null }
             );
         }
 
-        if (name === 'update_study_session_by_token_server') {
+        if (name === 'update_study_session_by_token') {
             return Promise.resolve(
                 options?.updateResult ?? { error: null }
             );
@@ -97,7 +97,7 @@ describe('study-sessions route', () => {
             hadCredentials: false,
             ghostSession: false,
         });
-        mockCreateServiceRoleClient.mockReturnValue({ rpc: jest.fn() });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc: jest.fn() });
     });
 
     afterEach(() => {
@@ -112,7 +112,7 @@ describe('study-sessions route', () => {
                 error: null,
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
 
@@ -129,13 +129,11 @@ describe('study-sessions route', () => {
 
         expect(secondResponse.status).toBe(200);
         expect(secondBody).toEqual(firstBody);
-        expect(rpc).toHaveBeenCalledWith('start_study_session_server', expect.objectContaining({
-            p_requester_user_id: null,
-            p_requester_anonymous_id: 'anon_123',
+        expect(rpc).toHaveBeenCalledWith('start_study_session', expect.objectContaining({
+            p_anonymous_id: 'anon_123',
         }));
-        expect(rpc).toHaveBeenCalledWith('bind_study_session_token_server', expect.objectContaining({
-            p_requester_user_id: null,
-            p_requester_anonymous_id: 'anon_123',
+        expect(rpc).toHaveBeenCalledWith('bind_study_session_token', expect.objectContaining({
+            p_anonymous_id: 'anon_123',
         }));
     });
 
@@ -151,21 +149,19 @@ describe('study-sessions route', () => {
             code: 'STUDY_SESSION_DISABLED',
             retryable: false,
         });
-        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
+        expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
     });
 
-    it('does not leak an in-progress reservation when the service-role client is unavailable', async () => {
+    it('does not leak an in-progress reservation when the request-scoped client is unavailable', async () => {
         const { client } = createStudySessionClient({
             startResult: {
                 data: 'session_after_retry',
                 error: null,
             },
         });
-        mockCreateServiceRoleClient
-            .mockImplementationOnce(() => {
-                throw new Error('service role unavailable');
-            })
-            .mockImplementation(() => client);
+        mockCreateRequestScopedClient
+            .mockResolvedValueOnce(null)
+            .mockResolvedValue(client);
 
         const payload = createStartPayload({
             idempotency_key: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -207,12 +203,12 @@ describe('study-sessions route', () => {
             code: 'RATE_LIMITER_UNAVAILABLE',
             retryable: true,
         });
-        expect(mockCreateServiceRoleClient).not.toHaveBeenCalled();
+        expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
     });
 
     it('returns 429 after 30 anonymous start requests from one IP even when anonymousId changes', async () => {
         const { client } = createStudySessionClient();
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
 
@@ -241,7 +237,7 @@ describe('study-sessions route', () => {
 
     it('rejects unknown fields because the schema is strict', async () => {
         const { client } = createStudySessionClient();
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -264,7 +260,7 @@ describe('study-sessions route', () => {
                 error: null,
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const payload = createStartPayload();
@@ -279,8 +275,8 @@ describe('study-sessions route', () => {
                 payload.idempotency_key
             ),
         });
-        expect(rpc).toHaveBeenCalledWith('start_study_session_server', expect.any(Object));
-        expect(rpc).toHaveBeenCalledWith('bind_study_session_token_server', expect.any(Object));
+        expect(rpc).toHaveBeenCalledWith('start_study_session', expect.any(Object));
+        expect(rpc).toHaveBeenCalledWith('bind_study_session_token', expect.any(Object));
     });
 
     it('retries the same idempotency key after a cached 500 error', async () => {
@@ -297,7 +293,7 @@ describe('study-sessions route', () => {
             .mockResolvedValue({
                 error: null,
             });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const payload = createStartPayload({
             idempotency_key: '11111111-1111-4111-8111-111111111111',
@@ -320,7 +316,7 @@ describe('study-sessions route', () => {
             sessionId: 'session_retry_success',
             sessionToken: expect.any(String),
         });
-        expect(rpc).toHaveBeenCalledWith('start_study_session_server', expect.any(Object));
+        expect(rpc).toHaveBeenCalledWith('start_study_session', expect.any(Object));
     });
 
     it('does not retry the same idempotency key after a cached 401 error', async () => {
@@ -331,7 +327,7 @@ describe('study-sessions route', () => {
             hadCredentials: true,
             ghostSession: false,
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const payload = createStartPayload({
             idempotency_key: '22222222-2222-4222-8222-222222222222',
@@ -354,12 +350,12 @@ describe('study-sessions route', () => {
             code: 'UNAUTHORIZED',
             retryable: false,
         });
-        expect(rpc).not.toHaveBeenCalledWith('start_study_session_server', expect.anything());
+        expect(rpc).not.toHaveBeenCalledWith('start_study_session', expect.anything());
     });
 
     it('requires sessionToken on follow-up study-session writes', async () => {
         const { client } = createStudySessionClient();
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -386,7 +382,7 @@ describe('study-sessions route', () => {
             hadCredentials: true,
             ghostSession: true,
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -402,8 +398,7 @@ describe('study-sessions route', () => {
 
         expect(response.status).toBe(200);
         expect(body).toMatchObject({ success: true });
-        expect(rpc).toHaveBeenCalledWith('update_study_session_by_token_server', {
-            p_requester_user_id: null,
+        expect(rpc).toHaveBeenCalledWith('update_study_session_by_token', {
             p_session_id: '550e8400-e29b-41d4-a716-446655440001',
             p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
             p_duration_seconds: 12,
@@ -416,7 +411,7 @@ describe('study-sessions route', () => {
 
     it('uses token-hash validated monotonic RPC updates for heartbeat writes', async () => {
         const { client, rpc } = createStudySessionClient();
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -432,8 +427,7 @@ describe('study-sessions route', () => {
 
         expect(response.status).toBe(200);
         expect(body).toMatchObject({ success: true });
-        expect(rpc).toHaveBeenCalledWith('update_study_session_by_token_server', {
-            p_requester_user_id: null,
+        expect(rpc).toHaveBeenCalledWith('update_study_session_by_token', {
             p_session_id: '550e8400-e29b-41d4-a716-446655440001',
             p_session_token_hash: hashStudySessionToken('a'.repeat(32)),
             p_duration_seconds: 12,
@@ -450,7 +444,7 @@ describe('study-sessions route', () => {
                 error: { code: '42501', message: 'Study session does not belong to this requester.' },
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -477,7 +471,7 @@ describe('study-sessions route', () => {
                 error: { message: 'metrics update failed' },
             },
         });
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest({
@@ -498,14 +492,14 @@ describe('study-sessions route', () => {
         });
     });
 
-    it('uses the service-role client for trusted study-session writes', async () => {
+    it('uses a request-scoped client for public study-session writes', async () => {
         const { client } = createStudySessionClient();
-        mockCreateServiceRoleClient.mockReturnValue(client);
+        mockCreateRequestScopedClient.mockResolvedValue(client);
 
         const { POST } = await import('@/app/api/study-sessions/route');
         const response = await POST(createRequest(createStartPayload()));
 
         expect(response.status).toBe(200);
-        expect(mockCreateServiceRoleClient).toHaveBeenCalledTimes(1);
+        expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
     });
 });

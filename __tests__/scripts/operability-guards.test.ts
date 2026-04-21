@@ -14,6 +14,7 @@ const runtimeValidationScriptPath = path.join(process.cwd(), 'scripts/validate-r
 const releaseGateValidationScriptPath = path.join(process.cwd(), 'scripts/validate-release-gate-env.mjs');
 const envValidationUtilsPath = path.join(process.cwd(), 'scripts/env-validation-utils.mjs');
 const releaseDbVerificationScriptPath = path.join(process.cwd(), 'scripts/verify-release-db.mjs');
+const packageJsonPath = path.join(process.cwd(), 'package.json');
 
 describe('operability guards', () => {
     const ciWorkflow = fs.readFileSync(ciWorkflowPath, 'utf8');
@@ -25,6 +26,7 @@ describe('operability guards', () => {
     const releaseGateValidationScript = fs.readFileSync(releaseGateValidationScriptPath, 'utf8');
     const envValidationUtils = fs.readFileSync(envValidationUtilsPath, 'utf8');
     const releaseDbVerificationScript = fs.readFileSync(releaseDbVerificationScriptPath, 'utf8');
+    const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
 
     it('requires release-evaluable runtime secrets before runtime validation and build', () => {
         expect(ciWorkflow).toContain('name: Check Release-Evaluable Runtime Secrets');
@@ -68,6 +70,14 @@ describe('operability guards', () => {
     it('checks bot container health against the readiness endpoint', () => {
         expect(botDockerfile).toContain('/health');
         expect(botDockerfile).not.toContain("socket.create_connection(('localhost'");
+    });
+
+    it('guards support artifact manifests against leaked server sourcemaps', () => {
+        expect(packageJson).toContain('"guard:artifact-sourcemaps": "node scripts/guard-artifact-sourcemaps.mjs"');
+        expect(ciWorkflow).toContain('name: Guard Support Artifact Source Maps');
+        expect(ciWorkflow).toContain('npm run guard:artifact-sourcemaps -- "$artifact_manifest"');
+        expect(operationsDoc).toContain('`npm run guard:artifact-sourcemaps -- path/to/artifact-manifest.txt`');
+        expect(operationsDoc).toContain('`.next/server/**/*.map`');
     });
 
     it('keeps runtime env docs aligned with the runtime validator contract', () => {

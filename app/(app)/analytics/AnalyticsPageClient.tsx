@@ -99,6 +99,47 @@ const teaserCopyByLanguage = {
 } as const;
 
 const ANALYTICS_EXPORT_TIMEOUT_MS = 10_000;
+const ANALYTICS_EXPORT_TIMEOUT_MESSAGE = 'Analytics export timed out. Please try again.';
+
+const createAnalyticsExportAbortError = (): Error => {
+    const error = new Error(ANALYTICS_EXPORT_TIMEOUT_MESSAGE);
+    error.name = 'AbortError';
+    return error;
+};
+
+const runWithExportAbortSignal = async <T,>(
+    signal: AbortSignal,
+    operation: () => Promise<T>
+): Promise<T> => {
+    if (signal.aborted) {
+        throw createAnalyticsExportAbortError();
+    }
+
+    return await new Promise<T>((resolve, reject) => {
+        const handleAbort = () => {
+            reject(createAnalyticsExportAbortError());
+        };
+
+        signal.addEventListener('abort', handleAbort, { once: true });
+
+        void operation().then(
+            (value) => {
+                signal.removeEventListener('abort', handleAbort);
+
+                if (signal.aborted) {
+                    reject(createAnalyticsExportAbortError());
+                    return;
+                }
+
+                resolve(value);
+            },
+            (error) => {
+                signal.removeEventListener('abort', handleAbort);
+                reject(error);
+            }
+        );
+    });
+};
 
 const downloadBlob = (filename: string, blob: Blob): void => {
     const url = URL.createObjectURL(blob);
@@ -238,34 +279,34 @@ export default function AnalyticsPageClient({ learningStats }: AnalyticsPageClie
             let response: Response;
 
             try {
-                response = await fetch('/api/analytics/export?download=1', {
+                response = await runWithExportAbortSignal(controller.signal, async () => await fetch('/api/analytics/export?download=1', {
                     method: 'GET',
                     credentials: 'same-origin',
                     cache: 'no-store',
                     signal: controller.signal,
-                });
+                }));
+
+                if (!response.ok) {
+                    const payload = await runWithExportAbortSignal(controller.signal, async () => await response.json());
+                    throw new Error(
+                        typeof payload?.message === 'string'
+                            ? payload.message
+                            : 'Unable to export analytics data.'
+                    );
+                }
+
+                const blob = await runWithExportAbortSignal(controller.signal, async () => await response.blob());
+                downloadBlob(
+                    `fintechterms-analytics-${new Date().toISOString().split('T')[0]}.json`,
+                    blob
+                );
             } finally {
                 window.clearTimeout(timeoutId);
             }
-
-            if (!response.ok) {
-                const payload = await response.json();
-                throw new Error(
-                    typeof payload?.message === 'string'
-                        ? payload.message
-                        : 'Unable to export analytics data.'
-                );
-            }
-
-            const blob = await response.blob();
-            downloadBlob(
-                `fintechterms-analytics-${new Date().toISOString().split('T')[0]}.json`,
-                blob
-            );
         } catch (error) {
             setExportError(
                 error instanceof Error && error.name === 'AbortError'
-                    ? 'Analytics export timed out. Please try again.'
+                    ? ANALYTICS_EXPORT_TIMEOUT_MESSAGE
                     : error instanceof Error
                         ? error.message
                         : 'Unable to export analytics data.'

@@ -16,6 +16,29 @@ export const buildStudySessionStorageKey = (tabId: string): string => (
     `${STUDY_SESSION_STORAGE_KEY}:${tabId}`
 );
 
+const readMirroredStudySessionValue = (storageKey: string): string | null => {
+    try {
+        const sessionValue = window.sessionStorage.getItem(storageKey);
+        if (sessionValue) {
+            return sessionValue;
+        }
+    } catch {
+        // Fall back to the durable mirror.
+    }
+
+    try {
+        const durableValue = window.localStorage.getItem(storageKey);
+        if (!durableValue) {
+            return null;
+        }
+
+        window.sessionStorage.setItem(storageKey, durableValue);
+        return durableValue;
+    } catch {
+        return null;
+    }
+};
+
 export const getOrCreateStudySessionTabId = (): string | null => {
     if (typeof window === 'undefined') {
         return null;
@@ -53,7 +76,7 @@ export const readTrackedStudySessionState = (): TrackedStudySessionState => {
 
     try {
         const storageKey = buildStudySessionStorageKey(tabId);
-        const stored = window.sessionStorage.getItem(storageKey);
+        const stored = readMirroredStudySessionValue(storageKey);
         if (!stored) {
             return {
                 status: 'none',
@@ -78,6 +101,7 @@ export const readTrackedStudySessionState = (): TrackedStudySessionState => {
         }
 
         if (!hasSessionId || !hasSessionToken) {
+            window.localStorage.removeItem(storageKey);
             window.sessionStorage.removeItem(storageKey);
             return {
                 status: 'corrupt',
@@ -93,7 +117,9 @@ export const readTrackedStudySessionState = (): TrackedStudySessionState => {
             },
         };
     } catch {
-        window.sessionStorage.removeItem(buildStudySessionStorageKey(tabId));
+        const storageKey = buildStudySessionStorageKey(tabId);
+        window.localStorage.removeItem(storageKey);
+        window.sessionStorage.removeItem(storageKey);
         return {
             status: 'corrupt',
             context: null,
