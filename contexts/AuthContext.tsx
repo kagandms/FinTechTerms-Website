@@ -437,8 +437,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
             
             // Initiate OAuth flow directly from the client to preserve PKCE verification state in local storage/cookies
+            // Point directly to /profile so the browser client can automatically handle the PKCE callback via URL hash!
             const supabaseBrowser = createBrowserClient(env.supabaseUrl, env.supabaseAnonKey);
-            const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent('/profile?complete=1')}`;
+            const redirectTo = `${window.location.origin}/profile?complete=1`;
             
             const { error } = await supabaseBrowser.auth.signInWithOAuth({
                 provider: 'google',
