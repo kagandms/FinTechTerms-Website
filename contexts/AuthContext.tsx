@@ -57,7 +57,7 @@ interface AuthRouteErrorPayload {
 
 const SIGNOUT_FAILED_MESSAGE = 'Unable to sign out. Please try again.';
 const AUTH_INIT_TIMEOUT_MS = 4_000;
-const AUTH_ROUTE_TIMEOUT_MS = 4_000;
+const AUTH_ROUTE_TIMEOUT_MS = 15_000;
 const AUTH_SESSION_SYNC_ATTEMPTS = 5;
 const AUTH_SESSION_SYNC_DELAY_MS = 250;
 const AUTH_SESSION_SYNC_ROUTE_TIMEOUT_MS = 1_500;
@@ -413,19 +413,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
             );
 
             if (!response.ok) {
+                const errorMsg = await readRouteErrorMessage(response, 'Unable to sign in.');
+                console.error('[AUTH_DEBUG] Login failed with status:', response.status, 'error:', errorMsg);
                 return {
                     success: false,
-                    error: await readRouteErrorMessage(response, 'Unable to sign in.'),
+                    error: errorMsg,
                 };
             }
 
             return { success: true };
         } catch (error) {
+            console.error('[AUTH_DEBUG] Login exception caught:', error);
             logger.error('AUTH_LOGIN_EXCEPTION', {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
             });
-            return { success: false, error: 'Login failed' };
+            return { success: false, error: error instanceof Error ? error.message : 'Login failed' };
         }
     }, []);
 
