@@ -137,7 +137,7 @@ export async function POST(request: Request) {
             return errorResponse({
                 status: 400,
                 code: safeCode,
-                message: safeCode,
+                message: `${safeCode}::${error.message}`,
                 requestId,
                 retryable: false,
                 headers: SIGNUP_RATE_LIMIT_HEADERS,
