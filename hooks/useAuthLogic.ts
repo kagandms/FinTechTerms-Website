@@ -244,14 +244,15 @@ export function useAuthLogic() {
                     }
                 }
             } else {
-                console.error('[AUTH_DEBUG] handleAuth result.error raw value:', JSON.stringify(result.error), 'language:', language);
                 const msg = getLocalizedAuthError(result.error, language);
-                console.error('[AUTH_DEBUG] handleAuth localized msg:', msg);
                 setAuthError(msg);
                 showToast(msg, 'error');
             }
         } catch (error: unknown) {
-            console.error('[AUTH_DEBUG] handleAuth exception:', error);
+            logger.error('AUTH_SUBMIT_EXCEPTION', {
+                route: 'useAuthLogic',
+                error: error instanceof Error ? error : undefined,
+            });
             const msg = getLocalizedAuthError(error, language);
             setAuthError(msg);
             showToast(msg, 'error');

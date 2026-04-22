@@ -249,7 +249,7 @@ describe('auth routes hardening', () => {
         });
     });
 
-    it('keeps signup responses account-neutral when the provider suppresses identities', async () => {
+    it('reports existing email when the provider suppresses identities', async () => {
         mockCreateAuthRouteClient.mockResolvedValue({
             supabase: {
                 auth: {
@@ -277,11 +277,47 @@ describe('auth routes hardening', () => {
         }));
         const body = await response.json();
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(409);
         expect(body).toEqual({
-            success: true,
-            needsOTPVerification: true,
+            code: 'EMAIL_ALREADY_REGISTERED',
+            message: 'EMAIL_ALREADY_REGISTERED',
+            requestId: expect.any(String),
+            retryable: false,
         });
+    });
+
+    it('returns stable signup error codes without exposing provider details', async () => {
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    signUp: jest.fn().mockResolvedValue({
+                        data: {
+                            user: null,
+                            session: null,
+                        },
+                        error: new Error('Database error saving new user'),
+                    }),
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/signup/route');
+        const response = await POST(createJsonRequest('/api/auth/signup', {
+            email: 'new@example.com',
+            password: 'Secret123!',
+            name: 'Alex Stone',
+            birthDate: '2000-01-01',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'AUTH_SERVICE_ERROR',
+            message: 'AUTH_SERVICE_ERROR',
+            retryable: true,
+        });
+        expect(JSON.stringify(body)).not.toContain('Database error saving new user');
     });
 
     it('rate limits update-password requests after authentication', async () => {

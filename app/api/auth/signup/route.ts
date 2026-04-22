@@ -18,6 +18,7 @@ import {
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
 import { getSafeAuthErrorCode } from '@/lib/auth/error-messages';
+import { logger } from '@/lib/logger';
 import { isAcceptedBirthDate } from '@/lib/profile-birth-date';
 import { authSignupRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 
@@ -119,7 +120,13 @@ export async function POST(request: Request) {
 
         if (error) {
             const safeCode = getSafeAuthErrorCode(error.message);
-            console.error('[SIGNUP_DEBUG] Supabase signUp error:', error.message, '→ safeCode:', safeCode);
+            logger.warn('AUTH_SIGNUP_FAILED', {
+                requestId,
+                route: '/api/auth/signup',
+                error: error instanceof Error ? error : undefined,
+                safeCode,
+            });
+
             if (safeCode === 'RATE_LIMITED') {
                 return createAuthRateLimitError({
                     allowed: false,
@@ -135,11 +142,11 @@ export async function POST(request: Request) {
             }
 
             return errorResponse({
-                status: 400,
+                status: safeCode === 'AUTH_SERVICE_ERROR' ? 503 : 400,
                 code: safeCode,
-                message: `${safeCode}::${error.message}`,
+                message: safeCode,
                 requestId,
-                retryable: false,
+                retryable: safeCode === 'AUTH_SERVICE_ERROR',
                 headers: SIGNUP_RATE_LIMIT_HEADERS,
             });
         }

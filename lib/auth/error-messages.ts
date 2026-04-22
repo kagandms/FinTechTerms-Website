@@ -6,23 +6,103 @@ type SafeAuthErrorCode =
     | 'WEAK_PASSWORD'
     | 'RATE_LIMITED'
     | 'RATE_LIMITER_UNAVAILABLE'
+    | 'AUTH_UNAVAILABLE'
+    | 'AUTH_SERVICE_ERROR'
+    | 'REQUEST_BLOCKED'
     | 'SESSION_EXPIRED'
     | 'NAVIGATION_FAILED'
     | 'VALIDATION_ERROR'
     | 'SIGNUP_FAILED'
     | 'GENERIC';
 
+const exactCodeMap: Readonly<Record<string, SafeAuthErrorCode>> = {
+    invalid_credentials: 'INVALID_CREDENTIALS',
+    validation_error: 'VALIDATION_ERROR',
+    email_not_confirmed: 'EMAIL_NOT_CONFIRMED',
+    email_already_registered: 'EMAIL_ALREADY_REGISTERED',
+    otp_invalid_or_expired: 'OTP_INVALID_OR_EXPIRED',
+    weak_password: 'WEAK_PASSWORD',
+    rate_limited: 'RATE_LIMITED',
+    rate_limiter_unavailable: 'RATE_LIMITER_UNAVAILABLE',
+    auth_unavailable: 'AUTH_UNAVAILABLE',
+    auth_signup_failed: 'AUTH_SERVICE_ERROR',
+    auth_service_error: 'AUTH_SERVICE_ERROR',
+    invalid_origin: 'REQUEST_BLOCKED',
+    session_expired: 'SESSION_EXPIRED',
+    navigation_failed: 'NAVIGATION_FAILED',
+    signup_failed: 'SIGNUP_FAILED',
+    generic: 'GENERIC',
+};
+
+interface ProviderErrorPattern {
+    readonly code: SafeAuthErrorCode;
+    readonly fragments: readonly string[];
+}
+
+const providerErrorPatterns: readonly ProviderErrorPattern[] = [
+    { code: 'INVALID_CREDENTIALS', fragments: ['invalid login credentials'] },
+    { code: 'EMAIL_NOT_CONFIRMED', fragments: ['email not confirmed'] },
+    {
+        code: 'EMAIL_ALREADY_REGISTERED',
+        fragments: ['already registered', 'user already registered'],
+    },
+    {
+        code: 'OTP_INVALID_OR_EXPIRED',
+        fragments: ['token has expired', 'invalid token', 'otp'],
+    },
+    { code: 'WEAK_PASSWORD', fragments: ['password should be at least', 'weak password'] },
+    { code: 'RATE_LIMITED', fragments: ['rate limit'] },
+    { code: 'RATE_LIMITER_UNAVAILABLE', fragments: ['temporarily unavailable'] },
+    { code: 'SIGNUP_FAILED', fragments: ['unable to validate email', 'signups not allowed'] },
+    {
+        code: 'AUTH_SERVICE_ERROR',
+        fragments: [
+            'database error saving new user',
+            'error saving new user',
+            'unexpected_failure',
+        ],
+    },
+    {
+        code: 'SESSION_EXPIRED',
+        fragments: ['session expired', 'auth session missing', 'refresh token', 'jwt expired'],
+    },
+    { code: 'NAVIGATION_FAILED', fragments: ['navigation failed'] },
+    { code: 'REQUEST_BLOCKED', fragments: ['cross-origin requests are not allowed'] },
+];
+
 const normalizeMessage = (error: unknown): string => {
     if (typeof error === 'string') {
         return error.trim();
     }
 
-    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    if (
+        error
+        && typeof error === 'object'
+        && 'message' in error
+        && typeof error.message === 'string'
+    ) {
         return error.message.trim();
     }
 
     return '';
 };
+
+const getExactCode = (message: string): SafeAuthErrorCode | null => {
+    const separatorIndex = message.indexOf('::');
+    const token = separatorIndex === -1
+        ? message
+        : message.slice(0, separatorIndex);
+
+    return exactCodeMap[token] ?? null;
+};
+
+const includesAnyFragment = (message: string, fragments: readonly string[]): boolean => (
+    fragments.some((fragment) => message.includes(fragment))
+);
+
+const getProviderErrorCode = (message: string): SafeAuthErrorCode | null => (
+    providerErrorPatterns.find((pattern) => includesAnyFragment(message, pattern.fragments))?.code ?? null
+);
 
 const getSafeAuthErrorCode = (error: unknown): SafeAuthErrorCode => {
     const message = normalizeMessage(error).toLowerCase();
@@ -31,102 +111,12 @@ const getSafeAuthErrorCode = (error: unknown): SafeAuthErrorCode => {
         return 'GENERIC';
     }
 
-    if (message === 'invalid_credentials') {
-        return 'INVALID_CREDENTIALS';
+    const exactCode = getExactCode(message);
+    if (exactCode && exactCode !== 'GENERIC') {
+        return exactCode;
     }
 
-    if (message === 'validation_error') {
-        return 'VALIDATION_ERROR';
-    }
-
-    if (message === 'email_not_confirmed') {
-        return 'EMAIL_NOT_CONFIRMED';
-    }
-
-    if (message === 'email_already_registered') {
-        return 'EMAIL_ALREADY_REGISTERED';
-    }
-
-    if (message === 'otp_invalid_or_expired') {
-        return 'OTP_INVALID_OR_EXPIRED';
-    }
-
-    if (message === 'weak_password') {
-        return 'WEAK_PASSWORD';
-    }
-
-    if (message === 'rate_limited') {
-        return 'RATE_LIMITED';
-    }
-
-    if (message === 'session_expired') {
-        return 'SESSION_EXPIRED';
-    }
-
-    if (message === 'navigation_failed') {
-        return 'NAVIGATION_FAILED';
-    }
-
-    if (message.includes('invalid login credentials')) {
-        return 'INVALID_CREDENTIALS';
-    }
-
-    if (message.includes('email not confirmed')) {
-        return 'EMAIL_NOT_CONFIRMED';
-    }
-
-    if (
-        message.includes('already registered')
-        || message.includes('user already registered')
-    ) {
-        return 'EMAIL_ALREADY_REGISTERED';
-    }
-
-    if (
-        message.includes('token has expired')
-        || message.includes('invalid token')
-        || message.includes('otp')
-    ) {
-        return 'OTP_INVALID_OR_EXPIRED';
-    }
-
-    if (
-        message.includes('password should be at least')
-        || message.includes('weak password')
-    ) {
-        return 'WEAK_PASSWORD';
-    }
-
-    if (message.includes('rate limit')) {
-        return 'RATE_LIMITED';
-    }
-
-    if (message === 'rate_limiter_unavailable' || message.includes('temporarily unavailable')) {
-        return 'RATE_LIMITER_UNAVAILABLE';
-    }
-
-    if (
-        message === 'signup_failed'
-        || message.includes('unable to validate email')
-        || message.includes('signups not allowed')
-    ) {
-        return 'SIGNUP_FAILED';
-    }
-
-    if (
-        message.includes('session expired')
-        || message.includes('auth session missing')
-        || message.includes('refresh token')
-        || message.includes('jwt expired')
-    ) {
-        return 'SESSION_EXPIRED';
-    }
-
-    if (message.includes('navigation failed')) {
-        return 'NAVIGATION_FAILED';
-    }
-
-    return 'GENERIC';
+    return getProviderErrorCode(message) ?? exactCode ?? 'GENERIC';
 };
 
 const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, string>> = {
@@ -138,6 +128,9 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         WEAK_PASSWORD: 'Şifre daha güçlü olmalıdır.',
         RATE_LIMITED: 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
         RATE_LIMITER_UNAVAILABLE: 'Kimlik doğrulama servisi geçici olarak kullanılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.',
+        AUTH_UNAVAILABLE: 'Kimlik doğrulama servisi geçici olarak kullanılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.',
+        AUTH_SERVICE_ERROR: 'Kayıt servisi şu anda isteği tamamlayamadı. Lütfen biraz sonra tekrar deneyin.',
+        REQUEST_BLOCKED: 'Güvenlik nedeniyle istek engellendi. Sayfayı yenileyip tekrar deneyin.',
         SESSION_EXPIRED: 'Oturum süresi doldu. Lütfen tekrar deneyin.',
         NAVIGATION_FAILED: 'Yönlendirme tamamlanamadı. Lütfen tekrar deneyin.',
         VALIDATION_ERROR: 'Lütfen bilgilerinizi kontrol edip tekrar deneyin.',
@@ -152,6 +145,9 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         WEAK_PASSWORD: 'Password should be stronger.',
         RATE_LIMITED: 'Too many attempts. Please wait.',
         RATE_LIMITER_UNAVAILABLE: 'Authentication service is temporarily unavailable. Please try again in a few minutes.',
+        AUTH_UNAVAILABLE: 'Authentication service is temporarily unavailable. Please try again in a few minutes.',
+        AUTH_SERVICE_ERROR: 'Registration service could not complete this request. Please try again shortly.',
+        REQUEST_BLOCKED: 'The request was blocked for security. Refresh the page and try again.',
         SESSION_EXPIRED: 'Session expired. Please try again.',
         NAVIGATION_FAILED: 'Navigation could not be completed. Please try again.',
         VALIDATION_ERROR: 'Please check your information and try again.',
@@ -166,6 +162,9 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         WEAK_PASSWORD: 'Пароль должен быть надежнее.',
         RATE_LIMITED: 'Слишком много попыток. Пожалуйста, подождите.',
         RATE_LIMITER_UNAVAILABLE: 'Служба аутентификации временно недоступна. Повторите попытку через несколько минут.',
+        AUTH_UNAVAILABLE: 'Служба аутентификации временно недоступна. Повторите попытку через несколько минут.',
+        AUTH_SERVICE_ERROR: 'Служба регистрации не смогла выполнить запрос. Повторите попытку немного позже.',
+        REQUEST_BLOCKED: 'Запрос был заблокирован из соображений безопасности. Обновите страницу и повторите попытку.',
         SESSION_EXPIRED: 'Сессия истекла. Повторите попытку.',
         NAVIGATION_FAILED: 'Не удалось выполнить переход. Повторите попытку.',
         VALIDATION_ERROR: 'Пожалуйста, проверьте свои данные и повторите попытку.',

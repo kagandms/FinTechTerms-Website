@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAuthRouteClient } from '@/lib/auth/route-handler';
-import { getPublicEnv } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +18,16 @@ export async function GET(request: Request) {
             const { supabase, applyCookies } = authContext;
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (!error) {
-                // Successfully exchanged the code. Redirect to the target URL.
                 return applyCookies(NextResponse.redirect(new URL(next, origin)));
-            } else {
-                console.error("Supabase exchangeCodeForSession failed:", error);
-                // Return the specific error
-                return NextResponse.redirect(new URL(`/profile?authError=${encodeURIComponent(error.message)}`, origin));
             }
+
+            logger.warn('AUTH_CALLBACK_EXCHANGE_FAILED', {
+                route: '/api/auth/callback',
+                error: error instanceof Error ? error : undefined,
+            });
+            return NextResponse.redirect(new URL(`/profile?authError=${encodeURIComponent(error.message)}`, origin));
         }
     }
 
-    // Return the user to an error page with instructions
     return NextResponse.redirect(new URL('/profile?authError=OAuthCallbackError', origin));
 }

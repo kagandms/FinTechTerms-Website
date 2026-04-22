@@ -52,6 +52,7 @@ interface AuthRouteSuccessPayload {
 }
 
 interface AuthRouteErrorPayload {
+    code?: string;
     message?: string;
 }
 
@@ -203,6 +204,10 @@ const fetchWithTimeout = async (
 const readRouteErrorMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
     try {
         const payload = await response.json() as AuthRouteErrorPayload;
+        if (typeof payload.code === 'string' && payload.code.trim().length > 0) {
+            return payload.code;
+        }
+
         if (typeof payload.message === 'string' && payload.message.trim().length > 0) {
             return payload.message;
         }
@@ -414,7 +419,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (!response.ok) {
                 const errorMsg = await readRouteErrorMessage(response, 'Unable to sign in.');
-                console.error('[AUTH_DEBUG] Login failed with status:', response.status, 'error:', errorMsg);
                 return {
                     success: false,
                     error: errorMsg,
@@ -423,7 +427,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             return { success: true };
         } catch (error) {
-            console.error('[AUTH_DEBUG] Login exception caught:', error);
             logger.error('AUTH_LOGIN_EXCEPTION', {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
