@@ -5,9 +5,11 @@ type SafeAuthErrorCode =
     | 'OTP_INVALID_OR_EXPIRED'
     | 'WEAK_PASSWORD'
     | 'RATE_LIMITED'
+    | 'RATE_LIMITER_UNAVAILABLE'
     | 'SESSION_EXPIRED'
     | 'NAVIGATION_FAILED'
     | 'VALIDATION_ERROR'
+    | 'SIGNUP_FAILED'
     | 'GENERIC';
 
 const normalizeMessage = (error: unknown): string => {
@@ -99,6 +101,18 @@ const getSafeAuthErrorCode = (error: unknown): SafeAuthErrorCode => {
         return 'RATE_LIMITED';
     }
 
+    if (message === 'rate_limiter_unavailable' || message.includes('temporarily unavailable')) {
+        return 'RATE_LIMITER_UNAVAILABLE';
+    }
+
+    if (
+        message === 'signup_failed'
+        || message.includes('unable to validate email')
+        || message.includes('signups not allowed')
+    ) {
+        return 'SIGNUP_FAILED';
+    }
+
     if (
         message.includes('session expired')
         || message.includes('auth session missing')
@@ -123,9 +137,11 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         OTP_INVALID_OR_EXPIRED: 'Girdiğiniz kod hatalı veya süresi dolmuş.',
         WEAK_PASSWORD: 'Şifre daha güçlü olmalıdır.',
         RATE_LIMITED: 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
+        RATE_LIMITER_UNAVAILABLE: 'Kimlik doğrulama servisi geçici olarak kullanılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.',
         SESSION_EXPIRED: 'Oturum süresi doldu. Lütfen tekrar deneyin.',
         NAVIGATION_FAILED: 'Yönlendirme tamamlanamadı. Lütfen tekrar deneyin.',
         VALIDATION_ERROR: 'Lütfen bilgilerinizi kontrol edip tekrar deneyin.',
+        SIGNUP_FAILED: 'Kayıt işlemi başarısız oldu. Lütfen bilgilerinizi kontrol edip tekrar deneyin.',
         GENERIC: 'İstek şu anda tamamlanamadı. Lütfen tekrar deneyin.',
     },
     en: {
@@ -135,9 +151,11 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         OTP_INVALID_OR_EXPIRED: 'The code is invalid or has expired.',
         WEAK_PASSWORD: 'Password should be stronger.',
         RATE_LIMITED: 'Too many attempts. Please wait.',
+        RATE_LIMITER_UNAVAILABLE: 'Authentication service is temporarily unavailable. Please try again in a few minutes.',
         SESSION_EXPIRED: 'Session expired. Please try again.',
         NAVIGATION_FAILED: 'Navigation could not be completed. Please try again.',
         VALIDATION_ERROR: 'Please check your information and try again.',
+        SIGNUP_FAILED: 'Sign-up failed. Please check your information and try again.',
         GENERIC: 'The request could not be completed right now. Please try again.',
     },
     ru: {
@@ -147,9 +165,11 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         OTP_INVALID_OR_EXPIRED: 'Введенный код неверен или истек его срок действия.',
         WEAK_PASSWORD: 'Пароль должен быть надежнее.',
         RATE_LIMITED: 'Слишком много попыток. Пожалуйста, подождите.',
+        RATE_LIMITER_UNAVAILABLE: 'Служба аутентификации временно недоступна. Повторите попытку через несколько минут.',
         SESSION_EXPIRED: 'Сессия истекла. Повторите попытку.',
         NAVIGATION_FAILED: 'Не удалось выполнить переход. Повторите попытку.',
         VALIDATION_ERROR: 'Пожалуйста, проверьте свои данные и повторите попытку.',
+        SIGNUP_FAILED: 'Регистрация не удалась. Пожалуйста, проверьте свои данные и повторите попытку.',
         GENERIC: 'Сейчас не удалось выполнить запрос. Попробуйте еще раз.',
     },
 };

@@ -119,6 +119,7 @@ export async function POST(request: Request) {
 
         if (error) {
             const safeCode = getSafeAuthErrorCode(error.message);
+            console.error('[SIGNUP_DEBUG] Supabase signUp error:', error.message, '→ safeCode:', safeCode);
             if (safeCode === 'RATE_LIMITED') {
                 return createAuthRateLimitError({
                     allowed: false,
@@ -135,10 +136,8 @@ export async function POST(request: Request) {
 
             return errorResponse({
                 status: 400,
-                code: 'SIGNUP_FAILED',
-                message: safeCode === 'WEAK_PASSWORD'
-                    ? 'WEAK_PASSWORD'
-                    : 'SIGNUP_FAILED',
+                code: safeCode,
+                message: safeCode,
                 requestId,
                 retryable: false,
                 headers: SIGNUP_RATE_LIMIT_HEADERS,
