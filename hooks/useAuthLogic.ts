@@ -148,6 +148,16 @@ export function useAuthLogic() {
     const handleAuth = async () => {
         setAuthError('');
 
+        // Email Validation
+        if (!authForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email.trim())) {
+            const msg = language === 'tr' 
+                ? 'Lütfen geçerli bir e-posta adresi girin.' 
+                : (language === 'ru' ? 'Пожалуйста, введите действительный e-mail.' : 'Please enter a valid email address.');
+            setAuthError(msg);
+            showToast(msg, 'error');
+            return;
+        }
+
         // Registration Validation
         if (authMode === 'register') {
             if (!authForm.name.trim()) {

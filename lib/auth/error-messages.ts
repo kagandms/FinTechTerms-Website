@@ -7,6 +7,7 @@ type SafeAuthErrorCode =
     | 'RATE_LIMITED'
     | 'SESSION_EXPIRED'
     | 'NAVIGATION_FAILED'
+    | 'VALIDATION_ERROR'
     | 'GENERIC';
 
 const normalizeMessage = (error: unknown): string => {
@@ -30,6 +31,10 @@ const getSafeAuthErrorCode = (error: unknown): SafeAuthErrorCode => {
 
     if (message === 'invalid_credentials') {
         return 'INVALID_CREDENTIALS';
+    }
+
+    if (message === 'validation_error') {
+        return 'VALIDATION_ERROR';
     }
 
     if (message === 'email_not_confirmed') {
@@ -120,6 +125,7 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         RATE_LIMITED: 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
         SESSION_EXPIRED: 'Oturum süresi doldu. Lütfen tekrar deneyin.',
         NAVIGATION_FAILED: 'Yönlendirme tamamlanamadı. Lütfen tekrar deneyin.',
+        VALIDATION_ERROR: 'Lütfen bilgilerinizi kontrol edip tekrar deneyin.',
         GENERIC: 'İstek şu anda tamamlanamadı. Lütfen tekrar deneyin.',
     },
     en: {
@@ -131,6 +137,7 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         RATE_LIMITED: 'Too many attempts. Please wait.',
         SESSION_EXPIRED: 'Session expired. Please try again.',
         NAVIGATION_FAILED: 'Navigation could not be completed. Please try again.',
+        VALIDATION_ERROR: 'Please check your information and try again.',
         GENERIC: 'The request could not be completed right now. Please try again.',
     },
     ru: {
@@ -142,6 +149,7 @@ const localizedMessages: Record<'tr' | 'en' | 'ru', Record<SafeAuthErrorCode, st
         RATE_LIMITED: 'Слишком много попыток. Пожалуйста, подождите.',
         SESSION_EXPIRED: 'Сессия истекла. Повторите попытку.',
         NAVIGATION_FAILED: 'Не удалось выполнить переход. Повторите попытку.',
+        VALIDATION_ERROR: 'Пожалуйста, проверьте свои данные и повторите попытку.',
         GENERIC: 'Сейчас не удалось выполнить запрос. Попробуйте еще раз.',
     },
 };
