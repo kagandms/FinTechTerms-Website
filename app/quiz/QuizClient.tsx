@@ -24,8 +24,8 @@ import ValueHintList from '@/components/membership/ValueHintList';
 import { formatTranslation } from '@/lib/i18n';
 
 const QUIZ_SUBMISSION_TIMEOUT_MS = 10_000;
-const PRACTICE_MODE_CARD_CLASS = 'rounded-2xl p-4 text-white shadow-lg min-h-[220px] flex flex-col';
-const PRACTICE_MODE_BUTTON_CLASS = 'mt-auto w-full rounded-xl bg-white py-2.5 text-sm font-semibold transition-colors hover:bg-gray-100';
+const PRACTICE_MODE_CARD_CLASS = 'rounded-2xl p-5 text-white shadow-lg flex flex-col justify-between gap-4 h-full';
+const PRACTICE_MODE_BUTTON_CLASS = 'w-full rounded-xl bg-white py-2.5 text-sm font-semibold transition-all hover:bg-gray-100 shadow-sm text-center';
 
 interface QuizPageProps {
     nonce?: string;
@@ -62,6 +62,8 @@ const stateMessages = {
         mistakeReviewDescription: 'Yakın zamanda yanlış cevapladığınız terimleri tekrar çalışın.',
         noMistakeReviewTitle: 'Hata tekrar kuyruğu boş',
         noMistakeReviewDescription: 'Yanlış cevaplanan terim yok. Önce hızlı quiz çözerek bu modu doldurun.',
+        playAgain: 'Farklı Kelimelerle Tekrar Çöz',
+        backToPractice: 'Pratik Menüsüne Dön',
     },
     en: {
         loadingTitle: 'Loading quiz',
@@ -88,6 +90,8 @@ const stateMessages = {
         mistakeReviewDescription: 'Revisit the terms you answered incorrectly most recently.',
         noMistakeReviewTitle: 'Mistake review queue is empty',
         noMistakeReviewDescription: 'There are no recent incorrect answers yet. Use Quick Quiz first to build this queue.',
+        playAgain: 'Play Again (Different Words)',
+        backToPractice: 'Back to Practice Menu',
     },
     ru: {
         loadingTitle: 'Загружаем квиз',
@@ -114,6 +118,8 @@ const stateMessages = {
         mistakeReviewDescription: 'Повторите термины, на которые вы недавно ответили неправильно.',
         noMistakeReviewTitle: 'Очередь повторения ошибок пуста',
         noMistakeReviewDescription: 'Пока нет недавних неправильных ответов. Сначала пройдите быстрый квиз.',
+        playAgain: 'Решить снова (другие слова)',
+        backToPractice: 'Вернуться в меню практики',
     },
 } as const;
 
@@ -623,15 +629,15 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         )}
 
                         {!canUseReviewMode ? (
-                            <div className="mb-4 rounded-2xl border border-primary-100 bg-primary-50 p-5 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20">
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{stateCopy.reviewLockedTitle}</h2>
-                                <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                            <div className="mb-4 rounded-2xl border border-primary-100 bg-primary-50 p-6 shadow-inner dark:border-slate-700 dark:bg-slate-800">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{stateCopy.reviewLockedTitle}</h2>
+                                <p className="mt-2 text-sm leading-relaxed text-gray-700 dark:text-slate-300">
                                     {stateCopy.reviewLockedDescription}
                                 </p>
-                                <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                                <p className="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">
                                     {t('membership.quizHint')}
                                 </p>
-                                <div className="mt-4">
+                                <div className="mt-3 bg-white/50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50">
                                     <ValueHintList
                                         title={t('membership.hintTitle')}
                                         items={membershipHintItems}
@@ -640,7 +646,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                                 </div>
                                 <Link
                                     href={reviewUnlockHref}
-                                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
+                                    className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-primary-700 hover:shadow-md dark:bg-primary-500 dark:hover:bg-primary-400 w-full sm:w-auto"
                                 >
                                     <span>{stateCopy.reviewLockedCta}</span>
                                     <ArrowRight className="w-4 h-4" />
@@ -1092,27 +1098,27 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
-                        {isQuickQuiz ? (
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                        {isQuickQuiz || isMistakeReview ? (
                             <>
                                 <button
-                                    onClick={() => startQuickQuiz(5, quizPresentationMode)}
-                                    className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
+                                    onClick={() => isMistakeReview ? startMistakeReview() : startQuickQuiz(sessionTerms.length, quizPresentationMode)}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 shadow-sm transition-all dark:bg-primary-500 dark:hover:bg-primary-400"
                                 >
-                                    {quizPresentationMode === 'multiple-choice' ? <Target className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-                                    <span>{quizPresentationMode === 'multiple-choice' ? t('quiz.multipleChoice') : t('quiz.quickQuiz')}</span>
+                                    <RefreshCw className="w-5 h-5" />
+                                    <span>{stateCopy.playAgain}</span>
                                 </button>
                                 <button
                                     onClick={resetToNormal}
-                                    className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                                    className="inline-flex flex-1 items-center justify-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:border dark:border-slate-700"
                                 >
-                                    <span>{t('common.home')}</span>
+                                    <span>{stateCopy.backToPractice}</span>
                                 </button>
                             </>
                         ) : (
                             <Link
                                 href={resolveHomeHref('/quiz')}
-                                className="inline-flex items-center gap-2 bg-primary-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors"
+                                className="inline-flex flex-1 items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 shadow-sm transition-all dark:bg-primary-500 dark:hover:bg-primary-400"
                             >
                                 <span>{t('common.home')}</span>
                                 <ArrowRight className="w-5 h-5" />

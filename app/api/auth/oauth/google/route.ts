@@ -14,24 +14,24 @@ const resolveGoogleRedirect = (request: Request): string => {
     const requestedRedirect = requestUrl.searchParams.get('redirectTo');
     const siteUrl = getPublicEnv().siteUrl;
 
-    if (!requestedRedirect) {
-        return `${siteUrl}/profile?complete=1`;
-    }
+    let nextPath = '/profile?complete=1';
 
-    if (requestedRedirect.startsWith('/')) {
-        return `${siteUrl}${requestedRedirect}`;
-    }
-
-    try {
-        const parsedUrl = new URL(requestedRedirect);
-        if (parsedUrl.origin === siteUrl) {
-            return parsedUrl.toString();
+    if (requestedRedirect) {
+        if (requestedRedirect.startsWith('/')) {
+            nextPath = requestedRedirect;
+        } else {
+            try {
+                const parsedUrl = new URL(requestedRedirect);
+                if (parsedUrl.origin === siteUrl) {
+                    nextPath = parsedUrl.pathname + parsedUrl.search;
+                }
+            } catch {
+                // Fall through to the default safe redirect target.
+            }
         }
-    } catch {
-        // Fall through to the default safe redirect target.
     }
 
-    return `${siteUrl}/profile?complete=1`;
+    return `${siteUrl}/api/auth/callback?next=${encodeURIComponent(nextPath)}`;
 };
 
 export async function GET(request: Request) {

@@ -95,6 +95,14 @@ export function useAccessibleDialog({
     const titleId = useId();
     const descriptionId = useId();
 
+    const onCloseRef = useRef(onClose);
+    const initialFocusRefRef = useRef(initialFocusRef);
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+        initialFocusRefRef.current = initialFocusRef;
+    }, [onClose, initialFocusRef]);
+
     useEffect(() => {
         if (!isOpen) {
             return;
@@ -110,14 +118,14 @@ export function useAccessibleDialog({
         const focusFrameId = window.requestAnimationFrame(() => {
             const dialog = dialogRef.current;
             if (dialog) {
-                focusInitialElement(dialog, initialFocusRef);
+                focusInitialElement(dialog, initialFocusRefRef.current);
             }
         });
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                onClose();
+                onCloseRef.current();
                 return;
             }
 
@@ -137,7 +145,7 @@ export function useAccessibleDialog({
             document.body.style.overflow = previousOverflow;
             activeElementBeforeOpen?.focus();
         };
-    }, [initialFocusRef, isOpen, onClose]);
+    }, [isOpen]);
 
     return {
         dialogRef,

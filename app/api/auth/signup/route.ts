@@ -145,6 +145,18 @@ export async function POST(request: Request) {
             });
         }
 
+        // Prevent silent failure due to Supabase's obfuscated user enumeration prevention
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            return errorResponse({
+                status: 409,
+                code: 'EMAIL_ALREADY_REGISTERED',
+                message: 'EMAIL_ALREADY_REGISTERED',
+                requestId,
+                retryable: false,
+                headers: SIGNUP_RATE_LIMIT_HEADERS,
+            });
+        }
+
         return applyCookies(successResponse({
             success: true,
             needsOTPVerification: Boolean(data.user && !data.session),

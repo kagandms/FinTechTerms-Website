@@ -7,8 +7,8 @@ interface ValueHintListProps {
 }
 
 const wrapperClassNames: Record<NonNullable<ValueHintListProps['tone']>, string> = {
-    subtle: 'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200',
-    strong: 'rounded-2xl border border-primary-200 bg-primary-50 p-4 text-slate-800 shadow-sm dark:border-primary-900/40 dark:bg-primary-950/40 dark:text-slate-100',
+    subtle: 'rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/50 p-6 shadow-md dark:border-slate-700/60 dark:from-slate-800/80 dark:to-slate-900/90 backdrop-blur-md',
+    strong: 'relative overflow-hidden rounded-3xl border border-primary-200 bg-gradient-to-br from-primary-50 to-white p-6 shadow-md dark:border-primary-800/50 dark:from-slate-800 dark:to-slate-900',
 };
 
 export default function ValueHintList({
@@ -18,14 +18,17 @@ export default function ValueHintList({
 }: ValueHintListProps) {
     return (
         <section className={wrapperClassNames[tone]}>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {title}
-            </p>
-            <ul className="mt-3 flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 mb-4">
+                <span className="flex h-2 w-2 rounded-full bg-primary-500/80 animate-pulse"></span>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    {title}
+                </p>
+            </div>
+            <ul className="flex flex-wrap gap-2.5">
                 {items.map((item) => (
                     <li
                         key={item}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        className="rounded-full border border-slate-200/80 bg-white/80 px-4 py-2 text-[13px] font-semibold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-600/50 dark:bg-slate-700/50 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
                     >
                         {item}
                     </li>

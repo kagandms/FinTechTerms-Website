@@ -330,16 +330,16 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 ) : null}
 
                 {isAiExplainOpen ? (
-                    <div className="mt-4 rounded-2xl border border-primary-100 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20">
+                    <div className="mt-4 rounded-2xl border border-primary-100 bg-primary-50 p-5 shadow-inner dark:border-slate-700 dark:bg-slate-800">
                         <div className="flex flex-wrap gap-2">
                             {(['simple', 'example', 'language-bridge', 'importance'] as AiExplainMode[]).map((mode) => (
                                 <button
                                     key={mode}
                                     type="button"
                                     onClick={() => void handleAiExplain(mode)}
-                                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${aiExplainMode === mode
-                                        ? 'bg-primary-500 text-white'
-                                        : 'bg-white text-primary-600 hover:bg-primary-100 dark:bg-slate-800 dark:text-primary-200 dark:hover:bg-slate-700'
+                                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all border ${aiExplainMode === mode
+                                        ? 'bg-primary-500 text-white border-primary-500 shadow-sm dark:bg-primary-600 dark:border-primary-600'
+                                        : 'bg-white text-primary-700 border-primary-200 hover:bg-primary-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white'
                                         }`}
                                 >
                                     {aiCopy.explainModes[mode]}
@@ -348,15 +348,23 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         </div>
 
                         {aiExplainStatus === 'loading' ? (
-                            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{aiCopy.explainLoading}</p>
+                            <div className="mt-5 flex items-center gap-3">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-500 border-t-transparent dark:border-primary-400"></div>
+                                <p className="text-sm font-medium text-primary-700 dark:text-slate-300 animate-pulse">{aiCopy.explainLoading}</p>
+                            </div>
                         ) : null}
 
                         {aiExplainStatus === 'locked' ? (
-                            <div className="mt-3 space-y-3">
-                                <p className="text-sm text-gray-600 dark:text-gray-300">{aiCopy.explainGuestLimit}</p>
+                            <div className="mt-5 flex flex-col items-start gap-4 rounded-xl bg-white/60 p-5 shadow-sm border border-slate-100 dark:border-slate-700/50 dark:bg-slate-900/50">
+                                <div className="flex items-start gap-3">
+                                    <Sparkles className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5 dark:text-primary-400" />
+                                    <p className="text-sm font-medium leading-relaxed text-slate-700 dark:text-slate-300">
+                                        {aiCopy.explainGuestLimit}
+                                    </p>
+                                </div>
                                 <Link
                                     href={favoriteLimitHref}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600"
+                                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow dark:bg-primary-500 dark:hover:bg-primary-400"
                                 >
                                     <span>{favoriteLimitActionLabel}</span>
                                 </Link>
@@ -364,29 +372,37 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                         ) : null}
 
                         {aiExplainStatus === 'error' && aiExplainError ? (
-                            <p className="mt-3 text-sm text-red-600 dark:text-red-300">{aiExplainError}</p>
+                            <div className="mt-5 rounded-lg bg-red-50 p-4 border border-red-100 dark:bg-red-900/20 dark:border-red-800/50">
+                                <p className="text-sm text-red-600 dark:text-red-400 font-medium">{aiExplainError}</p>
+                            </div>
                         ) : null}
 
                         {aiExplainNotice ? (
-                            <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{aiExplainNotice}</p>
+                            <div className="mt-5 rounded-lg bg-amber-50 p-4 border border-amber-100 dark:bg-amber-900/20 dark:border-amber-800/50">
+                                <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">{aiExplainNotice}</p>
+                            </div>
                         ) : null}
 
                         {aiExplainStatus === 'ready' && aiExplainResponse ? (
-                            <div className="mt-4 space-y-3 text-sm leading-6 text-gray-700 dark:text-gray-200">
-                                <div>
-                                    <p className="font-semibold text-gray-900 dark:text-white">{aiExplainResponse.title}</p>
-                                    <p>{aiExplainResponse.summary}</p>
+                            <div className="mt-6 space-y-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                                <div className="space-y-1.5">
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{aiExplainResponse.title}</h4>
+                                    <p className="dark:text-slate-300">{aiExplainResponse.summary}</p>
                                 </div>
-                                <ul className="space-y-2">
-                                    {aiExplainResponse.keyPoints.map((point) => (
-                                        <li key={point} className="rounded-xl bg-white/80 px-3 py-2 dark:bg-slate-800/80">
-                                            {point}
+                                <ul className="space-y-2.5">
+                                    {aiExplainResponse.keyPoints.map((point, idx) => (
+                                        <li key={idx} className="rounded-lg bg-white p-3.5 shadow-sm border border-slate-100 dark:bg-slate-900/60 dark:text-slate-200 dark:border-slate-700/50 flex gap-3 items-start">
+                                            <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500 dark:bg-primary-400 flex-shrink-0"></div>
+                                            <span>{point}</span>
                                         </li>
                                     ))}
                                 </ul>
-                                <div>
-                                    <p className="font-semibold text-gray-900 dark:text-white">{aiCopy.memoryHook}</p>
-                                    <p>{aiExplainResponse.memoryHook}</p>
+                                <div className="rounded-xl bg-accent-50/80 p-4.5 border border-accent-100 dark:bg-accent-900/20 dark:border-accent-800/50">
+                                    <p className="font-semibold text-accent-900 dark:text-accent-300 mb-1.5 flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4" />
+                                        {aiCopy.memoryHook}
+                                    </p>
+                                    <p className="text-accent-800 dark:text-accent-200/90 leading-relaxed">{aiExplainResponse.memoryHook}</p>
                                 </div>
                             </div>
                         ) : null}
