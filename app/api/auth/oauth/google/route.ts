@@ -9,6 +9,8 @@ import {
 } from '@/lib/auth/route-handler';
 import { getPublicEnv } from '@/lib/env';
 
+export const dynamic = 'force-dynamic';
+
 const resolveGoogleRedirect = (request: Request): string => {
     const requestUrl = new URL(request.url);
     const requestedRedirect = requestUrl.searchParams.get('redirectTo');

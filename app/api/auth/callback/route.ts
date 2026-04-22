@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAuthRouteClient } from '@/lib/auth/route-handler';
 import { getPublicEnv } from '@/lib/env';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
@@ -20,6 +22,8 @@ export async function GET(request: Request) {
                 return applyCookies(NextResponse.redirect(new URL(next, origin)));
             } else {
                 console.error("Supabase exchangeCodeForSession failed:", error);
+                // Return the specific error
+                return NextResponse.redirect(new URL(`/profile?authError=${encodeURIComponent(error.message)}`, origin));
             }
         }
     }
