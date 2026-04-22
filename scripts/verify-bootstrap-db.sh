@@ -16,3 +16,4 @@ while IFS= read -r migration; do
 done < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
 
 psql "${DB_URL}" -v ON_ERROR_STOP=1 -c "select public.verify_release_readiness();"
+psql "${DB_URL}" -v ON_ERROR_STOP=1 -c "select public.verify_auth_signup_bootstrap_readiness();"

@@ -47,8 +47,23 @@ if (error) {
     process.exit(1);
 }
 
+const { data: authBootstrapData, error: authBootstrapError } = await supabaseAdmin.rpc(
+    'verify_auth_signup_bootstrap_readiness'
+);
+
+if (authBootstrapError) {
+    console.error(JSON.stringify({
+        ok: false,
+        error: authBootstrapError.message,
+    }, null, 2));
+    process.exit(1);
+}
+
 const checks = data?.checks ?? {};
 const failedChecks = Object.entries(checks).filter(([, passed]) => passed !== true);
+const authBootstrapChecks = authBootstrapData?.checks ?? {};
+const failedAuthBootstrapChecks = Object.entries(authBootstrapChecks)
+    .filter(([, passed]) => passed !== true);
 let termMirror = { ok: false, error: 'Term mirror verification did not run.' };
 
 try {
@@ -83,11 +98,20 @@ try {
 }
 
 console.log(JSON.stringify({
-    ok: failedChecks.length === 0 && termMirror.ok === true,
+    ok: failedChecks.length === 0
+        && failedAuthBootstrapChecks.length === 0
+        && termMirror.ok === true,
     checks,
+    authBootstrapChecks,
     termMirror,
 }, null, 2));
 
-if (!data?.ok || failedChecks.length > 0 || termMirror.ok !== true) {
+if (
+    !data?.ok
+    || !authBootstrapData?.ok
+    || failedChecks.length > 0
+    || failedAuthBootstrapChecks.length > 0
+    || termMirror.ok !== true
+) {
     process.exit(1);
 }
