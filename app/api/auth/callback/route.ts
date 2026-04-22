@@ -6,7 +6,9 @@ export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
     const next = requestUrl.searchParams.get('next') || '/profile?complete=1';
-    const siteUrl = getPublicEnv().siteUrl;
+    
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const origin = forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
 
     if (code) {
         const authContext = await createAuthRouteClient();
@@ -15,12 +17,13 @@ export async function GET(request: Request) {
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (!error) {
                 // Successfully exchanged the code. Redirect to the target URL.
-                // Make sure to apply the cookies that were set during exchange.
-                return applyCookies(NextResponse.redirect(new URL(next, siteUrl)));
+                return applyCookies(NextResponse.redirect(new URL(next, origin)));
+            } else {
+                console.error("Supabase exchangeCodeForSession failed:", error);
             }
         }
     }
 
     // Return the user to an error page with instructions
-    return NextResponse.redirect(new URL('/profile?authError=OAuthCallbackError', siteUrl));
+    return NextResponse.redirect(new URL('/profile?authError=OAuthCallbackError', origin));
 }

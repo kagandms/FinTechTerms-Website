@@ -12,7 +12,8 @@ import { getPublicEnv } from '@/lib/env';
 const resolveGoogleRedirect = (request: Request): string => {
     const requestUrl = new URL(request.url);
     const requestedRedirect = requestUrl.searchParams.get('redirectTo');
-    const siteUrl = getPublicEnv().siteUrl;
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const origin = forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
 
     let nextPath = '/profile?complete=1';
 
@@ -22,7 +23,8 @@ const resolveGoogleRedirect = (request: Request): string => {
         } else {
             try {
                 const parsedUrl = new URL(requestedRedirect);
-                if (parsedUrl.origin === siteUrl) {
+                // We check if it matches the dynamic origin
+                if (parsedUrl.origin === origin || parsedUrl.origin === getPublicEnv().siteUrl) {
                     nextPath = parsedUrl.pathname + parsedUrl.search;
                 }
             } catch {
@@ -31,7 +33,7 @@ const resolveGoogleRedirect = (request: Request): string => {
         }
     }
 
-    return `${siteUrl}/api/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    return `${origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`;
 };
 
 export async function GET(request: Request) {
