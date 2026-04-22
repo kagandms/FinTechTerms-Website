@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { resolveHomeHref } from '@/lib/navigation';
 
@@ -30,7 +28,7 @@ export default function GlobalError({
         <div className="min-h-[60vh] flex items-center justify-center px-4">
             <div className="text-center max-w-md">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
-                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                    <span className="text-3xl font-black text-red-500">!</span>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                     {t('errors.globalTitle')}
@@ -43,15 +41,14 @@ export default function GlobalError({
                         onClick={reset}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-md"
                     >
-                        <RefreshCw className="w-4 h-4" />
                         {t('errors.retry')}
                     </button>
-                    <Link
+                    <a
                         href={homeHref}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                         {t('errors.home')}
-                    </Link>
+                    </a>
                 </div>
             </div>
         </div>

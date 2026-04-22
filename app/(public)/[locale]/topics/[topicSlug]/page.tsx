@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, getSeoSourceById, getSeoTopicBySlug, listStaticTopicSlugs, listTopicTerms } from '@/lib/public-seo-catalog';
+import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
@@ -74,15 +74,16 @@ export default async function TopicPage({
     const copy = topicCopy[locale];
 
     return (
-        <div className="space-y-8">
-            <section className="rounded-[2.5rem] border border-slate-200 bg-white px-6 py-10 shadow-sm md:px-10">
+        <div className="space-y-14 md:space-y-8">
+            <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
+                <PublicSeoHeroMark />
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {copy.title}
                 </span>
-                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                <h1 className="mt-4 line-clamp-1 text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">
                     {getLocalizedText(topic.title, locale)}
                 </h1>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+                <p className="mt-4 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-7">
                     {getLocalizedText(topic.hero, locale)}
                 </p>
             </section>
@@ -92,7 +93,7 @@ export default async function TopicPage({
                     {topic.sections.map((section) => (
                         <article key={getLocalizedText(section.title, locale)} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{getLocalizedText(section.title, locale)}</h2>
-                            <p className="mt-4 text-base leading-8 text-slate-600">{getLocalizedText(section.body, locale)}</p>
+                            <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-8">{getLocalizedText(section.body, locale)}</p>
                         </article>
                     ))}
                 </div>
@@ -121,14 +122,14 @@ export default async function TopicPage({
                 <h2 className="text-2xl font-bold text-slate-950">{copy.terms}</h2>
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {terms.map((term) => (
-                        <Link
+                        <a
                             key={term.id}
                             href={buildLocalePath(locale, `/glossary/${term.slug}`)}
                             className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                         >
                             <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
                             <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
-                        </Link>
+                        </a>
                     ))}
                 </div>
             </section>

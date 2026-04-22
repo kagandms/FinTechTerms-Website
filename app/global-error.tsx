@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { DEFAULT_LANGUAGE } from '@/lib/language';
 import { logger } from '@/lib/logger';
@@ -49,12 +48,12 @@ export default function GlobalError({
                         >
                             {retryLabel}
                         </button>
-                        <Link
+                        <a
                             href={resolveHomeHref(null)}
                             className="rounded-xl border border-slate-700 px-5 py-3 font-medium text-slate-100 transition-colors hover:border-slate-500 hover:bg-slate-900"
                         >
                             {homeLabel}
-                        </Link>
+                        </a>
                     </div>
                 </main>
             </body>

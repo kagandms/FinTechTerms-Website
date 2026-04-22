@@ -1,11 +1,5 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import '@/app/globals.css';
-import PublicLocalePreferenceSync from '@/components/public-locale-preference-sync';
-import PublicLocaleSwitcher from '@/components/public-locale-switcher';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
-import { inter, jetbrainsMono } from '@/lib/fonts';
-import { getScriptNonce } from '@/lib/script-nonce';
 import { PUBLIC_LOCALES, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
@@ -65,7 +59,6 @@ export default async function LocaleLayout({
     params: Promise<{ locale: string }>;
 }) {
     const { locale: rawLocale } = await params;
-    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -76,36 +69,51 @@ export default async function LocaleLayout({
 
     return (
         <html lang={locale}>
-            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-[#f5f7fb] text-slate-950`}>
-                <PublicLocalePreferenceSync locale={locale} />
+            <body className="font-sans antialiased bg-[#f5f7fb] text-slate-950">
                 <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,59,94,0.14),_transparent_40%),linear-gradient(180deg,_#f7fafc_0%,_#eef4ff_100%)]">
-                    <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
-                        <header className="rounded-[2rem] border border-slate-200/80 bg-white/90 px-5 py-5 shadow-sm backdrop-blur md:px-8">
+                    <div className="mx-auto max-w-6xl px-4 pb-12 pt-3 sm:px-6 sm:pt-5 lg:px-8">
+                        <header className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm md:rounded-[2rem] md:px-8 md:py-5">
                             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                                 <div>
-                                    <Link href={buildLocalePath(locale)} className="text-2xl font-black tracking-tight text-slate-950">
+                                    <a href={buildLocalePath(locale)} className="text-2xl font-black tracking-tight text-slate-950">
                                         FinTechTerms
-                                    </Link>
-                                    <p className="mt-1 text-sm text-slate-500">{copy.footer}</p>
+                                    </a>
+                                    <p className="mt-1 hidden text-sm text-slate-500 sm:block">{copy.footer}</p>
                                 </div>
-                                <nav className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
-                                    <Link href={buildLocalePath(locale)} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.home}</Link>
-                                    <Link href={buildLocalePath(locale, '/glossary')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.glossary}</Link>
-                                    <Link href={buildLocalePath(locale, '/methodology')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.methodology}</Link>
-                                    <Link href={buildLocalePath(locale, '/about')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.about}</Link>
-                                    <Link href={buildLocalePath(locale, '/sources')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.sources}</Link>
-                                    <Link href={buildLocalePath(locale, '/editorial-policy')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.editorial}</Link>
+                                <nav className="hidden flex-wrap items-center gap-3 text-sm font-medium text-slate-600 md:flex">
+                                    <a href={buildLocalePath(locale)} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.home}</a>
+                                    <a href={buildLocalePath(locale, '/glossary')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.glossary}</a>
+                                    <a href={buildLocalePath(locale, '/methodology')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.methodology}</a>
+                                    <a href={buildLocalePath(locale, '/about')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.about}</a>
+                                    <a href={buildLocalePath(locale, '/sources')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.sources}</a>
+                                    <a href={buildLocalePath(locale, '/editorial-policy')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.editorial}</a>
                                 </nav>
                             </div>
-                            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+                            <div className="mt-3 hidden flex-wrap items-center gap-2 border-t border-slate-200 pt-3 sm:flex md:mt-4 md:pt-4">
                                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{copy.languageLabel}</span>
-                                <PublicLocaleSwitcher currentLocale={locale} />
+                                {PUBLIC_LOCALES.map((candidateLocale) => {
+                                    const isActive = candidateLocale === locale;
+
+                                    return (
+                                        <a
+                                            key={candidateLocale}
+                                            href={buildLocalePath(candidateLocale)}
+                                            aria-current={isActive ? 'page' : undefined}
+                                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+                                                isActive
+                                                    ? 'border-slate-900 bg-slate-900 text-white'
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-950'
+                                            }`}
+                                        >
+                                            {candidateLocale}
+                                        </a>
+                                    );
+                                })}
                             </div>
                         </header>
-                        <main className="mt-8">{children}</main>
+                        <main className="mt-4 md:mt-8">{children}</main>
                     </div>
                 </div>
-                <GoogleAnalytics nonce={nonce} />
             </body>
         </html>
     );

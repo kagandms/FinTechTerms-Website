@@ -1,25 +1,10 @@
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
-import { DEFAULT_LANGUAGE } from '@/lib/language';
-import { getTranslationString } from '@/lib/i18n';
-import { resolveHomeHref } from '@/lib/navigation';
-import { getCurrentLanguage } from '@/utils/storage';
-import type { Language } from '@/types';
-
 export default function NotFound() {
-    const pathname = usePathname();
-    const [language] = useState<Language>(() => getCurrentLanguage() ?? DEFAULT_LANGUAGE);
-    const homeHref = resolveHomeHref(pathname);
     const copy = {
-        badge: getTranslationString(language, 'notFound.badge') ?? 'Academic catalog',
-        title: getTranslationString(language, 'notFound.title') ?? 'Page not found',
-        description: getTranslationString(language, 'notFound.description') ?? 'The requested section does not exist in the current catalog structure or has been moved to another research surface.',
-        home: getTranslationString(language, 'notFound.home') ?? 'Back to Home',
-        search: getTranslationString(language, 'notFound.search') ?? 'Go to Search',
+        badge: 'Academic catalog',
+        title: 'Page not found',
+        description: 'The requested section does not exist in the current catalog structure or has been moved to another research surface.',
+        home: 'Back to Home',
+        search: 'Go to Search',
     };
 
     return (
@@ -41,20 +26,18 @@ export default function NotFound() {
                 </p>
 
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                    <Link
-                        href={homeHref}
+                    <a
+                        href="/ru"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 font-semibold text-white transition-colors hover:bg-sky-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-sky-200"
                     >
-                        <ArrowLeft className="h-4 w-4" />
                         {copy.home}
-                    </Link>
-                    <Link
+                    </a>
+                    <a
                         href="/search"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
-                        <Search className="w-4 h-4" />
                         {copy.search}
-                    </Link>
+                    </a>
                 </div>
             </div>
         </div>

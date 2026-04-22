@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
-import Link from 'next/link';
 import { ArrowLeft, Brain, Layers3, Sparkles } from 'lucide-react';
 
 const pageCopy: Record<Language, {
@@ -130,15 +129,15 @@ export default async function MethodologyPage({
 
     return (
         <div className="space-y-8">
-            <Link
+            <a
                 href={buildLocalePath(rawLocale)}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950"
             >
                 <ArrowLeft className="h-4 w-4" />
                 {copy.backLabel}
-            </Link>
+            </a>
 
-            <section className="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98)_0%,_rgba(239,246,255,0.96)_54%,_rgba(224,231,255,0.88)_100%)] px-6 py-10 shadow-sm md:px-10">
+            <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98)_0%,_rgba(239,246,255,0.96)_54%,_rgba(224,231,255,0.88)_100%)] px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">

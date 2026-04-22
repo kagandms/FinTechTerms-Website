@@ -17,7 +17,7 @@ import { inter, jetbrainsMono } from '@/lib/fonts';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
 import { getScriptNonce } from '@/lib/script-nonce';
 import { getSiteUrl } from '@/lib/site-url';
-import { buildXDefaultAlternates } from '@/lib/seo-routing';
+import { buildAbsoluteXDefaultAlternates } from '@/lib/seo-routing';
 import { getThemeBootstrapScript } from '@/lib/theme-bootstrap';
 
 const siteUrl = getSiteUrl();
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
     title: 'FinTechTerms | Multilingual FinTech Glossary',
     description: 'A multilingual fintech, finance, and technology glossary with localized Russian, English, and Turkish public SEO pages.',
     alternates: {
-        canonical: '/',
-        languages: buildXDefaultAlternates(),
+        canonical: siteUrl,
+        languages: buildAbsoluteXDefaultAlternates(),
     },
     icons: {
         icon: [
-            { url: '/home-logo.png', type: 'image/png', sizes: '512x512' },
+            { url: '/icons/icon-512.png', type: 'image/png', sizes: '512x512' },
         ],
-        shortcut: '/home-logo.png',
-        apple: '/home-logo.png',
+        shortcut: '/icons/icon-192.png',
+        apple: '/icons/icon-192.png',
     },
     manifest: '/manifest.json',
     openGraph: {
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/home-logo.png',
+                url: '/icons/icon-512.png',
                 width: 512,
                 height: 512,
                 alt: 'FinTechTerms Logo',
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
         card: 'summary',
         title: 'FinTechTerms | Multilingual FinTech Glossary',
         description: 'Public glossary architecture for fintech, finance, and technology terms across Russian, English, and Turkish.',
-        images: ['/home-logo.png'],
+        images: ['/icons/icon-512.png'],
         creator: '@fintechterms',
         site: '@fintechterms',
     },

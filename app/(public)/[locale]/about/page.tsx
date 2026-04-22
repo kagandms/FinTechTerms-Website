@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
@@ -116,15 +115,15 @@ export default async function AboutPage({
 
     return (
         <div className="space-y-8">
-            <Link
+            <a
                 href={buildLocalePath(locale)}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950"
             >
                 <ArrowLeft className="h-4 w-4" />
                 {copy.backLabel}
-            </Link>
+            </a>
 
-            <section className="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98)_0%,_rgba(235,244,255,0.95)_55%,_rgba(224,242,254,0.85)_100%)] px-6 py-10 shadow-sm md:px-10">
+            <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98)_0%,_rgba(235,244,255,0.95)_55%,_rgba(224,242,254,0.85)_100%)] px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)] lg:items-start">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
@@ -209,12 +208,12 @@ export default async function AboutPage({
                     </p>
                     <h2 className="mt-2 text-2xl font-bold">{copy.peopleTitle}</h2>
                     <div className="mt-5 space-y-3 text-sm leading-7 text-slate-300">
-                        <Link href={buildLocalePath(locale, '/authors/kagan-samet-durmus')} className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-sky-300 transition-colors hover:border-sky-300/50 hover:text-white">
+                        <a href={buildLocalePath(locale, '/authors/kagan-samet-durmus')} className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-sky-300 transition-colors hover:border-sky-300/50 hover:text-white">
                             Kağan Samet Durmuş
-                        </Link>
-                        <Link href={buildLocalePath(locale, '/authors/fintechterms-editorial-review')} className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-sky-300 transition-colors hover:border-sky-300/50 hover:text-white">
+                        </a>
+                        <a href={buildLocalePath(locale, '/authors/fintechterms-editorial-review')} className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-sky-300 transition-colors hover:border-sky-300/50 hover:text-white">
                             FinTechTerms Editorial Review
-                        </Link>
+                        </a>
                     </div>
                 </article>
             </section>

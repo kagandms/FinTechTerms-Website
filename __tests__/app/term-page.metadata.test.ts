@@ -52,11 +52,11 @@ describe('localized glossary metadata', () => {
 
         expect(metadata.title).toBe('Токенизация: значение в финтехе и финансах | FinTechTerms');
         expect(metadata.description).toBe('Изучите термин Токенизация: определение, значение, принцип работы, риски и контекст BIST/MOEX/GLOBAL.');
-        expect(metadata.alternates?.canonical).toBe('/ru/glossary/tokenization');
+        expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/ru/glossary/tokenization');
         expect(metadata.alternates?.languages).toEqual({
-            ru: '/ru/glossary/tokenization',
-            en: '/en/glossary/tokenization',
-            tr: '/tr/glossary/tokenization',
+            ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
+            en: 'https://fintechterms.example.com/en/glossary/tokenization',
+            tr: 'https://fintechterms.example.com/tr/glossary/tokenization',
         });
         expect(metadata.openGraph?.images).toEqual([
             {

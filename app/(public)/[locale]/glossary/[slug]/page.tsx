@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
     getLocalizedTermDefinition,
@@ -15,6 +14,7 @@ import {
     listStaticPriorityTermSlugs,
     listRelatedTerms,
 } from '@/lib/public-seo-catalog';
+import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
@@ -201,40 +201,42 @@ export default async function SeoTermPage({
     ];
 
     return (
-        <article className="space-y-8">
+        <article className="space-y-14 md:space-y-8">
             <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                 {breadcrumbItems.map((item, index) => (
                     <span key={item.url} className="inline-flex items-center gap-2">
                         {index === breadcrumbItems.length - 1 ? (
                             <span className="font-semibold text-slate-950">{item.name}</span>
                         ) : (
-                            <Link href={item.url} className="hover:text-slate-950">{item.name}</Link>
+                            <a href={item.url} className="hover:text-slate-950">{item.name}</a>
                         )}
                         {index < breadcrumbItems.length - 1 ? <span>/</span> : null}
                     </span>
                 ))}
             </nav>
 
-            <section className="rounded-[2.5rem] border border-slate-200 bg-white px-6 py-8 shadow-sm md:px-10">
+            <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-8">
+                <PublicSeoHeroMark />
                 <div className="flex flex-wrap items-center gap-2">
                     {primaryTopic ? (
-                        <Link
+                        <a
                             href={buildLocalePath(locale, `/topics/${primaryTopic.slug}`)}
                             className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700"
                         >
                             {copy.topic}: {getLocalizedText(primaryTopic.title, locale)}
-                        </Link>
+                        </a>
                     ) : null}
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         {term.primary_market}
                     </span>
                 </div>
-                <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{termLabel}</h1>
-                <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">{definition}</p>
-                <div className="mt-6 rounded-[1.75rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    {copy.disclaimer}
-                </div>
+                <h1 className="mt-4 line-clamp-1 text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">{termLabel}</h1>
+                <p className="mt-3 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-lg sm:leading-8">{definition}</p>
             </section>
+
+            <aside className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 sm:text-sm sm:leading-6">
+                {copy.disclaimer}
+            </aside>
 
             <section className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
                 <div className="space-y-4">
@@ -246,7 +248,7 @@ export default async function SeoTermPage({
                     ].map((section) => (
                         <section key={section.title} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{section.title}</h2>
-                            <p className="mt-4 text-base leading-8 text-slate-600">{section.content}</p>
+                            <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-8">{section.content}</p>
                         </section>
                     ))}
                 </div>
@@ -257,35 +259,35 @@ export default async function SeoTermPage({
                         {dependencies.comparisonTerm ? (
                             <div className="mt-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.comparison}</p>
-                                <Link
+                                <a
                                     href={buildLocalePath(locale, `/glossary/${dependencies.comparisonTerm.slug}`)}
                                     className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700"
                                 >
                                     {getLocalizedTermLabel(dependencies.comparisonTerm, locale)}
-                                </Link>
+                                </a>
                             </div>
                         ) : null}
                         {dependencies.prerequisiteTerm ? (
                             <div className="mt-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.prerequisite}</p>
-                                <Link
+                                <a
                                     href={buildLocalePath(locale, `/glossary/${dependencies.prerequisiteTerm.slug}`)}
                                     className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700"
                                 >
                                     {getLocalizedTermLabel(dependencies.prerequisiteTerm, locale)}
-                                </Link>
+                                </a>
                             </div>
                         ) : null}
                         <div className="mt-4 space-y-3">
                             {dependencies.relatedTerms.map((relatedTerm) => (
-                                <Link
+                                <a
                                     key={relatedTerm.id}
                                     href={buildLocalePath(locale, `/glossary/${relatedTerm.slug}`)}
                                     className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                                 >
                                     <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(relatedTerm, locale)}</p>
                                     <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(relatedTerm, locale)}</p>
-                                </Link>
+                                </a>
                             ))}
                         </div>
                     </section>
@@ -319,18 +321,18 @@ export default async function SeoTermPage({
                             {dependencies.author ? (
                                 <div>
                                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.author}</p>
-                                    <Link href={buildLocalePath(locale, `/authors/${dependencies.author.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
+                                    <a href={buildLocalePath(locale, `/authors/${dependencies.author.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
                                         {dependencies.author.name}
-                                    </Link>
+                                    </a>
                                     <p className="mt-1 text-sm leading-6 text-slate-600">{getLocalizedText(dependencies.author.title, locale)}</p>
                                 </div>
                             ) : null}
                             {dependencies.reviewer ? (
                                 <div>
                                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.reviewer}</p>
-                                    <Link href={buildLocalePath(locale, `/authors/${dependencies.reviewer.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
+                                    <a href={buildLocalePath(locale, `/authors/${dependencies.reviewer.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
                                         {dependencies.reviewer.name}
-                                    </Link>
+                                    </a>
                                     <p className="mt-1 text-sm leading-6 text-slate-600">{getLocalizedText(dependencies.reviewer.title, locale)}</p>
                                 </div>
                             ) : null}

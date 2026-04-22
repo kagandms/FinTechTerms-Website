@@ -50,9 +50,20 @@ export const buildLocaleAlternates = (suffix = ''): NonNullable<Metadata['altern
     tr: buildLocalePath('tr', suffix),
 });
 
+export const buildAbsoluteLocaleAlternates = (suffix = ''): NonNullable<Metadata['alternates']>['languages'] => ({
+    ru: buildAbsoluteUrl(buildLocalePath('ru', suffix)),
+    en: buildAbsoluteUrl(buildLocalePath('en', suffix)),
+    tr: buildAbsoluteUrl(buildLocalePath('tr', suffix)),
+});
+
 export const buildXDefaultAlternates = (): NonNullable<Metadata['alternates']>['languages'] => ({
     'x-default': '/',
     ...buildLocaleAlternates(),
+});
+
+export const buildAbsoluteXDefaultAlternates = (): NonNullable<Metadata['alternates']>['languages'] => ({
+    'x-default': getSiteUrl(),
+    ...buildAbsoluteLocaleAlternates(),
 });
 
 export const buildAbsoluteUrl = (path: string): string => `${getSiteUrl()}${path}`;

@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { listPrioritySeoTerms, listSeoTopics, getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText } from '@/lib/public-seo-catalog';
+import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -87,23 +87,24 @@ export default async function LocaleHomePage({
     ]);
 
     return (
-        <div className="space-y-8">
-            <section className="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white px-6 py-10 shadow-sm md:px-10">
+        <div className="space-y-14 md:space-y-8">
+            <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
+                <PublicSeoHeroMark />
                 <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                     {copy.eyebrow}
                 </span>
-                <h1 className="mt-6 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                <h1 className="mt-4 line-clamp-1 max-w-4xl text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">
                     {copy.hero}
                 </h1>
-                <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
+                <p className="mt-4 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-7">
                     {copy.subhero}
                 </p>
-                <Link
+                <a
                     href={buildLocalePath(locale, '/glossary')}
-                    className="mt-8 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+                    className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700 sm:mt-8"
                 >
                     {copy.browseAll}
-                </Link>
+                </a>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
@@ -111,14 +112,14 @@ export default async function LocaleHomePage({
                     <h2 className="text-2xl font-bold text-slate-950">{copy.topics}</h2>
                     <div className="mt-5 grid gap-3 md:grid-cols-2">
                         {topics.map((topic) => (
-                            <Link
+                            <a
                                 key={topic.id}
                                 href={buildLocalePath(locale, `/topics/${topic.slug}`)}
                                 className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                             >
                                 <p className="text-lg font-semibold text-slate-950">{getLocalizedText(topic.title, locale)}</p>
                                 <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </div>
@@ -127,7 +128,7 @@ export default async function LocaleHomePage({
                     <h2 className="text-2xl font-bold text-slate-950">{copy.featuredTerms}</h2>
                     <div className="mt-5 space-y-3">
                         {priorityTerms.map((term) => (
-                            <Link
+                            <a
                                 key={term.id}
                                 href={buildLocalePath(locale, `/glossary/${term.slug}`)}
                                 className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
@@ -136,7 +137,7 @@ export default async function LocaleHomePage({
                                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
                                     {getLocalizedTermDefinition(term, locale)}
                                 </p>
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </div>

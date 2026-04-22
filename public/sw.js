@@ -1,11 +1,10 @@
 // Intentionally versioned and committed with the app so clean deployments always expose /sw.js.
-const STATIC_CACHE_NAME = 'fintechterms-static-v4';
+const STATIC_CACHE_NAME = 'fintechterms-static-v5';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
     OFFLINE_URL,
     '/manifest.json',
-    '/home-logo.png',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
 ];

@@ -1,18 +1,14 @@
-import Image from 'next/image';
-
 export default function Loading() {
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-4">
             <div className="w-48 mx-auto flex flex-col items-center text-center">
                 <div className="mb-4 flex justify-center animate-pulse">
-                    <Image
-                        src="/home-logo.png"
+                    <img
+                        src="/icons/icon-192.png"
                         alt="FinTechTerms Logo"
                         width={120}
                         height={108}
-                        sizes="96px"
                         className="w-24 h-auto object-contain drop-shadow-lg rounded-2xl"
-                        priority
                     />
                 </div>
 

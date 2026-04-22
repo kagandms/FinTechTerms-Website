@@ -2,6 +2,11 @@
  * @jest-environment node
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+
+const publicLocaleLayoutPath = path.join(process.cwd(), 'app/(public)/[locale]/layout.tsx');
+
 describe('public SEO metadata and route assets', () => {
     const originalEnv = process.env;
     const normalizeLastModified = (value: string | Date | undefined): string | null => (
@@ -24,12 +29,12 @@ describe('public SEO metadata and route assets', () => {
     it('keeps root layout canonical and x-default alternates', async () => {
         const routeModule = await import('@/app/(root)/layout');
 
-        expect(routeModule.metadata.alternates?.canonical).toBe('/');
+        expect(routeModule.metadata.alternates?.canonical).toBe('https://fintechterms.example.com');
         expect(routeModule.metadata.alternates?.languages).toEqual({
-            'x-default': '/',
-            ru: '/ru',
-            en: '/en',
-            tr: '/tr',
+            'x-default': 'https://fintechterms.example.com',
+            ru: 'https://fintechterms.example.com/ru',
+            en: 'https://fintechterms.example.com/en',
+            tr: 'https://fintechterms.example.com/tr',
         });
         expect(routeModule.metadata.openGraph?.url).toBe('https://fintechterms.example.com');
     });
@@ -41,11 +46,11 @@ describe('public SEO metadata and route assets', () => {
             params: Promise.resolve({ locale: 'en', topicSlug: 'cards-payments' }),
         });
 
-        expect(metadata.alternates?.canonical).toBe('/en/topics/cards-payments');
+        expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/topics/cards-payments');
         expect(metadata.alternates?.languages).toEqual({
-            ru: '/ru/topics/cards-payments',
-            en: '/en/topics/cards-payments',
-            tr: '/tr/topics/cards-payments',
+            ru: 'https://fintechterms.example.com/ru/topics/cards-payments',
+            en: 'https://fintechterms.example.com/en/topics/cards-payments',
+            tr: 'https://fintechterms.example.com/tr/topics/cards-payments',
         });
         expect(metadata.title).toBe('Cards and payments infrastructure | FinTechTerms');
     });
@@ -57,13 +62,26 @@ describe('public SEO metadata and route assets', () => {
             params: Promise.resolve({ locale: 'en', authorSlug: 'kagan-samet-durmus' }),
         });
 
-        expect(metadata.alternates?.canonical).toBe('/en/authors/kagan-samet-durmus');
+        expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/authors/kagan-samet-durmus');
         expect(metadata.alternates?.languages).toEqual({
-            ru: '/ru/authors/kagan-samet-durmus',
-            en: '/en/authors/kagan-samet-durmus',
-            tr: '/tr/authors/kagan-samet-durmus',
+            ru: 'https://fintechterms.example.com/ru/authors/kagan-samet-durmus',
+            en: 'https://fintechterms.example.com/en/authors/kagan-samet-durmus',
+            tr: 'https://fintechterms.example.com/tr/authors/kagan-samet-durmus',
         });
         expect(metadata.title).toBe('Kağan Samet Durmuş | FinTechTerms');
+    });
+
+    it('keeps public SEO locale layout free of app-shell client runtime imports', () => {
+        const source = fs.readFileSync(publicLocaleLayoutPath, 'utf8');
+
+        expect(source).not.toContain('AuthProvider');
+        expect(source).not.toContain('SRSProvider');
+        expect(source).not.toContain('BottomNav');
+        expect(source).not.toContain('SessionTracker');
+        expect(source).not.toContain('BadgeRealtimeNotifier');
+        expect(source).not.toContain('PublicLocalePreferenceSync');
+        expect(source).not.toContain('GoogleAnalytics');
+        expect(source).not.toContain('jetbrainsMono');
     });
 
     it('keeps robots rules and sitemap location stable', async () => {

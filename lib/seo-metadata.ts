@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { buildAbsoluteUrl, buildLocaleAlternates, formatSeoTitle, getOpenGraphLocale } from '@/lib/seo-routing';
+import { buildAbsoluteLocaleAlternates, buildAbsoluteUrl, formatSeoTitle, getOpenGraphLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
 interface SeoMetadataOptions {
@@ -12,7 +12,7 @@ interface SeoMetadataOptions {
     noindex?: boolean;
 }
 
-const DEFAULT_IMAGE_PATH = '/home-logo.png';
+const DEFAULT_IMAGE_PATH = '/icons/icon-512.png';
 
 export const buildSeoMetadata = ({
     locale,
@@ -26,8 +26,8 @@ export const buildSeoMetadata = ({
     title: formatSeoTitle(title),
     description,
     alternates: {
-        canonical: path,
-        languages: buildLocaleAlternates(path.replace(`/${locale}`, '')),
+        canonical: buildAbsoluteUrl(path),
+        languages: buildAbsoluteLocaleAlternates(path.replace(`/${locale}`, '')),
     },
     robots: noindex ? {
         index: false,

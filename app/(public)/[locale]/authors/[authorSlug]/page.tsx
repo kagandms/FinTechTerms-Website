@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { getLocalizedTermLabel, getLocalizedText, getSeoContributorBySlug, listStaticContributorSlugs, listTermsByContributor } from '@/lib/public-seo-catalog';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { getScriptNonce } from '@/lib/script-nonce';
@@ -72,7 +71,7 @@ export default async function AuthorPage({
     ]);
 
     return (
-        <div className="rounded-[2.5rem] border border-slate-200 bg-white px-6 py-10 shadow-sm md:px-10">
+        <div className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{contributor.role}</p>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{contributor.name}</h1>
             <p className="mt-4 text-lg leading-8 text-slate-600">{getLocalizedText(contributor.title, locale)}</p>
@@ -102,13 +101,13 @@ export default async function AuthorPage({
                     <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.written}</h2>
                     <div className="mt-4 flex flex-wrap gap-2">
                         {writtenTerms.slice(0, 12).map((term) => (
-                            <Link
+                            <a
                                 key={term.id}
                                 href={buildLocalePath(locale, `/glossary/${term.slug}`)}
                                 className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950"
                             >
                                 {getLocalizedTermLabel(term, locale)}
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </section>
@@ -116,13 +115,13 @@ export default async function AuthorPage({
                     <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.reviewed}</h2>
                     <div className="mt-4 flex flex-wrap gap-2">
                         {reviewedTerms.slice(0, 12).map((term) => (
-                            <Link
+                            <a
                                 key={term.id}
                                 href={buildLocalePath(locale, `/glossary/${term.slug}`)}
                                 className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950"
                             >
                                 {getLocalizedTermLabel(term, locale)}
-                            </Link>
+                            </a>
                         ))}
                     </div>
                 </section>
