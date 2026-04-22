@@ -10,6 +10,7 @@ import React, {
     type ReactNode,
 } from 'react';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
+import { createBrowserClient } from '@supabase/ssr';
 import { logger } from '@/lib/logger';
 import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';
 import {
@@ -430,8 +431,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
         try {
-            const redirectTo = `${window.location.origin}/profile?complete=1`;
-            window.location.assign(`/api/auth/oauth/google?redirectTo=${encodeURIComponent(redirectTo)}`);
+            const env = getPublicEnv();
+            if (!env.supabaseUrl || !env.supabaseAnonKey) {
+                return { success: false, error: 'Supabase URL/Key missing' };
+            }
+            
+            // Initiate OAuth flow directly from the client to preserve PKCE verification state in local storage/cookies
+            const supabaseBrowser = createBrowserClient(env.supabaseUrl, env.supabaseAnonKey);
+            const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent('/profile?complete=1')}`;
+            
+            const { error } = await supabaseBrowser.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo,
+                },
+            });
+            
+            if (error) throw error;
             return { success: true };
         } catch (error) {
             logger.error('AUTH_GOOGLE_SIGNIN_EXCEPTION', {
