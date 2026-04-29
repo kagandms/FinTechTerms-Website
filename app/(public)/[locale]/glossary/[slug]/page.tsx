@@ -37,6 +37,7 @@ const termCopy: Record<Language, {
     reviewer: string;
     reviewedAt: string;
     disclaimer: string;
+    faqTitle: string;
 }> = {
     en: {
         glossary: 'Glossary',
@@ -53,6 +54,7 @@ const termCopy: Record<Language, {
         reviewer: 'Reviewer',
         reviewedAt: 'Reviewed',
         disclaimer: 'Educational content only. This page does not provide investment, legal, or regulatory advice.',
+        faqTitle: 'Common questions',
     },
     ru: {
         glossary: 'Глоссарий',
@@ -69,6 +71,7 @@ const termCopy: Record<Language, {
         reviewer: 'Ревьюер',
         reviewedAt: 'Проверено',
         disclaimer: 'Материал носит образовательный характер и не является инвестиционной, юридической или регуляторной рекомендацией.',
+        faqTitle: 'Частые вопросы',
     },
     tr: {
         glossary: 'Sözlük',
@@ -85,10 +88,16 @@ const termCopy: Record<Language, {
         reviewer: 'İnceleyen',
         reviewedAt: 'Gözden geçirildi',
         disclaimer: 'Bu içerik yalnızca eğitseldir; yatırım, hukuk veya regülasyon tavsiyesi sunmaz.',
+        faqTitle: 'Sık sorulan sorular',
     },
 };
 
 export const dynamicParams = true;
+
+interface TermFaqItem {
+    readonly question: string;
+    readonly answer: string;
+}
 
 export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
     const priorityTermSlugs = await listStaticPriorityTermSlugs();
@@ -109,6 +118,31 @@ const getPrimaryTopic = async (term: Term): Promise<Topic | null> => {
 const getLocalizedSection = (value: Term['expanded_definition'], locale: Language): string => (
     value[locale] || value.en || value.ru || value.tr
 );
+
+const buildTermFaqItems = (term: Term, locale: Language): readonly TermFaqItem[] => {
+    const termLabel = getLocalizedTermLabel(term, locale);
+    const definition = getLocalizedTermDefinition(term, locale);
+
+    const questions: Record<Language, readonly TermFaqItem[]> = {
+        en: [
+            { question: `What does ${termLabel} mean?`, answer: definition },
+            { question: `Why does ${termLabel} matter in fintech?`, answer: getLocalizedSection(term.why_it_matters, locale) },
+            { question: `What risks should teams watch with ${termLabel}?`, answer: getLocalizedSection(term.risks_and_pitfalls, locale) },
+        ],
+        ru: [
+            { question: `Что означает ${termLabel}?`, answer: definition },
+            { question: `Почему ${termLabel} важен для финтеха?`, answer: getLocalizedSection(term.why_it_matters, locale) },
+            { question: `Какие риски связаны с ${termLabel}?`, answer: getLocalizedSection(term.risks_and_pitfalls, locale) },
+        ],
+        tr: [
+            { question: `${termLabel} ne anlama gelir?`, answer: definition },
+            { question: `${termLabel} fintek için neden önemlidir?`, answer: getLocalizedSection(term.why_it_matters, locale) },
+            { question: `${termLabel} için hangi riskler izlenmelidir?`, answer: getLocalizedSection(term.risks_and_pitfalls, locale) },
+        ],
+    };
+
+    return questions[locale];
+};
 
 const loadTermDependencies = async (term: Term): Promise<{
     relatedTerms: readonly Term[];
@@ -193,6 +227,7 @@ export default async function SeoTermPage({
     const termLabel = getLocalizedTermLabel(term, locale);
     const definition = getLocalizedTermDefinition(term, locale);
     const canonicalPath = buildLocalePath(locale, `/glossary/${term.slug}`);
+    const faqItems = buildTermFaqItems(term, locale);
     const breadcrumbItems = [
         { name: 'FinTechTerms', url: buildLocalePath(locale) },
         { name: copy.glossary, url: buildLocalePath(locale, '/glossary') },
@@ -230,8 +265,8 @@ export default async function SeoTermPage({
                         {term.primary_market}
                     </span>
                 </div>
-                <h1 className="mt-4 line-clamp-1 text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">{termLabel}</h1>
-                <p className="mt-3 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-lg sm:leading-8">{definition}</p>
+                <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">{termLabel}</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-lg sm:leading-8">{definition}</p>
             </section>
 
             <aside className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 sm:text-sm sm:leading-6">
@@ -248,7 +283,7 @@ export default async function SeoTermPage({
                     ].map((section) => (
                         <section key={section.title} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{section.title}</h2>
-                            <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-8">{section.content}</p>
+                            <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base sm:leading-8">{section.content}</p>
                         </section>
                     ))}
                 </div>
@@ -345,6 +380,18 @@ export default async function SeoTermPage({
                 </div>
             </section>
 
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-bold text-slate-950">{copy.faqTitle}</h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                    {faqItems.map((item) => (
+                        <article key={item.question} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                            <h3 className="text-base font-semibold leading-6 text-slate-950">{item.question}</h3>
+                            <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                        </article>
+                    ))}
+                </div>
+            </section>
+
             <script
                 nonce={nonce}
                 type="application/ld+json"
@@ -394,6 +441,18 @@ export default async function SeoTermPage({
                                 position: index + 1,
                                 name: item.name,
                                 item: buildAbsoluteUrl(item.url),
+                            })),
+                        },
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'FAQPage',
+                            mainEntity: faqItems.map((item) => ({
+                                '@type': 'Question',
+                                name: item.question,
+                                acceptedAnswer: {
+                                    '@type': 'Answer',
+                                    text: item.answer,
+                                },
                             })),
                         },
                     ]),

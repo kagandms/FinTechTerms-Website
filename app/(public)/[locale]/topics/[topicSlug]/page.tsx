@@ -94,10 +94,10 @@ export default async function TopicPage({
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {copy.title}
                 </span>
-                <h1 className="mt-4 line-clamp-1 text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">
+                <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                     {getLocalizedText(topic.title, locale)}
                 </h1>
-                <p className="mt-4 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-7">
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
                     {getLocalizedText(topic.hero, locale)}
                 </p>
             </section>
@@ -107,7 +107,7 @@ export default async function TopicPage({
                     {topic.sections.map((section) => (
                         <article key={getLocalizedText(section.title, locale)} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{getLocalizedText(section.title, locale)}</h2>
-                            <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-8">{getLocalizedText(section.body, locale)}</p>
+                            <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base sm:leading-8">{getLocalizedText(section.body, locale)}</p>
                         </article>
                     ))}
                 </div>

@@ -98,6 +98,8 @@ export default async function LocaleLayout({
                                         <a
                                             key={candidateLocale}
                                             href={buildLocalePath(candidateLocale)}
+                                            data-public-locale-link
+                                            data-locale={candidateLocale}
                                             aria-current={isActive ? 'page' : undefined}
                                             className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
                                                 isActive
@@ -114,6 +116,7 @@ export default async function LocaleLayout({
                         <main className="mt-4 md:mt-8">{children}</main>
                     </div>
                 </div>
+                <script src="/public-locale-switcher.js" defer />
             </body>
         </html>
     );

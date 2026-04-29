@@ -93,10 +93,10 @@ export default async function LocaleHomePage({
                 <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                     {copy.eyebrow}
                 </span>
-                <h1 className="mt-4 line-clamp-1 max-w-4xl text-lg font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">
+                <h1 className="mt-4 max-w-4xl text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                     {copy.hero}
                 </h1>
-                <p className="mt-4 line-clamp-1 max-w-3xl text-sm leading-6 text-slate-600 sm:line-clamp-none sm:text-base sm:leading-7">
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
                     {copy.subhero}
                 </p>
                 <a
@@ -134,7 +134,7 @@ export default async function LocaleHomePage({
                                 className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                             >
                                 <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
                                     {getLocalizedTermDefinition(term, locale)}
                                 </p>
                             </a>

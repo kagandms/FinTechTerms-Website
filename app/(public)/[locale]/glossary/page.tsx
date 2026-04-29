@@ -96,7 +96,7 @@ export default async function GlossaryPage({
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {copy.eyebrow}
                 </span>
-                <h1 className="mt-4 line-clamp-2 text-xl font-black leading-tight tracking-tight text-slate-950 sm:line-clamp-none sm:text-5xl">{copy.hero}</h1>
+                <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">{copy.hero}</h1>
                 <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{copy.description}</p>
             </section>
 
