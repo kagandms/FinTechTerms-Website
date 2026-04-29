@@ -37,5 +37,8 @@ module.exports = withSentryConfig(
         project: process.env.SENTRY_PROJECT,
         silent: true,
         widenClientFileUpload: true,
+        sourcemaps: {
+            disable: true,
+        },
     }
 );

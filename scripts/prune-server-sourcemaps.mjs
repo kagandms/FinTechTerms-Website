@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const SERVER_OUTPUT_DIRECTORY = path.join(process.cwd(), '.next', 'server');
+const isVercelBuild = () => process.env.VERCEL === '1';
 
 const collectServerSourcemaps = (directoryPath) => {
     if (!fs.existsSync(directoryPath)) {
@@ -46,6 +47,15 @@ const pruneServerSourcemaps = () => {
 };
 
 const main = () => {
+    if (isVercelBuild()) {
+        console.log(JSON.stringify({
+            ok: true,
+            skipped: true,
+            reason: 'vercel-file-trace',
+        }, null, 2));
+        return;
+    }
+
     const removedCount = pruneServerSourcemaps();
 
     console.log(JSON.stringify({

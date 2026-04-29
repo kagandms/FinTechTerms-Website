@@ -66,4 +66,23 @@ describe('guard-artifact-sourcemaps', () => {
         expect(fs.existsSync(serverMapPath)).toBe(false);
         expect(fs.existsSync(clientMapPath)).toBe(true);
     });
+
+    it('does not prune files during Vercel deployment packaging', () => {
+        const tempDirectory = createTempDirectory();
+        const serverMapPath = path.join(tempDirectory, '.next/server/app/dashboard/page.js.map');
+
+        fs.mkdirSync(path.dirname(serverMapPath), { recursive: true });
+        fs.writeFileSync(serverMapPath, '{}');
+
+        execFileSync('node', [pruneScriptPath], {
+            cwd: tempDirectory,
+            env: {
+                ...process.env,
+                VERCEL: '1',
+            },
+            stdio: 'pipe',
+        });
+
+        expect(fs.existsSync(serverMapPath)).toBe(true);
+    });
 });

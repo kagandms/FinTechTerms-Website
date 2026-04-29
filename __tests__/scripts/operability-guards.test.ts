@@ -17,6 +17,7 @@ const releaseDbVerificationScriptPath = path.join(process.cwd(), 'scripts/verify
 const syncRepoTermsScriptPath = path.join(process.cwd(), 'scripts/sync_repo_terms.js');
 const legacyPruneScriptPath = path.join(process.cwd(), 'tools/prune_supabase.js');
 const packageJsonPath = path.join(process.cwd(), 'package.json');
+const nextConfigPath = path.join(process.cwd(), 'next.config.js');
 
 describe('operability guards', () => {
     const ciWorkflow = fs.readFileSync(ciWorkflowPath, 'utf8');
@@ -31,6 +32,7 @@ describe('operability guards', () => {
     const syncRepoTermsScript = fs.readFileSync(syncRepoTermsScriptPath, 'utf8');
     const legacyPruneScript = fs.readFileSync(legacyPruneScriptPath, 'utf8');
     const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
+    const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
 
     it('requires release-evaluable runtime secrets before runtime validation and build', () => {
         expect(ciWorkflow).toContain('name: Check Release-Evaluable Runtime Secrets');
@@ -83,6 +85,8 @@ describe('operability guards', () => {
         expect(ciWorkflow).toContain('npm run guard:artifact-sourcemaps -- "$artifact_manifest"');
         expect(operationsDoc).toContain('`npm run guard:artifact-sourcemaps -- path/to/artifact-manifest.txt`');
         expect(operationsDoc).toContain('`.next/server/**/*.map`');
+        expect(nextConfig).toContain('sourcemaps:');
+        expect(nextConfig).toContain('disable: true');
     });
 
     it('uses the guarded staging term prune path for release mirror sync', () => {
