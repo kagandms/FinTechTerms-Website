@@ -3,6 +3,7 @@
  */
 
 import { apiRouteRateLimiter, favoritesMutationRateLimiter } from '@/lib/rate-limiter';
+import { MAX_FAVORITES_RESPONSE_ITEMS } from '@/lib/favorite-limits';
 
 export {};
 
@@ -76,10 +77,11 @@ describe('favorites route', () => {
     });
 
     it('loads favorites through a request-scoped authenticated client', async () => {
-        const order = jest.fn().mockResolvedValue({
+        const limit = jest.fn().mockResolvedValue({
             data: [{ term_id: 'term-1' }, { term_id: 'term-2' }],
             error: null,
         });
+        const order = jest.fn(() => ({ limit }));
         const eq = jest.fn(() => ({ order }));
         const select = jest.fn(() => ({ eq }));
         const from = jest.fn(() => ({ select }));
@@ -95,6 +97,34 @@ describe('favorites route', () => {
             favorites: ['term-1', 'term-2'],
         });
         expect(mockCreateRequestScopedClient).toHaveBeenCalledTimes(1);
+        expect(limit).toHaveBeenCalledWith(MAX_FAVORITES_RESPONSE_ITEMS + 1);
+    });
+
+    it('returns 413 instead of truncating an oversized favorites response', async () => {
+        const limit = jest.fn().mockResolvedValue({
+            data: Array.from(
+                { length: MAX_FAVORITES_RESPONSE_ITEMS + 1 },
+                (_, index) => ({ term_id: `term-${index}` })
+            ),
+            error: null,
+        });
+        const order = jest.fn(() => ({ limit }));
+        const eq = jest.fn(() => ({ order }));
+        const select = jest.fn(() => ({ eq }));
+        const from = jest.fn(() => ({ select }));
+
+        mockCreateRequestScopedClient.mockResolvedValue({ from });
+
+        const { GET } = await import('@/app/api/favorites/route');
+        const response = await GET(createRequest());
+        const body = await response.json();
+
+        expect(response.status).toBe(413);
+        expect(body).toMatchObject({
+            code: 'FAVORITES_RESPONSE_TOO_LARGE',
+            retryable: false,
+        });
+        expect(limit).toHaveBeenCalledWith(MAX_FAVORITES_RESPONSE_ITEMS + 1);
     });
 
     it('replays cached POST responses before touching route or write rate limiters', async () => {

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 import { logger } from '@/lib/logger';
 
 const SUPABASE_PLACEHOLDERS = new Set([

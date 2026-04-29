@@ -17,7 +17,7 @@ import {
     enforceSameOriginRoute,
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 import { supportsPasswordSignIn } from '@/lib/auth/user';
 import { authUpdatePasswordRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 

@@ -152,6 +152,9 @@ def main() -> None:
         if not config.sentry_dsn:
             logger.critical("Configuration error: BOT_SENTRY_DSN is required in production.")
             sys.exit(1)
+        if not config.redis_url:
+            logger.critical("Configuration error: REDIS_URL is required in production.")
+            sys.exit(1)
     else:
         logger.info("📡 LOCAL MODE — Development")
         logger.info("   Supabase URL: %s", config.supabase_url)

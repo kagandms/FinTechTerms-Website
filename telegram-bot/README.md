@@ -41,6 +41,7 @@ python -m bot.main
 | `SUPABASE_ANON_KEY` | Supabase anon key used by the bot for term lookups |
 | `WEB_APP_URL` | Public FinTechTerms web app URL used for deep links |
 | `ADMIN_USER_ID` | Your Telegram user ID for admin commands |
+| `REDIS_URL` | Redis URL for distributed rate limiting. Required in production deployments |
 | `BOT_SENTRY_DSN` | Sentry DSN for bot-side error capture. Required in production deployments |
 
 The Telegram bot must use `SUPABASE_ANON_KEY`. Admin scripts and server-side maintenance flows must use `SUPABASE_SERVICE_ROLE_KEY`.
@@ -48,7 +49,7 @@ The Telegram bot must use `SUPABASE_ANON_KEY`. Admin scripts and server-side mai
 ## Runtime validation
 
 - Validate the production runtime contract with `python -m bot.validate_runtime`.
-- When `RENDER=1`, `BOT_SENTRY_DSN` is required in addition to the core bot credentials.
+- When `RENDER=1`, `REDIS_URL` and `BOT_SENTRY_DSN` are required in addition to the core bot credentials.
 
 ## Tech Stack
 

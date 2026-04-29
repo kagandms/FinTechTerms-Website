@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createTimeoutFetch, errorResponse } from '@/lib/api-response';
-import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
+import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
 import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options';
 
 const AUTH_ROUTE_HEADERS = {

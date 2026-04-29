@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 describe('getPublicEnv', () => {
     const originalEnv = process.env;
 
@@ -23,7 +26,7 @@ describe('getPublicEnv', () => {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = '"quoted-anon-key"';
         process.env.NEXT_PUBLIC_SENTRY_DSN = '"https://sentry.example/quoted"';
 
-        const { getPublicEnv } = await import('@/lib/env');
+        const { getPublicEnv } = await import('@/lib/public-env');
 
         expect(getPublicEnv()).toMatchObject({
             siteUrl: 'https://quoted.example',
@@ -34,7 +37,7 @@ describe('getPublicEnv', () => {
     });
 
     it('should keep unquoted public environment variables intact', async () => {
-        const { getPublicEnv } = await import('@/lib/env');
+        const { getPublicEnv } = await import('@/lib/public-env');
 
         expect(getPublicEnv()).toMatchObject({
             siteUrl: 'https://fintechterms.example',
@@ -42,6 +45,26 @@ describe('getPublicEnv', () => {
             supabaseAnonKey: 'anon-key',
             sentryDsn: 'https://sentry.example/1',
         });
+    });
+});
+
+describe('client/server environment boundary', () => {
+    it('keeps client public env imports away from server-only secrets', () => {
+        const publicEnvSource = fs.readFileSync(
+            path.join(process.cwd(), 'lib/public-env.ts'),
+            'utf8'
+        );
+        const authContextSource = fs.readFileSync(
+            path.join(process.cwd(), 'contexts/AuthContext.tsx'),
+            'utf8'
+        );
+
+        expect(publicEnvSource).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+        expect(publicEnvSource).not.toContain('STUDY_SESSION_TOKEN_SECRET');
+        expect(publicEnvSource).not.toContain('OPENROUTER_API_KEY');
+        expect(authContextSource).toContain("@/lib/public-env");
+        expect(authContextSource).not.toContain("@/lib/env");
+        expect(authContextSource).not.toContain("@/lib/server-env");
     });
 });
 
@@ -69,7 +92,7 @@ describe('getServerEnv', () => {
     });
 
     it('should parse OpenRouter AI configuration from server env', async () => {
-        const { getServerEnv, hasConfiguredAiEnv } = await import('@/lib/env');
+        const { getServerEnv, hasConfiguredAiEnv } = await import('@/lib/server-env');
 
         expect(getServerEnv()).toMatchObject({
             openRouterApiKey: 'openrouter-key',
@@ -88,7 +111,7 @@ describe('getServerEnv', () => {
         process.env.UPSTASH_REDIS_REST_URL = 'https://example.upstash.io';
         process.env.UPSTASH_REDIS_REST_TOKEN = 'upstash-token-12345678901234567890';
 
-        const { hasConfiguredRateLimiterEnv } = await import('@/lib/env');
+        const { hasConfiguredRateLimiterEnv } = await import('@/lib/server-env');
 
         expect(hasConfiguredRateLimiterEnv()).toBe(true);
     });
@@ -101,7 +124,7 @@ describe('getServerEnv', () => {
         delete process.env.UPSTASH_REDIS_REST_URL;
         delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
-        const { assertProductionRateLimiterEnv } = await import('@/lib/env');
+        const { assertProductionRateLimiterEnv } = await import('@/lib/server-env');
 
         expect(() => assertProductionRateLimiterEnv()).toThrow(
             'Production runtime requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Configure distributed rate limiting before starting the app.'
@@ -125,7 +148,7 @@ describe('getServerEnv', () => {
             UPSTASH_REDIS_REST_TOKEN: 'upstash-token-12345678901234567890',
         };
 
-        const { assertProductionRuntimeEnv } = await import('@/lib/env');
+        const { assertProductionRuntimeEnv } = await import('@/lib/server-env');
 
         expect(() => assertProductionRuntimeEnv()).toThrow(
             'Production runtime is missing required environment variables: AI_FALLBACK_MODELS, ADMIN_USER_IDS, NEXT_PUBLIC_SENTRY_DSN.'

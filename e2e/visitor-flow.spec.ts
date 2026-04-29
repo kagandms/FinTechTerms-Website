@@ -28,8 +28,10 @@ test.describe('Visitor Flow', () => {
         await page.goto('/search', { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
 
-        const fintechCategoryChip = page.getByRole('button', { name: /(fintech|финтех|fintek)/i }).first();
         await page.locator('[data-testid="search-filter-toggle"]:visible').click();
+        const fintechCategoryChip = page.getByRole('button', { name: /^(Fintech|Fintek|Финтех)$/ });
+
+        await expect(fintechCategoryChip).toBeVisible();
         await fintechCategoryChip.click();
 
         await expect(page).toHaveURL(/category=Fintech/);

@@ -12,7 +12,7 @@ jest.mock('@supabase/supabase-js', () => ({
     }),
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/public-env', () => ({
     getPublicEnv: () => ({
         supabaseUrl: 'https://project.supabase.co',
         supabaseAnonKey: 'anon-key',

@@ -14,6 +14,8 @@ const runtimeValidationScriptPath = path.join(process.cwd(), 'scripts/validate-r
 const releaseGateValidationScriptPath = path.join(process.cwd(), 'scripts/validate-release-gate-env.mjs');
 const envValidationUtilsPath = path.join(process.cwd(), 'scripts/env-validation-utils.mjs');
 const releaseDbVerificationScriptPath = path.join(process.cwd(), 'scripts/verify-release-db.mjs');
+const syncRepoTermsScriptPath = path.join(process.cwd(), 'scripts/sync_repo_terms.js');
+const legacyPruneScriptPath = path.join(process.cwd(), 'tools/prune_supabase.js');
 const packageJsonPath = path.join(process.cwd(), 'package.json');
 
 describe('operability guards', () => {
@@ -26,6 +28,8 @@ describe('operability guards', () => {
     const releaseGateValidationScript = fs.readFileSync(releaseGateValidationScriptPath, 'utf8');
     const envValidationUtils = fs.readFileSync(envValidationUtilsPath, 'utf8');
     const releaseDbVerificationScript = fs.readFileSync(releaseDbVerificationScriptPath, 'utf8');
+    const syncRepoTermsScript = fs.readFileSync(syncRepoTermsScriptPath, 'utf8');
+    const legacyPruneScript = fs.readFileSync(legacyPruneScriptPath, 'utf8');
     const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
 
     it('requires release-evaluable runtime secrets before runtime validation and build', () => {
@@ -78,6 +82,18 @@ describe('operability guards', () => {
         expect(ciWorkflow).toContain('npm run guard:artifact-sourcemaps -- "$artifact_manifest"');
         expect(operationsDoc).toContain('`npm run guard:artifact-sourcemaps -- path/to/artifact-manifest.txt`');
         expect(operationsDoc).toContain('`.next/server/**/*.map`');
+    });
+
+    it('uses the guarded staging term prune path for release mirror sync', () => {
+        expect(previewWorkflow).toContain('ALLOW_REMOTE_DESTRUCTIVE_SCRIPTS: \'1\'');
+        expect(previewWorkflow).toContain('node scripts/sync_repo_terms.js --prune-extra');
+        expect(syncRepoTermsScript).toContain('const MIN_RELEASE_TERM_COUNT = 900');
+        expect(syncRepoTermsScript).toContain('SUPABASE_SERVICE_ROLE_KEY');
+        expect(syncRepoTermsScript).toContain('ALLOW_REMOTE_DESTRUCTIVE_SCRIPTS');
+        expect(syncRepoTermsScript).toContain('--dry-run');
+        expect(syncRepoTermsScript).toContain('--prune-extra');
+        expect(syncRepoTermsScript).toContain('affectedReferenceRows');
+        expect(legacyPruneScript).toContain('tools/prune_supabase.js is disabled.');
     });
 
     it('keeps runtime env docs aligned with the runtime validator contract', () => {

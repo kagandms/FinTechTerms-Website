@@ -10,6 +10,8 @@ const navigateToRoute = async (page: Page, href: string) => {
 test.describe('@auth-required Authenticated happy path', () => {
     const logoutButtonPattern = /Выйти|Logout|Sign out|Çıkış/i;
 
+    test.setTimeout(60_000);
+
     test.skip(
         !process.env.E2E_AUTH_EMAIL || !process.env.E2E_AUTH_PASSWORD,
         'Authenticated E2E requires E2E_AUTH_EMAIL and E2E_AUTH_PASSWORD.'

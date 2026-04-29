@@ -1,0 +1,146 @@
+# Remaining Catalog Quality Risk Notes
+Generated: 2026-04-23
+Scope: Post-cleanup scan of the remaining repo catalog (~1083 active terms including seo-gap terms).
+Purpose: Identify remaining terms that still risk lowering glossary quality through typos, slang, brand-like entries, or overly broad non-core coverage.
+
+## High Confidence Defects
+- `term_3233 | Ponziruse | Fintech`
+  - Obvious malformed term name; should not remain as-is.
+- `term_885 | SandBox | Fintech`
+  - Inconsistent casing; also overlaps conceptually with `Regulatory Sandbox`.
+- `term_3187 | Quantitative Trading | Fintech`
+  - Turkish label is wrong: `Niteliksel Ticaret` means qualitative, not quantitative.
+- `term_510 | Overcollateralization | Fintech`
+  - Russian label starts with malformed text: `Ибыточное обеспечение`.
+- `term_255 | Scalability | Technology`
+  - Turkish definition contains typo: `karsılama` instead of `karşılama`.
+
+## Weak Slang / Low-Signal Fintech Terms
+- `term_3049 | Bag Holder | Fintech`
+- `term_3159 | Weak Hands | Fintech`
+- `term_603 | No-coiner | Fintech`
+- `term_3157 | Shilling | Fintech`
+- `term_3046 | Metaverse Finance | Fintech`
+- `term_887 | Decacorn | Fintech`
+
+These are not all invalid in internet discourse, but they pull the catalog toward crypto slang and trend vocabulary rather than durable financial terminology.
+
+## Duplicate / Near-Duplicate Concept Debt
+- `term_1036 | Stablecoin Algo`
+- `term_3052 | Algorithmic Stablecoin`
+- `term_510 | Overcollateralization`
+- `term_3110 | Over-collateralization`
+- `term_875 | Front Running`
+- `term_3015 | Front-running`
+- `term_498 | Initial Coin Offering (ICO)`
+- `term_1072 | ICO`
+- `term_590 | IEO`
+- `term_3146 | Initial Exchange Offering (IEO)`
+- `term_589 | IDO`
+- `term_3147 | Initial DEX Offering (IDO)`
+- `term_1069 | Wrapped Bitcoin`
+- `term_3010 | Wrapped Bitcoin (WBTC)`
+- `term_1501 | Soulbound Token`
+- `term_3008 | Soulbound Token (SBT)`
+- `term_537 | Oracle`
+- `term_1515 | Oracles`
+
+These are not necessarily deletion-only cases, but they show ontology duplication and should be normalized.
+
+## Brand / Asset Encyclopedia Drift In Fintech
+- `term_3018 | Monero (XMR)`
+- `term_3019 | Zcash`
+- `term_3020 | Litecoin`
+- `term_3021 | Cardano`
+- `term_3022 | Solana`
+- `term_3023 | Polkadot`
+- `term_3024 | Cosmos`
+- `term_3025 | Avalanche`
+- `term_3026 | Arbitrum`
+- `term_3027 | Optimism`
+- `term_3031 | Filecoin`
+
+These entries may be useful in a market-specific encyclopedia, but they weaken a concept-first glossary if left alongside abstract terms without a stricter editorial policy.
+
+## Broad Technology Glossary Drift
+The following remaining `Technology` terms are valid but still feel too broad for a sharper fintech/MIS glossary:
+
+- `Backend`
+- `Frontend`
+- `Full Stack`
+- `Agile`
+- `Scrum`
+- `ERP`
+- `CRM`
+- `SaaS`
+- `UI`
+- `UX`
+- `Repository`
+- `Commit`
+- `Branch`
+- `Merge`
+- `E-commerce`
+- `Monetization`
+- `Freemium`
+- `Subscription`
+- `Churn Rate`
+- `Retention`
+- `User Acquisition`
+- `CAC`
+- `LTV`
+- `A/B Testing`
+- `Kanban`
+- `Sprint`
+- `User Story`
+- `MVP`
+- `Disruption`
+- `Innovation`
+- `Digital Transformation`
+- `Automation`
+- `Heuristic`
+- `Quantum Computing`
+- `Virtual Assistant`
+- `Version Control`
+- `Git`
+- `GitHub`
+- `HTML`
+- `CSS`
+- `JavaScript`
+- `Python`
+- `Java`
+- `Kotlin`
+- `Rust`
+- `Go`
+- `PHP`
+- `Ruby`
+- `Terminal`
+- `CLI`
+- `GUI`
+- `Wireframe`
+- `Prototype`
+
+These are not "wrong" terms, but they read like a generic software/product glossary rather than a domain-constrained fintech learning system.
+
+## Broad Finance Scope Drift
+The following remaining `Finance` terms are academically valid, but they may still dilute focus if the target is a tighter fintech/markets/financial infrastructure glossary:
+
+- `Universal Basic Income`
+- `Gig Economy`
+- `Helicopter Money`
+- `Quota`
+- `Substitute Good`
+- `Complementary Good`
+- `Normal Good`
+- `Inferior Good`
+- `Veblen Good`
+- `Giffen Good`
+- `Black Market`
+- `Grey Market`
+
+## Recommended Next Pass
+1. Fix all typo/inconsistency defects immediately.
+2. Collapse duplicate fintech concepts into canonical entries.
+3. Decide whether the product is:
+   - a concept-first fintech glossary, or
+   - a broader tech/econ dictionary.
+4. If it is concept-first, prune the broad technology/product-management layer and most asset/coin-specific fintech entries.

@@ -1,0 +1,1274 @@
+# Current Terms Before Deletion
+Generated: 2026-04-23
+Source: data/terms/repo-catalog.ts
+Purpose: Snapshot of every active repo term before any deletion pass.
+Total terms: 1267
+Format: id | category | slug | term_en | term_tr | term_ru
+
+term_001 | Finance | gross-domestic-product-gdp | Gross Domestic Product (GDP) | Gayri Safi Yurt İçi Hasıla (GSYİH) | Валовой внутренний продукт (ВВП)
+term_002 | Finance | gross-national-product-gnp | Gross National Product (GNP) | Gayri Safi Milli Hasıla (GSMH) | Валовой национальный продукт (ВНП)
+term_003 | Finance | inflation | Inflation | Enflasyon | Инфляция
+term_004 | Finance | deflation | Deflation | Deflasyon | Дефляция
+term_005 | Finance | stagflation | Stagflation | Stagflasyon | Стагфляция
+term_006 | Finance | recession | Recession | Durgunluk (Resesyon) | Рецессия
+term_007 | Finance | hyperinflation | Hyperinflation | Hiperenflasyon | Гиперинфляция
+term_008 | Finance | supply-and-demand | Supply and Demand | Arz ve Talep | Спрос и предложение
+term_009 | Finance | elasticity | Elasticity | Esneklik | Эластичность
+term_010 | Finance | opportunity-cost | Opportunity Cost | Fırsat Maliyeti | Альтернативная стоимость
+term_011 | Finance | monopoly | Monopoly | Tekel | Монополия
+term_012 | Finance | oligopoly | Oligopoly | Oligopol | Олигополия
+term_013 | Finance | fiscal-policy | Fiscal Policy | Maliye Politikası | Фискальная политика
+term_014 | Finance | monetary-policy | Monetary Policy | Para Politikası | Денежно-кредитная политика
+term_015 | Finance | purchasing-power-parity-ppp | Purchasing Power Parity (PPP) | Satın Alma Gücü Paritesi (SGP) | Паритет покупательной способности (ППС)
+term_016 | Finance | trade-deficit | Trade Deficit | Dış Ticaret Açığı | Торговый дефицит
+term_017 | Finance | surplus | Surplus | Fazla | Профицит
+term_018 | Finance | subsidy | Subsidy | Sübvansiyon (Destek) | Субсидия
+term_019 | Finance | tariff | Tariff | Gümrük Vergisi (Tarife) | Тариф (Пошлина)
+term_020 | Finance | central-bank | Central Bank | Merkez Bankası | Центральный банк
+term_021 | Finance | asset | Asset | Varlık | Актив
+term_022 | Finance | liability | Liability | Yükümlülük (Borç) | Обязательство
+term_023 | Finance | equity | Equity | Özkaynak | Собственный капитал
+term_024 | Finance | balance-sheet | Balance Sheet | Bilanço | Балансовый отчёт
+term_025 | Finance | cash-flow | Cash Flow | Nakit Akışı | Денежный поток
+term_026 | Finance | dividend | Dividend | Temettü | Дивиденд
+term_027 | Finance | portfolio | Portfolio | Portföy | Портфель
+term_028 | Finance | hedge-fund | Hedge Fund | Hedge Fonu | Хедж-фонд
+term_029 | Finance | venture-capital | Venture Capital | Girişim Sermayesi | Венчурный капитал
+term_030 | Finance | ipo | IPO | Halka Arz (IPO) | IPO
+term_031 | Finance | bull-market | Bull Market | Boğa Piyasası | Бычий рынок
+term_032 | Finance | bear-market | Bear Market | Ayı Piyasası | Медвежий рынок
+term_033 | Finance | short-selling | Short Selling | Açığa Satış | Короткая продажа
+term_034 | Finance | long-position | Long Position | Uzun Pozisyon | Длинная позиция
+term_035 | Finance | leverage | Leverage | Kaldıraç | Кредитное плечо (Леверидж)
+term_036 | Finance | margin-call | Margin Call | Teminat Tamamlama Çağrısı | Маржин-колл
+term_037 | Finance | volatility | Volatility | Volatilite (Oynaklık) | Волатильность
+term_038 | Finance | liquidity | Liquidity | Likidite | Ликвидность
+term_039 | Finance | derivative | Derivative | Türev Araç | Дериватив
+term_040 | Finance | futures-contract | Futures Contract | Vadeli İşlem Sözleşmesi | Фьючерсный контракт
+term_041 | Finance | option | Option | Opsiyon | Опцион
+term_042 | Finance | bond | Bond | Tahvil | Облигация
+term_043 | Finance | stock | Stock | Hisse Senedi | Акция
+term_044 | Finance | mutual-fund | Mutual Fund | Yatırım Fonu | Паевой инвестиционный фонд
+term_045 | Finance | market-cap | Market Cap | Piyasa Değeri | Рыночная капитализация
+term_084 | Finance | debit | Debit | Borç (Debit) | Дебет
+term_085 | Finance | credit | Credit | Alacak (Credit) | Кредит
+term_086 | Finance | general-ledger | General Ledger | Defter-i Kebir | Главная книга
+term_087 | Finance | trial-balance | Trial Balance | Mizan | Пробный баланс
+term_088 | Finance | amortization | Amortization | İtfa Payı (Amortisman) | Амортизация (НМА)
+term_089 | Finance | depreciation | Depreciation | Yıpranma Payı (Amortisman) | Износ (Амортизация)
+term_090 | Finance | net-income | Net Income | Net Gelir | Чистая прибыль
+term_091 | Finance | gross-margin | Gross Margin | Brüt Kar Marjı | Валовая маржа
+term_092 | Finance | break-even-point | Break-even Point | Başa Baş Noktası | Точка безубыточности
+term_093 | Finance | revenue | Revenue | Hasılat (Ciro) | Выручка
+term_094 | Finance | expense | Expense | Gider | Расход
+term_095 | Finance | audit | Audit | Denetim | Аудит
+term_109 | Finance | compliance | Compliance | Uyum | Комплаенс
+term_111 | Finance | credit-risk | Credit Risk | Kredi Riski | Кредитный риск
+term_112 | Finance | market-risk | Market Risk | Piyasa Riski | Рыночный риск
+term_113 | Finance | operational-risk | Operational Risk | Operasyonel Risk | Операционный риск
+term_114 | Finance | hedging | Hedging | Riskten Korunma | Хеджирование
+term_115 | Finance | var | VaR | VaR (Riske Maruz Değer) | VaR (Стоимость под риском)
+term_127 | Finance | swift | SWIFT | SWIFT | SWIFT
+term_128 | Finance | iban | IBAN | IBAN | IBAN
+term_134 | Finance | remittance | Remittance | Havale | Денежный перевод
+term_146 | Finance | premium | Premium | Prim | Страховая премия
+term_147 | Finance | deductible | Deductible | Muafiyet | Франшиза
+term_148 | Finance | underwriting | Underwriting | Sigorta Değerlendirmesi | Андеррайтинг
+term_149 | Finance | actuary | Actuary | Aktüer | Актуарий
+term_150 | Finance | claim | Claim | Hasar Talebi | Страховое требование
+term_151 | Finance | policy | Policy | Poliçe | Полис
+term_152 | Finance | reinsurance | Reinsurance | Reasürans | Перестрахование
+term_153 | Finance | liability-insurance | Liability Insurance | Sorumluluk Sigortası | Страхование ответственности
+term_154 | Finance | life-insurance | Life Insurance | Hayat Sigortası | Страхование жизни
+term_155 | Finance | health-insurance | Health Insurance | Sağlık Sigortası | Медицинская страховка
+term_156 | Finance | ebitda | EBITDA | FAVÖK | EBITDA
+term_157 | Finance | roi | ROI | ROI (Yatırım Getirisi) | ROI (Рентабельность инвестиций)
+term_158 | Finance | roe | ROE | ROE (Özkaynak Karlılığı) | ROE (Рентабельность капитала)
+term_159 | Finance | cagr | CAGR | CAGR (Bileşik Yıllık Büyüme Oranı) | CAGR (Совокупный годовой темп роста)
+term_160 | Finance | working-capital | Working Capital | İşletme Sermayesi | Оборотный капитал
+term_161 | Finance | accounts-receivable | Accounts Receivable | Alacak Hesapları | Дебиторская задолженность
+term_162 | Finance | accounts-payable | Accounts Payable | Borç Hesapları | Кредиторская задолженность
+term_163 | Finance | accrual | Accrual | Tahakkuk | Начисление
+term_164 | Finance | tax-deduction | Tax Deduction | Vergi İndirimi | Налоговый вычет
+term_165 | Finance | capital-gains | Capital Gains | Sermaye Kazancı | Прирост капитала
+term_166 | Finance | limit-order | Limit Order | Limit Emir | Лимитный ордер
+term_167 | Finance | market-order | Market Order | Piyasa Emri | Рыночный ордер
+term_168 | Finance | stop-loss | Stop Loss | Zarar Durdur | Стоп-лосс
+term_169 | Finance | take-profit | Take Profit | Kar Al | Тейк-профит
+term_170 | Finance | candlestick | Candlestick | Mum Grafiği | Японская свеча
+term_171 | Finance | moving-average | Moving Average | Hareketli Ortalama | Скользящая средняя
+term_172 | Finance | rsi | RSI | RSI (Göreceli Güç Endeksi) | RSI (Индекс относительной силы)
+term_173 | Finance | macd | MACD | MACD | MACD
+term_174 | Finance | volume | Volume | Hacim | Объём
+term_175 | Finance | spread | Spread | Spread (Fark) | Спред
+term_193 | Finance | wire-transfer | Wire Transfer | Banka Havalesi | Банковский перевод
+term_220 | Finance | market-maker | Market Maker | Piyasa Yapıcı | Маркет-мейкер
+term_221 | Finance | bid-price | Bid Price | Alış Fiyatı (Bid) | Цена бид
+term_222 | Finance | ask-price | Ask Price | Satış Fiyatı (Ask) | Цена аск
+term_224 | Finance | blue-chip | Blue Chip | Mavi Çip (Dev Şirket) | Голубая фишка
+term_225 | Finance | penny-stock | Penny Stock | Kuruşluk Hisse | Пенни-сток
+term_226 | Finance | arbitrage | Arbitrage | Arbitraj | Арбитраж
+term_227 | Finance | collateral | Collateral | Teminat | Залог
+term_228 | Finance | insolvency | Insolvency | Ödeme Güçlüğü (İflas) | Неплатежеспособность
+term_229 | Finance | liquidate | Liquidate | Tasfiye Etmek (Nakitletmek) | Ликвидировать
+term_230 | Finance | fiat-currency | Fiat Currency | İtibari Para (Fiat) | Фиатная валюта
+term_232 | Finance | mergers-and-acquisitions-m-and-a | Mergers and Acquisitions (M&A) | Birleşme ve Satın Alma (M&A) | Слияния и поглощения
+term_233 | Finance | hostile-takeover | Hostile Takeover | Düşmanca Devralma | Враждебное поглощение
+term_234 | Finance | golden-parachute | Golden Parachute | Altın Paraşüt | Золотой парашют
+term_235 | Finance | private-equity | Private Equity | Özel Sermaye (Private Equity) | Частный акционерный капитал
+term_236 | Finance | lbo | LBO | Kaldıraçlı Satın Alma (LBO) | LBO
+term_237 | Finance | due-diligence | Due Diligence | Dürüm Tespiti (Due Diligence) | Дью-ди́лидженс
+term_238 | Finance | valuation | Valuation | Değerleme | Оценка стоимости
+term_239 | Finance | synergy | Synergy | Sinerji | Синергия
+term_241 | Finance | swap | Swap | Takas (Swap) | Своп
+term_242 | Finance | cds | CDS | Kredi Temerrüt Takası (CDS) | CDS
+term_243 | Finance | securitization | Securitization | Menkul Kıymetleştirme | Секьюритизация
+term_244 | Finance | spv | SPV | Özel Amaçlı Şirket (SPV) | SPV
+term_245 | Finance | dark-pool | Dark Pool | Karanlık Havuz (Dark Pool) | Дарк пулы
+term_246 | Finance | high-frequency-trading-hft | High-Frequency Trading (HFT) | Yüksek Frekanslı İşlemler (HFT) | HFT
+term_247 | Finance | quantitative-easing | Quantitative Easing | Parasal Genişleme | Количественное смягчение
+term_250 | Finance | money-laundering | Money Laundering | Kara Para Aklama | Отмывание денег
+term_281 | Finance | interest-rate | Interest Rate | Faiz Oranı | Процентная ставка
+term_282 | Finance | basis-point | Basis Point | Baz Puan | Базисный пункт
+term_283 | Finance | capital-gain | Capital Gain | Sermaye Kazancı | Прирост капитала
+term_284 | Finance | capital-loss | Capital Loss | Sermaye Kaybı | Капитальный убыток
+term_287 | Finance | roa | ROA | Aktif Karlılığı (ROA) | ROA
+term_288 | Finance | p-e-ratio | P/E Ratio | Fiyat/Kazanç Oranı (F/K) | P/E коэффициент
+term_289 | Finance | eps | EPS | Hisse Başına Kar (HBK) | EPS
+term_291 | Finance | diversification | Diversification | Çeşitlendirme | Диверсификация
+term_292 | Finance | risk-management | Risk Management | Risk Yönetimi | Управление рисками
+term_293 | Finance | credit-rating | Credit Rating | Kredi Notu | Кредитный рейтинг
+term_294 | Finance | default | Default | Temerrüt | Дефолт
+term_295 | Finance | bankruptcy | Bankruptcy | İflas | Банкротство
+term_296 | Finance | forex | Forex | Forex | Форекс
+term_297 | Finance | exchange-rate | Exchange Rate | Döviz Kuru | Обменный курс
+term_299 | Finance | microfinance | Microfinance | Mikrofinans | Микрофинансы
+term_300 | Finance | universal-basic-income | Universal Basic Income | Evrensel Temel Gelir | Безусловный базовый доход
+term_301 | Finance | gig-economy | Gig Economy | Gig Ekonomisi (Esnek Ekonomi) | Гиг-экономика
+term_302 | Finance | outsourcing | Outsourcing | Dış Kaynak Kullanımı | Аутсорсинг
+term_303 | Finance | offshoring | Offshoring | Yurt Dışına Kaydırma (Offshoring) | Оффшоринг
+term_304 | Finance | supply-chain | Supply Chain | Tedarik Zinciri | Цепочка поставок
+term_305 | Finance | logistics | Logistics | Lojistik | Логистика
+term_306 | Finance | inventory | Inventory | Stok (Envanter) | Инвентарь (Запасы)
+term_307 | Finance | wholesale | Wholesale | Toptan Satış | Опт
+term_308 | Finance | retail | Retail | Perakende | Розница
+term_310 | Finance | b2b | B2B | B2B (İşletmeden İşletmeye) | B2B
+term_311 | Finance | b2c | B2C | B2C (İşletmeden Tüketiciye) | B2C
+term_312 | Finance | startup | Startup | Girişim (Startup) | Стартап
+term_313 | Finance | unicorn | Unicorn | Unicorn (Milyar Dolarlık Girişim) | Единорог
+term_314 | Finance | angel-investor | Angel Investor | Melek Yatırımcı | Бизнес-ангел
+term_315 | Finance | incubator | Incubator | Kuluçka Merkezi | Инкубатор
+term_316 | Finance | accelerator | Accelerator | Hızlandırıcı | Акселератор
+term_317 | Finance | bootstrapping | Bootstrapping | Öz Kaynakla Büyüme (Bootstrapping) | Бутстрэппинг
+term_318 | Finance | exit-strategy | Exit Strategy | Çıkış Stratejisi | Стратегия выхода
+term_319 | Finance | patent | Patent | Patent | Патент
+term_320 | Finance | copyright | Copyright | Telif Hakkı | Авторское право
+term_321 | Finance | trademark | Trademark | Ticari Marka | Торговая марка
+term_322 | Finance | intellectual-property-ip | Intellectual Property (IP) | Fikri Mülkiyet | Интеллектуальная собственность
+term_323 | Finance | nda | NDA | Gizlilik Anlaşması (NDA) | NDA
+term_324 | Finance | stakeholder | Stakeholder | Paydaş | Стейкхолдер
+term_325 | Finance | shareholder | Shareholder | Hissedar | Акционер
+term_326 | Finance | board-of-directors | Board of Directors | Yönetim Kurulu | Совет директоров
+term_327 | Finance | ceo | CEO | CEO (Genel Müdür) | CEO
+term_328 | Finance | cfo | CFO | CFO (Mali İşler Müdürü) | CFO
+term_329 | Finance | cto | CTO | CTO (Teknoloji Müdürü) | CTO
+term_330 | Finance | coo | COO | COO (Operasyon Müdürü) | COO
+term_331 | Finance | hr | HR | İnsan Kaynakları (İK) | HR
+term_332 | Finance | payroll | Payroll | Bordo (Maaş Ödemesi) | Зарплатная ведомость
+term_340 | Finance | mortgage | Mortgage | İpotek (Mortgage) | Ипотека
+term_341 | Finance | foreclosure | Foreclosure | Haciz (Gayrimenkul) | Взыскание залога
+term_342 | Finance | appraisal | Appraisal | Ekspertiz (Değer Biçme) | Оценка
+term_343 | Finance | reit | REIT | Gayrimenkul Yatırım Ortaklığı (GYO) | REIT
+term_344 | Finance | lease | Lease | Kiralama (Leasing) | Аренда (Лизинг)
+term_345 | Finance | tenant | Tenant | Kiracı | Арендатор
+term_346 | Finance | landlord | Landlord | Ev Sahibi (Mülk Sahibi) | Арендодатель
+term_347 | Finance | tax | Tax | Vergi | Налог
+term_348 | Finance | income-tax | Income Tax | Gelir Vergisi | Подоходный налог
+term_349 | Finance | corporate-tax | Corporate Tax | Kurumlar Vergisi | Корпоративный налог
+term_350 | Finance | vat | VAT | KDV (Katma Değer Vergisi) | НДС
+term_351 | Finance | capital-gains-tax | Capital Gains Tax | Sermaye Kazancı Vergisi | Налог на прирост капитала
+term_352 | Finance | deduction | Deduction | Vergi İndirimi (Matrah İndirimi) | Вычет
+term_353 | Finance | tax-haven | Tax Haven | Vergi Cenneti | Налоговое убежище
+term_356 | Finance | budget | Budget | Bütçe | Бюджет
+term_357 | Finance | deficit | Deficit | Açık (Bütçe Açığı) | Дефицит
+term_359 | Finance | fiscal-year | Fiscal Year | Mali Yıl | Финансовый год
+term_360 | Finance | quarter | Quarter | Çeyrek Dönem | Квартал
+term_361 | Finance | audit-trail | Audit Trail | Denetim İzi | Аудиторский след
+term_362 | Finance | benchmarking | Benchmarking | Kıyaslama (Benchmarking) | Бенчмаркинг
+term_363 | Finance | kpi | KPI | KPI (Temel Performans Göstergesi) | KPI
+term_364 | Finance | metric | Metric | Metrik | Метрика
+term_365 | Finance | variable-cost | Variable Cost | Değişken Maliyet | Переменные издержки
+term_366 | Finance | fixed-cost | Fixed Cost | Sabit Maliyet | Постоянные издержки
+term_367 | Finance | overhead | Overhead | Genel Giderler | Накладные расходы
+term_368 | Finance | cash-cow | Cash Cow | Nakit İneği (Çok Kazandıran) | Денежная корова
+term_369 | Finance | loss-leader | Loss Leader | Zararına Satış Lideri | Убыточный лидер
+term_370 | Finance | economies-of-scale | Economies of Scale | Ölçek Ekonomisi | Эффект масштаба
+term_415 | Finance | crowdfunding | Crowdfunding | Kitle Fonlaması | Краудфандинг
+term_431 | Finance | credit-score | Credit Score | Kredi Puanı (Skor) | Кредитный рейтинг (балл)
+term_432 | Finance | direct-debit | Direct Debit | Otomatik Ödeme | Прямое дебетование
+term_433 | Finance | overdraft | Overdraft | Ek Hesap limit aşımı (Overdraft) | Овердрафт
+term_434 | Finance | atm | ATM | ATM / Bankamatik | Банкомат
+term_435 | Finance | pin | PIN | PIN Kodu | ПИН-код
+term_437 | Finance | sepa | SEPA | SEPA (Avrupa Ödeme Alanı) | SEPA
+term_440 | Finance | cheque | Cheque | Çek | Чек
+term_441 | Finance | merchant | Merchant | Üye İşyeri (Satıcı) | Мерчант (Продавец)
+term_442 | Finance | pos | POS | POS (Satış Noktası) | POS
+term_443 | Finance | acquirer | Acquirer | Üye İşyeri Anlaşması Yapan Banka | Эквайер
+term_444 | Finance | issuer | Issuer | Kart Veren Banka (Issuer) | Эмитент
+term_445 | Finance | chargeback | Chargeback | Ters İbraz (Chargeback) | Чарджбэк
+term_449 | Finance | mobile-banking | Mobile Banking | Mobil Bankacılık | Мобильный банкинг
+term_451 | Finance | deposit | Deposit | Mevduat | Депозит
+term_452 | Finance | withdrawal | Withdrawal | Para Çekme | Снятие
+term_453 | Finance | balance | Balance | Bakiye | Баланс
+term_454 | Finance | statement | Statement | Ekstre (Hesap Özeti) | Выписка
+term_455 | Finance | fee | Fee | Ücret (Komisyon) | Комиссия
+term_467 | Finance | correction | Correction | Düzeltme | Коррекция
+term_468 | Finance | rally | Rally | Ralli (Yükseliş) | Ралли
+term_469 | Finance | support | Support | Destek (Teknik Analiz) | Поддержка
+term_470 | Finance | resistance | Resistance | Direnç (Teknik Analiz) | Сопротивление
+term_471 | Finance | trend | Trend | Trend (Eğilim) | Тренд
+term_473 | Finance | index | Index | Endeks | Индекс
+term_474 | Finance | etf | ETF | ETF (Borsa Yatırım Fonu) | ETF
+term_477 | Finance | yield | Yield | Getiri | Доходность
+term_478 | Finance | coupon | Coupon | Kupon (Faiz Ödemesi) | Купон
+term_479 | Finance | maturity | Maturity | Vade Sonu | Зрелость (Погашение)
+term_480 | Finance | principal | Principal | Anapara | Основной долг
+term_483 | Finance | pip | Pip | Pip (Fiyat Adımı) | Пункт (Пип)
+term_484 | Finance | lot | Lot | Lot | Лот
+term_486 | Finance | asset-allocation | Asset Allocation | Varlık Dağılımı | Распределение активов
+term_487 | Finance | rebalancing | Rebalancing | Yeniden Dengeleme | Ребалансировка
+term_494 | Finance | white-paper | White Paper | Tanıtım Belgesi (Whitepaper) | Белая книга
+term_495 | Finance | roadmap | Roadmap | Yol Haritası (Roadmap) | Дорожная карта
+term_609 | Finance | capex | CAPEX | CAPEX (Sermaye Harcaması) | CAPEX
+term_610 | Finance | opex | OPEX | OPEX (Faaliyet Gideri) | OPEX
+term_613 | Finance | dividend-yield | Dividend Yield | Temettü Verimi | Дивидендная доходность
+term_617 | Finance | bear-trap | Bear Trap | Ayı Tuzağı | Медвежья ловушка
+term_618 | Finance | bull-trap | Bull Trap | Boğa Tuzağı | Бычья ловушка
+term_619 | Finance | dead-cat-bounce | Dead Cat Bounce | Ölü Kedi Sıçraması | Отскок дохлой кошки
+term_620 | Finance | black-swan | Black Swan | Siyah Kuğu | Черный лебедь
+term_625 | Finance | gdp | GDP | GSYİH (Gayri Safi Yurt İçi Hasıla) | ВВП
+term_632 | Finance | treasury-bill | Treasury Bill | Hazine Bonosu | Казначейский вексель
+term_633 | Finance | junk-bond | Junk Bond | Çöp Tahvil | Мусорная облигация
+term_637 | Finance | liquidation | Liquidation | Tasfiye (Likidasyon) | Ликвидация
+term_638 | Finance | solvency | Solvency | Ödeme Gücü (Solvency) | Платежеспособность
+term_641 | Finance | income-statement | Income Statement | Gelir Tablosu | Отчет о прибылях и убытках
+term_642 | Finance | cash-flow-statement | Cash Flow Statement | Nakit Akış Tablosu | Отчет о движении денежных средств
+term_646 | Finance | tax-evasion | Tax Evasion | Vergi Kaçırma | Уклонение от налогов
+term_647 | Finance | tax-avoidance | Tax Avoidance | Vergiden Kaçınma | Оптимизация налогов
+term_648 | Finance | offshore-account | Offshore Account | Offshore Hesap | Оффшорный счет
+term_649 | Finance | shell-company | Shell Company | Paravan Şirket | Фирма-однодневка
+term_650 | Finance | holding-company | Holding Company | Holding Şirketi | Холдинг
+term_651 | Finance | subsidiary | Subsidiary | İştirak (Bağlı Ortaklık) | Дочерняя компания
+term_652 | Finance | merger | Merger | Birleşme | Слияние
+term_653 | Finance | acquisition | Acquisition | Satın Alma (Acquisition) | Поглощение
+term_654 | Finance | joint-venture | Joint Venture | Ortak Girişim | Совместное предприятие
+term_658 | Finance | seed-capital | Seed Capital | Tohum Sermayesi | Посевной капитал
+term_903 | Finance | accrual-accounting | Accrual Accounting | Tahakkuk Esası | Метод начисления
+term_906 | Finance | book-value | Book Value | Defter Değeri | Балансовая стоимость
+term_907 | Finance | burn-rate | Burn Rate | Nakit Yakma Hızı | Скорость сжигания
+term_911 | Finance | operating-margin | Operating Margin | Faaliyet Kar Marjı | Операционная маржа
+term_912 | Finance | net-margin | Net Margin | Net Kar Marjı | Чистая маржа
+term_915 | Finance | retained-earnings | Retained Earnings | Geçmiş Yıl Karları | Нераспределенная прибыль
+term_916 | Finance | write-off | Write-off | Borç Silme (Write-off) | Списание
+term_917 | Finance | supply | Supply | Arz | Предложение
+term_918 | Finance | demand | Demand | Talep | Спрос
+term_920 | Finance | equilibrium | Equilibrium | Denge (Equilibrium) | Равновесие
+term_923 | Finance | microeconomics | Microeconomics | Mikroekonomi | Микроэкономика
+term_924 | Finance | macroeconomics | Macroeconomics | Makroekonomi | Макроэкономика
+term_927 | Finance | austerity | Austerity | Kemer Sıkma | Жесткая экономия
+term_928 | Finance | stimulus | Stimulus | Teşvik Paketi | Стимул
+term_929 | Finance | apr | APR | Yıllık Yüzde Oranı (APR) | APR (Годовая ставка)
+term_930 | Finance | apy | APY | Yıllık Yüzde Getiri (APY) | APY (Годовая доходность)
+term_931 | Finance | compound-interest | Compound Interest | Bileşik Faiz | Сложный процент
+term_937 | Finance | s-and-p-500 | S&P 500 | S&P 500 | S&P 500
+term_938 | Finance | nasdaq | NASDAQ | NASDAQ | NASDAQ
+term_939 | Finance | dow-jones | Dow Jones | Dow Jones | Доу Джонс
+term_943 | Finance | index-fund | Index Fund | Endeks Fonu | Индексный фонд
+term_947 | Finance | risk-tolerance | Risk Tolerance | Risk Toleransı | Толерантность к риску
+term_950 | Finance | liquidity-risk | Liquidity Risk | Likidite Riski | Риск ликвидности
+term_952 | Finance | sales-tax | Sales Tax | Satış Vergisi | Налог с продаж
+term_954 | Finance | excise-tax | Excise Tax | ÖTV (Özel Tüketim Vergisi) | Акциз
+term_955 | Finance | property-tax | Property Tax | Emlak Vergisi | Налог на имущество
+term_960 | Finance | pension | Pension | Emeklilik Maaşı | Пенсия
+term_961 | Finance | annuity | Annuity | Anüite (Yıllık Gelir) | Аннуитет
+term_962 | Finance | 401-k | 401(k) | 401(k) (Bireysel Emeklilik) | 401(k)
+term_963 | Finance | ira | IRA | IRA (Bireysel Emeklilik Hesabı) | IRA
+term_964 | Finance | estate-planning | Estate Planning | Veraset Planlaması | Планирование наследства
+term_965 | Finance | will | Will | Vasiyetname | Завещание
+term_966 | Finance | trust | Trust | Yedil Emin (Trust) | Траст
+term_968 | Finance | net-worth | Net Worth | Net Servet | Чистая стоимость (активов)
+term_971 | Finance | profit | Profit | Kar | Прибыль
+term_972 | Finance | loss | Loss | Zarar | Убыток
+term_974 | Finance | commodity | Commodity | Emtia | Товар (Сырье)
+term_975 | Finance | futures | Futures | Vadeli İşlem (Futures) | Фьючерс
+term_977 | Finance | call-option | Call Option | Alım Opsiyonu | Колл-опцион
+term_978 | Finance | put-option | Put Option | Satım Opsiyonu | Пут-опцион
+term_979 | Finance | strike-price | Strike Price | Kullanım Fiyatı | Страйк-цена
+term_982 | Finance | gearing | Gearing | Finansal Kaldıraç Oranı | Левередж (Гиринг)
+term_983 | Finance | escrow | Escrow | Emanet Hesabı (Escrow) | Эскроу
+term_984 | Finance | fiat-money | Fiat Money | İtibari Para (Fiat) | Фиатные деньги
+term_985 | Finance | gold-standard | Gold Standard | Altın Standardı | Золотой стандарт
+term_986 | Finance | barter | Barter | Takas | Бартер
+term_987 | Finance | currency | Currency | Para Birimi | Валюта
+term_989 | Finance | devaluation | Devaluation | Devalüasyon | Девальвация
+term_990 | Finance | revaluation | Revaluation | Revalüasyon | Ревальвация
+term_992 | Finance | crowdsourcing | Crowdsourcing | Kitle Kaynak (Crowdsourcing) | Краудсорсинг
+term_999 | Finance | transaction | Transaction | İşlem | Транзакция
+term_1000 | Finance | ledger | Ledger | Defter-i Kebir | Гроссбух
+term_1191 | Finance | wacc | WACC | WACC (Ağırlıklı Ortalama Sermaye Maliyeti) | WACC (Средневзвешенная стоим. капитала)
+term_1192 | Finance | capm | CAPM | CAPM (Sermaye Varlıkları Fiyatlama) | CAPM
+term_1193 | Finance | beta | Beta | Beta (Risk Katsayısı) | Бета
+term_1194 | Finance | alpha | Alpha | Alfa (Getiri Farkı) | Альфа
+term_1195 | Finance | dcf | DCF | DCF (İndirgenmiş Nakit Akışı) | DCF (Дисконтированный поток)
+term_1196 | Finance | enterprise-value | Enterprise Value | Firma Değeri (EV) | Стоимость предприятия (EV)
+term_1197 | Finance | free-cash-flow | Free Cash Flow | Serbest Nakit Akışı | Свободный денежный поток
+term_1198 | Finance | fifo | FIFO | FIFO (İlk Giren İlk Çıkar) | FIFO
+term_1199 | Finance | lifo | LIFO | LIFO (Son Giren İlk Çıkar) | LIFO
+term_1200 | Finance | gaap | GAAP | GAAP (Genel Kabul Görmüş Muhasebe) | GAAP
+term_1201 | Finance | ifrs | IFRS | UFRS (IFRS) | МСФО (IFRS)
+term_1203 | Finance | double-entry | Double Entry | Çift Taraflı Kayıt | Двойная запись
+term_1206 | Finance | marginal-utility | Marginal Utility | Marjinal Fayda | Предельная полезность
+term_1207 | Finance | libor | Libor | LIBOR | LIBOR
+term_1209 | Finance | yield-curve | Yield Curve | Getiri Eğrisi | Кривая доходности
+term_1210 | Finance | repo-market | Repo Market | Repo Piyasası | Рынок РЕПО
+term_1211 | Finance | federal-funds-rate | Federal Funds Rate | Fed Fon Oranı | Ставка ФРС
+term_1212 | Finance | fractional-reserve | Fractional Reserve | Kısmi Rezerv | Частичное резервирование
+term_1213 | Finance | convertible-bond | Convertible Bond | Dönüştürülebilir Tahvil | Конвертируемая облигация
+term_1215 | Finance | zero-coupon-bond | Zero Coupon Bond | Kupunsuz Tahvil | Бескупонная облигация
+term_1217 | Finance | sovereign-debt | Sovereign Debt | Devlet Borcu (Sovereign) | Суверенный долг
+term_1218 | Finance | cdo | CDO | CDO (Borç Teminatlı Yükümlülük) | CDO
+term_1220 | Finance | current-ratio | Current Ratio | Cari Oran | Коэффициент текущей ликвидности
+term_1221 | Finance | quick-ratio | Quick Ratio | Asit Test Oranı (Quick) | Коэффициент быстрой ликвидности
+term_1222 | Finance | peg-ratio | PEG Ratio | PEG Oranı | PEG (P/E к росту)
+term_1224 | Finance | payout-ratio | Payout Ratio | Dağıtım Oranı (Payout) | Коэффициент выплат
+term_1225 | Finance | asset-turnover | Asset Turnover | Varlık Devir Hızı | Оборачиваемость активов
+term_1226 | Finance | inventory-turnover | Inventory Turnover | Stok Devir Hızı | Оборачиваемость запасов
+term_1227 | Finance | receivables-turnover | Receivables Turnover | Alacak Devir Hızı | Оборачиваемость дебиторки
+term_1228 | Finance | dso | DSO | DSO (Alacak Tahsil Süresi) | DSO (Дни продаж в дебиторке)
+term_1229 | Finance | price-to-book | Price to Book | PD/DD (Fiyat/Defter Değeri) | P/B (Цена к балансу)
+term_1230 | Finance | price-to-sales | Price to Sales | Fiyat/Satışlar (P/S) | P/S (Цена к выручке)
+term_1231 | Finance | yield-to-maturity | Yield to Maturity | Vadeye Kadar Getiri (YTM) | YTM (Доходность к погашению)
+term_1232 | Finance | duration | Duration | Durasyon | Дюрация
+term_1233 | Finance | convexity | Convexity | Konveksite | Выпуклость (Convexity)
+term_1234 | Finance | callable-bond | Callable Bond | Geri Çağrılabilir Tahvil | Отзывная облигация
+term_1235 | Finance | puttable-bond | Puttable Bond | Geri Satılabilir Tahvil | Облигация с правом пут
+term_1236 | Finance | efficient-market | Efficient Market | Etkin Piyasa | Эффективный рынок
+term_1237 | Finance | random-walk | Random Walk | Rastgele Yürüyüş | Случайное блуждание
+term_1238 | Finance | behavioral-finance | Behavioral Finance | Davranışsal Finans | Поведенческие финансы
+term_1239 | Finance | black-scholes | Black-Scholes | Black-Scholes | Блэк-Шоулз
+term_1240 | Finance | forward-contract | Forward Contract | Forward Sözleşmesi | Форвард
+term_1242 | Finance | currency-swap | Currency Swap | Döviz Swapı | Валютный своп
+term_1243 | Finance | quantitative-analysis | Quantitative Analysis | Kantitatif Analiz | Количественный анализ
+term_1244 | Finance | fundamental-analysis | Fundamental Analysis | Temel Analiz | Фундаментальный анализ
+term_1245 | Finance | technical-analysis | Technical Analysis | Teknik Analiz | Технический анализ
+term_1246 | Finance | sentiment-analysis | Sentiment Analysis | Duygu Analizi | Анализ настроений
+term_1247 | Finance | blue-ocean | Blue Ocean | Mavi Okyanus | Голубой океан
+term_1248 | Finance | red-ocean | Red Ocean | Kızıl Okyanus | Алый океан
+term_1253 | Finance | value-trap | Value Trap | Değer Tuzağı | Ловушка стоимости
+term_1254 | Finance | short-squeeze | Short Squeeze | Short Squeeze (Açığa Satış Sıkıştırması) | Шорт-сквиз
+term_1255 | Finance | pump-and-dump | Pump and Dump | Pump and Dump (Şişir ve Sat) | Памп и дамп
+term_1256 | Finance | insider-trading | Insider Trading | İçeriden Öğrenenlerin Ticareti | Инсайдерская торговля
+term_1257 | Finance | chinese-wall | Chinese Wall | Çin Seddi (Bilgi Duvarı) | Китайская стена (Этика)
+term_1258 | Finance | know-your-customer | Know Your Customer | KYC (Müşterini Tanı) | KYC
+term_1259 | Finance | anti-money-laundering | Anti Money Laundering | AML (Kara Para Aklama Önleme) | AML
+term_1260 | Finance | fiduciary | Fiduciary | Yedi Emin (Fiduciary) | Фидуциар
+term_1261 | Finance | escrow-account | Escrow Account | Emanet Hesabı | Эскроу-счет
+term_1263 | Finance | restructuring | Restructuring | Yeniden Yapılandırma | Реструктуризация
+term_1269 | Finance | poison-pill | Poison Pill | Zehirli Hap | Ядовитая пилюля
+term_1273 | Finance | seed-round | Seed Round | Tohum Yatırımı | Посевной раунд
+term_1274 | Finance | series-a | Series A | Seri A | Серия А
+term_1277 | Finance | return-on-investment | Return on Investment | Yatırım Getirisi (ROI) | ROI
+term_1278 | Finance | return-on-equity | Return on Equity | Özkaynak Karlılığı (ROE) | ROE
+term_1279 | Finance | return-on-assets | Return on Assets | Varlık Karlılığı (ROA) | ROA
+term_1280 | Finance | gross-domestic-product | Gross Domestic Product | GSYİH | GDP (ВВП)
+term_1300 | Finance | mercantilism | Mercantilism | Merkantilizm | Меркантилизм
+term_1301 | Finance | laissez-faire | Laissez Faire | Bırakınız Yapsınlar | Лессе-фер
+term_1302 | Finance | invisible-hand | Invisible Hand | Görünmez El | Невидимая рука
+term_1303 | Finance | bretton-woods | Bretton Woods | Bretton Woods | Бреттон-Вудс
+term_1304 | Finance | phillips-curve | Phillips Curve | Phillips Eğrisi | Кривая Филлипса
+term_1305 | Finance | laffer-curve | Laffer Curve | Laffer Eğrisi | Кривая Лаффера
+term_1306 | Finance | gini-coefficient | Gini Coefficient | Gini Katsayısı | Коэффициент Джини
+term_1307 | Finance | purchasing-power-parity | Purchasing Power Parity | Satın Alma Gücü Paritesi (PPP) | ППС
+term_1308 | Finance | big-mac-index | Big Mac Index | Big Mac Endeksi | Индекс Биг Мака
+term_1309 | Finance | game-theory | Game Theory | Oyun Teorisi | Теория игр
+term_1310 | Finance | nash-equilibrium | Nash Equilibrium | Nash Dengesi | Равновесие Нэша
+term_1311 | Finance | pareto-efficiency | Pareto Efficiency | Pareto Verimliliği | Эффективность по Парето
+term_1312 | Finance | tragedy-of-the-commons | Tragedy of the Commons | Ortak Malların Trajedisi | Трагедия общин
+term_1313 | Finance | moral-hazard | Moral Hazard | Ahlaki Tehlike | Моральный риск
+term_1314 | Finance | asymmetric-information | Asymmetric Information | Asimetrik Bilgi | Асимметрия информации
+term_1315 | Finance | ponzi-scheme | Ponzi Scheme | Ponzi Oyunu | Схема Понци
+term_1316 | Finance | pyramid-scheme | Pyramid Scheme | Saadet Zinciri (Piramit) | Финансовая пирамида
+term_1317 | Finance | embezzlement | Embezzlement | Zimmete Para Geçirme | Растрата (Хищение)
+term_1321 | Finance | offshore | Offshore | Offshore (Yurt Dışı) | Оффшор
+term_1322 | Finance | smurfing | Smurfing | Smurfing (Parçalama) | Смурфинг
+term_1323 | Finance | nostro-account | Nostro Account | Nostro Hesabı | Ностро-счет
+term_1324 | Finance | vostro-account | Vostro Account | Vostro Hesabı | Востро-счет
+term_1325 | Finance | correspondent-bank | Correspondent Bank | Muhabir Banka | Банк-корреспондент
+term_1326 | Finance | letter-of-credit | Letter of Credit | Akreditif Mektubu | Аккредитив
+term_1327 | Finance | bill-of-lading | Bill of Lading | Konşimento | Коносамент
+term_1328 | Finance | factoring | Factoring | Faktoring | Факторинг
+term_1329 | Finance | forfaiting | Forfaiting | Forfaiting (Vadesiz Satın Alma) | Форфейтинг
+term_1330 | Finance | banker-s-draft | Banker's Draft | Banka Çeki | Банковский чек
+term_1331 | Finance | cashier-s-check | Cashier's Check | Kasiyer Çeki | Кассовый чек
+term_1332 | Finance | clearing-house | Clearing House | Takas Odası | Клиринговая палата
+term_1333 | Finance | settlement | Settlement | Mutabakat (Settlement) | Расчет (Сеттлмент)
+term_1334 | Finance | reconciliation | Reconciliation | Mutabakat (Reconciliation) | Сверка
+term_1335 | Finance | bic | BIC | BIC (Banka Tanımlama Kodu) | BIC
+term_1337 | Finance | line-of-credit | Line of Credit | Kredi Limiti | Кредитная линия
+term_1338 | Finance | predatory-lending | Predatory Lending | Yağmacı Kredilendirme | Хищническое кредитование
+term_1339 | Finance | loan-shark | Loan Shark | Tefeci | Ростовщик
+term_1340 | Finance | ticker-symbol | Ticker Symbol | Hisse Simgesi (Ticker) | Тикер
+term_1343 | Finance | vix | VIX | VIX (Korku Endeksi) | VIX (Индекс страха)
+term_1344 | Finance | circuit-breaker | Circuit Breaker | Devre Kesici (Borsa) | Торговый тормоз
+term_1345 | Finance | margin-account | Margin Account | Marjin Hesabı | Маржинальный счет
+term_1346 | Finance | cash-account | Cash Account | Nakit Hesap | Кэш-счет
+term_1347 | Finance | day-trading | Day Trading | Günlük Ticaret | Дей-трейдинг
+term_1348 | Finance | swing-trading | Swing Trading | Swing Ticareti | Свинг-трейдинг
+term_1349 | Finance | scalping | Scalping | Scalping (Al-Sat) | Скальпинг
+term_1350 | Finance | dividend-aristocrat | Dividend Aristocrat | Temettü Aristokratı | Дивидендный аристократ
+term_1351 | Finance | growth-stock | Growth Stock | Büyüme Hissesi | Акции роста
+term_1352 | Finance | value-stock | Value Stock | Değer Hissesi | Акции стоимости
+term_1353 | Finance | cyclical-stock | Cyclical Stock | Döngüsel Hisse | Циклическая акция
+term_1354 | Finance | defensive-stock | Defensive Stock | Defansif Hisse | Защитная акция
+term_1355 | Finance | beta-slippage | Beta Slippage | Beta Kayması | Просадка беты (Slippage)
+term_1356 | Finance | co-pay | Co-pay | Katkı Payı (Co-pay) | Копей (Соплата)
+term_1357 | Finance | beneficiary | Beneficiary | Lehtar (Beneficiary) | Бенефициар
+term_1358 | Finance | policyholder | Policyholder | Poliçe Sahibi | Страхователь
+term_1359 | Finance | grace-period | Grace Period | Ödemesiz Dönem | Льготный период
+term_1360 | Finance | exclusion | Exclusion | İstisna (Exclusion) | Исключение
+term_1361 | Finance | federal-reserve | Federal Reserve | Federal Rezerv (Fed) | Федеральная резервная система
+term_1362 | Finance | ecb | ECB | AMB (Avrupa Merkez Bankası) | ЕЦБ
+term_1364 | Finance | quantitative-tightening | Quantitative Tightening | Parasal Sıkılaşma (QT) | Количественное ужесточение
+term_1365 | Finance | forward-guidance | Forward Guidance | İleriye Dönük Sözlü Yönlendirme | Прогнозная риторика
+term_1366 | Finance | helicopter-money | Helicopter Money | Helikopter Para | Вертолетные деньги
+term_1367 | Finance | order-book | Order Book | Emir Defteri | Книга ордеров (Стакан)
+term_1371 | Finance | stop-limit | Stop Limit | Stop Limit | Стоп-лимит
+term_1372 | Finance | trailing-stop | Trailing Stop | İz Süren Stop | Трейлинг-стоп
+term_1373 | Finance | fill-or-kill | Fill or Kill | Gerçekleşmezse İptal Et (FOK) | Исполнить или отменить
+term_1374 | Finance | gtc | GTC | GTC (İptal Edilene Kadar) | GTC (До отмены)
+term_1377 | Finance | subprime | Subprime | Eşik Altı (Subprime) | Субстандартный
+term_1383 | Finance | quota | Quota | Kota | Квота
+term_1385 | Finance | substitute-good | Substitute Good | İkame Mal | Товар-заменитель
+term_1386 | Finance | complementary-good | Complementary Good | Tamamlayıcı Mal | Дополняющий товар
+term_1387 | Finance | normal-good | Normal Good | Normal Mal | Нормальный товар
+term_1388 | Finance | inferior-good | Inferior Good | Düşük Mal | Товар низшей категории
+term_1389 | Finance | veblen-good | Veblen Good | Veblen Malı | Товар Веблена
+term_1390 | Finance | giffen-good | Giffen Good | Giffen Malı | Товар Гиффена
+term_1391 | Finance | pension-fund | Pension Fund | Emeklilik Fonu | Пенсионный фонд
+term_1392 | Finance | sovereign-wealth-fund | Sovereign Wealth Fund | Varlık Fonu | Суверенный фонд
+term_1397 | Finance | spac | SPAC | SPAC (Birleşme Amaçlı Ortaklık) | SPAC
+term_1398 | Finance | direct-listing | Direct Listing | Doğrudan Listeleme | Прямой листинг
+term_1399 | Finance | carried-interest | Carried Interest | Taşınan Faiz (Başarı Primi) | Процент от прибыли (Carry)
+term_1400 | Finance | clawback | Clawback | Geri Alma (Clawback) | Возврат выплат
+term_1401 | Finance | lock-up-period | Lock-up Period | Kilitlenme Süresi (Lock-up) | Лок-ап период
+term_1402 | Finance | vesting | Vesting | Hak Kazanma (Vesting) | Вестинг
+term_1403 | Finance | stock-option | Stock Option | Hisse Opsiyonu | Опцион на акции
+term_1404 | Finance | rsu | RSU | RSU (Kısıtlı Hisse Birimi) | RSU
+term_1405 | Finance | high-water-mark | High Water Mark | En Yüksek Seviye (Fon) | High Water Mark
+term_1406 | Finance | hurdle-rate | Hurdle Rate | Engel Oranı (Hurdle) | Барьерная ставка
+term_1407 | Finance | family-office | Family Office | Aile Ofisi | Семейный офис
+term_1408 | Finance | accredited-investor | Accredited Investor | Akredite Yatırımcı | Аккредитованный инвестор
+term_1409 | Finance | high-net-worth | High Net Worth | Yüksek Net Değerli Birey | HNWI (Богатый)
+term_1410 | Finance | kyc | KYC | KYC | KYC
+term_1411 | Finance | aml | AML | AML | AML
+term_1412 | Finance | black-market | Black Market | Kara Borsa | Черный рынок
+term_1413 | Finance | grey-market | Grey Market | Gri Borsa | Серый рынок
+term_1414 | Finance | capital-controls | Capital Controls | Sermaye Kontrolleri | Контроль капитала
+term_1416 | Finance | appreciation | Appreciation | Değer Kazanma | Укрепление
+term_1418 | Finance | ammortization | Ammortization | İtfa (Amortization) | Амортизация (Кредит)
+term_1420 | Finance | interest | Interest | Faiz | Процент
+term_5000 | Finance | emergency-fund | Emergency Fund | Acil Durum Fonu | Экстренный фонд
+term_5003 | Finance | fico | FICO | FICO Puanı | FICO
+term_5004 | Finance | budgeting | Budgeting | Bütçeleme | Бюджетирование
+term_5005 | Finance | 50-30-20-rule | 50/30/20 Rule | 50/30/20 Kuralı | Правило 50/30/20
+term_5006 | Finance | lifestyle-inflation | Lifestyle Inflation | Yaşam Tarzı Enflasyonu | Инфляция образа жизни
+term_5007 | Finance | financial-independence | Financial Independence | Finansal Bağımsızlık | Финансовая независимость
+term_5008 | Finance | fire | FIRE | FIRE (Erken Emeklilik) | FIRE
+term_5009 | Finance | dca | DCA | DCA (Kademeli Alım) | DCA
+term_5013 | Finance | time-horizon | Time Horizon | Zaman Ufku | Временной горизонт
+term_5014 | Finance | passive-income | Passive Income | Pasif Gelir | Пассивный доход
+term_5015 | Finance | active-income | Active Income | Aktif Gelir | Активный доход
+term_5016 | Finance | gdp-per-capita | GDP Per Capita | Kişi Başına GSYİH | ВВП на душу населения
+term_5017 | Finance | ppp | PPP | SAGP (Satınalma Gücü Paritesi) | ППС
+term_5019 | Finance | trade-surplus | Trade Surplus | Dış Ticaret Fazlası | Торговый профицит
+term_5023 | Finance | qe | QE | Parasal Genişleme (QE) | Количественное смягчение
+term_5029 | Finance | depression | Depression | Depresyon (Buhran) | Депрессия
+term_046 | Fintech | blockchain | Blockchain | Blokzinciri | Блокчейн
+term_047 | Fintech | cryptocurrency | Cryptocurrency | Kripto Para | Криптовалюта
+term_048 | Fintech | bitcoin | Bitcoin | Bitcoin | Биткоин
+term_049 | Fintech | ethereum | Ethereum | Ethereum | Эфириум
+term_050 | Fintech | wallet-digital | Wallet (Digital) | Dijital Cüzdan | Цифровой кошелёк
+term_051 | Fintech | private-key | Private Key | Özel Anahtar | Закрытый ключ
+term_052 | Fintech | public-key | Public Key | Genel Anahtar | Открытый ключ
+term_053 | Fintech | smart-contract | Smart Contract | Akıllı Sözleşme | Смарт-контракт
+term_054 | Fintech | defi | DeFi | DeFi (Merkeziyetsiz Finans) | DeFi
+term_055 | Fintech | nft | NFT | NFT | NFT
+term_056 | Fintech | p2p-lending | P2P Lending | P2P Kredilendirme | P2P-кредитование
+term_058 | Fintech | robo-advisor | Robo-advisor | Robo-Danışman | Робо-консультант
+term_059 | Fintech | neobank | Neobank | Neobank | Необанк
+term_060 | Fintech | open-banking | Open Banking | Açık Bankacılık | Открытый банкинг
+term_061 | Fintech | fintech | Fintech | Fintek | Финтех
+term_062 | Fintech | insurtech | Insurtech | Insurtech | Иншуртех
+term_063 | Fintech | regtech | Regtech | Regtech | Регтех
+term_100 | Fintech | stablecoin | Stablecoin | Sabit Kripto Para | Стейблкоин
+term_101 | Fintech | mining | Mining | Madencilik | Майнинг
+term_102 | Fintech | wallet | Wallet | Cüzdan | Криптокошелёк
+term_103 | Fintech | staking | Staking | Stake Etme | Стейкинг
+term_104 | Fintech | gas-fee | Gas Fee | Gas Ücreti | Комиссия за газ
+term_105 | Fintech | yield-farming | Yield Farming | Getiri Çiftçiliği | Доходное фермерство
+term_110 | Fintech | regulatory-sandbox | Regulatory Sandbox | Düzenleyici Sandbox | Регуляторная песочница
+term_129 | Fintech | qr-code-payment | QR Code Payment | QR Kod Ödeme | Оплата по QR-коду
+term_130 | Fintech | contactless-payment | Contactless Payment | Temassız Ödeme | Бесконтактная оплата
+term_131 | Fintech | digital-banking | Digital Banking | Dijital Bankacılık | Цифровой банкинг
+term_133 | Fintech | peer-to-peer-lending | Peer-to-Peer Lending | Eşler Arası Kredi | P2P-кредитование
+term_135 | Fintech | embedded-finance | Embedded Finance | Gömülü Finans | Встроенные финансы
+term_145 | Fintech | tokenization | Tokenization | Tokenizasyon | Токенизация
+term_186 | Fintech | buy-now-pay-later | Buy Now Pay Later | Şimdi Al Sonra Öde | Покупай сейчас, плати потом
+term_187 | Fintech | digital-wallet | Digital Wallet | Dijital Cüzdan | Цифровой кошелёк
+term_188 | Fintech | payment-gateway | Payment Gateway | Ödeme Geçidi | Платёжный шлюз
+term_189 | Fintech | merchant-account | Merchant Account | Üye İşyeri Hesabı | Торговый счёт
+term_191 | Fintech | pci-dss | PCI DSS | PCI DSS | PCI DSS
+term_192 | Fintech | ach | ACH | ACH | ACH
+term_194 | Fintech | cross-border-payment | Cross-border Payment | Sınır Ötesi Ödeme | Трансграничный платёж
+term_196 | Fintech | super-app | Super App | Süper Uygulama | Суперприложение
+term_197 | Fintech | banking-as-a-service | Banking-as-a-Service | Hizmet Olarak Bankacılık | Банкинг как услуга
+term_198 | Fintech | instant-payment | Instant Payment | Anlık Ödeme | Мгновенный платёж
+term_199 | Fintech | virtual-card | Virtual Card | Sanal Kart | Виртуальная карта
+term_200 | Fintech | recurring-payment | Recurring Payment | Yinelenen Ödeme | Повторяющийся платёж
+term_201 | Fintech | liquidity-pool | Liquidity Pool | Likidite Havuzu | Пул ликвидности
+term_204 | Fintech | cold-wallet | Cold Wallet | Soğuk Cüzdan | Холодный кошелёк
+term_205 | Fintech | hot-wallet | Hot Wallet | Sıcak Cüzdan | Горячий кошелёк
+term_206 | Fintech | dapp | DApp | DApp (Merkeziyetsiz Uygulama) | DApp
+term_207 | Fintech | dao | DAO | DAO (Merkeziyetsiz Otonom Org.) | DAO
+term_208 | Fintech | altcoin | Altcoin | Altcoin | Альткоин
+term_210 | Fintech | tokenomics | Tokenomics | Token Ekonomisi | Токеномика
+term_211 | Fintech | seed-phrase | Seed Phrase | Kurtarma İfadesi (Seed) | Сид-фраза
+term_212 | Fintech | consensus-mechanism | Consensus Mechanism | Konsensüs Mekanizması | Механизм консенсуса
+term_213 | Fintech | proof-of-work-pow | Proof of Work (PoW) | İş Kanıtı (PoW) | Доказательство работы
+term_214 | Fintech | proof-of-stake-pos | Proof of Stake (PoS) | Hisse Kanıtı (PoS) | Доказательство доли
+term_215 | Fintech | halving | Halving | Yarılanma (Halving) | Халвинг
+term_216 | Fintech | whale | Whale | Balina | Кит
+term_217 | Fintech | fud | FUD | FUD (Korku, Belirsizlik, Şüphe) | FUD
+term_218 | Fintech | fomo | FOMO | FOMO (Fırsatı Kaçırma Korkusu) | FOMO
+term_219 | Fintech | hodl | HODL | HODL (Tutmak) | HODL
+term_496 | Fintech | airdrop | Airdrop | Airdrop (Hediye Dağıtımı) | Аирдроп
+term_498 | Fintech | initial-coin-offering-ico | Initial Coin Offering (ICO) | ICO (İlk Coin Arzı) | ICO
+term_506 | Fintech | dex | DEX | DEX (Merkeziyetsiz Borsa) | DEX
+term_507 | Fintech | cex | CEX | CEX (Merkezi Borsa) | CEX
+term_508 | Fintech | amm | AMM | AMM (Otomatik Piyasa Yapıcı) | AMM
+term_509 | Fintech | flash-loan | Flash Loan | Flash Kredi (Anlık Kredi) | Флеш-кредит
+term_510 | Fintech | overcollateralization | Overcollateralization | Aşırı Teminatlandırma | Ибыточное обеспечение
+term_511 | Fintech | erc-20 | ERC-20 | ERC-20 | ERC-20
+term_512 | Fintech | erc-721 | ERC-721 | ERC-721 | ERC-721
+term_513 | Fintech | sharding | Sharding | Sharding (Parçalama) | Шардинг
+term_514 | Fintech | layer-2 | Layer 2 | Katman 2 (Layer 2) | Второй уровень
+term_515 | Fintech | rollup | Rollup | Rollup (Toplama) | Роллап
+term_516 | Fintech | zk-proof | ZK-Proof | Sıfır Bilgi Kanıtı (ZK-Proof) | ZK-доказательство
+term_517 | Fintech | 51-attack | 51% Attack | %51 Saldırısı | Атака 51%
+term_518 | Fintech | sybil-attack | Sybil Attack | Sybil Saldırısı | Атака Сивиллы
+term_519 | Fintech | reentrancy | Reentrancy | Reentrancy (Tekrar Giriş) | Повторный вход
+term_520 | Fintech | rug-pull | Rug Pull | Rug Pull (Halı Çekme) | Рагпул
+term_521 | Fintech | atomic-swap | Atomic Swap | Atomik Takas | Атомарный своп
+term_522 | Fintech | cold-storage | Cold Storage | Soğuk Depolama | Холодное хранение
+term_523 | Fintech | paper-wallet | Paper Wallet | Kağıt Cüzdan | Бумажный кошелек
+term_524 | Fintech | hardware-wallet | Hardware Wallet | Donanım Cüzdanı | Аппаратный кошелек
+term_525 | Fintech | mempool | Mempool | Mempool (Bellek Havuzu) | Мемпул
+term_526 | Fintech | nonce | Nonce | Nonce (Tek Seferlik Sayı) | Нонс
+term_527 | Fintech | hard-fork | Hard Fork | Hard Fork (Sert Çatallanma) | Хардфорк
+term_528 | Fintech | soft-fork | Soft Fork | Soft Fork (Yumuşak Çatallanma) | Софтфорк
+term_529 | Fintech | white-hat | White Hat | Beyaz Şapkalı Hacker | Белый хакер
+term_530 | Fintech | black-hat | Black Hat | Siyah Şapkalı Hacker | Черный хакер
+term_531 | Fintech | address | Address | Adres (Kripto) | Адрес
+term_532 | Fintech | transaction-id-txid | Transaction ID (TXID) | İşlem Kimliği (TXID) | ID транзакции
+term_533 | Fintech | block-explorer | Block Explorer | Blok Gezgini | Блок-эксплорер
+term_534 | Fintech | faucet | Faucet | Musluk (Faucet) | Кран
+term_535 | Fintech | testnet | Testnet | Test Ağı (Testnet) | Тестнет
+term_536 | Fintech | mainnet | Mainnet | Ana Ağ (Mainnet) | Мейннет
+term_537 | Fintech | oracle | Oracle | Kahin (Oracle) | Оракул
+term_540 | Fintech | suptech | Suptech | Suptech (Gözetim Teknolojisi) | Саптех
+term_541 | Fintech | wealthtech | Wealthtech | Wealthtech (Varlık Teknolojisi) | Велстех
+term_542 | Fintech | proptech | Proptech | Proptech (Gayrimenkul Teknolojisi) | Проптех
+term_543 | Fintech | paytech | Paytech | Paytech (Ödeme Teknolojisi) | Пейтех
+term_544 | Fintech | cross-chain | Cross-Chain | Zincirler Arası (Cross-Chain) | Кросс-чейн
+term_545 | Fintech | bridge | Bridge | Köprü (Bridge) | Мост
+term_546 | Fintech | governance-token | Governance Token | Yönetişim Tokeni | Токен управления
+term_547 | Fintech | utility-token | Utility Token | Fayda Tokeni (Utility) | Утилитарный токен
+term_548 | Fintech | security-token | Security Token | Menkul Kıymet Tokeni | Секьюрити токен
+term_549 | Fintech | satoshi | Satoshi | Satoshi | Сатоши
+term_550 | Fintech | wei | Wei | Wei | Вэй
+term_551 | Fintech | gwei | Gwei | Gwei | Гвей
+term_552 | Fintech | peer-to-peer | Peer-to-Peer | Eşler Arası (P2P) | Одноранговый
+term_553 | Fintech | decentralization | Decentralization | Merkeziyetsizlik | Децентрализация
+term_554 | Fintech | distributed-ledger | Distributed Ledger | Dağıtık Defter | Распределенный реестр
+term_555 | Fintech | immutable | Immutable | Değiştirilemez (Immutable) | Неизменяемый
+term_561 | Fintech | impermanent-loss | Impermanent Loss | Geçici Kayıp | Непостоянная потеря
+term_562 | Fintech | tvl | TVL | Kilitli Toplam Değer (TVL) | TVL
+term_566 | Fintech | gas-limit | Gas Limit | Gaz Limiti | Лимит газа
+term_567 | Fintech | gas-price | Gas Price | Gaz Fiyatı | Цена газа
+term_568 | Fintech | eip | EIP | EIP (Ethereum İyileştirme Önerisi) | EIP
+term_571 | Fintech | fiat-on-ramp | Fiat On-Ramp | Fiat Giriş Kapısı | Фиатный шлюз (вход)
+term_572 | Fintech | fiat-off-ramp | Fiat Off-Ramp | Fiat Çıkış Kapısı | Фиатный шлюз (выход)
+term_576 | Fintech | encryption | Encryption | Şifreleme | Шифрование
+term_577 | Fintech | decryption | Decryption | Şifre Çözme | Расшифровка
+term_578 | Fintech | hashing | Hashing | Hashleme | Хеширование
+term_579 | Fintech | digital-signature | Digital Signature | Dijital İmza | Цифровая подпись
+term_580 | Fintech | p2p-network | P2P Network | P2P Ağı | P2P сеть
+term_581 | Fintech | fork | Fork | Çatallanma (Fork) | Форк
+term_582 | Fintech | mining-pool | Mining Pool | Madencilik Havuzu | Майнинг-пул
+term_583 | Fintech | hash-rate | Hash Rate | Hash Oranı | Хэшрейт
+term_584 | Fintech | difficulty | Difficulty | Zorluk (Madencilik) | Сложность
+term_585 | Fintech | block-reward | Block Reward | Blok Ödülü | Награда за блок
+term_587 | Fintech | memecoin | Memecoin | Memecoin (Şaka Coini) | Мемкоин
+term_589 | Fintech | ido | IDO | IDO (DEX Arzı) | IDO
+term_590 | Fintech | ieo | IEO | IEO (Borsa Arzı) | IEO
+term_591 | Fintech | sto | STO | STO (Menkul Kıymet Arzı) | STO
+term_592 | Fintech | bagholder | Bagholder | Çanta Taşıyıcı (Zararda Bekleyen) | Бэгхолдер
+term_594 | Fintech | rekt | Rekt | Rekt (Batak) | Rekt (Потерял все)
+term_595 | Fintech | to-the-moon | To the Moon | Aya Doğru (Yükseliş) | Ту зе мун
+term_596 | Fintech | ath | ATH | ATH (Tüm Zamanların En Yükseği) | ATH
+term_597 | Fintech | atl | ATL | ATL (Tüm Zamanların En Düşüğü) | ATL
+term_598 | Fintech | dyor | DYOR | DYOR (Kendi Araştırmanı Yap) | DYOR
+term_599 | Fintech | wagmi | WAGMI | WAGMI (Başaracağız) | WAGMI
+term_600 | Fintech | ngmi | NGMI | NGMI (Başaramayacak) | NGMI
+term_601 | Fintech | flippening | Flippening | Flippening (Taht Değişimi) | Флиппенинг
+term_602 | Fintech | maximalist | Maximalist | Maksimalist | Максималист
+term_603 | Fintech | no-coiner | No-coiner | No-coiner (Kriptosuz) | Ноу-коинер
+term_604 | Fintech | slippage | Slippage | Slipaj (Kayma) | Проскальзывание
+term_605 | Fintech | gas-war | Gas War | Gaz Savaşı | Газовая война
+term_849 | Fintech | gdpr | GDPR | GDPR (Veri Koruma) | GDPR
+term_850 | Fintech | psd2 | PSD2 | PSD2 | PSD2
+term_851 | Fintech | mifid-ii | MiFID II | MiFID II | MiFID II
+term_852 | Fintech | basel-iii | Basel III | Basel III | Базель III
+term_857 | Fintech | baas | BaaS | BaaS (Hizmet Olarak Bankacılık) | BaaS
+term_859 | Fintech | bnpl | BNPL | Şimdi Al Sonra Öde (BNPL) | BNPL
+term_862 | Fintech | algorithmic-trading | Algorithmic Trading | Algoritmik Ticaret | Алгоритмическая торговля
+term_863 | Fintech | high-frequency-trading | High Frequency Trading | Yüksek Frekanslı Ticaret (HFT) | HFT
+term_875 | Fintech | front-running | Front Running | Önden Koşma (Front Running) | Фронтраннинг
+term_876 | Fintech | spoofing | Spoofing | Spoofing (Kandırma) | Спуфинг
+term_877 | Fintech | wash-trading | Wash Trading | Wash Trading (Hacim Şişirme) | Вош-трейдинг
+term_880 | Fintech | honeypot | Honeypot | Bal Küpü (Honeypot) | Ханипот
+term_885 | Fintech | sandbox | SandBox | Sandbox (Kum Havuzu) | Песочница
+term_887 | Fintech | decacorn | Decacorn | Decacorn | Декакорн
+term_890 | Fintech | runway | Runway | Pist (Runway) | Взлетная полоса (Ранвей)
+term_891 | Fintech | pivot | Pivot | Pivot (Yön Değiştirme) | Пивот (Разворот)
+term_894 | Fintech | white-label | White Label | Beyaz Etiket (White Label) | White Label
+term_895 | Fintech | api | API | API | API
+term_896 | Fintech | webhook | Webhook | Webhook | Вебхук
+term_897 | Fintech | sdk | SDK | SDK (Yazılım Geliştirme Kiti) | SDK
+term_898 | Fintech | latency | Latency | Gecikme | Задержка
+term_899 | Fintech | uptime | Uptime | Çalışma Süresi (Uptime) | Аптайм
+term_900 | Fintech | sla | SLA | SLA (Hizmet Düzeyi Anlaşması) | SLA
+term_1001 | Fintech | iso-20022 | ISO 20022 | ISO 20022 | ISO 20022
+term_1002 | Fintech | rtgs | RTGS | RTGS (Gerçek Zamanlı) | RTGS
+term_1003 | Fintech | chips | CHIPS | CHIPS | CHIPS
+term_1004 | Fintech | fedwire | Fedwire | Fedwire | Fedwire
+term_1005 | Fintech | bacs | BACS | BACS | BACS
+term_1006 | Fintech | faster-payments | Faster Payments | Hızlı Ödemeler | Быстрые платежи
+term_1007 | Fintech | sepa-instant | SEPA Instant | SEPA Anlık | SEPA Instant
+term_1008 | Fintech | hash | Hash | Hash (Özet) | Хеш
+term_1009 | Fintech | merkle-tree | Merkle Tree | Merkle Ağacı | Дерево Меркла
+term_1010 | Fintech | genesis-block | Genesis Block | Genesis Bloğu | Генезис-блок
+term_1011 | Fintech | masternode | Masternode | Masternode | Мастернода
+term_1012 | Fintech | lightning-network | Lightning Network | Lightning Ağı | Lightning Network
+term_1017 | Fintech | dex-aggregator | DEX Aggregator | DEX Toplayıcı | Агрегатор DEX
+term_1019 | Fintech | mica | MiCA | MiCA | MiCA
+term_1021 | Fintech | dodd-frank | Dodd-Frank | Dodd-Frank | Додд-Франк
+term_1022 | Fintech | sox | SOX | SOX (Sarbanes-Oxley) | SOX (Сарбейнз-Оксли)
+term_1023 | Fintech | challenger-bank | Challenger Bank | Meydan Okuyan Banka | Банк-челленджер
+term_1025 | Fintech | embedded-insurance | Embedded Insurance | Gömülü Sigorta | Встроенное страхование
+term_1028 | Fintech | nfc | NFC | NFC (Yakın Alan İletişimi) | NFC
+term_1036 | Fintech | stablecoin-algo | Stablecoin Algo | Algoritmik Stabil Coin | Алгоритмический стейблкоин
+term_1037 | Fintech | cbdc | CBDC | CBDC (MB Dijital Parası) | CBDC
+term_1039 | Fintech | remittance-corridor | Remittance corridor | Havale Koridoru | Коридор переводов
+term_1040 | Fintech | interchange-fee | Interchange Fee | Takas Komisyonu | Комиссия интерчейндж
+term_1042 | Fintech | sca | SCA | SCA (Güçlü Kimlik Doğrulama) | SCA (Строгая аутентификация)
+term_1043 | Fintech | 3d-secure | 3D Secure | 3D Secure | 3D Secure
+term_1044 | Fintech | biometric-auth | Biometric Auth | Biyometrik Doğrulama | Биометрическая аутентификация
+term_1045 | Fintech | voice-banking | Voice Banking | Sesli Bankacılık | Голосовой банкинг
+term_1046 | Fintech | chatbot | Chatbot | Sohbet Botu | Чат-бот
+term_1048 | Fintech | peer-to-peer-insurance | Peer-to-Peer Insurance | P2P Sigorta | P2P страхование
+term_1049 | Fintech | parametric-insurance | Parametric Insurance | Parametrik Sigorta | Параметрическое страхование
+term_1050 | Fintech | usage-based-insurance | Usage-based Insurance | Kullanım Bazlı Sigorta | UBI (Страхование по использованию)
+term_1057 | Fintech | air-gap | Air Gap | Hava Boşluğu (Air Gap) | Воздушный зазор
+term_1060 | Fintech | multisig | Multisig | Çoklu İmza (Multisig) | Мультиподпись
+term_1061 | Fintech | hd-wallet | HD Wallet | HD Cüzdan | HD Кошелек
+term_1069 | Fintech | wrapped-bitcoin | Wrapped Bitcoin | Sarılmış Bitcoin (WBTC) | Обернутый Биткоин
+term_1072 | Fintech | ico | ICO | ICO (İlk Coin Arzı) | ICO
+term_1077 | Fintech | zk-snark | zk-SNARK | zk-SNARK | zk-SNARK
+term_1079 | Fintech | sidechain | Sidechain | Yan Zincir (Sidechain) | Сайдчейн
+term_1080 | Fintech | layer-1 | Layer 1 | Katman 1 (L1) | Слой 1 (L1)
+term_1082 | Fintech | interoperability | Interoperability | Birlikte Çalışabilirlik | Интероперабельность
+term_1083 | Fintech | consensus-algorithm | Consensus Algorithm | Mutabakat Algoritması | Алгоритм консенсуса
+term_1084 | Fintech | poa | PoA | PoA (Yetki Kanıtı) | PoA (Proof of Authority)
+term_1085 | Fintech | dpos | DPoS | DPoS (Delegated PoS) | DPoS
+term_1086 | Fintech | node | Node | Düğüm (Node) | Узел (Нода)
+term_1087 | Fintech | miner | Miner | Madenci | Майнер
+term_1088 | Fintech | validator | Validator | Doğrulayıcı (Validator) | Валидатор
+term_1093 | Fintech | block-height | Block Height | Blok Yüksekliği | Высота блока
+term_1094 | Fintech | confirmation | Confirmation | Onay (Confirmation) | Подтверждение
+term_1098 | Fintech | centralization | Centralization | Merkeziyet | Централизация
+term_1100 | Fintech | digital-asset | Digital Asset | Dijital Varlık | Цифровой актив
+term_1101 | Fintech | social-trading | Social Trading | Sosyal Ticaret | Социальный трейдинг
+term_1102 | Fintech | copy-trading | Copy Trading | Kopyalama Ticareti | Копи-трейдинг
+term_1103 | Fintech | hft | HFT | Yüksek Frekanslı İşlemler (HFT) | HFT (Высокочастотный трейдинг)
+term_1105 | Fintech | ecn | ECN | ECN (Elektronik İletişim Ağı) | ECN (Электронная сеть)
+term_1106 | Fintech | otc | OTC | Tezgah Üstü (OTC) | OTC (Внебиржевой)
+term_1108 | Fintech | reentrancy-attack | Reentrancy Attack | Reentrancy Saldırısı | Атака повторного входа
+term_1109 | Fintech | dusting-attack | Dusting Attack | Toz Saldırısı (Dusting) | Пылевая атака
+term_1110 | Fintech | cryptojacking | Cryptojacking | Kripto Korsanlığı | Криптоджекинг
+term_1111 | Fintech | sar | SAR | Şüpheli Faaliyet Raporu (SAR) | SAR (Отчет о подозрительной активности)
+term_1112 | Fintech | edd | EDD | Gelişmiş Durum Tespiti (EDD) | EDD (Усиленная проверка)
+term_1113 | Fintech | pep | PEP | Siyasi Nüfuzlu Kişi (PEP) | PEP (Политически значимое лицо)
+term_1114 | Fintech | sanctions-screening | Sanctions Screening | Yaptırım Taraması | Санкционный скрининг
+term_1115 | Fintech | vaporware | Vaporware | Vaporware (Boş Vaat) | Vaporware (Пшик)
+term_1118 | Fintech | mooning | Mooning | Aya Çıkış (Mooning) | Туземун
+term_1122 | Fintech | ytd | YTD | Yılbaşından Bugüne (YTD) | YTD (С начала года)
+term_1123 | Fintech | mom | MoM | Aydan Aya (MoM) | MoM (Месяц к месяцу)
+term_1124 | Fintech | yoy | YoY | Yıldan Yıla (YoY) | YoY (Год к году)
+term_1125 | Fintech | whale-alert | Whale Alert | Balina Alarmı | Whale Alert
+term_1130 | Fintech | evm | EVM | EVM (Ethereum Sanal Makinesi) | EVM
+term_1500 | Fintech | decentralized-identity | Decentralized Identity | Merkeziyetsiz Kimlik | Децентрализованный ID
+term_1501 | Fintech | soulbound-token | Soulbound Token | Ruh Bağı Tokeni (SBT) | SBT
+term_1502 | Fintech | proto-danksharding | Proto-Danksharding | Proto-Danksharding | Прото-Денкшардинг
+term_1503 | Fintech | account-abstraction | Account Abstraction | Hesap Soyutlama | Абстракция аккаунта
+term_1504 | Fintech | modular-blockchain | Modular Blockchain | Modüler Blokzincir | Модульный блокчейн
+term_1505 | Fintech | data-availability | Data Availability | Veri Erişilebilirliği | Доступность данных
+term_1506 | Fintech | mev | MEV | MEV (Maksimal Çıkarılabilir Değer) | MEV
+term_1513 | Fintech | liquid-staking | Liquid Staking | Likit Staking | Ликвидный стейкинг
+term_1514 | Fintech | restaking | Restaking | Yeniden Staking | Рестейкинг
+term_1515 | Fintech | oracles | Oracles | Oracle'lar | Оракулы
+term_1517 | Fintech | vesting-schedule | Vesting Schedule | Hakediş Takvimi | График разблокировки
+term_1518 | Fintech | cliff | Cliff | Cliff (Uçurum/Bekleme) | Клифф
+term_1519 | Fintech | tge | TGE | TGE (Token Üretim Etkinliği) | TGE
+term_1520 | Fintech | fully-diluted-valuation | Fully Diluted Valuation | Seyreltilmiş Piyasa Değeri (FDV) | FDV
+term_1521 | Fintech | rwa | RWA | Gerçek Dünya Varlıkları (RWA) | RWA (Активы реального мира)
+term_1522 | Fintech | depin | DePin | DePin (Merkeziyetsiz Fiziksel Altyapı) | DePin
+term_1523 | Fintech | gamefi | GameFi | Oyun Finansı (GameFi) | GameFi
+term_1524 | Fintech | socialfi | SocialFi | Sosyal Finans (SocialFi) | SocialFi
+term_1525 | Fintech | regfi | RegFi | Düzenlenmiş Finans (RegFi) | RegFi
+term_1528 | Fintech | privacy-coin | Privacy Coin | Gizlilik Coini | Приватная монета
+term_1530 | Fintech | verkle-trees | Verkle Trees | Verkle Ağaçları | Деревья Веркла
+term_1531 | Fintech | blobspace | Blobspace | Blob Alanı | Блоб-пространство
+term_1532 | Fintech | sequencer | Sequencer | Sıralayıcı (Sequencer) | Секвенсор
+term_1533 | Fintech | layer-3 | Layer 3 | Katman 3 (L3) | Слой 3
+term_1534 | Fintech | base-layer | Base Layer | Temel Katman | Базовый слой
+term_3000 | Fintech | layer-0 | Layer 0 | Katman 0 (Layer 0) | Нулевой уровень
+term_3003 | Fintech | erc-1155 | ERC-1155 | ERC-1155 | ERC-1155
+term_3004 | Fintech | bep-20 | BEP-20 | BEP-20 | BEP-20
+term_3007 | Fintech | decentralized-identifier-did | Decentralized Identifier (DID) | Merkeziyetsiz Kimlik (DID) | Децентрализованный идентификатор
+term_3008 | Fintech | soulbound-token-sbt | Soulbound Token (SBT) | Ruh Bağı Tokeni (SBT) | Нетрансферабельный токен
+term_3009 | Fintech | crypto-bridge | Crypto Bridge | Kripto Köprü | Криптомост
+term_3010 | Fintech | wrapped-bitcoin-wbtc | Wrapped Bitcoin (WBTC) | Paketlenmiş Bitcoin (WBTC) | Обернутый Биткоин
+term_3012 | Fintech | liquidity-mining | Liquidity Mining | Likidite Madenciliği | Майнинг ликвидности
+term_3015 | Fintech | front-running-2 | Front-running | Öne Geçme (Front-running) | Опережение
+term_3018 | Fintech | monero-xmr | Monero (XMR) | Monero (XMR) | Монеро
+term_3019 | Fintech | zcash | Zcash | Zcash | Zcash
+term_3020 | Fintech | litecoin | Litecoin | Litecoin | Лайткоин
+term_3021 | Fintech | cardano | Cardano | Cardano | Кардано
+term_3022 | Fintech | solana | Solana | Solana | Солана
+term_3023 | Fintech | polkadot | Polkadot | Polkadot | Полкадот
+term_3024 | Fintech | cosmos | Cosmos | Cosmos | Космос
+term_3025 | Fintech | avalanche | Avalanche | Avalanche | Avalanche
+term_3026 | Fintech | arbitrum | Arbitrum | Arbitrum | Arbitrum
+term_3027 | Fintech | optimism | Optimism | Optimism | Optimism
+term_3028 | Fintech | zk-rollup | ZK-Rollup | ZK-Rollup | ZK-Роллап
+term_3030 | Fintech | ipfs | IPFS | IPFS | IPFS
+term_3031 | Fintech | filecoin | Filecoin | Filecoin | Filecoin
+term_3034 | Fintech | block-time | Block Time | Blok Süresi | Время блока
+term_3036 | Fintech | transaction-fee | Transaction Fee | İşlem Ücreti | Комиссия за транзакцию
+term_3038 | Fintech | satoshi-unit | Satoshi (unit) | Satoshi (Birim) | Сатоши
+term_3041 | Fintech | private-sale | Private Sale | Özel Satış | Частная продажа
+term_3042 | Fintech | public-sale | Public Sale | Halka Arz (Kripto) | Публичная продажа
+term_3046 | Fintech | metaverse-finance | Metaverse Finance | Metaverse Finans | Метавселенная Финансы
+term_3049 | Fintech | bag-holder | Bag Holder | Çanta Tutucu (Bag Holder) | Держатель мешка
+term_3050 | Fintech | yield-aggregator | Yield Aggregator | Getiri Toplayıcı (Yield Aggregator) | Агрегатор доходности
+term_3052 | Fintech | algorithmic-stablecoin | Algorithmic Stablecoin | Algoritmik Sabit Coin | Алгоритмический стейблкоин
+term_3053 | Fintech | synthetic-asset | Synthetic Asset | Sentetik Varlık | Синтетический актив
+term_3054 | Fintech | prediction-market | Prediction Market | Tahmin Piyasası | Рынок предсказаний
+term_3055 | Fintech | insurance-protocol | Insurance Protocol | Sigorta Protokolü | Страховой протокол
+term_3057 | Fintech | nominator | Nominator | Nominator (Aday Gösteren) | Номинатор
+term_3058 | Fintech | epoch | Epoch | Devir (Epoch) | Эпоха
+term_3059 | Fintech | slashing | Slashing | Slashing (Kesinti) | Слэшинг
+term_3062 | Fintech | hard-cap | Hard Cap | Hard Cap (Üst Limit) | Хардкэп
+term_3063 | Fintech | soft-cap | Soft Cap | Soft Cap (Alt Limit) | Софткэп
+term_3064 | Fintech | whitepaper | Whitepaper | Whitepaper (İzahname) | Белая книга
+term_3068 | Fintech | equity-token | Equity Token | Hisse Tokeni | Акционерный токен
+term_3069 | Fintech | asset-backed-token | Asset-backed Token | Varlığa Dayalı Token | Обеспеченный токен
+term_3073 | Fintech | token-burn | Token Burn | Token Yakımı | Сжигание токенов
+term_3074 | Fintech | buyback | Buyback | Geri Alım (Buyback) | Обратный выкуп
+term_3075 | Fintech | circulating-supply | Circulating Supply | Dolaşımdaki Arz | Циркулирующее предложение
+term_3076 | Fintech | total-supply | Total Supply | Toplam Arz | Общее предложение
+term_3078 | Fintech | fdv | FDV | FDV (Tam Seyreltilmiş Değer) | FDV
+term_3087 | Fintech | dip | Dip | Dip (Düşüş) | Просадка
+term_3096 | Fintech | shorting | Shorting | Shortlama (Açığa Satış) | Шорт
+term_3097 | Fintech | longing | Longing | Longlama (Uzun Pozisyon) | Лонг
+term_3100 | Fintech | dao-proposal | DAO Proposal | DAO Önerisi | Предложение DAO
+term_3101 | Fintech | quorum | Quorum | Yeter Sayı (Quorum) | Кворум
+term_3102 | Fintech | snapshot | Snapshot | Snapshot (Anlık Görüntü) | Snapshot
+term_3103 | Fintech | multisig-wallet | Multisig Wallet | Çoklu İmza Cüzdanı (Multisig) | Мультисиг кошелек
+term_3104 | Fintech | treasury | Treasury | Hazine (Treasury) | Казначейство
+term_3108 | Fintech | collateral-factor | Collateral Factor | Teminat Faktörü | Фактор залога
+term_3109 | Fintech | liquidation-threshold | Liquidation Threshold | Likidasyon Eşiği | Порог ликвидации
+term_3110 | Fintech | over-collateralization | Over-collateralization | Aşırı Teminatlandırma | Сверх-обеспечение
+term_3117 | Fintech | dust-attack | Dust Attack | Toz Saldırısı (Dust Attack) | Пылевая атака
+term_3120 | Fintech | hot-storage | Hot Storage | Sıcak Depolama | Горячее хранение
+term_3122 | Fintech | keystore-file | Keystore File | Anahtar Deposu Dosyası | Файл хранилища ключей
+term_3125 | Fintech | sharpe-ratio | Sharpe Ratio | Sharpe Oranı | Коэффициент Шарпа
+term_3126 | Fintech | market-dominance | Market Dominance | Piyasa Hakimiyeti | Доминирование на рынке
+term_3135 | Fintech | proof-of-authority-poa | Proof of Authority (PoA) | Yetki Kanıtı (PoA) | Доказательство полномочий
+term_3139 | Fintech | decentralized-exchange-dex | Decentralized Exchange (DEX) | Merkeziyetsiz Borsa (DEX) | Децентрализованная биржа
+term_3144 | Fintech | smart-contract-audit | Smart Contract Audit | Akıllı Sözleşme Denetimi | Аудит смарт-контракта
+term_3146 | Fintech | initial-exchange-offering-ieo | Initial Exchange Offering (IEO) | İlk Borsa Arzı (IEO) | Первичное биржевое предложение
+term_3147 | Fintech | initial-dex-offering-ido | Initial DEX Offering (IDO) | İlk DEX Arzı (IDO) | Первичное предложение на DEX
+term_3148 | Fintech | venture-capital-vc | Venture Capital (VC) | Girişim Sermayesi (VC) | Венчурный капитал
+term_3157 | Fintech | shilling | Shilling | Shilling (Pazarlama) | Шиллинг
+term_3159 | Fintech | weak-hands | Weak Hands | Zayıf Eller | Слабые руки
+term_3160 | Fintech | diamond-hands | Diamond Hands | Elmas Eller | Бриллиантовые руки
+term_3167 | Fintech | symmetric-encryption | Symmetric Encryption | Simetrik Şifreleme | Симметричное шифрование
+term_3168 | Fintech | asymmetric-encryption | Asymmetric Encryption | Asimetrik Şifreleme | Асимметричное шифрование
+term_3171 | Fintech | api-banking | API Banking | API Bankacılığı | API Банкинг
+term_3182 | Fintech | micro-investing | Micro-investing | Mikro Yatırım | Микро-инвестирование
+term_3183 | Fintech | fractional-shares | Fractional Shares | Kesirli Hisseler | Дробные акции
+term_3187 | Fintech | quantitative-trading | Quantitative Trading | Niteliksel Ticaret (Quant) | Количественный трейдинг
+term_3196 | Fintech | supply-chain-finance | Supply Chain Finance | Tedarik Zinciri Finansmanı | Финансирование цепочки поставок
+term_3197 | Fintech | trade-finance | Trade Finance | Ticaret Finansmanı | Торговое финансирование
+term_3198 | Fintech | merchant-banking | Merchant Banking | Tüccar Bankacılığı | Торговый банкинг
+term_3199 | Fintech | investment-banking | Investment Banking | Yatırım Bankacılığı | Инвестиционный банкинг
+term_3201 | Fintech | sec | SEC | SEC (ABD Menkul Kıymetler Borsası) | SEC
+term_3203 | Fintech | spot-etf | Spot ETF | Spot ETF | Спотовый ETF
+term_3204 | Fintech | futures-etf | Futures ETF | Vadeli İşlem ETF | Фьючерсный ETF
+term_3205 | Fintech | howey-test | Howey Test | Howey Testi | Тест Хауи
+term_3206 | Fintech | web3 | Web3 | Web3 | Web3
+term_3209 | Fintech | sbt | SBT | SBT (Ruh Bağı Token) | SBT
+term_3211 | Fintech | optimistic-rollup | Optimistic Rollup | İyimser Rollup | Оптимистичный роллап
+term_3213 | Fintech | max-supply | Max Supply | Maksimum Arz | Максимальное предложение
+term_3216 | Fintech | light-client | Light Client | Hafif İstemci | Легкий клиент
+term_3218 | Fintech | difficulty-adjustment | Difficulty Adjustment | Zorluk Ayarlaması | Корректировка сложности
+term_3219 | Fintech | gossip-protocol | Gossip Protocol | Dedikodu Protokolü (Gossip) | Протокол Gossip
+term_3221 | Fintech | eclipse-attack | Eclipse Attack | Tutulma Saldırısı (Eclipse) | Атака затмения
+term_3228 | Fintech | wrapped-token | Wrapped Token | Sarılmış Token (Wrapped) | Обернутый токен
+term_3233 | Fintech | ponziruse | Ponziruse | Ponzi Şeması | Схема Понци
+term_3234 | Fintech | exit-scam | Exit Scam | Çıkış Dolandırıcılığı (Exit Scam) | Экзит-скам
+term_3238 | Fintech | exchange | Exchange | Borsa | Биржа
+term_3239 | Fintech | order | Order | Emir | Ордер
+term_064 | Technology | database | Database | Veritabanı | База данных
+term_065 | Technology | sql | SQL | SQL | SQL
+term_066 | Technology | primary-key | Primary Key | Birincil Anahtar | Первичный ключ
+term_067 | Technology | foreign-key | Foreign Key | Yabancı Anahtar | Внешний ключ
+term_068 | Technology | algorithm | Algorithm | Algoritma | Алгоритм
+term_069 | Technology | cloud-computing | Cloud Computing | Bulut Bilişim | Облачные вычисления
+term_070 | Technology | big-data | Big Data | Büyük Veri | Большие данные
+term_071 | Technology | machine-learning | Machine Learning | Makine Öğrenmesi | Машинное обучение
+term_072 | Technology | ai | AI | Yapay Zeka (AI) | Искусственный интеллект
+term_074 | Technology | backend | Backend | Backend | Бэкенд
+term_075 | Technology | frontend | Frontend | Frontend | Фронтенд
+term_076 | Technology | full-stack | Full Stack | Full Stack | Фулстек
+term_077 | Technology | agile | Agile | Agile (Çevik) | Agile
+term_078 | Technology | scrum | Scrum | Scrum | Scrum
+term_079 | Technology | erp | ERP | ERP (Kurumsal Kaynak Planlama) | ERP
+term_080 | Technology | crm | CRM | CRM (Müşteri İlişkileri Yönetimi) | CRM
+term_081 | Technology | saas | SaaS | SaaS (Hizmet Olarak Yazılım) | SaaS
+term_082 | Technology | ui | UI | UI (Kullanıcı Arayüzü) | UI
+term_083 | Technology | ux | UX | UX (Kullanıcı Deneyimi) | UX
+term_117 | Technology | deep-learning | Deep Learning | Derin Öğrenme | Глубокое обучение
+term_118 | Technology | natural-language-processing | Natural Language Processing | Doğal Dil İşleme | Обработка естественного языка
+term_120 | Technology | data-mining | Data Mining | Veri Madenciliği | Интеллектуальный анализ данных
+term_121 | Technology | predictive-analytics | Predictive Analytics | Tahminsel Analitik | Предиктивная аналитика
+term_122 | Technology | neural-network | Neural Network | Sinir Ağı | Нейронная сеть
+term_124 | Technology | data-visualization | Data Visualization | Veri Görselleştirme | Визуализация данных
+term_125 | Technology | business-intelligence | Business Intelligence | İş Zekası | Бизнес-аналитика
+term_136 | Technology | cybersecurity | Cybersecurity | Siber Güvenlik | Кибербезопасность
+term_138 | Technology | two-factor-authentication | Two-Factor Authentication | İki Faktörlü Kimlik Doğrulama | Двухфакторная аутентификация
+term_139 | Technology | phishing | Phishing | Oltalama | Фишинг
+term_140 | Technology | firewall | Firewall | Güvenlik Duvarı | Межсетевой экран
+term_141 | Technology | biometric-authentication | Biometric Authentication | Biyometrik Kimlik Doğrulama | Биометрическая аутентификация
+term_142 | Technology | zero-trust | Zero Trust | Sıfır Güven | Нулевое доверие
+term_143 | Technology | data-breach | Data Breach | Veri İhlali | Утечка данных
+term_144 | Technology | ransomware | Ransomware | Fidye Yazılımı | Программа-вымогатель
+term_176 | Technology | kubernetes | Kubernetes | Kubernetes | Kubernetes
+term_177 | Technology | docker | Docker | Docker | Docker
+term_178 | Technology | ci-cd | CI/CD | CI/CD | CI/CD
+term_179 | Technology | microservices | Microservices | Mikro Servisler | Микросервисы
+term_180 | Technology | serverless | Serverless | Sunucusuz | Serverless
+term_181 | Technology | iaas | IaaS | IaaS (Hizmet Olarak Altyapı) | IaaS (Инфраструктура как услуга)
+term_182 | Technology | paas | PaaS | PaaS (Hizmet Olarak Platform) | PaaS (Платформа как услуга)
+term_183 | Technology | load-balancer | Load Balancer | Yük Dengeleyici | Балансировщик нагрузки
+term_184 | Technology | cdn | CDN | CDN (İçerik Dağıtım Ağı) | CDN (Сеть доставки контента)
+term_185 | Technology | devops | DevOps | DevOps | DevOps
+term_255 | Technology | scalability | Scalability | Ölçeklenebilirlik | Масштабируемость
+term_257 | Technology | bandwidth | Bandwidth | Bant Genişliği | Пропускная способность
+term_262 | Technology | malware | Malware | Kötü Amaçlı Yazılım | Вредоносное ПО
+term_263 | Technology | bug | Bug | Yazılım Hatası (Bug) | Баг
+term_264 | Technology | debugging | Debugging | Hata Ayıklama (Debugging) | Отладка
+term_265 | Technology | framework | Framework | Çatı (Framework) | Фреймворк
+term_266 | Technology | library | Library | Kütüphane (Yazılım) | Библиотека
+term_267 | Technology | repository | Repository | Depo (Repository) | Репозиторий
+term_268 | Technology | commit | Commit | İşleme (Commit) | Коммит
+term_269 | Technology | branch | Branch | Dal (Branch) | Ветка
+term_270 | Technology | merge | Merge | Birleştirme (Merge) | Слияние
+term_271 | Technology | deployment | Deployment | Dağıtım/Yayınlama | Развертывание
+term_272 | Technology | production | Production | Canlı Ortam (Production) | Продакшн
+term_273 | Technology | staging | Staging | Test Ortamı (Staging) | Стейджинг
+term_276 | Technology | monolith | Monolith | Monolitik Yapı | Монолит
+term_277 | Technology | virtual-machine-vm | Virtual Machine (VM) | Sanal Makine | Виртуальная машина
+term_278 | Technology | container | Container | Konteyner | Контейнер
+term_309 | Technology | e-commerce | E-commerce | E-ticaret | Электронная коммерция
+term_371 | Technology | monetization | Monetization | Paraya Çevirme (Monetizasyon) | Монетизация
+term_372 | Technology | freemium | Freemium | Freemium | Фримиум
+term_373 | Technology | subscription | Subscription | Abonelik | Подписка
+term_374 | Technology | churn-rate | Churn Rate | Müşteri Kayıp Oranı (Churn) | Отток клиентов
+term_375 | Technology | retention | Retention | Müşteri Tutma (Retention) | Удержание
+term_376 | Technology | user-acquisition | User Acquisition | Kullanıcı Edinimi | Привлечение пользователей
+term_377 | Technology | cac | CAC | Müşteri Edinme Maliyeti (CAC) | CAC
+term_378 | Technology | ltv | LTV | Müşteri Yaşam Boyu Değeri (LTV) | LTV
+term_379 | Technology | conversion-rate | Conversion Rate | Dönüşüm Oranı | Конверсия
+term_380 | Technology | a-b-testing | A/B Testing | A/B Testi | A/B тестирование
+term_384 | Technology | artificial-intelligence | Artificial Intelligence | Yapay Zeka | Искусственный интеллект
+term_391 | Technology | rest | REST | REST (Temsili Durum Transferi) | REST
+term_392 | Technology | json | JSON | JSON | JSON
+term_394 | Technology | nosql | NoSQL | NoSQL | NoSQL
+term_396 | Technology | server | Server | Sunucu | Сервер
+term_397 | Technology | client | Client | İstemci | Клиент
+term_403 | Technology | kanban | Kanban | Kanban | Канбан
+term_404 | Technology | sprint | Sprint | Sprint (Koşu) | Спринт
+term_405 | Technology | user-story | User Story | Kullanıcı Hikayesi | Пользовательская история
+term_406 | Technology | mvp | MVP | MVP (Minimum Uygulanabilir Ürün) | MVP
+term_407 | Technology | product-market-fit | Product Market Fit | Ürün-Pazar Uyumu | Соответствие продукта рынку
+term_409 | Technology | disruption | Disruption | Yıkıcı İnovasyon | Дизрапшн (Подрыв)
+term_410 | Technology | innovation | Innovation | İnovasyon (Yenilik) | Инновация
+term_411 | Technology | digital-transformation | Digital Transformation | Dijital Dönüşüm | Цифровая трансформация
+term_412 | Technology | automation | Automation | Otomasyon | Автоматизация
+term_414 | Technology | heuristic | Heuristic | Sezgisel Yöntem (Heuristic) | Эвристика
+term_417 | Technology | peer-to-peer-p2p | Peer-to-Peer (P2P) | Eşler Arası (P2P) | P2P
+term_418 | Technology | open-source | Open Source | Açık Kaynak | Открытый исходный код
+term_419 | Technology | proprietary | Proprietary | Sahipli (Tescilli) | Проприетарный
+term_420 | Technology | license | License | Lisans | Лицензия
+term_421 | Technology | cookie | Cookie | Çerez (Cookie) | Cookie (Куки)
+term_422 | Technology | cache | Cache | Önbellek (Cache) | Кэш
+term_423 | Technology | bugs-bounty | Bugs Bounty | Ödül Avcılığı (Yazılım) | Bug Bounty
+term_424 | Technology | dark-web | Dark Web | Dark Web | Даркнет
+term_425 | Technology | vpn | VPN | VPN (Sanal Özel Ağ) | VPN
+term_427 | Technology | metaverse | Metaverse | Metaverse | Метавселенная
+term_428 | Technology | web-3-0 | Web 3.0 | Web 3.0 | Web 3.0
+term_429 | Technology | protocol | Protocol | Protokol | Протокол
+term_446 | Technology | contactless | Contactless | Temassız Ödeme | Бесконтактный
+term_448 | Technology | qr-code | QR Code | QR Kodu | QR-код
+term_481 | Technology | 2fa | 2FA | 2FA (Çift Faktörlü Doğrulama) | Двухфакторная аутентификация
+term_488 | Technology | iot | IoT | Nesnelerin İnterneti (IoT) | IoT
+term_489 | Technology | 5g | 5G | 5G | 5G
+term_490 | Technology | biometrics | Biometrics | Biyometri | Биометрия
+term_499 | Technology | peer-review | Peer Review | Akran Değerlendirmesi | Рецензирование
+term_500 | Technology | quantum-computing | Quantum Computing | Kuantum Bilişim | Квантовые вычисления
+term_501 | Technology | augmented-reality-ar | Augmented Reality (AR) | Artırılmış Gerçeklik (AR) | Дополненная реальность
+term_502 | Technology | virtual-reality-vr | Virtual Reality (VR) | Sanal Gerçeklik (VR) | Виртуальная реальность
+term_503 | Technology | edge-computing | Edge Computing | Uç Bilişim (Edge Computing) | Граничные вычисления
+term_504 | Technology | biotech | Biotech | Biyoteknoloji | Биотехнологии
+term_505 | Technology | green-tech | Green Tech | Yeşil Teknoloji | Зеленые технологии
+term_664 | Technology | nlp | NLP | Doğal Dil İşleme (NLP) | NLP
+term_665 | Technology | llm | LLM | Büyük Dil Modeli (LLM) | LLM
+term_666 | Technology | supervised-learning | Supervised Learning | Gözetimli Öğrenme | Обучение с учителем
+term_667 | Technology | unsupervised-learning | Unsupervised Learning | Gözetimsiz Öğrenme | Обучение без учителя
+term_668 | Technology | reinforcement-learning | Reinforcement Learning | Pekiştirmeli Öğrenme | Обучение с подкреплением
+term_669 | Technology | computer-vision | Computer Vision | Bilgisayarlı Görme | Компьютерное зрение
+term_670 | Technology | generative-ai | Generative AI | Üretken YZ | Генеративный ИИ
+term_672 | Technology | virtual-assistant | Virtual Assistant | Sanal Asistan | Виртуальный ассистент
+term_675 | Technology | data-warehouse | Data Warehouse | Veri Ambarı | Хранилище данных
+term_676 | Technology | data-lake | Data Lake | Veri Gölü | Озеро данных
+term_677 | Technology | etl | ETL | ETL (Çıkarma, Dönüştürme, Yükleme) | ETL
+term_683 | Technology | public-cloud | Public Cloud | Genel Bulut | Публичное облако
+term_684 | Technology | private-cloud | Private Cloud | Özel Bulut | Частное облако
+term_685 | Technology | hybrid-cloud | Hybrid Cloud | Hibrit Bulut | Гибридное облако
+term_688 | Technology | containerization | Containerization | Konteynerleştirme | Контейнеризация
+term_696 | Technology | sdlc | SDLC | Yazılım Geliştirme Yaşam Döngüsü | SDLC
+term_697 | Technology | waterfall | Waterfall | Şelale Yöntemi (Waterfall) | Waterfall
+term_699 | Technology | rest-api | REST API | REST API | REST API
+term_700 | Technology | graphql | GraphQL | GraphQL | GraphQL
+term_702 | Technology | xml | XML | XML | XML
+term_707 | Technology | version-control | Version Control | Sürüm Kontrolü | Контроль версий
+term_708 | Technology | git | Git | Git | Git
+term_709 | Technology | github | GitHub | GitHub | GitHub
+term_721 | Technology | mongodb | MongoDB | MongoDB | MongoDB
+term_722 | Technology | postgresql | PostgreSQL | PostgreSQL | PostgreSQL
+term_723 | Technology | redis | Redis | Redis | Redis
+term_724 | Technology | http | HTTP | HTTP | HTTP
+term_725 | Technology | https | HTTPS | HTTPS | HTTPS
+term_726 | Technology | tcp-ip | TCP/IP | TCP/IP | TCP/IP
+term_727 | Technology | dns | DNS | DNS (Alan Adı Sistemi) | DNS
+term_728 | Technology | ip-address | IP Address | IP Adresi | IP-адрес
+term_729 | Technology | ssh | SSH | SSH (Güvenli Kabuk) | SSH
+term_730 | Technology | html | HTML | HTML | HTML
+term_731 | Technology | css | CSS | CSS | CSS
+term_732 | Technology | javascript | JavaScript | JavaScript | JavaScript
+term_733 | Technology | typescript | TypeScript | TypeScript | TypeScript
+term_734 | Technology | python | Python | Python | Python
+term_735 | Technology | java | Java | Java | Java
+term_736 | Technology | c | C++ | C++ | C++
+term_738 | Technology | kotlin | Kotlin | Kotlin | Kotlin
+term_739 | Technology | rust | Rust | Rust | Rust
+term_740 | Technology | go | Go | Go (Golang) | Go (Golang)
+term_741 | Technology | php | PHP | PHP | PHP
+term_742 | Technology | ruby | Ruby | Ruby | Ruby
+term_743 | Technology | os | OS | İşletim Sistemi (OS) | ОС
+term_744 | Technology | kernel | Kernel | Çekirdek (Kernel) | Ядро
+term_745 | Technology | shell | Shell | Kabuk (Shell) | Оболочка (Шелл)
+term_746 | Technology | terminal | Terminal | Terminal | Терминал
+term_747 | Technology | cli | CLI | Komut Satırı Arayüzü (CLI) | CLI
+term_748 | Technology | gui | GUI | Grafiksel Kullanıcı Arayüzü (GUI) | GUI
+term_752 | Technology | responsive-design | Responsive Design | Duyarlı Tasarım | Адаптивный дизайн
+term_755 | Technology | wireframe | Wireframe | Tel Çerçeve (Wireframe) | Вайрфрейм
+term_756 | Technology | prototype | Prototype | Prototip | Прототип
+term_760 | Technology | refactoring | Refactoring | Refaktör (Kod İyileştirme) | Рефакторинг
+term_761 | Technology | legacy-code | Legacy Code | Eski Kod (Legacy) | Наследие (Легаси код)
+term_762 | Technology | technical-debt | Technical Debt | Teknik Borç | Технический долг
+term_766 | Technology | throughput | Throughput | İş Hacmi (Throughput) | Производительность (Пропускная способность)
+term_767 | Technology | load-balancing | Load Balancing | Yük Dengeleme | Балансировка нагрузки
+term_768 | Technology | caching | Caching | Önbellekleme | Кеширование
+term_771 | Technology | session | Session | Oturum | Сессия
+term_772 | Technology | local-storage | Local Storage | Yerel Depolama | Локальное хранилище
+term_773 | Technology | token | Token | Token (Kimlik) | Токен (Auth)
+term_774 | Technology | hardware | Hardware | Donanım | Аппаратное обеспечение
+term_775 | Technology | software | Software | Yazılım | Программное обеспечение
+term_776 | Technology | firmware | Firmware | Yazılım (Firmware) | Прошивка
+term_777 | Technology | cpu | CPU | CPU (İşlemci) | CPU
+term_778 | Technology | gpu | GPU | GPU (Grafik İşlemci) | GPU
+term_779 | Technology | ram | RAM | RAM (Bellek) | ОЗУ
+term_780 | Technology | internet | Internet | İnternet | Интернет
+term_781 | Technology | www | WWW | WWW (Dünya Çapında Ağ) | WWW
+term_782 | Technology | isp | ISP | İnternet Servis Sağlayıcısı (ISP) | Провайдер
+term_783 | Technology | router | Router | Yönlendirici (Router) | Роутер (Маршрутизатор)
+term_784 | Technology | modem | Modem | Modem | Модем
+term_785 | Technology | motherboard | Motherboard | Anakart | Материнская плата
+term_786 | Technology | ssd | SSD | SSD (Katı Hal Sürücüsü) | SSD
+term_787 | Technology | hdd | HDD | HDD (Sabit Disk) | HDD (Жесткий диск)
+term_788 | Technology | bluetooth | Bluetooth | Bluetooth | Bluetooth
+term_789 | Technology | wi-fi | Wi-Fi | Wi-Fi | Wi-Fi
+term_791 | Technology | lte | LTE | LTE | LTE
+term_792 | Technology | pixel | Pixel | Piksel | Пиксель
+term_793 | Technology | resolution | Resolution | Çözünürlük | Разрешение
+term_794 | Technology | 4k | 4K | 4K | 4K
+term_795 | Technology | codec | Codec | Kodek | Кодек
+term_796 | Technology | binary | Binary | İkili (Binary) | Бинарный (Двоичный)
+term_797 | Technology | hexadecimal | Hexadecimal | Onaltılık (Hexadecimal) | Шестнадцатеричный
+term_798 | Technology | ascii | ASCII | ASCII | ASCII
+term_799 | Technology | unicode | Unicode | Unicode | Юникод
+term_801 | Technology | hash-function | Hash Function | Hash Fonksiyonu | Хеш-функция
+term_802 | Technology | logic-gate | Logic Gate | Mantık Kapısı | Логический вентиль
+term_803 | Technology | compilation | Compilation | Derleme (Compilation) | Компиляция
+term_804 | Technology | interpretation | Interpretation | Yorumlama (Interpretation) | Интерпретация
+term_805 | Technology | ide | IDE | IDE (Geliştirme Ortamı) | IDE
+term_806 | Technology | variable | Variable | Değişken | Переменная
+term_807 | Technology | function | Function | Fonksiyon | Функция
+term_808 | Technology | class | Class | Sınıf (Class) | Класс
+term_809 | Technology | object | Object | Nesne | Объект
+term_810 | Technology | inheritance | Inheritance | Kalıtım (Miras) | Наследование
+term_811 | Technology | polymorphism | Polymorphism | Çok Biçimlilik (Polymorphism) | Полиморфизм
+term_812 | Technology | encapsulation | Encapsulation | Kapsülleme | Инкапсуляция
+term_813 | Technology | loop | Loop | Döngü | Цикл
+term_814 | Technology | conditional | Conditional | Koşullu İfade | Условный оператор
+term_815 | Technology | integer | Integer | Tamsayı | Целое число
+term_816 | Technology | float | Float | Kayan Noktalı Sayı (Float) | Float (Число с запятой)
+term_817 | Technology | string | String | Dizi (String) | Строка
+term_818 | Technology | array | Array | Dizi (Array) | Массив
+term_819 | Technology | pointer | Pointer | İşaretçi (Pointer) | Указатель
+term_820 | Technology | stack | Stack | Yığın (Stack) | Стек
+term_821 | Technology | queue | Queue | Kuyruk | Очередь
+term_822 | Technology | tree | Tree | Ağaç (Veri Yapısı) | Дерево
+term_823 | Technology | graph | Graph | Çizge (Graf) | Граф
+term_824 | Technology | hash-table | Hash Table | Hash Tablosu | Хеш-таблица
+term_825 | Technology | complexity | Complexity | Karmaşıklık | Сложность
+term_826 | Technology | big-o | Big O | Büyük O Gösterimi | Big O (О-нотация)
+term_827 | Technology | sorting | Sorting | Sıralama | Сортировка
+term_828 | Technology | searching | Searching | Arama | Поиск
+term_829 | Technology | bit | Bit | Bit | Бит
+term_830 | Technology | byte | Byte | Bayt | Байт
+term_831 | Technology | clock-speed | Clock Speed | Saat Hızı | Тактовая частота
+term_832 | Technology | bios | BIOS | BIOS | BIOS
+term_833 | Technology | driver | Driver | Sürücü (Driver) | Драйвер
+term_836 | Technology | recursion | Recursion | Özyineleme (Recursion) | Рекурсия
+term_837 | Technology | syntax | Syntax | Sözdizimi | Синтаксис
+term_838 | Technology | semantics | Semantics | Anlambilim | Семантика
+term_839 | Technology | linker | Linker | Bağlayıcı (Linker) | Линковщик
+term_1135 | Technology | abstraction | Abstraction | Soyutlama (Abstraction) | Абстракция
+term_1136 | Technology | concurrency | Concurrency | Eşzamanlılık (Concurrency) | Конурентность
+term_1137 | Technology | parallelism | Parallelism | Paralellik | Параллелизм
+term_1138 | Technology | thread | Thread | İş Parçacığı (Thread) | Поток
+term_1139 | Technology | process | Process | Süreç (Process) | Процесс
+term_1140 | Technology | deadlock | Deadlock | Kilitlenme (Deadlock) | Взаимная блокировка
+term_1141 | Technology | race-condition | Race Condition | Yarış Durumu (Race Condition) | Состояние гонки
+term_1142 | Technology | mutex | Mutex | Mutex (Karşılıklı Dışlama) | Мьютекс
+term_1143 | Technology | semaphore | Semaphore | Semafor | Семафор
+term_1144 | Technology | garbage-collection | Garbage Collection | Çöp Toplama (GC) | Сборка мусора
+term_1146 | Technology | reference | Reference | Referans | Ссылка
+term_1147 | Technology | compiler | Compiler | Derleyici (Compiler) | Компилятор
+term_1148 | Technology | interpreter | Interpreter | Yorumlayıcı (Interpreter) | Интерпретатор
+term_1149 | Technology | bytecode | Bytecode | Ara Kod (Bytecode) | Байт-код
+term_1150 | Technology | linked-list | Linked List | Bağlı Liste | Связный список
+term_1153 | Technology | hash-map | Hash Map | Hash Haritası | Хеш-мапа
+term_1154 | Technology | binary-tree | Binary Tree | İkili Ağaç | Бинарное дерево
+term_1155 | Technology | heap | Heap | Yığın (Heap) | Куча
+term_1157 | Technology | trie | Trie | Önek Ağacı (Trie) | Бор (Trie)
+term_1158 | Technology | vector | Vector | Vektör | Вектор
+term_1159 | Technology | set | Set | Küme (Set) | Множество
+term_1162 | Technology | tcp | TCP | TCP | TCP
+term_1163 | Technology | udp | UDP | UDP | UDP
+term_1164 | Technology | ip | IP | IP (İnternet Protokolü) | IP
+term_1166 | Technology | dhcp | DHCP | DHCP | DHCP
+term_1167 | Technology | ftp | FTP | FTP (Dosya Transfer) | FTP
+term_1168 | Technology | smtp | SMTP | SMTP | SMTP
+term_1169 | Technology | imap | IMAP | IMAP | IMAP
+term_1170 | Technology | websocket | WebSocket | WebSocket | WebSocket
+term_1173 | Technology | soap | SOAP | SOAP | SOAP
+term_1174 | Technology | osi-model | OSI Model | OSI Modeli | Модель OSI
+term_1180 | Technology | raid | RAID | RAID | RAID
+term_1184 | Technology | virtual-machine | Virtual Machine | Sanal Makine | Виртуальная машина
+term_1185 | Technology | hypervisor | Hypervisor | Hipervizör | Гипервизор
+term_1188 | Technology | reverse-proxy | Reverse Proxy | Ters Proxy | Обратный прокси
+term_1190 | Technology | buffer | Buffer | Tampon (Buffer) | Буфер
+term_4000 | Technology | agi | AGI | AGI (Yapay Genel Zeka) | AGI (Общий ИИ)
+term_4003 | Technology | transformer-model | Transformer Model | Transformer Modeli | Модель Трансформер
+term_4009 | Technology | prompt-engineering | Prompt Engineering | İstem Mühendisliği (Prompt) | Промпт-инжиниринг
+term_4010 | Technology | hallucination-ai | Hallucination (AI) | Halüsinasyon (YZ) | Галлюцинация (ИИ)
+term_4011 | Technology | turing-test | Turing Test | Turing Testi | Тест Тьюринга
+term_4015 | Technology | multi-cloud | Multi-Cloud | Çoklu Bulut | Мульти-облако
+term_4019 | Technology | ddos | DDos | DDoS Saldırısı | DDoS
+term_4020 | Technology | man-in-the-middle | Man-in-the-Middle | Ortadaki Adam (MitM) | Человек посередине
+term_4021 | Technology | sql-injection | SQL Injection | SQL Enjeksiyonu | SQL-инъекция
+term_4022 | Technology | xss | XSS | XSS (Siteler Arası Komut Dosyası) | XSS
+term_4023 | Technology | social-engineering | Social Engineering | Sosyal Mühendislik | Социальная инженерия
+term_4024 | Technology | penetration-testing | Penetration Testing | Sızma Testi (Pentest) | Пентестинг
+term_4025 | Technology | keylogger | Keylogger | Keylogger (Tuş Kaydedici) | Кейлоггер
+term_4026 | Technology | botnet | Botnet | Botnet (Bot Ağı) | Ботнет
+term_4027 | Technology | trojan | Trojan | Truva Atı (Trojan) | Троян
+term_4028 | Technology | worm | Worm | Solucan (Worm) | Червь
+term_4029 | Technology | exploit | Exploit | Exploit (Sömürü Kodu) | Эксплойт
+term_4030 | Technology | patch-menganement | Patch Menganement | Yama Yönetimi | Управление патчами
+term_4032 | Technology | qubit | Qubit | Kübit | Кубит
+term_4033 | Technology | superposition | Superposition | Süperpozisyon | Суперпозиция
+term_4034 | Technology | entanglement | Entanglement | Dolanıklık | Запутанность
+term_4035 | Technology | ar | AR | AR (Artırılmış Gerçeklik) | AR
+term_4036 | Technology | vr | VR | VR (Sanal Gerçeklik) | VR
+term_4037 | Technology | mr | MR | MR (Karma Gerçeklik) | MR
+term_4040 | Technology | robotics | Robotics | Robotik | Робототехника
+term_4041 | Technology | automation-rpa | Automation RPA | RPA (Robotik Süreç Otomasyonu) | RPA
+term_4042 | Technology | bioinformatics | Bioinformatics | Biyoinformatik | Биоинформатика
+term_4043 | Technology | genomics | Genomics | Genomik | Геномика
+term_4047 | Technology | dark-mode | Dark Mode | Karanlık Mod | Темная тема
+term_4050 | Technology | hadoop | Hadoop | Hadoop | Hadoop
+term_4051 | Technology | spark | Spark | Apache Spark | Spark
+term_4055 | Technology | data-scientist | Data Scientist | Veri Bilimcisi | Data Scientist
+term_4056 | Technology | pwa | PWA | PWA (Progresif Web Uygulaması) | PWA
+term_4057 | Technology | spa | SPA | SPA (Tek Sayfalı Uygulama) | SPA
+term_4058 | Technology | ssr | SSR | SSR (Sunucu Taraflı İşleme) | SSR
+term_4059 | Technology | csr | CSR | CSR (İstemci Taraflı İşleme) | CSR
+term_4060 | Technology | seo | SEO | SEO (Arama Motoru Optimizasyonu) | SEO
+term_4062 | Technology | accessibility | Accessibility | Erişilebilirlik (a11y) | Доступность
+term_4063 | Technology | dom | DOM | DOM (Belge Nesne Modeli) | DOM
+term_4079 | Technology | rfid | RFID | RFID | RFID
+term_4080 | Technology | moore-s-law | Moore's Law | Moore Yasası | Закон Мура
+term_4081 | Technology | singularity | Singularity | Tekillik (Singularity) | Сингулярность
+term_4082 | Technology | deepfake | Deepfake | Deepfake | Дипфейк
+term_4083 | Technology | digital-twin | Digital Twin | Dijital İkiz | Цифровой двойник
+term_4084 | Technology | smart-city | Smart City | Akıllı Şehir | Умный город
+term_4086 | Technology | wi-fi-6 | Wi-Fi 6 | Wi-Fi 6 | Wi-Fi 6
+term_4095 | Technology | open-data | Open Data | Açık Veri | Открытые данные
+term_4096 | Technology | dark-data | Dark Data | Karanlık Veri | Темные данные
+term_4098 | Technology | algorithm-trading | Algorithm Trading | Algoritmik Ticaret | Алгоритмическая торговля
+term_4107 | Technology | sorting-algorithm | Sorting Algorithm | Sıralama Algoritması | Алгоритм сортировки
+term_4108 | Technology | big-o-notation | Big O Notation | Büyük O Notasyonu | О-нотация
+term_4113 | Technology | code-review | Code Review | Kod Gözden Geçirme | Ревью кода
+term_4114 | Technology | design-pattern | Design Pattern | Tasarım Deseni | Паттерн проектирования
+term_4115 | Technology | mvc | MVC | MVC (Model-View-Controller) | MVC
+term_4116 | Technology | mvvm | MVVM | MVVM | MVVM
+term_4119 | Technology | gitlab | GitLab | GitLab | GitLab
+term_4120 | Technology | jira | Jira | Jira | Jira
+term_4121 | Technology | windows | Windows | Windows | Windows
+term_4122 | Technology | macos | macOS | macOS | macOS
+term_4123 | Technology | linux | Linux | Linux | Linux
+term_4124 | Technology | android | Android | Android | Android
+term_4125 | Technology | ios | iOS | iOS | iOS
+term_4126 | Technology | ubuntu | Ubuntu | Ubuntu | Ubuntu
+term_4127 | Technology | kali-linux | Kali Linux | Kali Linux | Kali Linux
+term_4136 | Technology | boolean | Boolean | Mantıksal Değer (Boolean) | Булево значение
+term_4139 | Technology | null | Null | Null (Boş Değer) | Null
+term_4140 | Technology | undefined | Undefined | Tanımsız (Undefined) | Undefined
+term_4141 | Technology | exception | Exception | İstisna (Exception) | Исключение
+term_4142 | Technology | bug-tracking | Bug Tracking | Hata Takibi | Отслеживание багов
+term_4143 | Technology | confluence | Confluence | Confluence | Confluence
+term_4144 | Technology | slack | Slack | Slack | Slack
+term_4145 | Technology | zoom | Zoom | Zoom | Zoom
+term_4146 | Technology | 3d-printing | 3D Printing | 3D Yazıcı | 3D-печать
+term_4147 | Technology | drone | Drone | Drone (İHA) | Дрон
+term_4148 | Technology | autonomous-vehicle | Autonomous Vehicle | Otonom Araç | Беспилотный автомобиль
+term_4149 | Technology | smart-home | Smart Home | Akıllı Ev | Умный дом
+term_4150 | Technology | wearable-tech | Wearable Tech | Giyilebilir Teknoloji | Носимые технологии
+term_4151 | Technology | nanotechnology | Nanotechnology | Nanoteknoloji | Нанотехнологии
+term_4153 | Technology | renewable-energy | Renewable Energy | Yenilenebilir Enerji | Возобновляемая энергия
+term_4154 | Technology | alan-turing | Alan Turing | Alan Turing | Алан Тьюринг
+term_4155 | Technology | grace-hopper | Grace Hopper | Grace Hopper | Грейс Хоппер
+term_4156 | Technology | bill-gates | Bill Gates | Bill Gates | Билл Гейтс
+term_4157 | Technology | steve-jobs | Steve Jobs | Steve Jobs | Стив Джобс
+term_4158 | Technology | elon-musk | Elon Musk | Elon Musk | Илон Маск
+term_4159 | Technology | tim-berners-lee | Tim Berners-Lee | Tim Berners-Lee | Тим Бернерс-Ли
+term_4160 | Technology | linus-torvalds | Linus Torvalds | Linus Torvalds | Линус Торвальдс
+term_4161 | Technology | google | Google | Google | Google
+term_4162 | Technology | apple | Apple | Apple | Apple
+term_4163 | Technology | microsoft | Microsoft | Microsoft | Microsoft
+term_4164 | Technology | amazon | Amazon | Amazon | Amazon
+term_4165 | Technology | meta | Meta | Meta (Facebook) | Meta
+term_4166 | Technology | tesla | Tesla | Tesla | Tesla
+term_4167 | Technology | nvidia | NVIDIA | NVIDIA | NVIDIA
+term_4168 | Technology | intel | Intel | Intel | Intel
+term_4169 | Technology | amd | AMD | AMD | AMD
+term_4170 | Technology | samsung | Samsung | Samsung | Samsung
+term_4171 | Technology | sony | Sony | Sony | Sony
+term_4172 | Technology | netflix | Netflix | Netflix | Netflix
+term_4173 | Technology | spotify | Spotify | Spotify | Spotify
+term_4174 | Technology | uber | Uber | Uber | Uber
+term_4175 | Technology | airbnb | Airbnb | Airbnb | Airbnb
+term_4176 | Technology | jpg | JPG | JPG/JPEG | JPG
+term_4177 | Technology | png | PNG | PNG | PNG
+term_4178 | Technology | gif | GIF | GIF | GIF
+term_4179 | Technology | svg | SVG | SVG | SVG
+term_4180 | Technology | mp3 | MP3 | MP3 | MP3
+term_4181 | Technology | mp4 | MP4 | MP4 | MP4
+term_4182 | Technology | pdf | PDF | PDF | PDF
+term_4183 | Technology | docx | DOCX | DOCX | DOCX
+term_4184 | Technology | xlsx | XLSX | XLSX (Excel) | XLSX
+term_4185 | Technology | txt | TXT | TXT | TXT
+term_4186 | Technology | csv | CSV | CSV | CSV
+term_4189 | Technology | zip | ZIP | ZIP | ZIP
+term_4190 | Technology | rar | RAR | RAR | RAR
+term_4191 | Technology | exe | EXE | EXE | EXE
+term_4192 | Technology | apk | APK | APK | APK
+term_4193 | Technology | ipa | IPA | IPA | IPA
+term_4194 | Technology | dmg | DMG | DMG | DMG
+term_4195 | Technology | iso | ISO | ISO | ISO
+term_4196 | Technology | bin-cue | Bin/Cue | Bin/Cue | Bin/Cue
+term_4197 | Technology | torrent | Torrent | Torrent | Торрент
+term_4198 | Technology | magnet-link | Magnet Link | Magnet Link | Магнитная ссылка
+term_4199 | Technology | seed | Seed | Seed (Gönderici) | Сид
+term_4200 | Technology | leech | Leech | Leech (Alıcı) | Лич
+term_4201 | Technology | peer | Peer | Peer (Eş) | Пир
+term_4202 | Technology | tracker | Tracker | Tracker (İzleyici) | Трекер
+term_4204 | Technology | proxy | Proxy | Proxy (Vekil Sunucu) | Прокси
+term_4205 | Technology | tor | Tor | Tor | Tor
+term_4206 | Technology | deep-web | Deep Web | Deep Web (Derin Web) | Глубокая паутина
+term_4211 | Technology | salt | Salt | Salt (Tuzlama) | Соль
+term_4212 | Technology | brute-force | Brute Force | Kaba Kuvvet Saldırısı | Брутфорс
+term_4213 | Technology | rainbow-table | Rainbow Table | Gökkuşağı Tablosu | Радужная таблица
+term_4214 | Technology | zero-day | Zero Day | Sıfırıncı Gün (Zero Day) | Нулевой день
+term_4218 | Technology | spyware | Spyware | Casus Yazılım | Шпионское ПО
+term_4219 | Technology | adware | Adware | Reklam Yazılımı | Рекламное ПО
+term_4222 | Technology | rootkit | Rootkit | Rootkit | Руткит
+term_4226 | Technology | sandboxing | Sandboxing | Sandbox (Kum Havuzu) | Песочница
+term_9001 | Fintech | merchant-of-record | Merchant of Record | Merchant of Record | Мерчант оф рекорд
+term_9002 | Fintech | payment-facilitator | Payment Facilitator | Ödeme Kolaylaştırıcısı | Платёжный фасилитатор
+term_9003 | Fintech | network-token | Network Token | Ağ Tokenı | Сетевой токен
+term_9004 | Fintech | account-updater | Account Updater | Kart Bilgisi Güncelleyici | Обновление реквизитов карты
+term_9005 | Fintech | payment-orchestration | Payment Orchestration | Ödeme Orkestrasyonu | Платёжная оркестрация
+term_9006 | Fintech | variable-recurring-payments | Variable Recurring Payments | Değişken Yinelenen Ödemeler | Переменные рекуррентные платежи
+term_9007 | Fintech | proof-of-reserves | Proof of Reserves | Rezerv Kanıtı | Доказательство резервов
+term_9008 | Fintech | blind-signing | Blind Signing | Kör İmzalama | Слепая подпись
+term_9009 | Fintech | appchain | AppChain | Uygulama Zinciri | Аппчейн
+term_9010 | Fintech | bitvm | BitVM | BitVM | BitVM
+term_9011 | Fintech | bitcoin-layer-2 | Bitcoin Layer 2 | Bitcoin Katman 2 | Второй слой Bitcoin

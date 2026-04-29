@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import time
+from types import SimpleNamespace
 
 import pytest
 
-from bot import db_client
+from bot import db_client, rate_limiter
 from bot.db_client import execute_public_query
 
 
@@ -42,3 +43,15 @@ def test_get_public_client_configures_sdk_postgrest_timeout(monkeypatch: pytest.
     assert recorded["url"] == db_client.config.supabase_url
     assert recorded["key"] == db_client.config.supabase_anon_key
     assert getattr(recorded["options"], "postgrest_client_timeout") == db_client.SUPABASE_REQUEST_TIMEOUT_SECONDS
+
+
+@pytest.mark.anyio
+async def test_rate_limiter_fails_closed_without_redis_in_render(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RENDER", "1")
+    monkeypatch.setattr(rate_limiter, "_redis_client", None)
+    monkeypatch.setattr(rate_limiter, "config", SimpleNamespace(redis_url=""))
+
+    assert await rate_limiter.is_rate_limited(123) is True
+    assert await rate_limiter.is_search_rate_limited(123) is True

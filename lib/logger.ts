@@ -129,6 +129,11 @@ const emitLog = (
         return;
     }
 
+    if (level === 'info') {
+        logToConsole('warn', message, context);
+        return;
+    }
+
     captureWithSentry(level, message, context);
     logToConsole(level === 'error' ? 'error' : 'warn', message, context);
 };

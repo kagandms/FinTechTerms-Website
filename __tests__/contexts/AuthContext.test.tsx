@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 const mockFetch = jest.fn();
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/public-env', () => ({
     getPublicEnv: () => ({
         siteUrl: 'http://localhost:3000',
         defaultLanguage: 'ru',
@@ -296,7 +296,7 @@ describe('AuthProvider', () => {
         });
 
         await clickButton('logout');
-        await jest.advanceTimersByTimeAsync(4_000);
+        await jest.advanceTimersByTimeAsync(15_000);
 
         await waitFor(() => {
             expect(screen.getByTestId('logout-result')).toHaveTextContent('"success":false');

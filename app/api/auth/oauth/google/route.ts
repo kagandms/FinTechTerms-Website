@@ -7,7 +7,7 @@ import {
     createAuthRouteClient,
     createAuthUnavailableResponse,
 } from '@/lib/auth/route-handler';
-import { getPublicEnv } from '@/lib/env';
+import { resolveSafeAuthNextPath } from '@/lib/auth/redirect-target';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,23 +17,7 @@ const resolveGoogleRedirect = (request: Request): string => {
     const forwardedHost = request.headers.get('x-forwarded-host');
     const origin = forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
 
-    let nextPath = '/profile?complete=1';
-
-    if (requestedRedirect) {
-        if (requestedRedirect.startsWith('/')) {
-            nextPath = requestedRedirect;
-        } else {
-            try {
-                const parsedUrl = new URL(requestedRedirect);
-                // We check if it matches the dynamic origin
-                if (parsedUrl.origin === origin || parsedUrl.origin === getPublicEnv().siteUrl) {
-                    nextPath = parsedUrl.pathname + parsedUrl.search;
-                }
-            } catch {
-                // Fall through to the default safe redirect target.
-            }
-        }
-    }
+    const nextPath = resolveSafeAuthNextPath(requestedRedirect, origin);
 
     return `${origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`;
 };

@@ -1,0 +1,97 @@
+# Third Pass Delete Terms
+Generated: 2026-04-23
+Source: docs/remaining-quality-risk-terms.txt
+Purpose: Additional high-confidence removals after scanning the remaining catalog for generic drift, slang, duplicate debt, and asset encyclopedia noise.
+Term count: 90
+Format: id | category | slug | term_en | reason
+
+term_3049 | Fintech | bag-holder | Bag Holder | Crypto slang / low-signal investor jargon
+term_3159 | Fintech | weak-hands | Weak Hands | Crypto slang / low-signal investor jargon
+term_603 | Fintech | no-coiner | No-coiner | Crypto slang / low-signal investor jargon
+term_3157 | Fintech | shilling | Shilling | Crypto slang / low-signal investor jargon
+term_3046 | Fintech | metaverse-finance | Metaverse Finance | Trend-driven low-signal category
+term_887 | Fintech | decacorn | Decacorn | Startup valuation slang outside glossary core
+term_1036 | Fintech | stablecoin-algo | Stablecoin Algo | Duplicate of stronger canonical term
+term_3110 | Fintech | over-collateralization | Over-collateralization | Duplicate of canonical overcollateralization term
+term_3015 | Fintech | front-running-2 | Front-running | Duplicate of front running term
+term_1072 | Fintech | ico | ICO | Acronym-only duplicate of Initial Coin Offering
+term_590 | Fintech | ieo | IEO | Acronym-only duplicate of Initial Exchange Offering
+term_589 | Fintech | ido | IDO | Acronym-only duplicate of Initial DEX Offering
+term_3008 | Fintech | soulbound-token-sbt | Soulbound Token (SBT) | Duplicate of soulbound token concept
+term_1515 | Fintech | oracles | Oracles | Plural duplicate of oracle term
+term_885 | Fintech | sandbox | SandBox | Low-quality duplicate overlapping regulatory sandbox
+term_3018 | Fintech | monero-xmr | Monero (XMR) | Asset encyclopedia drift
+term_3019 | Fintech | zcash | Zcash | Asset encyclopedia drift
+term_3020 | Fintech | litecoin | Litecoin | Asset encyclopedia drift
+term_3021 | Fintech | cardano | Cardano | Asset encyclopedia drift
+term_3022 | Fintech | solana | Solana | Asset encyclopedia drift
+term_3023 | Fintech | polkadot | Polkadot | Asset encyclopedia drift
+term_3025 | Fintech | avalanche | Avalanche | Asset encyclopedia drift
+term_3026 | Fintech | arbitrum | Arbitrum | Asset encyclopedia drift
+term_3027 | Fintech | optimism | Optimism | Asset encyclopedia drift
+term_3031 | Fintech | filecoin | Filecoin | Asset encyclopedia drift
+term_074 | Technology | backend | Backend | Broad generic software glossary drift
+term_075 | Technology | frontend | Frontend | Broad generic software glossary drift
+term_076 | Technology | full-stack | Full Stack | Broad generic software glossary drift
+term_077 | Technology | agile | Agile | Broad generic software glossary drift
+term_078 | Technology | scrum | Scrum | Broad generic software glossary drift
+term_079 | Technology | erp | ERP | Broad generic software glossary drift
+term_080 | Technology | crm | CRM | Broad generic software glossary drift
+term_081 | Technology | saas | SaaS | Broad generic software glossary drift
+term_082 | Technology | ui | UI | Broad generic software glossary drift
+term_083 | Technology | ux | UX | Broad generic software glossary drift
+term_267 | Technology | repository | Repository | Broad generic software glossary drift
+term_268 | Technology | commit | Commit | Broad generic software glossary drift
+term_269 | Technology | branch | Branch | Broad generic software glossary drift
+term_270 | Technology | merge | Merge | Broad generic software glossary drift
+term_309 | Technology | e-commerce | E-commerce | Broad generic software/product glossary drift
+term_371 | Technology | monetization | Monetization | Broad generic software/product glossary drift
+term_372 | Technology | freemium | Freemium | Broad generic software/product glossary drift
+term_373 | Technology | subscription | Subscription | Broad generic software/product glossary drift
+term_374 | Technology | churn-rate | Churn Rate | Broad generic software/product glossary drift
+term_375 | Technology | retention | Retention | Broad generic software/product glossary drift
+term_376 | Technology | user-acquisition | User Acquisition | Broad generic software/product glossary drift
+term_377 | Technology | cac | CAC | Broad generic software/product glossary drift
+term_378 | Technology | ltv | LTV | Broad generic software/product glossary drift
+term_380 | Technology | a-b-testing | A/B Testing | Broad generic software/product glossary drift
+term_403 | Technology | kanban | Kanban | Broad generic software/product glossary drift
+term_404 | Technology | sprint | Sprint | Broad generic software/product glossary drift
+term_405 | Technology | user-story | User Story | Broad generic software/product glossary drift
+term_406 | Technology | mvp | MVP | Broad generic software/product glossary drift
+term_409 | Technology | disruption | Disruption | Broad generic software/product glossary drift
+term_410 | Technology | innovation | Innovation | Broad generic software/product glossary drift
+term_411 | Technology | digital-transformation | Digital Transformation | Broad generic software/product glossary drift
+term_412 | Technology | automation | Automation | Broad generic software/product glossary drift
+term_414 | Technology | heuristic | Heuristic | Broad generic software/product glossary drift
+term_500 | Technology | quantum-computing | Quantum Computing | Broad generic software glossary drift
+term_672 | Technology | virtual-assistant | Virtual Assistant | Broad generic software glossary drift
+term_707 | Technology | version-control | Version Control | Broad generic software glossary drift
+term_708 | Technology | git | Git | Broad generic software glossary drift
+term_709 | Technology | github | GitHub | Broad generic software glossary drift
+term_730 | Technology | html | HTML | Broad generic software glossary drift
+term_731 | Technology | css | CSS | Broad generic software glossary drift
+term_732 | Technology | javascript | JavaScript | Broad generic software glossary drift
+term_734 | Technology | python | Python | Broad generic software glossary drift
+term_735 | Technology | java | Java | Broad generic software glossary drift
+term_738 | Technology | kotlin | Kotlin | Broad generic software glossary drift
+term_739 | Technology | rust | Rust | Broad generic software glossary drift
+term_740 | Technology | go | Go | Broad generic software glossary drift
+term_741 | Technology | php | PHP | Broad generic software glossary drift
+term_742 | Technology | ruby | Ruby | Broad generic software glossary drift
+term_746 | Technology | terminal | Terminal | Broad generic software glossary drift
+term_747 | Technology | cli | CLI | Broad generic software glossary drift
+term_748 | Technology | gui | GUI | Broad generic software glossary drift
+term_755 | Technology | wireframe | Wireframe | Broad generic software glossary drift
+term_756 | Technology | prototype | Prototype | Broad generic software glossary drift
+term_300 | Finance | universal-basic-income | Universal Basic Income | Broad economics scope drift
+term_301 | Finance | gig-economy | Gig Economy | Broad economics scope drift
+term_1366 | Finance | helicopter-money | Helicopter Money | Broad economics scope drift
+term_1383 | Finance | quota | Quota | Broad economics scope drift
+term_1385 | Finance | substitute-good | Substitute Good | Broad economics scope drift
+term_1386 | Finance | complementary-good | Complementary Good | Broad economics scope drift
+term_1387 | Finance | normal-good | Normal Good | Broad economics scope drift
+term_1388 | Finance | inferior-good | Inferior Good | Broad economics scope drift
+term_1389 | Finance | veblen-good | Veblen Good | Broad economics scope drift
+term_1390 | Finance | giffen-good | Giffen Good | Broad economics scope drift
+term_1412 | Finance | black-market | Black Market | Broad economics scope drift
+term_1413 | Finance | grey-market | Grey Market | Broad economics scope drift

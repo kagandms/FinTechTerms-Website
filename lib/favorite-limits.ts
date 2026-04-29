@@ -1,0 +1,1 @@
+export const MAX_FAVORITES_RESPONSE_ITEMS = 1_000;

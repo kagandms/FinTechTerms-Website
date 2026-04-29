@@ -2,7 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { createTimeoutFetch } from '@/lib/api-response';
-import { getServerEnv, hasConfiguredAiEnv } from '@/lib/env';
+import { getServerEnv, hasConfiguredAiEnv } from '@/lib/server-env';
 import { logger } from '@/lib/logger';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';

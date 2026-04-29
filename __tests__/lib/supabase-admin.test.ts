@@ -29,10 +29,13 @@ jest.mock('@/utils/supabase/server', () => ({
     createClient: () => mockCreateServerClient(),
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/public-env', () => ({
     getPublicEnv: () => mockGetPublicEnv(),
-    getServerEnv: () => mockGetServerEnv(),
     hasConfiguredPublicSupabaseEnv: () => true,
+}));
+
+jest.mock('@/lib/server-env', () => ({
+    getServerEnv: () => mockGetServerEnv(),
 }));
 
 jest.mock('@/lib/auth/session', () => ({

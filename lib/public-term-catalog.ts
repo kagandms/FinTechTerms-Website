@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { terms as catalogTerms } from '@/data/terms';
 import { createTimeoutFetch } from '@/lib/api-response';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
-import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
+import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
 import { normalizeSearchText } from '@/lib/search-normalization';
 import type { Category, RegionalMarket, Term } from '@/types';
 

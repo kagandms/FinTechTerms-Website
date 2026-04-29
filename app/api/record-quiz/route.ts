@@ -55,6 +55,8 @@ const MAX_QUIZ_OCCURRED_AT_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_QUIZ_OCCURRED_AT_FUTURE_DRIFT_MS = 5 * 60 * 1000;
 const OCCURRED_AT_OUT_OF_WINDOW_CODE = 'OCCURRED_AT_OUT_OF_WINDOW';
 const OCCURRED_AT_OUT_OF_WINDOW_MESSAGE = 'Quiz attempt timestamp is outside the allowed replay window.';
+const MEMBER_REQUIRED_CODE = 'MEMBER_REQUIRED';
+const MEMBER_REQUIRED_MESSAGE = 'Complete your member setup to unlock review mode.';
 type QuizMutationClient = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
 type OccurredAtNormalizationResult =
@@ -181,6 +183,13 @@ const isOccurredAtWindowError = (
 ): boolean => (
     error.code === '22023'
     && (error.message || '').toLowerCase().includes('allowed replay window')
+);
+
+const isMemberRequiredError = (
+    error: { code?: string | null; message?: string | null }
+): boolean => (
+    error.code === '42501'
+    && (error.message || '').toLowerCase().includes('member setup')
 );
 
 export async function POST(request: NextRequest) {
@@ -492,6 +501,21 @@ export async function POST(request: NextRequest) {
                     status: 400,
                     code: OCCURRED_AT_OUT_OF_WINDOW_CODE,
                     message: OCCURRED_AT_OUT_OF_WINDOW_MESSAGE,
+                    requestId,
+                    retryable: false,
+                    headers: guardedHeaders,
+                });
+            }
+
+            if (isMemberRequiredError(error)) {
+                await markQuizFailure(routeSupabase, user.id, idempotencyKey, 403, {
+                    code: MEMBER_REQUIRED_CODE,
+                    message: MEMBER_REQUIRED_MESSAGE,
+                });
+                return errorResponse({
+                    status: 403,
+                    code: MEMBER_REQUIRED_CODE,
+                    message: MEMBER_REQUIRED_MESSAGE,
                     requestId,
                     retryable: false,
                     headers: guardedHeaders,

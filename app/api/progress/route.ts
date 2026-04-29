@@ -5,6 +5,7 @@ import {
     successResponse,
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { MAX_FAVORITES_RESPONSE_ITEMS } from '@/lib/favorite-limits';
 import { logger } from '@/lib/logger';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { RECENT_QUIZ_HISTORY_LIMIT, userProgressSchema } from '@/lib/userProgress';
@@ -81,7 +82,8 @@ export async function GET(request: Request) {
                 .from('user_favorites')
                 .select('term_id')
                 .eq('user_id', user.id)
-                .order('created_at', { ascending: false }),
+                .order('created_at', { ascending: false })
+                .limit(MAX_FAVORITES_RESPONSE_ITEMS + 1),
             supabase
                 .from('quiz_attempts')
                 .select('*')
@@ -148,10 +150,22 @@ export async function GET(request: Request) {
         const createdAt = progressRow?.created_at || new Date().toISOString();
         const updatedAt = progressRow?.updated_at || createdAt;
         const streakSummary = streakRows[0] ?? null;
+        const favoriteIds = favoritesRows.map((row) => row.term_id);
+
+        if (favoriteIds.length > MAX_FAVORITES_RESPONSE_ITEMS) {
+            return errorResponse({
+                status: 413,
+                code: 'FAVORITES_RESPONSE_TOO_LARGE',
+                message: 'Favorites exceed the maximum progress response size.',
+                requestId,
+                retryable: false,
+                headers: PROGRESS_ROUTE_HEADERS,
+            });
+        }
 
         const result = userProgressSchema.safeParse({
             user_id: user.id,
-            favorites: favoritesRows.map((row) => row.term_id),
+            favorites: favoriteIds,
             current_language: settingsRow?.preferred_language || 'ru',
             quiz_history: quizRows.map((row) => ({
                 id: row.id,

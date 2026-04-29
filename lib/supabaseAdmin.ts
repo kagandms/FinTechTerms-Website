@@ -1,7 +1,8 @@
 import { createClient as createSupabaseClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createTimeoutFetch } from '@/lib/api-response';
 import { createClient as createServerClient } from '@/utils/supabase/server';
-import { getPublicEnv, getServerEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
+import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
+import { getServerEnv } from '@/lib/server-env';
 import {
     hasRequestAuthCookies,
     hasRequestAuthCredentials,

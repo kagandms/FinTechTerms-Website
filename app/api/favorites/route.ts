@@ -23,6 +23,7 @@ import {
     resolveAuthenticatedUser,
 } from '@/lib/supabaseAdmin';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
+import { MAX_FAVORITES_RESPONSE_ITEMS } from '@/lib/favorite-limits';
 import { logger } from '@/lib/logger';
 import { resolveRequestMemberEntitlements } from '@/lib/server-member-entitlements';
 
@@ -450,7 +451,8 @@ export async function GET(request: Request) {
             .from('user_favorites')
             .select('term_id')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(MAX_FAVORITES_RESPONSE_ITEMS + 1);
 
         if (response.error) {
             logger.error('GET_FAVORITES_FAILED', {
@@ -467,9 +469,20 @@ export async function GET(request: Request) {
             });
         }
 
+        const favoriteIds = (response.data || []).map((row) => row.term_id);
+        if (favoriteIds.length > MAX_FAVORITES_RESPONSE_ITEMS) {
+            return errorResponse({
+                status: 413,
+                code: 'FAVORITES_RESPONSE_TOO_LARGE',
+                message: 'Favorites exceed the maximum response size.',
+                requestId,
+                retryable: false,
+            });
+        }
+
         return successResponse(
             {
-                favorites: (response.data || []).map((row) => row.term_id),
+                favorites: favoriteIds,
             },
             requestId
         );

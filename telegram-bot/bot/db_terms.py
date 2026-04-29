@@ -8,6 +8,7 @@ import json
 import logging
 import random
 import re
+from collections.abc import Callable
 from time import monotonic
 from typing import Any, Optional
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 TERM_ID_CACHE_TTL_SECONDS = 15 * 60
 QUIZ_TERM_FETCH_LIMIT = 64
+TERM_ID_CACHE_FETCH_LIMIT = 512
 _TERM_ID_CACHE: list[str] = []
 _TERM_ID_CACHE_LOADED_AT = 0.0
 
@@ -129,6 +131,39 @@ def normalize_public_terms(rows: list[dict[str, Any]] | None) -> list[dict[str, 
     return [normalize_term_payload(row) for row in (rows or []) if is_public_term(row)]
 
 
+def _extract_term_ids(rows: Any) -> list[str]:
+    if not isinstance(rows, list):
+        return []
+
+    return [
+        row["id"]
+        for row in rows
+        if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
+    ]
+
+
+def _read_public_term_count(client: Any) -> int:
+    response = client.rpc("get_public_term_count").execute()
+    try:
+        return max(0, int(response.data or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _fetch_public_term_id_window() -> list[str]:
+    client = get_public_client()
+    total_terms = _read_public_term_count(client)
+    if total_terms <= 0:
+        return []
+
+    fetch_limit = min(TERM_ID_CACHE_FETCH_LIMIT, total_terms)
+    start_index = random.randint(0, max(0, total_terms - fetch_limit))
+    response = apply_academic_quarantine(
+        client.table("terms").select("id")
+    ).order("id").range(start_index, start_index + fetch_limit - 1).execute()
+    return _extract_term_ids(response.data)
+
+
 def _tokenize_query(query: str) -> set[str]:
     return {token for token in re.split(r"[^\w]+", query.casefold()) if token}
 
@@ -184,16 +219,6 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
     """Fetch a bounded random subset of public terms for quiz generation."""
     safe_limit = max(4, min(int(limit), QUIZ_TERM_FETCH_LIMIT))
 
-    def _fetch_term_ids() -> list[str]:
-        response = apply_academic_quarantine(
-            get_public_client().table("terms").select("id")
-        ).execute()
-        return [
-            row["id"]
-            for row in (response.data or [])
-            if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
-        ]
-
     def _fetch_terms(sample_ids: list[str]) -> list[dict[str, Any]]:
         response = apply_academic_quarantine(
             get_public_client()
@@ -204,7 +229,10 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
         return normalize_public_terms(response.data)
 
     try:
-        sample_ids = await _load_cached_term_ids(limit=safe_limit, fetcher=_fetch_term_ids)
+        sample_ids = await _load_cached_term_ids(
+            limit=safe_limit,
+            fetcher=_fetch_public_term_id_window,
+        )
         if not sample_ids:
             return []
         return await execute_public_query(lambda: _fetch_terms(sample_ids))
@@ -213,7 +241,7 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
 
 
-async def _load_cached_term_ids(limit: int, fetcher: Any) -> list[str]:
+async def _load_cached_term_ids(limit: int, fetcher: Callable[[], list[str]]) -> list[str]:
     global _TERM_ID_CACHE, _TERM_ID_CACHE_LOADED_AT
 
     now = monotonic()
@@ -304,18 +332,11 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 async def get_random_term() -> Optional[dict[str, Any]]:
     """Return a random public term for the Daily Term feature."""
-    def _fetch_term_ids() -> list[str]:
-        response = apply_academic_quarantine(
-            get_public_client().table("terms").select("id")
-        ).execute()
-        return [
-            row["id"]
-            for row in (response.data or [])
-            if isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"].strip()
-        ]
-
     try:
-        sample_ids = await _load_cached_term_ids(limit=1, fetcher=_fetch_term_ids)
+        sample_ids = await _load_cached_term_ids(
+            limit=1,
+            fetcher=_fetch_public_term_id_window,
+        )
         if not sample_ids:
             return None
         return await fetch_term_by_id(sample_ids[0])

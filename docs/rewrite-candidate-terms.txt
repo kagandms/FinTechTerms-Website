@@ -1,0 +1,19 @@
+# Rewrite Candidate Terms
+Generated: 2026-04-23
+Source: docs/review-before-deletion-terms.txt
+Purpose: Remaining review terms that are still domain-valid, but should be rewritten into a more finance/fintech/MIS-specific form instead of deleted immediately.
+Term count: 12
+Format: id | category | slug | term_en | definition_en | example_sentence_en | decision_reason
+
+term_316 | Finance | accelerator | Accelerator | Program for rapid startup growth. | Y Combinator is a famous accelerator. | Venture/startup finance bağlamında tutulabilir; mevcut tanım fazla genel.
+term_326 | Finance | board-of-directors | Board of Directors | Group elected to represent shareholders. | The Board appoints the CEO. | Corporate governance bağlamında geçerli; mevcut ifade çok yüzeysel.
+term_317 | Finance | bootstrapping | Bootstrapping | Starting business with personal finances. | He is bootstrapping his app. | Startup financing söz varlığında yeri var; daha finansal bir açıklama gerekiyor.
+term_318 | Finance | exit-strategy | Exit Strategy | Plan to sell company ownership. | IPO is a common exit strategy. | VC, IPO, M&A bağlamında değerli olabilir; mevcut tanım yetersiz.
+term_5003 | Finance | fico | FICO | Popular credit scoring model. | Check your FICO score. | Credit scoring ve lending fintech bağlamında değerli; mevcut tanım çok kısa.
+term_315 | Finance | incubator | Incubator | Org helping new startups develop. | The incubator offered office space. | Startup funding ecosystem parçası; fintech venture cluster içinde kalabilir.
+term_306 | Finance | inventory | Inventory | Goods held for sale. | Inventory management is tricky. | Accounting/working capital bağlamında geçerli; tanım ve örnek güçlendirilmeli.
+term_325 | Finance | shareholder | Shareholder | Owner of shares in a company. | Shareholders vote at the AGM. | Equity, stock ve governance ile doğrudan bağlantılı; daha iyi yazılmalı.
+term_312 | Finance | startup | Startup | Young company founded to develop unique product. | Startups seek venture capital. | Startup finance/venture capital kümelerinde anlamlı; mevcut tanım basit kalıyor.
+term_313 | Finance | unicorn | Unicorn | Startup valued at over $1 billion. | Uber was a unicorn. | Venture valuation ekosistemi içinde yerli; mevcut anlatım yüzeysel.
+term_4082 | Technology | deepfake | Deepfake | AI-generated fake video/audio. | Deepfakes can spread misinformation. | Fraud/KYC spoofing bağlamında anlamlı; mevcut tanım çok genel.
+term_4205 | Technology | tor | Tor | Network for anonymous communication. | Tor browser accesses .onion sites. | Fraud, anonymity ve abuse context içinde kullanılabilir; mevcut tanım fazla genel.

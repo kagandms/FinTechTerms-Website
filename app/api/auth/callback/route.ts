@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAuthRouteClient } from '@/lib/auth/route-handler';
 import { logger } from '@/lib/logger';
+import { resolveSafeAuthNextPath } from '@/lib/auth/redirect-target';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get('code');
-    const next = requestUrl.searchParams.get('next') || '/profile?complete=1';
+    const next = requestUrl.searchParams.get('next');
     
     const forwardedHost = request.headers.get('x-forwarded-host');
     const origin = forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
             const { supabase, applyCookies } = authContext;
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (!error) {
-                return applyCookies(NextResponse.redirect(new URL(next, origin)));
+                return applyCookies(NextResponse.redirect(new URL(resolveSafeAuthNextPath(next, origin), origin)));
             }
 
             logger.warn('AUTH_CALLBACK_EXCHANGE_FAILED', {

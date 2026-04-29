@@ -9,7 +9,7 @@ import DashboardClient, {
 } from '@/components/DashboardClient';
 import { redirect } from 'next/navigation';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv } from '@/lib/server-env';
 import { logger } from '@/lib/logger';
 import { isAdminUserId } from '@/lib/admin-access';
 import { createServiceRoleClient } from '@/lib/supabaseAdmin';

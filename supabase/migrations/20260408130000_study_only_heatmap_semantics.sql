@@ -65,6 +65,7 @@ as $$
         round(coalesce(aggregated_logs.time_spent_ms, 0)::numeric / 1000)::integer as time_spent_seconds,
         coalesce(aggregated_logs.time_spent_ms, 0)::bigint as time_spent_ms,
         coalesce(aggregated_sessions.session_count, 0) as session_count,
+        -- Heatmap intensity is answered review volume; session_count stays separate so opened sessions are not counted as study activity.
         coalesce(aggregated_logs.words_reviewed, 0)::integer as activity_count
     from day_series
     left join aggregated_logs

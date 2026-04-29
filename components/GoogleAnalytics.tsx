@@ -3,7 +3,7 @@
 import Script from 'next/script';
 import { useCallback, useEffect, useState } from 'react';
 import { CONSENT_GRANTED_EVENT } from './ConsentModal';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 
 const CONSENT_KEY = 'fintechterms_research_consent';
 

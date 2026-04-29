@@ -9,7 +9,7 @@ import React, {
     useState,
     type ReactNode,
 } from 'react';
-import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/env';
+import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
 import { createBrowserClient } from '@supabase/ssr';
 import { logger } from '@/lib/logger';
 import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv } from '@/lib/server-env';
 
 const TEST_STUDY_SESSION_TOKEN_SECRET = 'test-study-session-token-secret';
 

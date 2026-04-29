@@ -432,6 +432,38 @@ describe('record-quiz route', () => {
         });
     });
 
+    it('returns 403 when the database member guard rejects the quiz write', async () => {
+        const rpc = jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+                code: '42501',
+                message: 'Complete your member setup to unlock review mode.',
+            },
+        });
+        mockCreateRequestScopedClient.mockResolvedValue({ rpc });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            session_id: '550e8400-e29b-41d4-a716-446655440001',
+            session_token: 'a'.repeat(32),
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({
+            code: 'MEMBER_REQUIRED',
+            message: 'Complete your member setup to unlock review mode.',
+            retryable: false,
+        });
+        expect(mockFailIdempotentRequest).toHaveBeenCalledWith(expect.objectContaining({
+            statusCode: 403,
+            responseBody: {
+                code: 'MEMBER_REQUIRED',
+                message: 'Complete your member setup to unlock review mode.',
+            },
+        }));
+    });
+
     it('returns 503 when the route rate limiter is unavailable', async () => {
         jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
             allowed: false,

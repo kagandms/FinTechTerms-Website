@@ -18,7 +18,7 @@ import {
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
 import { getSafeAuthErrorCode } from '@/lib/auth/error-messages';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 import { authResetPasswordRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 
 const ResetPasswordSchema = z.object({

@@ -37,7 +37,7 @@ from bot.db_terms import (
 from bot.i18n import t
 from bot.quiz import build_quiz, build_quiz_result
 from bot.tts import generate_tts_audio
-from bot.rate_limiter import is_rate_limited
+from bot.rate_limiter import is_rate_limited, is_search_rate_limited
 
 logger = logging.getLogger(__name__)
 
@@ -536,6 +536,7 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not update.effective_user or not update.message:
         return
 
+    user_id = update.effective_user.id
     lang = _resolve_lang(update, context)
 
     if not context.args:
@@ -563,6 +564,10 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             parse_mode=ParseMode.HTML,
             scope="search-empty",
         )
+        return
+
+    if await is_search_rate_limited(user_id):
+        await _send_busy_fallback(update.message, lang)
         return
 
     try:
@@ -976,6 +981,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.effective_user or not update.message or not update.message.text:
         return
 
+    user_id = update.effective_user.id
     lang = _resolve_lang(update, context)
 
     raw_query = update.message.text.strip()
@@ -985,6 +991,10 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     query = sanitize_input(raw_query)
     if not query:
+        return
+
+    if await is_search_rate_limited(user_id):
+        await _send_busy_fallback(update.message, lang)
         return
 
     try:

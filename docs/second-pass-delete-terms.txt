@@ -1,0 +1,47 @@
+# Second Pass Delete Terms
+Generated: 2026-04-23
+Source: docs/review-before-deletion-terms.txt
+Purpose: Remaining review terms that should now be deleted after reading the actual definitions one by one.
+Term count: 40
+Format: id | category | slug | term_en | definition_en | example_sentence_en | decision_reason
+
+term_5004 | Finance | budgeting | Budgeting | Creating a plan for spending money. | Budgeting saves money. | Kişisel finans başlangıç seviyesi içeriği; mevcut stratejik konumlandırmayı aşağı çekiyor.
+term_320 | Finance | copyright | Copyright | Legal right to print/publish material. | Images are protected by copyright. | Genel hukuk/IP terimi; fintech glossary çekirdeği için fazla geniş.
+term_5000 | Finance | emergency-fund | Emergency Fund | Money set aside for unexpected expenses. | Build an emergency fund first. | Tüketici finansı temel seviyesi; profesyonel/akademik kalite hedefiyle zayıf uyumlu.
+term_322 | Finance | intellectual-property-ip | Intellectual Property (IP) | Creations of the mind. | Protect your IP carefully. | Aşırı geniş hukuk kavramı; yerine IP-backed lending gibi daha spesifik terimler tercih edilmeli.
+term_323 | Finance | nda | NDA | Non-Disclosure Agreement. | Employees signed an NDA. | Genel iş hukuku belgesi; glossary odağını seyreltiyor.
+term_319 | Finance | patent | Patent | Legal right to make/sell an invention. | They filed a patent for the tech. | Genel patent hukuku; fintech ve finance çekirdeği için ikincil.
+term_324 | Finance | stakeholder | Stakeholder | Person with interest in a business. | Consider all stakeholders. | Aşırı genel yönetim kelimesi; finansal özgüllüğü düşük.
+term_304 | Finance | supply-chain | Supply Chain | Network between company and suppliers. | Supply chain disruption caused delays. | Genel operasyon kavramı; yerine supply chain finance gibi spesifik terimler daha doğru.
+term_321 | Finance | trademark | Trademark | Symbol/word legally registered as representing a company. | Coca-Cola is a famous trademark. | Genel marka hukuku; mevcut ürün yönelimi için fazla geniş.
+term_826 | Technology | big-o | Big O | Notation for complexity. | O(n) is linear. | Temel bilgisayar bilimi notasyonu; mevcut glossary değerini düşürüyor.
+term_1154 | Technology | binary-tree | Binary Tree | Tree with two children max. | Traverse the binary tree. | Genel veri yapısı; fintech bağlamı yok.
+term_1190 | Technology | buffer | Buffer | Temp storage for data transfer. | Video is buffering. | Temel sistem/programlama kavramı; glossary sinyalini düşürüyor.
+term_4059 | Technology | csr | CSR | Client-Side Rendering. | CSR can have slow initial load. | Genel web rendering terimi; fintech glossary odağını dağıtıyor.
+term_4055 | Technology | data-scientist | Data Scientist | Expert analyzing complex data. | Data scientists use Python. | Genel meslek adı; daha değerli alternatifler quantitative analyst/model risk tarafında.
+term_4206 | Technology | deep-web | Deep Web | Part of web not indexed by search engines. | Email is in the Deep Web. | Popüler ama yüzeysel internet kavramı; fraud/security için bile daha iyi spesifik terimler var.
+term_4083 | Technology | digital-twin | Digital Twin | Virtual replica of a physical object. | Digital twins optimize manufacturing. | Fiziksel üretim/IoT odağı baskın; mevcut fintech ve MIS çekirdeğinden uzak.
+term_4063 | Technology | dom | DOM | Document Object Model; HTML structure. | JavaScript manipulates the DOM. | Frontend altyapı detayı; son kullanıcıya veya finansal kavrama dönmüyor.
+term_823 | Technology | graph | Graph | Nodes connected by edges. | Social network is a graph. | Aşırı genel bilgisayar bilimi kavramı; başka alanlara açılıyor.
+term_4050 | Technology | hadoop | Hadoop | Framework for distributed storage and processing. | Hadoop handles big data. | Genel data platform markeri; yerine lakehouse, feature store gibi daha güçlü terimler eklenebilir.
+term_1153 | Technology | hash-map | Hash Map | Key-value store. | Hash map is fast. | Genel veri yapısı; ürün ve akademik fintech değerine katkısı zayıf.
+term_824 | Technology | hash-table | Hash Table | Key-value store. | Hash table offers O(1) lookup. | Hash Map ile aynı kümeye düşen genel CS terimi; düşük sinyal.
+term_1155 | Technology | heap | Heap | Tree-based structure. | Min-heap stores smallest at root. | Genel veri yapısı; finansal ürün veya altyapı kavramına dönüşmüyor.
+term_1185 | Technology | hypervisor | Hypervisor | Software creating VMs. | VMware is a hypervisor. | Altyapı detayı; mevcut kapsam için gereksiz teknik dağılım.
+term_1164 | Technology | ip | IP | Internet Protocol. | IP address identifies device. | Temel networking kavramı; domain özgüllüğü yok.
+term_1150 | Technology | linked-list | Linked List | Linear collection of nodes. | Linked list involves pointers. | Genel veri yapısı; glossary kapsamını dağıtıyor.
+term_4204 | Technology | proxy | Proxy | Server acting as intermediary. | Proxies can hide IP. | Genel ağ aracısı kavramı; fraud için residential proxy gibi daha spesifik terimler tercih edilmeli.
+term_4056 | Technology | pwa | PWA | Progressive Web App; web app behaving like mobile app. | Install the PWA on your phone. | Web uygulama delivery terimi; FinTechTerms çekirdek ontolojisine zayıf bağlı.
+term_821 | Technology | queue | Queue | FIFO data structure. | Join the queue. | Temel veri yapısı; alan odaklı değil.
+term_1188 | Technology | reverse-proxy | Reverse Proxy | Server sitting in front of web servers. | Nginx is a reverse proxy. | Web ops mimari detayı; sözlüğün odağını zayıflatıyor.
+term_1159 | Technology | set | Set | Collection of unique items. | Set allows no duplicates. | Aşırı temel programlama koleksiyonu kavramı.
+term_4057 | Technology | spa | SPA | Single Page Application. | React creates SPAs. | Genel frontend mimarisi terimi; finans/fintech sözlüğü için düşük öncelik.
+term_4051 | Technology | spark | Spark | Engine for large-scale data processing. | Spark is faster than Hadoop. | Genel data-engineering aracı; mevcut tanım ve örnek fazla yüzeysel.
+term_4058 | Technology | ssr | SSR | Server-Side Rendering. | SSR improves SEO. | Genel web rendering terimi; teknoloji kategorisini gereksiz genişletiyor.
+term_820 | Technology | stack | Stack | LIFO data structure. | Push to stack. | Temel veri yapısı; fintech bilgi mimarisine düşük katkı.
+term_1162 | Technology | tcp | TCP | Transmission Control Protocol. | TCP guarantees delivery. | Temel network protokolü; fintech kavram envanterine zayıf bağlı.
+term_822 | Technology | tree | Tree | Hierarchical data structure. | Binary search tree. | Genel veri yapısı; domain değeri düşük.
+term_1157 | Technology | trie | Trie | Prefix tree. | Trie is used for autocomplete. | Genel algoritmik veri yapısı; fintech glossary için gereksiz detay.
+term_1163 | Technology | udp | UDP | User Datagram Protocol. | UDP is faster but unreliable. | Temel network protokolü; glossary odağı için fazla teknik.
+term_1158 | Technology | vector | Vector | Dynamic array. | Vectors resize automatically. | Genel programlama terimi; kavramsal derinlik düşük.
+term_1184 | Technology | virtual-machine | Virtual Machine | Emulated computer. | Run Windows in a VM. | Genel sanallaştırma terimi; fintech kullanıcı değeri sınırlı.

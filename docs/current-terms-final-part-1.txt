@@ -1,0 +1,199 @@
+# Current Final Terms Part 1
+Generated: 2026-04-23
+Source: docs/current-terms-final.txt
+Part: 1 / 5
+Terms in this file: 192
+Format: id | category | slug | term_en | term_tr | term_ru
+
+term_001 | Finance | gross-domestic-product-gdp | Gross Domestic Product (GDP) | Gayri Safi Yurt İçi Hasıla (GSYİH) | Валовой внутренний продукт (ВВП)
+term_002 | Finance | gross-national-product-gnp | Gross National Product (GNP) | Gayri Safi Milli Hasıla (GSMH) | Валовой национальный продукт (ВНП)
+term_003 | Finance | inflation | Inflation | Enflasyon | Инфляция
+term_004 | Finance | deflation | Deflation | Deflasyon | Дефляция
+term_005 | Finance | stagflation | Stagflation | Stagflasyon | Стагфляция
+term_006 | Finance | recession | Recession | Durgunluk (Resesyon) | Рецессия
+term_007 | Finance | hyperinflation | Hyperinflation | Hiperenflasyon | Гиперинфляция
+term_008 | Finance | supply-and-demand | Supply and Demand | Arz ve Talep | Спрос и предложение
+term_009 | Finance | elasticity | Elasticity | Esneklik | Эластичность
+term_010 | Finance | opportunity-cost | Opportunity Cost | Fırsat Maliyeti | Альтернативная стоимость
+term_011 | Finance | monopoly | Monopoly | Tekel | Монополия
+term_012 | Finance | oligopoly | Oligopoly | Oligopol | Олигополия
+term_013 | Finance | fiscal-policy | Fiscal Policy | Maliye Politikası | Фискальная политика
+term_014 | Finance | monetary-policy | Monetary Policy | Para Politikası | Денежно-кредитная политика
+term_015 | Finance | purchasing-power-parity-ppp | Purchasing Power Parity (PPP) | Satın Alma Gücü Paritesi (SGP) | Паритет покупательной способности (ППС)
+term_016 | Finance | trade-deficit | Trade Deficit | Dış Ticaret Açığı | Торговый дефицит
+term_017 | Finance | surplus | Surplus | Fazla | Профицит
+term_018 | Finance | subsidy | Subsidy | Sübvansiyon (Destek) | Субсидия
+term_019 | Finance | tariff | Tariff | Gümrük Vergisi (Tarife) | Тариф (Пошлина)
+term_020 | Finance | central-bank | Central Bank | Merkez Bankası | Центральный банк
+term_021 | Finance | asset | Asset | Varlık | Актив
+term_022 | Finance | liability | Liability | Yükümlülük (Borç) | Обязательство
+term_023 | Finance | equity | Equity | Özkaynak | Собственный капитал
+term_024 | Finance | balance-sheet | Balance Sheet | Bilanço | Балансовый отчёт
+term_025 | Finance | cash-flow | Cash Flow | Nakit Akışı | Денежный поток
+term_026 | Finance | dividend | Dividend | Temettü | Дивиденд
+term_027 | Finance | portfolio | Portfolio | Portföy | Портфель
+term_028 | Finance | hedge-fund | Hedge Fund | Hedge Fonu | Хедж-фонд
+term_029 | Finance | venture-capital | Venture Capital | Girişim Sermayesi | Венчурный капитал
+term_030 | Finance | ipo | IPO | Halka Arz (IPO) | IPO
+term_031 | Finance | bull-market | Bull Market | Boğa Piyasası | Бычий рынок
+term_032 | Finance | bear-market | Bear Market | Ayı Piyasası | Медвежий рынок
+term_033 | Finance | short-selling | Short Selling | Açığa Satış | Короткая продажа
+term_034 | Finance | long-position | Long Position | Uzun Pozisyon | Длинная позиция
+term_035 | Finance | leverage | Leverage | Kaldıraç | Кредитное плечо (Леверидж)
+term_036 | Finance | margin-call | Margin Call | Teminat Tamamlama Çağrısı | Маржин-колл
+term_037 | Finance | volatility | Volatility | Volatilite (Oynaklık) | Волатильность
+term_038 | Finance | liquidity | Liquidity | Likidite | Ликвидность
+term_039 | Finance | derivative | Derivative | Türev Araç | Дериватив
+term_040 | Finance | futures-contract | Futures Contract | Vadeli İşlem Sözleşmesi | Фьючерсный контракт
+term_041 | Finance | option | Option | Opsiyon | Опцион
+term_042 | Finance | bond | Bond | Tahvil | Облигация
+term_043 | Finance | stock | Stock | Hisse Senedi | Акция
+term_044 | Finance | mutual-fund | Mutual Fund | Yatırım Fonu | Паевой инвестиционный фонд
+term_045 | Finance | market-cap | Market Cap | Piyasa Değeri | Рыночная капитализация
+term_084 | Finance | debit | Debit | Borç (Debit) | Дебет
+term_085 | Finance | credit | Credit | Alacak (Credit) | Кредит
+term_086 | Finance | general-ledger | General Ledger | Defter-i Kebir | Главная книга
+term_087 | Finance | trial-balance | Trial Balance | Mizan | Пробный баланс
+term_088 | Finance | amortization | Amortization | İtfa Payı (Amortisman) | Амортизация (НМА)
+term_089 | Finance | depreciation | Depreciation | Yıpranma Payı (Amortisman) | Износ (Амортизация)
+term_090 | Finance | net-income | Net Income | Net Gelir | Чистая прибыль
+term_091 | Finance | gross-margin | Gross Margin | Brüt Kar Marjı | Валовая маржа
+term_092 | Finance | break-even-point | Break-even Point | Başa Baş Noktası | Точка безубыточности
+term_093 | Finance | revenue | Revenue | Hasılat (Ciro) | Выручка
+term_095 | Finance | audit | Audit | Denetim | Аудит
+term_109 | Finance | compliance | Compliance | Uyum | Комплаенс
+term_111 | Finance | credit-risk | Credit Risk | Kredi Riski | Кредитный риск
+term_112 | Finance | market-risk | Market Risk | Piyasa Riski | Рыночный риск
+term_113 | Finance | operational-risk | Operational Risk | Operasyonel Risk | Операционный риск
+term_114 | Finance | hedging | Hedging | Riskten Korunma | Хеджирование
+term_115 | Finance | var | VaR | VaR (Riske Maruz Değer) | VaR (Стоимость под риском)
+term_127 | Finance | swift | SWIFT | SWIFT | SWIFT
+term_128 | Finance | iban | IBAN | IBAN | IBAN
+term_134 | Finance | remittance | Remittance | Havale | Денежный перевод
+term_146 | Finance | premium | Premium | Prim | Страховая премия
+term_147 | Finance | deductible | Deductible | Muafiyet | Франшиза
+term_148 | Finance | underwriting | Underwriting | Sigorta Değerlendirmesi | Андеррайтинг
+term_149 | Finance | actuary | Actuary | Aktüer | Актуарий
+term_150 | Finance | claim | Claim | Hasar Talebi | Страховое требование
+term_151 | Finance | policy | Policy | Poliçe | Полис
+term_152 | Finance | reinsurance | Reinsurance | Reasürans | Перестрахование
+term_153 | Finance | liability-insurance | Liability Insurance | Sorumluluk Sigortası | Страхование ответственности
+term_154 | Finance | life-insurance | Life Insurance | Hayat Sigortası | Страхование жизни
+term_155 | Finance | health-insurance | Health Insurance | Sağlık Sigortası | Медицинская страховка
+term_156 | Finance | ebitda | EBITDA | FAVÖK | EBITDA
+term_157 | Finance | roi | ROI | ROI (Yatırım Getirisi) | ROI (Рентабельность инвестиций)
+term_158 | Finance | roe | ROE | ROE (Özkaynak Karlılığı) | ROE (Рентабельность капитала)
+term_159 | Finance | cagr | CAGR | CAGR (Bileşik Yıllık Büyüme Oranı) | CAGR (Совокупный годовой темп роста)
+term_160 | Finance | working-capital | Working Capital | İşletme Sermayesi | Оборотный капитал
+term_161 | Finance | accounts-receivable | Accounts Receivable | Alacak Hesapları | Дебиторская задолженность
+term_162 | Finance | accounts-payable | Accounts Payable | Borç Hesapları | Кредиторская задолженность
+term_163 | Finance | accrual | Accrual | Tahakkuk | Начисление
+term_164 | Finance | tax-deduction | Tax Deduction | Vergi İndirimi | Налоговый вычет
+term_165 | Finance | capital-gains | Capital Gains | Sermaye Kazancı | Прирост капитала
+term_166 | Finance | limit-order | Limit Order | Limit Emir | Лимитный ордер
+term_167 | Finance | market-order | Market Order | Piyasa Emri | Рыночный ордер
+term_168 | Finance | stop-loss | Stop Loss | Zarar Durdur | Стоп-лосс
+term_169 | Finance | take-profit | Take Profit | Kar Al | Тейк-профит
+term_170 | Finance | candlestick | Candlestick | Mum Grafiği | Японская свеча
+term_171 | Finance | moving-average | Moving Average | Hareketli Ortalama | Скользящая средняя
+term_172 | Finance | rsi | RSI | RSI (Göreceli Güç Endeksi) | RSI (Индекс относительной силы)
+term_173 | Finance | macd | MACD | MACD | MACD
+term_174 | Finance | volume | Volume | Hacim | Объём
+term_175 | Finance | spread | Spread | Spread (Fark) | Спред
+term_193 | Finance | wire-transfer | Wire Transfer | Banka Havalesi | Банковский перевод
+term_220 | Finance | market-maker | Market Maker | Piyasa Yapıcı | Маркет-мейкер
+term_221 | Finance | bid-price | Bid Price | Alış Fiyatı (Bid) | Цена бид
+term_222 | Finance | ask-price | Ask Price | Satış Fiyatı (Ask) | Цена аск
+term_224 | Finance | blue-chip | Blue Chip | Mavi Çip (Dev Şirket) | Голубая фишка
+term_225 | Finance | penny-stock | Penny Stock | Kuruşluk Hisse | Пенни-сток
+term_226 | Finance | arbitrage | Arbitrage | Arbitraj | Арбитраж
+term_227 | Finance | collateral | Collateral | Teminat | Залог
+term_228 | Finance | insolvency | Insolvency | Ödeme Güçlüğü (İflas) | Неплатежеспособность
+term_229 | Finance | liquidate | Liquidate | Tasfiye Etmek (Nakitletmek) | Ликвидировать
+term_230 | Finance | fiat-currency | Fiat Currency | İtibari Para (Fiat) | Фиатная валюта
+term_232 | Finance | mergers-and-acquisitions-m-and-a | Mergers and Acquisitions (M&A) | Birleşme ve Satın Alma (M&A) | Слияния и поглощения
+term_233 | Finance | hostile-takeover | Hostile Takeover | Düşmanca Devralma | Враждебное поглощение
+term_234 | Finance | golden-parachute | Golden Parachute | Altın Paraşüt | Золотой парашют
+term_235 | Finance | private-equity | Private Equity | Özel Sermaye (Private Equity) | Частный акционерный капитал
+term_236 | Finance | lbo | LBO | Kaldıraçlı Satın Alma (LBO) | LBO
+term_237 | Finance | due-diligence | Due Diligence | Dürüm Tespiti (Due Diligence) | Дью-ди́лидженс
+term_238 | Finance | valuation | Valuation | Değerleme | Оценка стоимости
+term_239 | Finance | synergy | Synergy | Sinerji | Синергия
+term_241 | Finance | swap | Swap | Takas (Swap) | Своп
+term_242 | Finance | cds | CDS | Kredi Temerrüt Takası (CDS) | CDS
+term_243 | Finance | securitization | Securitization | Menkul Kıymetleştirme | Секьюритизация
+term_244 | Finance | spv | SPV | Özel Amaçlı Şirket (SPV) | SPV
+term_245 | Finance | dark-pool | Dark Pool | Karanlık Havuz (Dark Pool) | Дарк пулы
+term_246 | Finance | high-frequency-trading-hft | High-Frequency Trading (HFT) | Yüksek Frekanslı İşlemler (HFT) | HFT
+term_247 | Finance | quantitative-easing | Quantitative Easing | Parasal Genişleme | Количественное смягчение
+term_250 | Finance | money-laundering | Money Laundering | Kara Para Aklama | Отмывание денег
+term_281 | Finance | interest-rate | Interest Rate | Faiz Oranı | Процентная ставка
+term_282 | Finance | basis-point | Basis Point | Baz Puan | Базисный пункт
+term_284 | Finance | capital-loss | Capital Loss | Sermaye Kaybı | Капитальный убыток
+term_287 | Finance | roa | ROA | Aktif Karlılığı (ROA) | ROA
+term_288 | Finance | p-e-ratio | P/E Ratio | Fiyat/Kazanç Oranı (F/K) | P/E коэффициент
+term_289 | Finance | eps | EPS | Hisse Başına Kar (HBK) | EPS
+term_291 | Finance | diversification | Diversification | Çeşitlendirme | Диверсификация
+term_292 | Finance | risk-management | Risk Management | Risk Yönetimi | Управление рисками
+term_293 | Finance | credit-rating | Credit Rating | Kredi Notu | Кредитный рейтинг
+term_294 | Finance | default | Default | Temerrüt | Дефолт
+term_295 | Finance | bankruptcy | Bankruptcy | İflas | Банкротство
+term_296 | Finance | forex | Forex | Forex | Форекс
+term_297 | Finance | exchange-rate | Exchange Rate | Döviz Kuru | Обменный курс
+term_299 | Finance | microfinance | Microfinance | Mikrofinans | Микрофинансы
+term_306 | Finance | inventory | Inventory | Stok (Envanter) | Инвентарь (Запасы)
+term_312 | Finance | startup | Startup | Girişim (Startup) | Стартап
+term_313 | Finance | unicorn | Unicorn | Unicorn (Milyar Dolarlık Girişim) | Единорог
+term_314 | Finance | angel-investor | Angel Investor | Melek Yatırımcı | Бизнес-ангел
+term_315 | Finance | incubator | Incubator | Kuluçka Merkezi | Инкубатор
+term_316 | Finance | accelerator | Accelerator | Hızlandırıcı | Акселератор
+term_317 | Finance | bootstrapping | Bootstrapping | Öz Kaynakla Büyüme (Bootstrapping) | Бутстрэппинг
+term_318 | Finance | exit-strategy | Exit Strategy | Çıkış Stratejisi | Стратегия выхода
+term_325 | Finance | shareholder | Shareholder | Hissedar | Акционер
+term_326 | Finance | board-of-directors | Board of Directors | Yönetim Kurulu | Совет директоров
+term_340 | Finance | mortgage | Mortgage | İpotek (Mortgage) | Ипотека
+term_341 | Finance | foreclosure | Foreclosure | Haciz (Gayrimenkul) | Взыскание залога
+term_342 | Finance | appraisal | Appraisal | Ekspertiz (Değer Biçme) | Оценка
+term_343 | Finance | reit | REIT | Gayrimenkul Yatırım Ortaklığı (GYO) | REIT
+term_344 | Finance | lease | Lease | Kiralama (Leasing) | Аренда (Лизинг)
+term_348 | Finance | income-tax | Income Tax | Gelir Vergisi | Подоходный налог
+term_349 | Finance | corporate-tax | Corporate Tax | Kurumlar Vergisi | Корпоративный налог
+term_350 | Finance | vat | VAT | KDV (Katma Değer Vergisi) | НДС
+term_351 | Finance | capital-gains-tax | Capital Gains Tax | Sermaye Kazancı Vergisi | Налог на прирост капитала
+term_352 | Finance | deduction | Deduction | Vergi İndirimi (Matrah İndirimi) | Вычет
+term_353 | Finance | tax-haven | Tax Haven | Vergi Cenneti | Налоговое убежище
+term_356 | Finance | budget | Budget | Bütçe | Бюджет
+term_357 | Finance | deficit | Deficit | Açık (Bütçe Açığı) | Дефицит
+term_359 | Finance | fiscal-year | Fiscal Year | Mali Yıl | Финансовый год
+term_360 | Finance | quarter | Quarter | Çeyrek Dönem | Квартал
+term_361 | Finance | audit-trail | Audit Trail | Denetim İzi | Аудиторский след
+term_362 | Finance | benchmarking | Benchmarking | Kıyaslama (Benchmarking) | Бенчмаркинг
+term_363 | Finance | kpi | KPI | KPI (Temel Performans Göstergesi) | KPI
+term_364 | Finance | metric | Metric | Metrik | Метрика
+term_365 | Finance | variable-cost | Variable Cost | Değişken Maliyet | Переменные издержки
+term_366 | Finance | fixed-cost | Fixed Cost | Sabit Maliyet | Постоянные издержки
+term_367 | Finance | overhead | Overhead | Genel Giderler | Накладные расходы
+term_368 | Finance | cash-cow | Cash Cow | Nakit İneği (Çok Kazandıran) | Денежная корова
+term_369 | Finance | loss-leader | Loss Leader | Zararına Satış Lideri | Убыточный лидер
+term_370 | Finance | economies-of-scale | Economies of Scale | Ölçek Ekonomisi | Эффект масштаба
+term_415 | Finance | crowdfunding | Crowdfunding | Kitle Fonlaması | Краудфандинг
+term_431 | Finance | credit-score | Credit Score | Kredi Puanı (Skor) | Кредитный рейтинг (балл)
+term_432 | Finance | direct-debit | Direct Debit | Otomatik Ödeme | Прямое дебетование
+term_433 | Finance | overdraft | Overdraft | Ek Hesap limit aşımı (Overdraft) | Овердрафт
+term_437 | Finance | sepa | SEPA | SEPA (Avrupa Ödeme Alanı) | SEPA
+term_440 | Finance | cheque | Cheque | Çek | Чек
+term_441 | Finance | merchant | Merchant | Üye İşyeri (Satıcı) | Мерчант (Продавец)
+term_442 | Finance | pos | POS | POS (Satış Noktası) | POS
+term_443 | Finance | acquirer | Acquirer | Üye İşyeri Anlaşması Yapan Banka | Эквайер
+term_444 | Finance | issuer | Issuer | Kart Veren Banka (Issuer) | Эмитент
+term_445 | Finance | chargeback | Chargeback | Ters İbraz (Chargeback) | Чарджбэк
+term_449 | Finance | mobile-banking | Mobile Banking | Mobil Bankacılık | Мобильный банкинг
+term_451 | Finance | deposit | Deposit | Mevduat | Депозит
+term_453 | Finance | balance | Balance | Bakiye | Баланс
+term_467 | Finance | correction | Correction | Düzeltme | Коррекция
+term_468 | Finance | rally | Rally | Ralli (Yükseliş) | Ралли
+term_469 | Finance | support | Support | Destek (Teknik Analiz) | Поддержка
+term_470 | Finance | resistance | Resistance | Direnç (Teknik Analiz) | Сопротивление
+term_471 | Finance | trend | Trend | Trend (Eğilim) | Тренд
+term_473 | Finance | index | Index | Endeks | Индекс
+term_474 | Finance | etf | ETF | ETF (Borsa Yatırım Fonu) | ETF

@@ -1,0 +1,153 @@
+# High Confidence Delete Terms
+Generated: 2026-04-23
+Source: docs/delete-candidate-terms.txt
+Purpose: Terms from the 196-candidate list that are 99% safe to delete because they lower page quality, dilute the FinTechTerms positioning, duplicate stronger entries, or contain obvious quality defects.
+Term count: 144
+Format: id | category | slug | term_en | term_tr | term_ru | deletion_reason
+Decision rule: delete unless there is a specific strategic reason to rewrite one as a stronger fintech/finance/MIS concept.
+Review remainder: 52
+
+term_4146 | Technology | 3d-printing | 3D Printing | 3D Yazıcı | 3D-печать | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4035 | Technology | ar | AR | AR (Artırılmış Gerçeklik) | AR | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4148 | Technology | autonomous-vehicle | Autonomous Vehicle | Otonom Araç | Беспилотный автомобиль | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4042 | Technology | bioinformatics | Bioinformatics | Biyoinformatik | Биоинформатика | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4047 | Technology | dark-mode | Dark Mode | Karanlık Mod | Темная тема | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4147 | Technology | drone | Drone | Drone (İHA) | Дрон | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4043 | Technology | genomics | Genomics | Genomik | Геномика | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4080 | Technology | moore-s-law | Moore's Law | Moore Yasası | Закон Мура | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4037 | Technology | mr | MR | MR (Karma Gerçeklik) | MR | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4151 | Technology | nanotechnology | Nanotechnology | Nanoteknoloji | Нанотехнологии | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4153 | Technology | renewable-energy | Renewable Energy | Yenilenebilir Enerji | Возобновляемая энергия | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4079 | Technology | rfid | RFID | RFID | RFID | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4040 | Technology | robotics | Robotics | Robotik | Робототехника | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4081 | Technology | singularity | Singularity | Tekillik (Singularity) | Сингулярность | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4084 | Technology | smart-city | Smart City | Akıllı Şehir | Умный город | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4149 | Technology | smart-home | Smart Home | Akıllı Ev | Умный дом | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4036 | Technology | vr | VR | VR (Sanal Gerçeklik) | VR | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4150 | Technology | wearable-tech | Wearable Tech | Giyilebilir Teknoloji | Носимые технологии | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4086 | Technology | wi-fi-6 | Wi-Fi 6 | Wi-Fi 6 | Wi-Fi 6 | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_818 | Technology | array | Array | Dizi (Array) | Массив | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_829 | Technology | bit | Bit | Bit | Бит | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_4136 | Technology | boolean | Boolean | Mantıksal Değer (Boolean) | Булево значение | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_830 | Technology | byte | Byte | Bayt | Байт | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1149 | Technology | bytecode | Bytecode | Ara Kod (Bytecode) | Байт-код | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1147 | Technology | compiler | Compiler | Derleyici (Compiler) | Компилятор | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_816 | Technology | float | Float | Kayan Noktalı Sayı (Float) | Float (Число с запятой) | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_815 | Technology | integer | Integer | Tamsayı | Целое число | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1148 | Technology | interpreter | Interpreter | Yorumlayıcı (Interpreter) | Интерпретатор | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_839 | Technology | linker | Linker | Bağlayıcı (Linker) | Линковщик | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_4139 | Technology | null | Null | Null (Boş Değer) | Null | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_819 | Technology | pointer | Pointer | İşaretçi (Pointer) | Указатель | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_836 | Technology | recursion | Recursion | Özyineleme (Recursion) | Рекурсия | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1146 | Technology | reference | Reference | Referans | Ссылка | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_828 | Technology | searching | Searching | Arama | Поиск | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_838 | Technology | semantics | Semantics | Anlambilim | Семантика | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_827 | Technology | sorting | Sorting | Sıralama | Сортировка | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_817 | Technology | string | String | Dizi (String) | Строка | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_837 | Technology | syntax | Syntax | Sözdizimi | Синтаксис | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_4140 | Technology | undefined | Undefined | Tanımsız (Undefined) | Undefined | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_4192 | Technology | apk | APK | APK | APK | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4196 | Technology | bin-cue | Bin/Cue | Bin/Cue | Bin/Cue | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4186 | Technology | csv | CSV | CSV | CSV | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4194 | Technology | dmg | DMG | DMG | DMG | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4183 | Technology | docx | DOCX | DOCX | DOCX | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4191 | Technology | exe | EXE | EXE | EXE | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4178 | Technology | gif | GIF | GIF | GIF | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4193 | Technology | ipa | IPA | IPA | IPA | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4195 | Technology | iso | ISO | ISO | ISO | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4176 | Technology | jpg | JPG | JPG/JPEG | JPG | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4180 | Technology | mp3 | MP3 | MP3 | MP3 | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4181 | Technology | mp4 | MP4 | MP4 | MP4 | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4182 | Technology | pdf | PDF | PDF | PDF | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4177 | Technology | png | PNG | PNG | PNG | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4190 | Technology | rar | RAR | RAR | RAR | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4179 | Technology | svg | SVG | SVG | SVG | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4185 | Technology | txt | TXT | TXT | TXT | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4184 | Technology | xlsx | XLSX | XLSX (Excel) | XLSX | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_4189 | Technology | zip | ZIP | ZIP | ZIP | FinTech/finance/MIS odağına göre çok temel; kavram yerine dosya tipi anlatıyor.
+term_1418 | Finance | ammortization | Ammortization | İtfa (Amortization) | Амортизация (Кредит) | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_283 | Finance | capital-gain | Capital Gain | Sermaye Kazancı | Прирост капитала | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_5017 | Finance | ppp | PPP | SAGP (Satınalma Gücü Paritesi) | ППС | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_5023 | Finance | qe | QE | Parasal Genişleme (QE) | Количественное смягчение | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_056 | Fintech | p2p-lending | P2P Lending | P2P Kredilendirme | P2P-кредитование | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_4098 | Technology | algorithm-trading | Algorithm Trading | Algoritmik Ticaret | Алгоритмическая торговля | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_4019 | Technology | ddos | DDos | DDoS Saldırısı | DDoS | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_4030 | Technology | patch-menganement | Patch Menganement | Yama Yönetimi | Управление патчами | Mevcut hali katalog kalitesini düşürüyor; silme/replace kararına öncelik verilmeli.
+term_310 | Finance | b2b | B2B | B2B (İşletmeden İşletmeye) | B2B | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_311 | Finance | b2c | B2C | B2C (İşletmeden Tüketiciye) | B2C | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_327 | Finance | ceo | CEO | CEO (Genel Müdür) | CEO | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_328 | Finance | cfo | CFO | CFO (Mali İşler Müdürü) | CFO | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_330 | Finance | coo | COO | COO (Operasyon Müdürü) | COO | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_329 | Finance | cto | CTO | CTO (Teknoloji Müdürü) | CTO | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_331 | Finance | hr | HR | İnsan Kaynakları (İK) | HR | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_305 | Finance | logistics | Logistics | Lojistik | Логистика | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_303 | Finance | offshoring | Offshoring | Yurt Dışına Kaydırma (Offshoring) | Оффшоринг | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_302 | Finance | outsourcing | Outsourcing | Dış Kaynak Kullanımı | Аутсорсинг | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_332 | Finance | payroll | Payroll | Bordo (Maaş Ödemesi) | Зарплатная ведомость | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_308 | Finance | retail | Retail | Perakende | Розница | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_307 | Finance | wholesale | Wholesale | Toptan Satış | Опт | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_832 | Technology | bios | BIOS | BIOS | BIOS | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_831 | Technology | clock-speed | Clock Speed | Saat Hızı | Тактовая частота | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1166 | Technology | dhcp | DHCP | DHCP | DHCP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_833 | Technology | driver | Driver | Sürücü (Driver) | Драйвер | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1167 | Technology | ftp | FTP | FTP (Dosya Transfer) | FTP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1169 | Technology | imap | IMAP | IMAP | IMAP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1174 | Technology | osi-model | OSI Model | OSI Modeli | Модель OSI | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1180 | Technology | raid | RAID | RAID | RAID | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1168 | Technology | smtp | SMTP | SMTP | SMTP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1173 | Technology | soap | SOAP | SOAP | SOAP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_5005 | Finance | 50-30-20-rule | 50/30/20 Rule | 50/30/20 Kuralı | Правило 50/30/20 | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5015 | Finance | active-income | Active Income | Aktif Gelir | Активный доход | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5007 | Finance | financial-independence | Financial Independence | Finansal Bağımsızlık | Финансовая независимость | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5008 | Finance | fire | FIRE | FIRE (Erken Emeklilik) | FIRE | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5006 | Finance | lifestyle-inflation | Lifestyle Inflation | Yaşam Tarzı Enflasyonu | Инфляция образа жизни | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5014 | Finance | passive-income | Passive Income | Pasif Gelir | Пассивный доход | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_3160 | Fintech | diamond-hands | Diamond Hands | Elmas Eller | Бриллиантовые руки | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_218 | Fintech | fomo | FOMO | FOMO (Fırsatı Kaçırma Korkusu) | FOMO | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_217 | Fintech | fud | FUD | FUD (Korku, Belirsizlik, Şüphe) | FUD | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_219 | Fintech | hodl | HODL | HODL (Tutmak) | HODL | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_1118 | Fintech | mooning | Mooning | Aya Çıkış (Mooning) | Туземун | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_549 | Fintech | satoshi | Satoshi | Satoshi | Сатоши | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_595 | Fintech | to-the-moon | To the Moon | Aya Doğru (Yükseliş) | Ту зе мун | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_216 | Fintech | whale | Whale | Balina | Кит | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_1125 | Fintech | whale-alert | Whale Alert | Balina Alarmı | Whale Alert | Kripto altyapı bilgisinden çok piyasa jargonu; ana katalogda kalite sinyalini zayıflatıyor.
+term_4175 | Technology | airbnb | Airbnb | Airbnb | Airbnb | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4154 | Technology | alan-turing | Alan Turing | Alan Turing | Алан Тьюринг | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4164 | Technology | amazon | Amazon | Amazon | Amazon | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4169 | Technology | amd | AMD | AMD | AMD | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4124 | Technology | android | Android | Android | Android | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4162 | Technology | apple | Apple | Apple | Apple | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4156 | Technology | bill-gates | Bill Gates | Bill Gates | Билл Гейтс | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4143 | Technology | confluence | Confluence | Confluence | Confluence | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4158 | Technology | elon-musk | Elon Musk | Elon Musk | Илон Маск | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4119 | Technology | gitlab | GitLab | GitLab | GitLab | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4161 | Technology | google | Google | Google | Google | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4155 | Technology | grace-hopper | Grace Hopper | Grace Hopper | Грейс Хоппер | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4168 | Technology | intel | Intel | Intel | Intel | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4125 | Technology | ios | iOS | iOS | iOS | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4120 | Technology | jira | Jira | Jira | Jira | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4127 | Technology | kali-linux | Kali Linux | Kali Linux | Kali Linux | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4160 | Technology | linus-torvalds | Linus Torvalds | Linus Torvalds | Линус Торвальдс | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4123 | Technology | linux | Linux | Linux | Linux | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4122 | Technology | macos | macOS | macOS | macOS | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4165 | Technology | meta | Meta | Meta (Facebook) | Meta | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4163 | Technology | microsoft | Microsoft | Microsoft | Microsoft | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4172 | Technology | netflix | Netflix | Netflix | Netflix | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4167 | Technology | nvidia | NVIDIA | NVIDIA | NVIDIA | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4170 | Technology | samsung | Samsung | Samsung | Samsung | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4144 | Technology | slack | Slack | Slack | Slack | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4171 | Technology | sony | Sony | Sony | Sony | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4173 | Technology | spotify | Spotify | Spotify | Spotify | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4157 | Technology | steve-jobs | Steve Jobs | Steve Jobs | Стив Джобс | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4166 | Technology | tesla | Tesla | Tesla | Tesla | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4159 | Technology | tim-berners-lee | Tim Berners-Lee | Tim Berners-Lee | Тим Бернерс-Ли | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4174 | Technology | uber | Uber | Uber | Uber | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4126 | Technology | ubuntu | Ubuntu | Ubuntu | Ubuntu | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4121 | Technology | windows | Windows | Windows | Windows | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4145 | Technology | zoom | Zoom | Zoom | Zoom | Kalıcı kavram değil; şirket/ürün/kişi ansiklopedisi hissi veriyor.
+term_4200 | Technology | leech | Leech | Leech (Alıcı) | Лич | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.
+term_4198 | Technology | magnet-link | Magnet Link | Magnet Link | Магнитная ссылка | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.
+term_4201 | Technology | peer | Peer | Peer (Eş) | Пир | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.
+term_4199 | Technology | seed | Seed | Seed (Gönderici) | Сид | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.
+term_4197 | Technology | torrent | Torrent | Torrent | Торрент | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.
+term_4202 | Technology | tracker | Tracker | Tracker (İzleyici) | Трекер | Ürün ve akademik fintech değerine katkısı zayıf; glossary kapsamını dağıtıyor.

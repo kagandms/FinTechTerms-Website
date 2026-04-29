@@ -1,0 +1,60 @@
+# Review Before Deletion Terms
+Generated: 2026-04-23
+Source: docs/delete-candidate-terms.txt
+Purpose: Candidate terms that should not be treated as 99% hard-delete without a second editorial decision; several can be rewritten into stronger finance, fintech, MIS, security, or data terms.
+Term count: 52
+Format: id | category | slug | term_en | term_tr | term_ru | deletion_reason
+High-confidence delete count: 144
+
+term_4059 | Technology | csr | CSR | CSR (İstemci Taraflı İşleme) | CSR | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4055 | Technology | data-scientist | Data Scientist | Veri Bilimcisi | Data Scientist | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4082 | Technology | deepfake | Deepfake | Deepfake | Дипфейк | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4083 | Technology | digital-twin | Digital Twin | Dijital İkiz | Цифровой двойник | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4063 | Technology | dom | DOM | DOM (Belge Nesne Modeli) | DOM | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4050 | Technology | hadoop | Hadoop | Hadoop | Hadoop | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4056 | Technology | pwa | PWA | PWA (Progresif Web Uygulaması) | PWA | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4057 | Technology | spa | SPA | SPA (Tek Sayfalı Uygulama) | SPA | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4051 | Technology | spark | Spark | Apache Spark | Spark | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_4058 | Technology | ssr | SSR | SSR (Sunucu Taraflı İşleme) | SSR | FinTechTerms ana stratejisine göre dolgu gibi kalıyor; ancak finansal kullanım senaryosu ile yeniden yazılırsa geri eklenebilir.
+term_826 | Technology | big-o | Big O | Büyük O Gösterimi | Big O (О-нотация) | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1154 | Technology | binary-tree | Binary Tree | İkili Ağaç | Бинарное дерево | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_823 | Technology | graph | Graph | Çizge (Graf) | Граф | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1153 | Technology | hash-map | Hash Map | Hash Haritası | Хеш-мапа | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_824 | Technology | hash-table | Hash Table | Hash Tablosu | Хеш-таблица | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1155 | Technology | heap | Heap | Yığın (Heap) | Куча | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1150 | Technology | linked-list | Linked List | Bağlı Liste | Связный список | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_821 | Technology | queue | Queue | Kuyruk | Очередь | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1159 | Technology | set | Set | Küme (Set) | Множество | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_820 | Technology | stack | Stack | Yığın (Stack) | Стек | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_822 | Technology | tree | Tree | Ağaç (Veri Yapısı) | Дерево | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1157 | Technology | trie | Trie | Önek Ağacı (Trie) | Бор (Trie) | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_1158 | Technology | vector | Vector | Vektör | Вектор | FinTechTerms için bağlamı zayıf; finansal ürün, veri, ödeme veya regülasyonla yeniden kurgulanmadan düşük değerli.
+term_316 | Finance | accelerator | Accelerator | Hızlandırıcı | Акселератор | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_326 | Finance | board-of-directors | Board of Directors | Yönetim Kurulu | Совет директоров | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_317 | Finance | bootstrapping | Bootstrapping | Öz Kaynakla Büyüme (Bootstrapping) | Бутстрэппинг | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_320 | Finance | copyright | Copyright | Telif Hakkı | Авторское право | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_318 | Finance | exit-strategy | Exit Strategy | Çıkış Stratejisi | Стратегия выхода | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_315 | Finance | incubator | Incubator | Kuluçka Merkezi | Инкубатор | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_322 | Finance | intellectual-property-ip | Intellectual Property (IP) | Fikri Mülkiyet | Интеллектуальная собственность | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_306 | Finance | inventory | Inventory | Stok (Envanter) | Инвентарь (Запасы) | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_323 | Finance | nda | NDA | Gizlilik Anlaşması (NDA) | NDA | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_319 | Finance | patent | Patent | Patent | Патент | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_325 | Finance | shareholder | Shareholder | Hissedar | Акционер | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_324 | Finance | stakeholder | Stakeholder | Paydaş | Стейкхолдер | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_312 | Finance | startup | Startup | Girişim (Startup) | Стартап | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_304 | Finance | supply-chain | Supply Chain | Tedarik Zinciri | Цепочка поставок | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_321 | Finance | trademark | Trademark | Ticari Marka | Торговая марка | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_313 | Finance | unicorn | Unicorn | Unicorn (Milyar Dolarlık Girişim) | Единорог | Finance kategorisini gereğinden fazla genel işletme sözlüğüne çeviriyor.
+term_1190 | Technology | buffer | Buffer | Tampon (Buffer) | Буфер | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_4206 | Technology | deep-web | Deep Web | Deep Web (Derin Web) | Глубокая паутина | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1185 | Technology | hypervisor | Hypervisor | Hipervizör | Гипервизор | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1164 | Technology | ip | IP | IP (İnternet Protokolü) | IP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_4204 | Technology | proxy | Proxy | Proxy (Vekil Sunucu) | Прокси | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1188 | Technology | reverse-proxy | Reverse Proxy | Ters Proxy | Обратный прокси | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1162 | Technology | tcp | TCP | TCP | TCP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_4205 | Technology | tor | Tor | Tor | Tor | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1163 | Technology | udp | UDP | UDP | UDP | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_1184 | Technology | virtual-machine | Virtual Machine | Sanal Makine | Виртуальная машина | MIS için bilinebilir ama mevcut haliyle fintech/finance odaklı öğrenme değerini artırmıyor.
+term_5004 | Finance | budgeting | Budgeting | Bütçeleme | Бюджетирование | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5000 | Finance | emergency-fund | Emergency Fund | Acil Durum Fonu | Экстренный фонд | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.
+term_5003 | Finance | fico | FICO | FICO Puanı | FICO | Profesyonel fintech, piyasa yapısı ve akademik yarışma odağına göre ikinci planda kalıyor.

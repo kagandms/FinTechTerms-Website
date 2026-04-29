@@ -18,7 +18,7 @@ jest.mock('@/lib/supabaseAdmin', () => ({
     resolveAuthenticatedUser: (request: Request) => mockResolveAuthenticatedUser(request),
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/server-env', () => ({
     getServerEnv: () => mockGetServerEnv(),
 }));
 

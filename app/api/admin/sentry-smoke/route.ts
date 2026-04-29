@@ -6,7 +6,7 @@ import {
     successResponse,
 } from '@/lib/api-response';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv } from '@/lib/server-env';
 import { logger } from '@/lib/logger';
 import { resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { isAdminUserId } from '@/lib/admin-access';

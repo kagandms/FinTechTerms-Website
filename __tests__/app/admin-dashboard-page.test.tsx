@@ -30,7 +30,7 @@ jest.mock('@/lib/admin-access', () => ({
     isAdminUserId: () => true,
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/server-env', () => ({
     getServerEnv: () => ({
         adminUserIds: ['admin-1'],
     }),

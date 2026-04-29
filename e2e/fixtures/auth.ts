@@ -21,17 +21,30 @@ async function loginViaProfile(page: Page, email: string, password: string) {
     });
 
     await page.context().clearCookies();
+    await page.addInitScript(() => {
+        for (const key of Object.keys(window.localStorage)) {
+            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                window.localStorage.removeItem(key);
+            }
+        }
+
+        window.sessionStorage.clear();
+    });
     await applyPreviewProtectionBypass(page);
     await grantResearchConsent(page);
     await page.goto('/profile?auth=login', { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
+
+    if (await logoutButton.isVisible().catch(() => false)) {
+        return;
+    }
+
     const authModal = page.getByTestId('auth-modal');
 
     if (!await authModal.isVisible().catch(() => false)) {
         const loginButton = page.getByTestId('open-auth-login');
-        if (await loginButton.isVisible().catch(() => false)) {
-            await loginButton.click({ force: true });
-        }
+        await expect(loginButton).toBeVisible({ timeout: 20_000 });
+        await loginButton.click({ force: true });
     }
 
     await expect(authModal).toBeVisible({ timeout: 20_000 });

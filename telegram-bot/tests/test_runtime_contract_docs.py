@@ -17,3 +17,13 @@ def test_bot_env_example_matches_render_sentry_runtime_contract() -> None:
     assert "Required when RENDER=1" in env_example
     assert "BOT_SENTRY_DSN is required when RENDER=1." in validate_runtime
     assert "BOT_SENTRY_DSN is required in production." in main_source
+
+
+def test_bot_env_example_matches_render_redis_runtime_contract() -> None:
+    env_example = BOT_ENV_EXAMPLE.read_text(encoding="utf-8")
+    validate_runtime = BOT_VALIDATE_RUNTIME.read_text(encoding="utf-8")
+    main_source = BOT_MAIN.read_text(encoding="utf-8")
+
+    assert "required when RENDER=1" in env_example
+    assert "REDIS_URL is required when RENDER=1." in validate_runtime
+    assert "REDIS_URL is required in production." in main_source

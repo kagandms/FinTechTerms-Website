@@ -27,7 +27,7 @@ jest.mock('@/lib/auth/route-handler', () => ({
     }),
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/public-env', () => ({
     getPublicEnv: () => mockGetPublicEnv(),
 }));
 

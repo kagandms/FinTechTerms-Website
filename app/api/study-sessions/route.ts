@@ -24,7 +24,7 @@ import {
     hashStudySessionToken,
 } from '@/lib/study-session-token';
 import { createRequestScopedClient, resolveRequestAuthState } from '@/lib/supabaseAdmin';
-import { hasConfiguredStudySessionEnv } from '@/lib/env';
+import { hasConfiguredStudySessionEnv } from '@/lib/server-env';
 
 const StartSessionSchema = z.object({
     action: z.literal('start'),

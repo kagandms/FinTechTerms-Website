@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
 import { buildContentSecurityPolicy, CSP_NONCE_HEADER } from '@/lib/csp';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
 import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options';

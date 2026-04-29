@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv } from '@/lib/server-env';
 import { isAdminUserId } from '@/lib/admin-access';
 import { authorityTargets } from '@/data/seo/authority-targets';
 import { listPriorityTermRecords, listSeoTerms } from '@/lib/public-seo-catalog';

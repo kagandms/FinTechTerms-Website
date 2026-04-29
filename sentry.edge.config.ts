@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
-import { getServerEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 
-const env = getServerEnv();
+const env = getPublicEnv();
 
 Sentry.init({
     dsn: env.sentryDsn ?? undefined,
@@ -9,4 +9,5 @@ Sentry.init({
     environment: env.sentryEnvironment,
     tracesSampleRate: env.sentryTracesSampleRate,
     sendDefaultPii: false,
+    beforeSend: (event) => (event.level === 'info' ? null : event),
 });

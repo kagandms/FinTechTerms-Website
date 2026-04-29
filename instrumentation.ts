@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
-import { assertProductionRuntimeEnv } from '@/lib/env';
+import { assertProductionRuntimeEnv } from '@/lib/server-env';
 
 export async function register(): Promise<void> {
     assertProductionRuntimeEnv();

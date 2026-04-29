@@ -15,7 +15,7 @@ jest.mock('@/lib/supabaseAdmin', () => ({
     resolveRequestAuthState: (request: Request) => mockResolveRequestAuthState(request),
 }));
 
-jest.mock('@/lib/env', () => ({
+jest.mock('@/lib/server-env', () => ({
     hasConfiguredStudySessionEnv: () => mockHasConfiguredStudySessionEnv(),
     getServerEnv: () => ({
         studySessionTokenSecret: 'test-study-session-token-secret',

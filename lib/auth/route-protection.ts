@@ -3,7 +3,7 @@ import {
     type ApiErrorResponseBody,
 } from '@/lib/api-response';
 import type { ReadJsonRequestResult } from '@/lib/api-response';
-import { getPublicEnv } from '@/lib/env';
+import { getPublicEnv } from '@/lib/public-env';
 import type { NextResponse } from 'next/server';
 
 interface SameOriginProtectionOptions {

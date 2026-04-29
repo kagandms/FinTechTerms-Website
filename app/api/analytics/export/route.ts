@@ -4,6 +4,7 @@ import {
     handleRouteError,
     successResponse,
 } from '@/lib/api-response';
+import type { LearningRecentAttempt } from '@/types/gamification';
 import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import {
     InvalidAnalyticsExportCursorError,
@@ -28,13 +29,20 @@ const EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS = {
     'X-RateLimit-Policy': '2;w=60',
 };
 
+type RequestScopedSupabase = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
+
 const loadDownloadAttempts = async (
-    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
+    supabase: RequestScopedSupabase,
     userId: string
-): Promise<{ snapshotCreatedAt: string; tooLarge: boolean }> => {
+): Promise<{
+    attempts: LearningRecentAttempt[];
+    snapshotCreatedAt: string;
+    tooLarge: boolean;
+}> => {
     let cursor: string | null = null;
     let totalAttempts = 0;
     let snapshotCreatedAt: string | null = null;
+    const attempts: LearningRecentAttempt[] = [];
 
     do {
         const page = await loadLearningStatsExportAttempts(supabase, userId, {
@@ -42,64 +50,31 @@ const loadDownloadAttempts = async (
             limit: EXPORT_PAGE_SIZE,
         });
         snapshotCreatedAt ??= page.snapshotCreatedAt;
-        totalAttempts += page.attempts.length;
 
-        if (totalAttempts > MAX_EXPORT_ATTEMPTS) {
+        if (totalAttempts + page.attempts.length > MAX_EXPORT_ATTEMPTS) {
             return {
+                attempts: [],
                 snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
                 tooLarge: true,
             };
         }
 
+        attempts.push(...page.attempts);
+        totalAttempts += page.attempts.length;
         cursor = page.nextCursor;
     } while (cursor);
 
     return {
+        attempts,
         snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
         tooLarge: false,
     };
 };
 
-const createDownloadStream = (
-    supabase: NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>,
-    userId: string,
+const createDownloadPayload = (
     exportedAt: string,
-    snapshotCreatedAt: string
-): ReadableStream<Uint8Array> => {
-    const encoder = new TextEncoder();
-
-    return new ReadableStream<Uint8Array>({
-        async start(controller) {
-            let cursor: string | null = null;
-            let isFirstAttempt = true;
-
-            try {
-                controller.enqueue(encoder.encode(`{"exportedAt":${JSON.stringify(exportedAt)},"attempts":[`));
-
-                do {
-                    const page = await loadLearningStatsExportAttempts(supabase, userId, {
-                        cursor,
-                        limit: EXPORT_PAGE_SIZE,
-                        snapshotCreatedAt,
-                    });
-
-                    for (const attempt of page.attempts) {
-                        const prefix = isFirstAttempt ? '' : ',';
-                        controller.enqueue(encoder.encode(`${prefix}${JSON.stringify(attempt)}`));
-                        isFirstAttempt = false;
-                    }
-
-                    cursor = page.nextCursor;
-                } while (cursor);
-
-                controller.enqueue(encoder.encode(']}'));
-                controller.close();
-            } catch (error) {
-                controller.error(error);
-            }
-        },
-    });
-};
+    attempts: readonly LearningRecentAttempt[]
+): string => JSON.stringify({ exportedAt, attempts });
 
 /**
  * Export the authenticated user's full quiz attempt history for analytics.
@@ -206,7 +181,7 @@ export async function GET(request: Request) {
 
         if (shouldDownload) {
             const exportedAt = new Date().toISOString();
-            const { snapshotCreatedAt, tooLarge } = await loadDownloadAttempts(supabase, user.id);
+            const { attempts, tooLarge } = await loadDownloadAttempts(supabase, user.id);
 
             if (tooLarge) {
                 return errorResponse({
@@ -219,12 +194,7 @@ export async function GET(request: Request) {
                 });
             }
 
-            return new Response(createDownloadStream(
-                supabase,
-                user.id,
-                exportedAt,
-                snapshotCreatedAt
-            ), {
+            return new Response(createDownloadPayload(exportedAt, attempts), {
                 status: 200,
                 headers: {
                     ...rateLimitHeaders,
@@ -267,6 +237,7 @@ export async function GET(request: Request) {
 
         return handleRouteError(error, {
             requestId,
+            status: 503,
             code: 'ANALYTICS_EXPORT_FAILED',
             message: 'Unable to export analytics data.',
             timeoutCode: 'ANALYTICS_EXPORT_TIMEOUT',

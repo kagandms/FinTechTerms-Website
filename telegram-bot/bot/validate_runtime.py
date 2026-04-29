@@ -27,6 +27,9 @@ def main() -> None:
     if os.environ.get("RENDER", "").strip() and not config.sentry_dsn:
         raise EnvironmentError("BOT_SENTRY_DSN is required when RENDER=1.")
 
+    if os.environ.get("RENDER", "").strip() and not config.redis_url:
+        raise EnvironmentError("REDIS_URL is required when RENDER=1.")
+
     print("Bot runtime configuration is valid.")
 
 

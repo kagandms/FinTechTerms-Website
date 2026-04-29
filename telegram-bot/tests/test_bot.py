@@ -10,6 +10,7 @@ import pytest
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot import handlers, quiz
+from bot import db_terms
 from bot.config import (
     CATEGORY_EMOJI,
     SRS_LEVEL_LABELS,
@@ -325,6 +326,62 @@ class TestAcademicTaxonomy:
         assert normalized[0]["regional_market"] == "MOEX"
         assert normalized[1]["regional_market"] == "GLOBAL"
 
+    def test_public_term_id_window_fetches_a_bounded_random_page(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        class FakeResponse:
+            def __init__(self, data: Any) -> None:
+                self.data = data
+
+        class FakeRpc:
+            def execute(self) -> FakeResponse:
+                return FakeResponse(2_000)
+
+        class FakeTermsQuery:
+            def __init__(self) -> None:
+                self.range_args: tuple[int, int] | None = None
+
+            def select(self, columns: str) -> "FakeTermsQuery":
+                assert columns == "id"
+                return self
+
+            def or_(self, _condition: str) -> "FakeTermsQuery":
+                return self
+
+            def order(self, column: str) -> "FakeTermsQuery":
+                assert column == "id"
+                return self
+
+            def range(self, start: int, end: int) -> "FakeTermsQuery":
+                self.range_args = (start, end)
+                return self
+
+            def execute(self) -> FakeResponse:
+                return FakeResponse([{"id": "term-1"}, {"id": "term-2"}])
+
+        query = FakeTermsQuery()
+
+        class FakeClient:
+            def rpc(self, name: str) -> FakeRpc:
+                assert name == "get_public_term_count"
+                return FakeRpc()
+
+            def table(self, name: str) -> FakeTermsQuery:
+                assert name == "terms"
+                return query
+
+        monkeypatch.setattr(db_terms, "get_public_client", lambda: FakeClient())
+        monkeypatch.setattr(db_terms.random, "randint", lambda _start, _end: 250)
+
+        ids = db_terms._fetch_public_term_id_window()
+
+        assert ids == ["term-1", "term-2"]
+        assert query.range_args == (
+            250,
+            250 + db_terms.TERM_ID_CACHE_FETCH_LIMIT - 1,
+        )
+
 
 class TestQuizModule:
     def test_build_quiz_returns_four_unique_options_and_correct_answer(
@@ -458,11 +515,16 @@ class TestCommandHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        async def fake_is_search_rate_limited(user_id: int) -> bool:
+            assert user_id == 100
+            return False
+
         async def fake_search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
             assert query == "liquidity"
             assert limit == 3
             return [sample_terms()[0]]
 
+        monkeypatch.setattr(handlers, "is_search_rate_limited", fake_is_search_rate_limited)
         monkeypatch.setattr(handlers, "search_terms", fake_search_terms)
 
         message = DummyMessage()
@@ -475,6 +537,29 @@ class TestCommandHandlers:
         assert "Liquidity" in sent.text
         assert sent.reply_markup is not None
         assert sent.reply_markup.inline_keyboard[0][1].url == f"{WEB_APP_URL}/term/term_1"
+
+    def test_search_handler_rate_limits_database_searches(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_is_search_rate_limited(user_id: int) -> bool:
+            assert user_id == 100
+            return True
+
+        async def fake_search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
+            raise AssertionError("search_terms should not run when search is rate-limited")
+
+        monkeypatch.setattr(handlers, "is_search_rate_limited", fake_is_search_rate_limited)
+        monkeypatch.setattr(handlers, "search_terms", fake_search_terms)
+
+        message = DummyMessage()
+        update = make_update(message=message)
+        context = make_context(args=["liquidity"])
+
+        asyncio.run(handlers.search_handler(update, context))
+
+        assert len(message.replies) == 1
+        assert "try again" in message.replies[0].text.casefold()
 
     def test_daily_handler_sends_random_term(
         self,
@@ -633,11 +718,16 @@ class TestCommandHandlers:
     ) -> None:
         captured: dict[str, Any] = {}
 
+        async def fake_is_search_rate_limited(user_id: int) -> bool:
+            assert user_id == 100
+            return False
+
         async def fake_search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
             captured["query"] = query
             captured["limit"] = limit
             return [sample_terms()[2]]
 
+        monkeypatch.setattr(handlers, "is_search_rate_limited", fake_is_search_rate_limited)
         monkeypatch.setattr(handlers, "search_terms", fake_search_terms)
 
         message = DummyMessage(text="hedging")

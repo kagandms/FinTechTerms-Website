@@ -1,0 +1,198 @@
+# Current Final Terms Part 5
+Generated: 2026-04-23
+Source: docs/current-terms-final.txt
+Part: 5 / 5
+Terms in this file: 191
+Format: id | category | slug | term_en | term_tr | term_ru
+
+term_255 | Technology | scalability | Scalability | Ölçeklenebilirlik | Масштабируемость
+term_257 | Technology | bandwidth | Bandwidth | Bant Genişliği | Пропускная способность
+term_262 | Technology | malware | Malware | Kötü Amaçlı Yazılım | Вредоносное ПО
+term_271 | Technology | deployment | Deployment | Dağıtım/Yayınlama | Развертывание
+term_272 | Technology | production | Production | Canlı Ortam (Production) | Продакшн
+term_273 | Technology | staging | Staging | Test Ortamı (Staging) | Стейджинг
+term_276 | Technology | monolith | Monolith | Monolitik Yapı | Монолит
+term_277 | Technology | virtual-machine-vm | Virtual Machine (VM) | Sanal Makine | Виртуальная машина
+term_278 | Technology | container | Container | Konteyner | Контейнер
+term_379 | Technology | conversion-rate | Conversion Rate | Dönüşüm Oranı | Конверсия
+term_384 | Technology | artificial-intelligence | Artificial Intelligence | Yapay Zeka | Искусственный интеллект
+term_391 | Technology | rest | REST | REST (Temsili Durum Transferi) | REST
+term_392 | Technology | json | JSON | JSON | JSON
+term_394 | Technology | nosql | NoSQL | NoSQL | NoSQL
+term_407 | Technology | product-market-fit | Product Market Fit | Ürün-Pazar Uyumu | Соответствие продукта рынку
+term_417 | Technology | peer-to-peer-p2p | Peer-to-Peer (P2P) | Eşler Arası (P2P) | P2P
+term_418 | Technology | open-source | Open Source | Açık Kaynak | Открытый исходный код
+term_419 | Technology | proprietary | Proprietary | Sahipli (Tescilli) | Проприетарный
+term_420 | Technology | license | License | Lisans | Лицензия
+term_421 | Technology | cookie | Cookie | Çerez (Cookie) | Cookie (Куки)
+term_422 | Technology | cache | Cache | Önbellek (Cache) | Кэш
+term_423 | Technology | bugs-bounty | Bugs Bounty | Ödül Avcılığı (Yazılım) | Bug Bounty
+term_424 | Technology | dark-web | Dark Web | Dark Web | Даркнет
+term_425 | Technology | vpn | VPN | VPN (Sanal Özel Ağ) | VPN
+term_427 | Technology | metaverse | Metaverse | Metaverse | Метавселенная
+term_428 | Technology | web-3-0 | Web 3.0 | Web 3.0 | Web 3.0
+term_429 | Technology | protocol | Protocol | Protokol | Протокол
+term_446 | Technology | contactless | Contactless | Temassız Ödeme | Бесконтактный
+term_448 | Technology | qr-code | QR Code | QR Kodu | QR-код
+term_481 | Technology | 2fa | 2FA | 2FA (Çift Faktörlü Doğrulama) | Двухфакторная аутентификация
+term_488 | Technology | iot | IoT | Nesnelerin İnterneti (IoT) | IoT
+term_489 | Technology | 5g | 5G | 5G | 5G
+term_490 | Technology | biometrics | Biometrics | Biyometri | Биометрия
+term_499 | Technology | peer-review | Peer Review | Akran Değerlendirmesi | Рецензирование
+term_501 | Technology | augmented-reality-ar | Augmented Reality (AR) | Artırılmış Gerçeklik (AR) | Дополненная реальность
+term_502 | Technology | virtual-reality-vr | Virtual Reality (VR) | Sanal Gerçeklik (VR) | Виртуальная реальность
+term_503 | Technology | edge-computing | Edge Computing | Uç Bilişim (Edge Computing) | Граничные вычисления
+term_504 | Technology | biotech | Biotech | Biyoteknoloji | Биотехнологии
+term_505 | Technology | green-tech | Green Tech | Yeşil Teknoloji | Зеленые технологии
+term_664 | Technology | nlp | NLP | Doğal Dil İşleme (NLP) | NLP
+term_665 | Technology | llm | LLM | Büyük Dil Modeli (LLM) | LLM
+term_666 | Technology | supervised-learning | Supervised Learning | Gözetimli Öğrenme | Обучение с учителем
+term_667 | Technology | unsupervised-learning | Unsupervised Learning | Gözetimsiz Öğrenme | Обучение без учителя
+term_668 | Technology | reinforcement-learning | Reinforcement Learning | Pekiştirmeli Öğrenme | Обучение с подкреплением
+term_669 | Technology | computer-vision | Computer Vision | Bilgisayarlı Görme | Компьютерное зрение
+term_670 | Technology | generative-ai | Generative AI | Üretken YZ | Генеративный ИИ
+term_675 | Technology | data-warehouse | Data Warehouse | Veri Ambarı | Хранилище данных
+term_676 | Technology | data-lake | Data Lake | Veri Gölü | Озеро данных
+term_677 | Technology | etl | ETL | ETL (Çıkarma, Dönüştürme, Yükleme) | ETL
+term_683 | Technology | public-cloud | Public Cloud | Genel Bulut | Публичное облако
+term_684 | Technology | private-cloud | Private Cloud | Özel Bulut | Частное облако
+term_685 | Technology | hybrid-cloud | Hybrid Cloud | Hibrit Bulut | Гибридное облако
+term_688 | Technology | containerization | Containerization | Konteynerleştirme | Контейнеризация
+term_696 | Technology | sdlc | SDLC | Yazılım Geliştirme Yaşam Döngüsü | SDLC
+term_697 | Technology | waterfall | Waterfall | Şelale Yöntemi (Waterfall) | Waterfall
+term_699 | Technology | rest-api | REST API | REST API | REST API
+term_700 | Technology | graphql | GraphQL | GraphQL | GraphQL
+term_702 | Technology | xml | XML | XML | XML
+term_721 | Technology | mongodb | MongoDB | MongoDB | MongoDB
+term_722 | Technology | postgresql | PostgreSQL | PostgreSQL | PostgreSQL
+term_723 | Technology | redis | Redis | Redis | Redis
+term_724 | Technology | http | HTTP | HTTP | HTTP
+term_725 | Technology | https | HTTPS | HTTPS | HTTPS
+term_726 | Technology | tcp-ip | TCP/IP | TCP/IP | TCP/IP
+term_727 | Technology | dns | DNS | DNS (Alan Adı Sistemi) | DNS
+term_728 | Technology | ip-address | IP Address | IP Adresi | IP-адрес
+term_729 | Technology | ssh | SSH | SSH (Güvenli Kabuk) | SSH
+term_733 | Technology | typescript | TypeScript | TypeScript | TypeScript
+term_736 | Technology | c | C++ | C++ | C++
+term_743 | Technology | os | OS | İşletim Sistemi (OS) | ОС
+term_744 | Technology | kernel | Kernel | Çekirdek (Kernel) | Ядро
+term_745 | Technology | shell | Shell | Kabuk (Shell) | Оболочка (Шелл)
+term_752 | Technology | responsive-design | Responsive Design | Duyarlı Tasarım | Адаптивный дизайн
+term_760 | Technology | refactoring | Refactoring | Refaktör (Kod İyileştirme) | Рефакторинг
+term_761 | Technology | legacy-code | Legacy Code | Eski Kod (Legacy) | Наследие (Легаси код)
+term_762 | Technology | technical-debt | Technical Debt | Teknik Borç | Технический долг
+term_766 | Technology | throughput | Throughput | İş Hacmi (Throughput) | Производительность (Пропускная способность)
+term_767 | Technology | load-balancing | Load Balancing | Yük Dengeleme | Балансировка нагрузки
+term_768 | Technology | caching | Caching | Önbellekleme | Кеширование
+term_771 | Technology | session | Session | Oturum | Сессия
+term_772 | Technology | local-storage | Local Storage | Yerel Depolama | Локальное хранилище
+term_773 | Technology | token | Token | Token (Kimlik) | Токен (Auth)
+term_776 | Technology | firmware | Firmware | Yazılım (Firmware) | Прошивка
+term_782 | Technology | isp | ISP | İnternet Servis Sağlayıcısı (ISP) | Провайдер
+term_783 | Technology | router | Router | Yönlendirici (Router) | Роутер (Маршрутизатор)
+term_789 | Technology | wi-fi | Wi-Fi | Wi-Fi | Wi-Fi
+term_791 | Technology | lte | LTE | LTE | LTE
+term_795 | Technology | codec | Codec | Kodek | Кодек
+term_796 | Technology | binary | Binary | İkili (Binary) | Бинарный (Двоичный)
+term_797 | Technology | hexadecimal | Hexadecimal | Onaltılık (Hexadecimal) | Шестнадцатеричный
+term_798 | Technology | ascii | ASCII | ASCII | ASCII
+term_799 | Technology | unicode | Unicode | Unicode | Юникод
+term_801 | Technology | hash-function | Hash Function | Hash Fonksiyonu | Хеш-функция
+term_802 | Technology | logic-gate | Logic Gate | Mantık Kapısı | Логический вентиль
+term_803 | Technology | compilation | Compilation | Derleme (Compilation) | Компиляция
+term_804 | Technology | interpretation | Interpretation | Yorumlama (Interpretation) | Интерпретация
+term_805 | Technology | ide | IDE | IDE (Geliştirme Ortamı) | IDE
+term_807 | Technology | function | Function | Fonksiyon | Функция
+term_808 | Technology | class | Class | Sınıf (Class) | Класс
+term_809 | Technology | object | Object | Nesne | Объект
+term_810 | Technology | inheritance | Inheritance | Kalıtım (Miras) | Наследование
+term_811 | Technology | polymorphism | Polymorphism | Çok Biçimlilik (Polymorphism) | Полиморфизм
+term_812 | Technology | encapsulation | Encapsulation | Kapsülleme | Инкапсуляция
+term_814 | Technology | conditional | Conditional | Koşullu İfade | Условный оператор
+term_825 | Technology | complexity | Complexity | Karmaşıklık | Сложность
+term_1135 | Technology | abstraction | Abstraction | Soyutlama (Abstraction) | Абстракция
+term_1136 | Technology | concurrency | Concurrency | Eşzamanlılık (Concurrency) | Конурентность
+term_1137 | Technology | parallelism | Parallelism | Paralellik | Параллелизм
+term_1138 | Technology | thread | Thread | İş Parçacığı (Thread) | Поток
+term_1139 | Technology | process | Process | Süreç (Process) | Процесс
+term_1140 | Technology | deadlock | Deadlock | Kilitlenme (Deadlock) | Взаимная блокировка
+term_1141 | Technology | race-condition | Race Condition | Yarış Durumu (Race Condition) | Состояние гонки
+term_1142 | Technology | mutex | Mutex | Mutex (Karşılıklı Dışlama) | Мьютекс
+term_1143 | Technology | semaphore | Semaphore | Semafor | Семафор
+term_1144 | Technology | garbage-collection | Garbage Collection | Çöp Toplama (GC) | Сборка мусора
+term_1170 | Technology | websocket | WebSocket | WebSocket | WebSocket
+term_4000 | Technology | agi | AGI | AGI (Yapay Genel Zeka) | AGI (Общий ИИ)
+term_4003 | Technology | transformer-model | Transformer Model | Transformer Modeli | Модель Трансформер
+term_4009 | Technology | prompt-engineering | Prompt Engineering | İstem Mühendisliği (Prompt) | Промпт-инжиниринг
+term_4010 | Technology | hallucination-ai | Hallucination (AI) | Halüsinasyon (YZ) | Галлюцинация (ИИ)
+term_4011 | Technology | turing-test | Turing Test | Turing Testi | Тест Тьюринга
+term_4015 | Technology | multi-cloud | Multi-Cloud | Çoklu Bulut | Мульти-облако
+term_4020 | Technology | man-in-the-middle | Man-in-the-Middle | Ortadaki Adam (MitM) | Человек посередине
+term_4021 | Technology | sql-injection | SQL Injection | SQL Enjeksiyonu | SQL-инъекция
+term_4022 | Technology | xss | XSS | XSS (Siteler Arası Komut Dosyası) | XSS
+term_4023 | Technology | social-engineering | Social Engineering | Sosyal Mühendislik | Социальная инженерия
+term_4024 | Technology | penetration-testing | Penetration Testing | Sızma Testi (Pentest) | Пентестинг
+term_4025 | Technology | keylogger | Keylogger | Keylogger (Tuş Kaydedici) | Кейлоггер
+term_4026 | Technology | botnet | Botnet | Botnet (Bot Ağı) | Ботнет
+term_4027 | Technology | trojan | Trojan | Truva Atı (Trojan) | Троян
+term_4028 | Technology | worm | Worm | Solucan (Worm) | Червь
+term_4029 | Technology | exploit | Exploit | Exploit (Sömürü Kodu) | Эксплойт
+term_4032 | Technology | qubit | Qubit | Kübit | Кубит
+term_4033 | Technology | superposition | Superposition | Süperpozisyon | Суперпозиция
+term_4034 | Technology | entanglement | Entanglement | Dolanıklık | Запутанность
+term_4041 | Technology | automation-rpa | Automation RPA | RPA (Robotik Süreç Otomasyonu) | RPA
+term_4060 | Technology | seo | SEO | SEO (Arama Motoru Optimizasyonu) | SEO
+term_4062 | Technology | accessibility | Accessibility | Erişilebilirlik (a11y) | Доступность
+term_4082 | Technology | deepfake | Deepfake | Deepfake | Дипфейк
+term_4095 | Technology | open-data | Open Data | Açık Veri | Открытые данные
+term_4096 | Technology | dark-data | Dark Data | Karanlık Veri | Темные данные
+term_4107 | Technology | sorting-algorithm | Sorting Algorithm | Sıralama Algoritması | Алгоритм сортировки
+term_4108 | Technology | big-o-notation | Big O Notation | Büyük O Notasyonu | О-нотация
+term_4113 | Technology | code-review | Code Review | Kod Gözden Geçirme | Ревью кода
+term_4114 | Technology | design-pattern | Design Pattern | Tasarım Deseni | Паттерн проектирования
+term_4115 | Technology | mvc | MVC | MVC (Model-View-Controller) | MVC
+term_4116 | Technology | mvvm | MVVM | MVVM | MVVM
+term_4141 | Technology | exception | Exception | İstisna (Exception) | Исключение
+term_4142 | Technology | bug-tracking | Bug Tracking | Hata Takibi | Отслеживание багов
+term_4205 | Technology | tor | Tor | Tor | Tor
+term_4211 | Technology | salt | Salt | Salt (Tuzlama) | Соль
+term_4212 | Technology | brute-force | Brute Force | Kaba Kuvvet Saldırısı | Брутфорс
+term_4213 | Technology | rainbow-table | Rainbow Table | Gökkuşağı Tablosu | Радужная таблица
+term_4214 | Technology | zero-day | Zero Day | Sıfırıncı Gün (Zero Day) | Нулевой день
+term_4218 | Technology | spyware | Spyware | Casus Yazılım | Шпионское ПО
+term_4219 | Technology | adware | Adware | Reklam Yazılımı | Рекламное ПО
+term_4222 | Technology | rootkit | Rootkit | Rootkit | Руткит
+term_4226 | Technology | sandboxing | Sandboxing | Sandbox (Kum Havuzu) | Песочница
+term_9001 | Fintech | merchant-of-record | Merchant of Record | Merchant of Record | Мерчант оф рекорд
+term_9002 | Fintech | payment-facilitator | Payment Facilitator | Ödeme Kolaylaştırıcısı | Платёжный фасилитатор
+term_9003 | Fintech | network-token | Network Token | Ağ Tokenı | Сетевой токен
+term_9004 | Fintech | account-updater | Account Updater | Kart Bilgisi Güncelleyici | Обновление реквизитов карты
+term_9005 | Fintech | payment-orchestration | Payment Orchestration | Ödeme Orkestrasyonu | Платёжная оркестрация
+term_9006 | Fintech | variable-recurring-payments | Variable Recurring Payments | Değişken Yinelenen Ödemeler | Переменные рекуррентные платежи
+term_9007 | Fintech | proof-of-reserves | Proof of Reserves | Rezerv Kanıtı | Доказательство резервов
+term_9008 | Fintech | blind-signing | Blind Signing | Kör İmzalama | Слепая подпись
+term_9009 | Fintech | appchain | AppChain | Uygulama Zinciri | Аппчейн
+term_9010 | Fintech | bitvm | BitVM | BitVM | BitVM
+term_9011 | Fintech | bitcoin-layer-2 | Bitcoin Layer 2 | Bitcoin Katman 2 | Второй слой Bitcoin
+term_9012 | Fintech | authorization | Authorization | Ödeme Yetkilendirmesi | Авторизация платежа
+term_9013 | Fintech | capture | Capture | Tahsilat (Capture) | Каптур платежа
+term_9014 | Fintech | settlement-delay | Settlement Delay | Mutabakat Gecikmesi | Задержка расчёта
+term_9015 | Fintech | settlement-currency | Settlement Currency | Mutabakat Para Birimi | Валюта расчёта
+term_9016 | Fintech | processing-currency | Processing Currency | İşlem Para Birimi | Валюта процессинга
+term_9017 | Fintech | card-not-present-cnp | Card-not-present (CNP) | Kartın Fiziken Bulunmadığı İşlem (CNP) | Операция без предъявления карты (CNP)
+term_9018 | Fintech | frictionless-flow | Frictionless Flow | Sürtünmesiz Akış | Фрикшнлесс-флоу
+term_9019 | Fintech | challenge-flow | Challenge Flow | Challenge Akışı | Челлендж-флоу
+term_9020 | Fintech | out-of-band-authentication | Out-of-Band Authentication | Bant Dışı Kimlik Doğrulama | Аутентификация вне основного канала
+term_9021 | Fintech | payment-initiation-service-provider-pisp | Payment Initiation Service Provider (PISP) | Ödeme Başlatma Hizmeti Sağlayıcısı (PISP) | Провайдер услуги инициации платежа (PISP)
+term_9022 | Fintech | account-information-service-provider-aisp | Account Information Service Provider (AISP) | Hesap Bilgisi Hizmeti Sağlayıcısı (AISP) | Провайдер услуги информации по счёту (AISP)
+term_9023 | Fintech | account-servicing-payment-service-provider-aspsp | Account Servicing Payment Service Provider (ASPSP) | Hesabı Yürüten Ödeme Hizmeti Sağlayıcısı (ASPSP) | Провайдер, обслуживающий платёжный счёт (ASPSP)
+term_9024 | Fintech | payment-processor | Payment Processor | Ödeme İşleyicisi | Платёжный процессор
+term_9025 | Fintech | separate-capture | Separate Capture | Ayrı Tahsilat | Отдельный каптур
+term_9026 | Fintech | partial-refund | Partial Refund | Kısmi İade | Частичный возврат
+term_9027 | Fintech | confirmation-of-funds-cof | Confirmation of Funds (CoF) | Fon Uygunluğu Doğrulaması (CoF) | Подтверждение наличия средств (CoF)
+term_9028 | Fintech | funds-confirmation-consent | Funds Confirmation Consent | Fon Doğrulama Onayı | Согласие на подтверждение средств
+term_9029 | Fintech | cbpr | CBPR+ | CBPR+ | CBPR+
+term_9030 | Fintech | pacs-008 | pacs.008 | pacs.008 | pacs.008
+term_9031 | Fintech | pacs-009 | pacs.009 | pacs.009 | pacs.009
+term_9032 | Fintech | camt-053 | camt.053 | camt.053 | camt.053
+term_9033 | Fintech | camt-054 | camt.054 | camt.054 | camt.054

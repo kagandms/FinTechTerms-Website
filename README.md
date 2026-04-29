@@ -170,6 +170,10 @@ mirror the GitHub Actions values into the Vercel preview runtime for:
 
 `npm run verify:release-db` now validates both database release readiness and
 the mirror integrity between the repo term corpus and `public.terms`.
+The current production catalog is the curated 956-term repo corpus. Preview
+release gates hard-prune staging-only `public.terms` rows that are no longer in
+the repo after printing a structured impact report; production pruning requires
+a fresh impact report, database rollback plan, and separate approval.
 
 Runtime validation (`npm run validate:runtime-env`) assumes
 `ADMIN_USER_IDS` is present alongside the core web runtime secrets so admin

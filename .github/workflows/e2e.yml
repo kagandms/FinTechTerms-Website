@@ -236,7 +236,9 @@ jobs:
         run: supabase db push --include-all --db-url "$SUPABASE_DB_URL"
 
       - name: Sync repo terms to staging mirror
-        run: node scripts/sync_repo_terms.js
+        env:
+          ALLOW_REMOTE_DESTRUCTIVE_SCRIPTS: '1'
+        run: node scripts/sync_repo_terms.js --prune-extra
 
       - name: Verify release DB readiness
         run: npm run verify:release-db

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createTimeoutFetch } from '@/lib/api-response'
-import { getPublicEnv } from '@/lib/env'
+import { getPublicEnv } from '@/lib/public-env'
 import { logger } from '@/lib/logger'
 import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options'
 import type { SupabaseClient } from '@supabase/supabase-js'

@@ -225,37 +225,9 @@ describe('analytics export route', () => {
         expect(mockLoadLearningStatsExportAttempts).not.toHaveBeenCalled();
     });
 
-    it('streams a downloadable export without client-side pagination accumulation', async () => {
+    it('returns a downloadable export after all pages load successfully', async () => {
         mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
         mockLoadLearningStatsExportAttempts
-            .mockResolvedValueOnce({
-                attempts: [
-                    {
-                        id: 'attempt-1',
-                        termId: 'term-1',
-                        createdAt: '2026-03-20T10:00:00.000Z',
-                        isCorrect: true,
-                        responseTimeMs: 1200,
-                        quizType: 'daily',
-                    },
-                ],
-                nextCursor: 'cursor-2',
-                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
-            })
-            .mockResolvedValueOnce({
-                attempts: [
-                    {
-                        id: 'attempt-2',
-                        termId: 'term-2',
-                        createdAt: '2026-03-20T11:00:00.000Z',
-                        isCorrect: false,
-                        responseTimeMs: 900,
-                        quizType: 'review',
-                    },
-                ],
-                nextCursor: null,
-                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
-            })
             .mockResolvedValueOnce({
                 attempts: [
                     {
@@ -305,16 +277,39 @@ describe('analytics export route', () => {
             cursor: 'cursor-2',
             limit: 500,
         });
-        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(3, { supabase: true }, 'user-1', {
-            cursor: null,
-            limit: 500,
-            snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns 503 before starting a downloadable export when a later page fails', async () => {
+        mockCreateRequestScopedClient.mockResolvedValue({ supabase: true });
+        mockLoadLearningStatsExportAttempts
+            .mockResolvedValueOnce({
+                attempts: [
+                    {
+                        id: 'attempt-1',
+                        termId: 'term-1',
+                        createdAt: '2026-03-20T10:00:00.000Z',
+                        isCorrect: true,
+                        responseTimeMs: 1200,
+                        quizType: 'daily',
+                    },
+                ],
+                nextCursor: 'cursor-2',
+                snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
+            })
+            .mockRejectedValueOnce(new Error('database connection lost'));
+
+        const { GET } = await import('@/app/api/analytics/export/route');
+        const response = await GET(new Request('http://localhost:3000/api/analytics/export?download=1'));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(response.headers.get('Content-Disposition')).toBeNull();
+        expect(body).toMatchObject({
+            code: 'ANALYTICS_EXPORT_FAILED',
+            retryable: true,
         });
-        expect(mockLoadLearningStatsExportAttempts).toHaveBeenNthCalledWith(4, { supabase: true }, 'user-1', {
-            cursor: 'cursor-2',
-            limit: 500,
-            snapshotCreatedAt: '2026-03-20T12:00:00.000Z',
-        });
+        expect(mockLoadLearningStatsExportAttempts).toHaveBeenCalledTimes(2);
     });
 
     it('returns 413 when the downloadable export exceeds the bounded maximum', async () => {

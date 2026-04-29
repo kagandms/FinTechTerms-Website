@@ -162,6 +162,7 @@ export default function SearchBar({
                         <button
                             key={cat}
                             type="button"
+                            data-testid={`category-filter-${cat.toLowerCase()}`}
                             onClick={() => onCategoryChange(cat)}
                             aria-pressed={filterState.selectedCategory === cat}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${filterState.selectedCategory === cat
