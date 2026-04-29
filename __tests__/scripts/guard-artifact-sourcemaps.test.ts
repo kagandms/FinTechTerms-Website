@@ -8,6 +8,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const scriptPath = path.join(process.cwd(), 'scripts/guard-artifact-sourcemaps.mjs');
+const pruneScriptPath = path.join(process.cwd(), 'scripts/prune-server-sourcemaps.mjs');
 
 const createTempDirectory = (): string => (
     fs.mkdtempSync(path.join(os.tmpdir(), 'artifact-guard-'))
@@ -45,5 +46,24 @@ describe('guard-artifact-sourcemaps', () => {
                 stdio: 'pipe',
             });
         }).not.toThrow();
+    });
+
+    it('prunes only Next.js server sourcemaps from build output', () => {
+        const tempDirectory = createTempDirectory();
+        const serverMapPath = path.join(tempDirectory, '.next/server/app/dashboard/page.js.map');
+        const clientMapPath = path.join(tempDirectory, '.next/static/chunks/app.js.map');
+
+        fs.mkdirSync(path.dirname(serverMapPath), { recursive: true });
+        fs.mkdirSync(path.dirname(clientMapPath), { recursive: true });
+        fs.writeFileSync(serverMapPath, '{}');
+        fs.writeFileSync(clientMapPath, '{}');
+
+        execFileSync('node', [pruneScriptPath], {
+            cwd: tempDirectory,
+            stdio: 'pipe',
+        });
+
+        expect(fs.existsSync(serverMapPath)).toBe(false);
+        expect(fs.existsSync(clientMapPath)).toBe(true);
     });
 });

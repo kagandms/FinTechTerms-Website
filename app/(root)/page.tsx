@@ -1,7 +1,9 @@
-import HomeClient from '@/app/HomeClient';
+import nextDynamic from 'next/dynamic';
 import { getLearningStats } from '@/app/actions/getLearningStats';
 import { listHomepageTerms } from '@/lib/public-term-catalog';
 import type { Term } from '@/types';
+
+const DynamicHomeClient = nextDynamic(() => import('@/app/HomeClient'));
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -16,5 +18,5 @@ export default async function HomePage() {
         getLearningStats(),
     ]);
 
-    return <HomeClient initialTerms={terms} learningStats={learningStats} />;
+    return <DynamicHomeClient initialTerms={terms} learningStats={learningStats} />;
 }

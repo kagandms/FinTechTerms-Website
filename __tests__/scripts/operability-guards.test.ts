@@ -78,6 +78,7 @@ describe('operability guards', () => {
 
     it('guards support artifact manifests against leaked server sourcemaps', () => {
         expect(packageJson).toContain('"guard:artifact-sourcemaps": "node scripts/guard-artifact-sourcemaps.mjs"');
+        expect(packageJson).toContain('node scripts/prune-server-sourcemaps.mjs');
         expect(ciWorkflow).toContain('name: Guard Support Artifact Source Maps');
         expect(ciWorkflow).toContain('npm run guard:artifact-sourcemaps -- "$artifact_manifest"');
         expect(operationsDoc).toContain('`npm run guard:artifact-sourcemaps -- path/to/artifact-manifest.txt`');

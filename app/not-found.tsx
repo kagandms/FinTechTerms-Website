@@ -1,4 +1,4 @@
-import Link from 'next/link';
+/* eslint-disable @next/next/no-html-link-for-pages -- Global not-found must not pull Next Link runtime into public SEO routes. */
 
 export default function NotFound() {
     const copy = {
@@ -28,18 +28,18 @@ export default function NotFound() {
                 </p>
 
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                    <Link
+                    <a
                         href="/ru"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 font-semibold text-white transition-colors hover:bg-sky-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-sky-200"
                     >
                         {copy.home}
-                    </Link>
-                    <Link
+                    </a>
+                    <a
                         href="/search"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                         {copy.search}
-                    </Link>
+                    </a>
                 </div>
             </div>
         </div>

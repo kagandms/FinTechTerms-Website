@@ -23,18 +23,21 @@ describe('site URL configuration', () => {
         });
     });
 
-    it('uses RENDER_EXTERNAL_URL during production when NEXT_PUBLIC_SITE_URL is missing', () => {
+    it('does not derive the public site URL from platform deployment URLs', () => {
         delete process.env.NEXT_PUBLIC_SITE_URL;
         process.env = {
             ...process.env,
             NODE_ENV: 'production',
             RENDER_EXTERNAL_URL: 'https://fintechterms-website.onrender.com/',
+            VERCEL_URL: 'fintechterms-deployment.vercel.app',
         };
 
         jest.isolateModules(() => {
             const { getSiteUrl } = require('@/lib/site-url');
 
-            expect(getSiteUrl()).toBe('https://fintechterms-website.onrender.com');
+            expect(() => getSiteUrl()).toThrow(
+                'Missing required environment variable NEXT_PUBLIC_SITE_URL. Set it to the public site origin before running a production build or starting the server.'
+            );
         });
     });
 

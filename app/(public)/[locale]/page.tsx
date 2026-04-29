@@ -83,7 +83,7 @@ export default async function LocaleHomePage({
     const copy = pageCopy[locale];
     const [topics, priorityTerms] = await Promise.all([
         listSeoTopics(),
-        listPrioritySeoTerms(9),
+        listPrioritySeoTerms(6),
     ]);
 
     return (

@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "next build --webpack && node scripts/prune-server-sourcemaps.mjs",
     "start": "next start",
     "typecheck": "tsc --project tsconfig.check.json --noEmit",
     "lint": "eslint app components contexts hooks lib types utils proxy.ts scripts --ext .js,.jsx,.ts,.tsx --max-warnings 0",

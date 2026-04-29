@@ -5,15 +5,28 @@ import { serializeJsonLd } from '@/lib/json-ld';
 import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
-import type { Language } from '@/types';
+import type { Language, Term, Topic } from '@/types';
 
-const topicCopy: Record<Language, { title: string; terms: string; sources: string }> = {
-    en: { title: 'Topic hub', terms: 'Terms in this hub', sources: 'Source framework' },
-    ru: { title: 'Тематический хаб', terms: 'Термины в этом хабе', sources: 'Источник и рамка' },
-    tr: { title: 'Topic hub', terms: 'Bu hub içindeki terimler', sources: 'Kaynak çerçevesi' },
+const TOPIC_TERM_PREVIEW_LIMIT = 24;
+
+const topicCopy: Record<Language, { title: string; terms: string; sources: string; browseAll: string }> = {
+    en: { title: 'Topic hub', terms: 'Core terms in this hub', sources: 'Source framework', browseAll: 'Browse full glossary' },
+    ru: { title: 'Тематический хаб', terms: 'Ключевые термины хаба', sources: 'Источник и рамка', browseAll: 'Открыть полный глоссарий' },
+    tr: { title: 'Topic hub', terms: 'Hub içindeki temel terimler', sources: 'Kaynak çerçevesi', browseAll: 'Tam sözlüğü aç' },
 };
 
 export const dynamicParams = false;
+
+const buildTopicTermPreview = (terms: readonly Term[], topic: Topic): readonly Term[] => {
+    const termBySlug = new Map(terms.map((term) => [term.slug, term] as const));
+    const priorityTerms = topic.priorityTermSlugs
+        .map((slug) => termBySlug.get(slug))
+        .filter((term): term is Term => Boolean(term));
+    const priorityTermIds = new Set(priorityTerms.map((term) => term.id));
+    const fallbackTerms = terms.filter((term) => !priorityTermIds.has(term.id));
+
+    return [...priorityTerms, ...fallbackTerms].slice(0, TOPIC_TERM_PREVIEW_LIMIT);
+};
 
 export async function generateStaticParams(): Promise<Array<{ topicSlug: string }>> {
     const topicSlugs = await listStaticTopicSlugs();
@@ -65,13 +78,14 @@ export default async function TopicPage({
         notFound();
     }
 
-    const [terms, sources] = await Promise.all([
+    const [topicTerms, sources] = await Promise.all([
         listTopicTerms(topic.id),
         Promise.all(topic.sourceIds.map(async (sourceId) => getSeoSourceById(sourceId))).then((items) => (
             items.filter((item): item is NonNullable<typeof items[number]> => Boolean(item))
         )),
     ]);
     const copy = topicCopy[locale];
+    const terms = buildTopicTermPreview(topicTerms, topic);
 
     return (
         <div className="space-y-14 md:space-y-8">
@@ -132,6 +146,12 @@ export default async function TopicPage({
                         </a>
                     ))}
                 </div>
+                <a
+                    href={buildLocalePath(locale, '/glossary')}
+                    className="mt-5 inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-950 hover:text-slate-950"
+                >
+                    {copy.browseAll}
+                </a>
             </section>
 
             <script

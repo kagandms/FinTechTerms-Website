@@ -1,10 +1,30 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { logger } from '@/lib/logger';
 import { resolveHomeHref } from '@/lib/navigation';
+
+const copy = {
+    title: 'Something went wrong',
+    description: 'The application hit an unexpected error. Retry the page or return to the home surface.',
+    retry: 'Try again',
+    home: 'Home',
+};
+
+const getCurrentPathname = (): string | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    return window.location.pathname;
+};
+
+const reportBoundaryError = (error: Error): void => {
+    if (typeof globalThis.reportError !== 'function') {
+        return;
+    }
+
+    globalThis.reportError(error);
+};
 
 export default function GlobalError({
     error,
@@ -13,16 +33,11 @@ export default function GlobalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
-    const pathname = usePathname();
-    const { t } = useLanguage();
-    const homeHref = resolveHomeHref(pathname);
+    const homeHref = resolveHomeHref(getCurrentPathname());
 
     useEffect(() => {
-        logger.error('GLOBAL_ERROR_BOUNDARY_CAUGHT', {
-            route: pathname ?? 'unknown',
-            error,
-        });
-    }, [error, pathname]);
+        reportBoundaryError(error);
+    }, [error]);
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -31,23 +46,23 @@ export default function GlobalError({
                     <span className="text-3xl font-black text-red-500">!</span>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                    {t('errors.globalTitle')}
+                    {copy.title}
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                    {t('errors.globalDescription')}
+                    {copy.description}
                 </p>
                 <div className="flex gap-3 justify-center">
                     <button
                         onClick={reset}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white font-semibold rounded-xl hover:bg-primary-600 transition-colors shadow-md"
                     >
-                        {t('errors.retry')}
+                        {copy.retry}
                     </button>
                     <a
                         href={homeHref}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
-                        {t('errors.home')}
+                        {copy.home}
                     </a>
                 </div>
             </div>

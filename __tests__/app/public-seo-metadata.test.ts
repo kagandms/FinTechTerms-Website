@@ -6,6 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const publicLocaleLayoutPath = path.join(process.cwd(), 'app/(public)/[locale]/layout.tsx');
+const rootLayoutPath = path.join(process.cwd(), 'app/(root)/layout.tsx');
+const rootPagePath = path.join(process.cwd(), 'app/(root)/page.tsx');
+const rootErrorPath = path.join(process.cwd(), 'app/error.tsx');
+const globalErrorPath = path.join(process.cwd(), 'app/global-error.tsx');
+const instrumentationClientPath = path.join(process.cwd(), 'instrumentation-client.ts');
 
 describe('public SEO metadata and route assets', () => {
     const originalEnv = process.env;
@@ -82,6 +87,42 @@ describe('public SEO metadata and route assets', () => {
         expect(source).not.toContain('PublicLocalePreferenceSync');
         expect(source).not.toContain('GoogleAnalytics');
         expect(source).not.toContain('jetbrainsMono');
+    });
+
+    it('keeps global error boundaries free of app state and catalog imports', () => {
+        const sources = [
+            fs.readFileSync(rootErrorPath, 'utf8'),
+            fs.readFileSync(globalErrorPath, 'utf8'),
+        ];
+
+        for (const source of sources) {
+            expect(source).not.toContain("@/utils/storage");
+            expect(source).not.toContain("@/contexts/LanguageContext");
+            expect(source).not.toContain("@/lib/logger");
+            expect(source).not.toContain("@/data/terms");
+            expect(source).not.toContain("next/navigation");
+        }
+    });
+
+    it('keeps root app shell imports behind dynamic boundaries', () => {
+        const rootLayoutSource = fs.readFileSync(rootLayoutPath, 'utf8');
+        const rootPageSource = fs.readFileSync(rootPagePath, 'utf8');
+
+        expect(rootLayoutSource).not.toContain("@/contexts/AuthContext");
+        expect(rootLayoutSource).not.toContain("@/contexts/SRSContext");
+        expect(rootLayoutSource).not.toContain("@/components/SessionTracker");
+        expect(rootPageSource).not.toContain("import HomeClient");
+        expect(rootPageSource).toContain("nextDynamic(() => import('@/app/HomeClient'))");
+    });
+
+    it('keeps client Sentry instrumentation off the initial SEO render path', () => {
+        const source = fs.readFileSync(instrumentationClientPath, 'utf8');
+
+        expect(source).not.toContain("import * as Sentry");
+        expect(source).not.toContain("captureRouterTransitionStart");
+        expect(source).toContain("import('@sentry/nextjs')");
+        expect(source).toContain("window.addEventListener('load'");
+        expect(source).toContain("export const onRouterTransitionStart = (): void => {}");
     });
 
     it('keeps robots rules and sitemap location stable', async () => {

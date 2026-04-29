@@ -7,7 +7,7 @@ export default function PublicSeoHeroMark() {
             viewBox="0 0 256 256"
             role="img"
             aria-label="FinTechTerms"
-            className="mx-auto mb-5 h-64 w-64 rounded-[2rem] object-contain shadow-sm sm:hidden"
+            className="mx-auto mb-4 h-20 w-20 rounded-2xl object-contain shadow-sm sm:hidden"
         >
             <rect width="256" height="256" rx="32" fill="#020617" />
             <text
