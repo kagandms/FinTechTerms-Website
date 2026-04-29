@@ -43,8 +43,16 @@ async function loginViaProfile(page: Page, email: string, password: string) {
 
     if (!await authModal.isVisible().catch(() => false)) {
         const loginButton = page.getByTestId('open-auth-login');
-        await expect(loginButton).toBeVisible({ timeout: 20_000 });
-        await loginButton.click({ force: true });
+        if (await loginButton.isVisible({ timeout: 20_000 }).catch(() => false)) {
+            await loginButton.click({ force: true });
+        }
+    }
+
+    if (!await authModal.isVisible().catch(() => false)) {
+        await page
+            .getByRole('button', { name: /^(Sign In|Log in|Login|Войти|Giriş|Giriş Yap)$/i })
+            .first()
+            .click({ force: true });
     }
 
     await expect(authModal).toBeVisible({ timeout: 20_000 });

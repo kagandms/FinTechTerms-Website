@@ -29,10 +29,13 @@ test.describe('Visitor Flow', () => {
         await waitForAppReady(page);
 
         await page.locator('[data-testid="search-filter-toggle"]:visible').click();
-        const fintechCategoryChip = page.getByRole('button', { name: /^(Fintech|Fintek|Финтех)$/ });
+        const categoryByTestId = page.getByTestId('category-filter-fintech');
+        const fintechCategoryChip = await categoryByTestId.isVisible().catch(() => false)
+            ? categoryByTestId
+            : page.getByRole('button', { name: /^(Fintech|Fintek|Финтех)$/ });
 
         await expect(fintechCategoryChip).toBeVisible();
-        await fintechCategoryChip.click();
+        await fintechCategoryChip.click({ force: true });
 
         await expect(page).toHaveURL(/category=Fintech/);
         await expect(fintechCategoryChip).toHaveAttribute('aria-pressed', 'true');
