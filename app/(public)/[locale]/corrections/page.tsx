@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
 const pageCopy: Record<Language, {
@@ -70,6 +71,26 @@ export default async function CorrectionsPage({
                 <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{copy.description}</p>
                 <p className="mt-8 max-w-3xl text-sm leading-8 text-slate-600">{copy.body}</p>
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd({
+                        '@context': 'https://schema.org',
+                        '@type': 'WebPage',
+                        name: copy.title,
+                        description: copy.description,
+                        url: buildAbsoluteUrl(buildLocalePath(locale, '/corrections')),
+                        inLanguage: locale,
+                        about: 'corrections policy',
+                        publisher: {
+                            '@type': 'Organization',
+                            name: 'FinTechTerms',
+                            url: buildAbsoluteUrl(''),
+                        },
+                    }),
+                }}
+            />
         </div>
     );
 }

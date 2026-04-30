@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 import { ArrowLeft, Brain, Layers3, Sparkles } from 'lucide-react';
 
@@ -208,6 +209,32 @@ export default async function MethodologyPage({
                     </article>
                 ))}
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd({
+                        '@context': 'https://schema.org',
+                        '@type': 'WebPage',
+                        name: copy.title,
+                        description: copy.description,
+                        url: buildAbsoluteUrl(buildLocalePath(locale, '/methodology')),
+                        inLanguage: locale,
+                        about: 'editorial methodology',
+                        publisher: {
+                            '@type': 'Organization',
+                            name: 'FinTechTerms',
+                            url: buildAbsoluteUrl(''),
+                        },
+                        hasPart: copy.sections.map((section, index) => ({
+                            '@type': 'WebPageElement',
+                            position: index + 1,
+                            name: section.title,
+                            text: section.body,
+                        })),
+                    }),
+                }}
+            />
         </div>
     );
 }

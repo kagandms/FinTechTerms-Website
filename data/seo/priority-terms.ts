@@ -20,12 +20,14 @@ const buildLocaleStatus = (status: EditorialStatus): Record<Language, EditorialS
 
 export const priorityClusters: Record<TopicId, ClusterConfig> = {
     'cards-payments': {
-        anchorCount: 6,
+        anchorCount: 8,
         sourceIds: ['stripe-tokenization-101', 'stripe-merchant-of-record', 'adyen-payment-glossary'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             '3d-secure',
             'payment-gateway',
+            'authorization',
+            'capture',
             'chargeback',
             'acquirer',
             'issuer',
@@ -41,8 +43,6 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
             'embedded-finance',
             'digital-banking',
             'peer-to-peer-lending',
-            'robo-advisor',
-            'insurtech',
             'interchange-fee',
         ],
     },
@@ -124,7 +124,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
             'wrapped-token',
             'wrapped-bitcoin',
             'security-token',
-            'utility-token',
+            'proof-of-reserves',
             'equity-token',
             'asset-backed-token',
         ],
@@ -204,6 +204,12 @@ const anchorOverrides: Record<string, PriorityOverride> = {
         prerequisiteSlug: 'payment-gateway',
         requiredSourceIds: ['emv-3ds', 'eba-sca', 'adyen-payment-glossary'],
     },
+    'payment-gateway': {
+        relatedSlugs: ['authorization', 'capture', 'payment-facilitator', 'network-token'],
+        comparisonSlug: 'payment-orchestration',
+        prerequisiteSlug: 'acquirer',
+        requiredSourceIds: ['visa-cybersource-payments', 'adyen-payment-glossary', 'stripe-authorization-capture'],
+    },
     'network-token': {
         relatedSlugs: ['tokenization', 'payment-orchestration', 'account-updater', '3d-secure'],
         comparisonSlug: 'tokenization',
@@ -213,11 +219,37 @@ const anchorOverrides: Record<string, PriorityOverride> = {
         relatedSlugs: ['payment-facilitator', 'chargeback', 'acquirer', 'issuer'],
         comparisonSlug: 'payment-facilitator',
         prerequisiteSlug: 'acquirer',
+        requiredSourceIds: ['stripe-connect-merchant-of-record', 'stripe-merchant-of-record', 'stripe-payment-facilitator'],
+    },
+    'authorization': {
+        relatedSlugs: ['capture', 'chargeback', 'issuer', 'payment-gateway'],
+        comparisonSlug: 'capture',
+        prerequisiteSlug: 'payment-gateway',
+        requiredSourceIds: ['stripe-authorization-capture', 'adyen-capture-docs', 'visa-visanet-acceptance'],
+    },
+    'capture': {
+        relatedSlugs: ['authorization', 'payment-gateway', 'acquirer', 'chargeback'],
+        comparisonSlug: 'authorization',
+        prerequisiteSlug: 'payment-gateway',
+        requiredSourceIds: ['stripe-authorization-capture', 'adyen-capture-docs', 'visa-visanet-acceptance'],
+    },
+    'acquirer': {
+        relatedSlugs: ['issuer', 'payment-gateway', 'capture', 'merchant-of-record'],
+        comparisonSlug: 'issuer',
+        prerequisiteSlug: 'payment-gateway',
+        requiredSourceIds: ['visa-developer-glossary', 'visa-visanet-acceptance', 'adyen-payment-glossary'],
+    },
+    'issuer': {
+        relatedSlugs: ['acquirer', 'authorization', '3d-secure', 'network-token'],
+        comparisonSlug: 'acquirer',
+        prerequisiteSlug: 'payment-gateway',
+        requiredSourceIds: ['visa-developer-glossary', 'visa-visanet-acceptance', 'emv-3ds'],
     },
     'payment-facilitator': {
         relatedSlugs: ['merchant-of-record', 'payment-gateway', 'acquirer', 'issuer'],
         comparisonSlug: 'merchant-of-record',
         prerequisiteSlug: 'payment-gateway',
+        requiredSourceIds: ['visa-payment-facilitator-model', 'stripe-payment-facilitator', 'stripe-connect-merchant-of-record'],
     },
     'proof-of-reserves': {
         relatedSlugs: ['mica', 'stablecoin', 'cryptocurrency', 'rwa'],

@@ -17,6 +17,21 @@ const routeChecks = [
         requireLocalPrerenderHeader: true,
     },
     {
+        path: '/en/topics/cards-payments/terms',
+        jsonLdTypes: ['CollectionPage', 'ItemList'],
+        requireLocalPrerenderHeader: true,
+    },
+    {
+        path: '/ru/sources',
+        jsonLdTypes: ['CollectionPage', 'ItemList', 'CreativeWork'],
+        requireLocalPrerenderHeader: true,
+    },
+    {
+        path: '/ru/editorial-policy',
+        jsonLdTypes: ['WebPage', 'WebPageElement'],
+        requireLocalPrerenderHeader: true,
+    },
+    {
         path: '/tr/about',
         jsonLdTypes: [],
     },
@@ -113,6 +128,14 @@ const assertJsonLd = (html, path, jsonLdTypes) => {
     }
 };
 
+const assertIndexableMeta = (html, path) => {
+    const robotsMetaMatches = html.match(/<meta[^>]+name="robots"[^>]+content="([^"]+)"/gi) ?? [];
+
+    for (const metaTag of robotsMetaMatches) {
+        assertCondition(!metaTag.toLowerCase().includes('noindex'), `${path}: unexpected noindex robots meta`);
+    }
+};
+
 const assertPrerenderHeader = (response, path, required) => {
     if (!required || !isLocalBaseUrl()) {
         return;
@@ -134,7 +157,7 @@ const checkHtmlRoute = async (check) => {
     assertHeadAlternates(text, check.path);
     assertSiblingLocaleLinks(text, check.path);
     assertJsonLd(text, check.path, check.jsonLdTypes);
-    assertCondition(!text.toLowerCase().includes('noindex'), `${check.path}: unexpected noindex`);
+    assertIndexableMeta(text, check.path);
     assertPrerenderHeader(response, check.path, check.requireLocalPrerenderHeader);
 };
 
@@ -142,6 +165,8 @@ const checkRobots = async () => {
     const { text } = await fetchText('/robots.txt');
 
     assertCondition(text.includes('Allow: /'), '/robots.txt: missing allow rule');
+    assertCondition(text.includes('Disallow: /search'), '/robots.txt: missing noindex app search disallow');
+    assertCondition(text.includes('Disallow: /term/'), '/robots.txt: missing legacy term route disallow');
     assertCondition(text.includes('/sitemap.xml'), '/robots.txt: missing sitemap location');
 };
 
@@ -150,6 +175,7 @@ const checkSitemap = async () => {
 
     assertCondition(text.includes('hreflang="x-default"'), '/sitemap.xml: missing x-default hreflang');
     assertCondition(text.includes('/en/glossary/tokenization'), '/sitemap.xml: missing EN tokenization URL');
+    assertCondition(text.includes('/en/topics/cards-payments/terms'), '/sitemap.xml: missing EN topic term index URL');
     assertCondition(text.includes('/tr/topics/cards-payments'), '/sitemap.xml: missing TR topic URL');
 };
 

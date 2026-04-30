@@ -121,6 +121,17 @@ const getLocalizedSection = (value: Term['expanded_definition'], locale: Languag
     value[locale] || value.en || value.ru || value.tr
 );
 
+const buildSourceCitation = (source: SourceRef, locale: Language) => ({
+    '@type': 'CreativeWork',
+    name: getLocalizedText(source.title, locale),
+    url: source.url,
+    publisher: {
+        '@type': 'Organization',
+        name: source.publisher,
+    },
+    dateModified: source.last_verified,
+});
+
 const buildTermFaqItems = (term: Term, locale: Language): readonly TermFaqItem[] => {
     const termLabel = getLocalizedTermLabel(term, locale);
     const definition = getLocalizedTermDefinition(term, locale);
@@ -408,6 +419,7 @@ export default async function SeoTermPage({
                             alternateName: [term.term_en, term.term_ru, term.term_tr],
                             description: definition,
                             termCode: term.id,
+                            citation: dependencies.sources.map((source) => buildSourceCitation(source, locale)),
                             inDefinedTermSet: {
                                 '@type': 'DefinedTermSet',
                                 name: 'FinTechTerms',
@@ -426,6 +438,7 @@ export default async function SeoTermPage({
                                 '@type': 'Thing',
                                 name: termLabel,
                             },
+                            citation: dependencies.sources.map((source) => buildSourceCitation(source, locale)),
                             author: dependencies.author ? {
                                 '@type': dependencies.author.kind === 'person' ? 'Person' : 'Organization',
                                 name: dependencies.author.name,

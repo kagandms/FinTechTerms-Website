@@ -111,6 +111,8 @@ describe('operability guards', () => {
         expect(releaseGateValidationScript).toContain("'AI_FALLBACK_MODELS'");
         expect(readme).toContain('`NEXT_PUBLIC_SITE_URL`');
         expect(envValidationUtils).toContain("ALLOW_LOCAL_ENV_VALIDATION");
+        expect(packageJson).toContain('guard:public-site-origin');
+        expect(packageJson).toContain('validate-public-site-origin.mjs');
         expect(releaseDbVerificationScript).toContain("import { loadLocalEnv } from './env-validation-utils.mjs';");
 
         expect(operationsDoc).toContain('`OPENROUTER_API_KEY`');

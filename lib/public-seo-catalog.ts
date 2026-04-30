@@ -2,6 +2,7 @@ import 'server-only';
 
 import { fullRepoTerms } from '@/data/terms/repo-catalog';
 import { seoContributors } from '@/data/seo/contributors';
+import { getEditorialAuthorityOverride } from '@/data/seo/editorial-authority';
 import {
     PRIORITY_TERM_COUNT,
     priorityTermRecordBySlug,
@@ -306,8 +307,11 @@ const enrichTerm = (term: Term): Term => {
     const priorityRecord = getPriorityRecord(term);
     const topicIds = resolveTopicIds(term);
     const regionalMarkets = resolveRegionalMarkets(term, topicIds);
-    const contentBlock = buildSeoContentBlock(term, getPrimaryTopic(topicIds), regionalMarkets);
-    const sourceRefs = priorityRecord?.requiredSourceIds
+    const editorialOverride = getEditorialAuthorityOverride(term.slug);
+    const contentBlock = editorialOverride?.content
+        ?? buildSeoContentBlock(term, getPrimaryTopic(topicIds), regionalMarkets);
+    const sourceRefs = editorialOverride?.sourceIds
+        ?? priorityRecord?.requiredSourceIds
         ?? (term.source_refs.length > 0
         ? term.source_refs
         : getPrimaryTopic(topicIds).sourceIds.slice(0, 3));

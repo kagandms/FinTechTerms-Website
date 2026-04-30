@@ -134,7 +134,7 @@ describe('public SEO metadata and route assets', () => {
             rules: {
                 userAgent: '*',
                 allow: '/',
-                disallow: ['/admin', '/api/'],
+                disallow: ['/admin', '/api/', '/dashboard', '/favorites', '/profile', '/quiz', '/search', '/term/'],
             },
             sitemap: 'https://fintechterms.example.com/sitemap.xml',
         });
@@ -149,6 +149,7 @@ describe('public SEO metadata and route assets', () => {
         expect(urls.has('https://fintechterms.example.com')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/ru/about')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/topics/cards-payments')).toBe(true);
+        expect(urls.has('https://fintechterms.example.com/en/topics/cards-payments/terms')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/tr/authors/kagan-samet-durmus')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/glossary/tokenization')).toBe(true);
     });

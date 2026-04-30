@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { getLocalizedText, listSeoSources } from '@/lib/public-seo-catalog';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
-import type { Language } from '@/types';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import type { Language, SourceRef } from '@/types';
 
 const pageCopy: Record<Language, { title: string; description: string; verified: string }> = {
     en: {
@@ -22,6 +23,22 @@ const pageCopy: Record<Language, { title: string; description: string; verified:
         verified: 'doğrulandı',
     },
 };
+
+const buildSourceItem = (source: SourceRef, locale: Language, position: number) => ({
+    '@type': 'ListItem',
+    position,
+    item: {
+        '@type': 'CreativeWork',
+        name: getLocalizedText(source.title, locale),
+        url: source.url,
+        publisher: {
+            '@type': 'Organization',
+            name: source.publisher,
+        },
+        dateModified: source.last_verified,
+        description: getLocalizedText(source.note, locale),
+    },
+});
 
 export async function generateMetadata({
     params,
@@ -87,6 +104,24 @@ export default async function SourcesPage({
                     </a>
                 ))}
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd({
+                        '@context': 'https://schema.org',
+                        '@type': 'CollectionPage',
+                        name: copy.title,
+                        description: copy.description,
+                        url: buildAbsoluteUrl(buildLocalePath(locale, '/sources')),
+                        inLanguage: locale,
+                        mainEntity: {
+                            '@type': 'ItemList',
+                            itemListElement: sources.map((source, index) => buildSourceItem(source, locale, index + 1)),
+                        },
+                    }),
+                }}
+            />
         </div>
     );
 }

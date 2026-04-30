@@ -10,9 +10,9 @@ import type { Language, Term, Topic } from '@/types';
 const TOPIC_TERM_PREVIEW_LIMIT = 24;
 
 const topicCopy: Record<Language, { title: string; terms: string; sources: string; browseAll: string }> = {
-    en: { title: 'Topic hub', terms: 'Core terms in this hub', sources: 'Source framework', browseAll: 'Browse full glossary' },
-    ru: { title: 'Тематический хаб', terms: 'Ключевые термины хаба', sources: 'Источник и рамка', browseAll: 'Открыть полный глоссарий' },
-    tr: { title: 'Topic hub', terms: 'Hub içindeki temel terimler', sources: 'Kaynak çerçevesi', browseAll: 'Tam sözlüğü aç' },
+    en: { title: 'Topic hub', terms: 'Core terms in this hub', sources: 'Source framework', browseAll: 'Browse all topic terms' },
+    ru: { title: 'Тематический хаб', terms: 'Ключевые термины хаба', sources: 'Источник и рамка', browseAll: 'Открыть все термины темы' },
+    tr: { title: 'Topic hub', terms: 'Hub içindeki temel terimler', sources: 'Kaynak çerçevesi', browseAll: 'Tüm topic terimlerini aç' },
 };
 
 export const dynamicParams = false;
@@ -150,7 +150,7 @@ export default async function TopicPage({
                     ))}
                 </div>
                 <a
-                    href={buildLocalePath(locale, '/glossary')}
+                    href={buildLocalePath(locale, `/topics/${topic.slug}/terms`)}
                     className="mt-5 inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-950 hover:text-slate-950"
                 >
                     {copy.browseAll}

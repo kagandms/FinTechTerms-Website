@@ -123,6 +123,125 @@ export const seoSources: readonly SourceRef[] = [
         last_verified: '2026-03-15',
     },
     {
+        id: 'stripe-connect-merchant-of-record',
+        title: {
+            en: 'Stripe Docs: Merchant of record in Connect',
+            ru: 'Stripe Docs: Merchant of record in Connect',
+            tr: 'Stripe Docs: Connect içinde Merchant of Record',
+        },
+        publisher: 'Stripe',
+        url: 'https://docs.stripe.com/connect/merchant-of-record?locale=en-GB',
+        type: 'documentation',
+        note: note(
+            'Primary implementation source for merchant-of-record responsibility, charge type, statement descriptor, refunds, and disputes.',
+            'Первичный implementation source по ответственности merchant of record, charge type, statement descriptor, refunds и disputes.',
+            'Merchant of Record sorumluluğu, charge type, statement descriptor, iadeler ve itirazlar için birincil uygulama kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'visa-payment-facilitator-model',
+        title: {
+            en: 'Visa: Payment Facilitator Model',
+            ru: 'Visa: Payment Facilitator Model',
+            tr: 'Visa: Payment Facilitator Model',
+        },
+        publisher: 'Visa',
+        url: 'https://usa.visa.com/content/dam/VCOM/global/support-legal/documents/visa-payment-facilitator-model.pdf',
+        type: 'documentation',
+        note: note(
+            'Network-level reference for payment facilitator registration, sponsored merchants, acceptance, and model risk.',
+            'Network-level source по payment facilitator registration, sponsored merchants, acceptance и model risk.',
+            'Payment facilitator kaydı, sponsored merchants, kabul ve model riski için kart ağı seviyesinde referans.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'stripe-authorization-capture',
+        title: {
+            en: 'Stripe Docs: Separate authorization and capture',
+            ru: 'Stripe Docs: Separate authorization and capture',
+            tr: 'Stripe Docs: Ayrı authorization ve capture',
+        },
+        publisher: 'Stripe',
+        url: 'https://docs.stripe.com/payments/place-a-hold-on-a-payment-method',
+        type: 'documentation',
+        note: note(
+            'Primary implementation source for authorization holds, capture timing, and manual capture windows.',
+            'Первичный implementation source по authorization holds, capture timing и manual capture windows.',
+            'Authorization hold, capture zamanlaması ve manual capture pencereleri için birincil uygulama kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'adyen-capture-docs',
+        title: {
+            en: 'Adyen Docs: Capture an authorized payment',
+            ru: 'Adyen Docs: Capture an authorized payment',
+            tr: 'Adyen Docs: Yetkilendirilmiş ödemeyi capture etme',
+        },
+        publisher: 'Adyen',
+        url: 'https://docs.adyen.com/online-payments/capture?tab=delayed-individual_2',
+        type: 'documentation',
+        note: note(
+            'Primary implementation source for payment capture after authorization, manual capture, and capture request behavior.',
+            'Первичный implementation source по capture after authorization, manual capture и capture request behavior.',
+            'Authorization sonrası capture, manual capture ve capture isteği davranışı için birincil uygulama kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'visa-developer-glossary',
+        title: {
+            en: 'Visa Developer: Glossary',
+            ru: 'Visa Developer: Glossary',
+            tr: 'Visa Developer: Glossary',
+        },
+        publisher: 'Visa Developer',
+        url: 'https://developer.visa.com/pages/glossary',
+        type: 'documentation',
+        note: note(
+            'Primary network terminology source for acquirer, issuer, API, and authorization definitions.',
+            'Первичный network terminology source для определений acquirer, issuer, API и authorization.',
+            'Acquirer, issuer, API ve authorization tanımları için kart ağı terminoloji kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'visa-visanet-acceptance',
+        title: {
+            en: 'Visa Developer: VisaNet Connect Acceptance',
+            ru: 'Visa Developer: VisaNet Connect Acceptance',
+            tr: 'Visa Developer: VisaNet Connect Acceptance',
+        },
+        publisher: 'Visa Developer',
+        url: 'https://developer.visa.com/capabilities/visanet-connect-acceptance',
+        type: 'documentation',
+        note: note(
+            'Primary network source for acquirer-facing authorization, capture, clearing, settlement, and issuer decision routing.',
+            'Первичный network source по acquirer-facing authorization, capture, clearing, settlement и issuer decision routing.',
+            'Acquirer taraflı authorization, capture, clearing, settlement ve issuer karar yönlendirmesi için kart ağı kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
+        id: 'visa-cybersource-payments',
+        title: {
+            en: 'Visa Developer: CyberSource Payments',
+            ru: 'Visa Developer: CyberSource Payments',
+            tr: 'Visa Developer: CyberSource Payments',
+        },
+        publisher: 'Visa Developer',
+        url: 'https://developer.visa.com/products/cybersource',
+        type: 'documentation',
+        note: note(
+            'Gateway and processing source for authorization request routing, issuer decisioning, capture, and settlement context.',
+            'Источник по gateway and processing для authorization request routing, issuer decisioning, capture и settlement context.',
+            'Authorization request routing, issuer decisioning, capture ve settlement bağlamı için gateway/processing kaynağı.'
+        ),
+        last_verified: '2026-04-30',
+    },
+    {
         id: 'adyen-payment-glossary',
         title: {
             en: 'Adyen: Payment methods glossary',

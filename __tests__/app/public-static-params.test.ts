@@ -21,6 +21,17 @@ describe('public SEO static params', () => {
         await expect(routeModule.generateStaticParams()).resolves.toEqual(expectedParams);
     });
 
+    it('topic term index routes prebuild all known topic slugs and disable dynamic params', async () => {
+        const routeModule = await import('@/app/(public)/[locale]/topics/[topicSlug]/terms/page');
+        const topicSlugs = await listStaticTopicSlugs();
+        const expectedParams = PUBLIC_LOCALES.flatMap((locale) => (
+            topicSlugs.map((topicSlug) => ({ locale, topicSlug }))
+        ));
+
+        expect(routeModule.dynamicParams).toBe(false);
+        await expect(routeModule.generateStaticParams()).resolves.toEqual(expectedParams);
+    });
+
     it('author routes prebuild all known contributor slugs and disable dynamic params', async () => {
         const routeModule = await import('@/app/(public)/[locale]/authors/[authorSlug]/page');
         const contributorSlugs = await listStaticContributorSlugs();

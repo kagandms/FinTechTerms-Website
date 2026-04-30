@@ -11,6 +11,10 @@ const runtimeValidationScriptSource = fs.readFileSync(
     path.join(process.cwd(), 'scripts/validate-runtime-env.mjs'),
     'utf8'
 );
+const publicSiteOriginScriptSource = fs.readFileSync(
+    path.join(process.cwd(), 'scripts/validate-public-site-origin.mjs'),
+    'utf8'
+);
 const envValidationUtilsSource = fs.readFileSync(
     path.join(process.cwd(), 'scripts/env-validation-utils.mjs'),
     'utf8'
@@ -37,6 +41,7 @@ describe('env validation local-env policy', () => {
         const scriptsDir = path.join(tempDir, 'scripts');
         fs.mkdirSync(scriptsDir, { recursive: true });
         fs.writeFileSync(path.join(scriptsDir, 'validate-runtime-env.mjs'), runtimeValidationScriptSource);
+        fs.writeFileSync(path.join(scriptsDir, 'validate-public-site-origin.mjs'), publicSiteOriginScriptSource);
         fs.writeFileSync(path.join(scriptsDir, 'env-validation-utils.mjs'), envValidationUtilsSource);
         return tempDir;
     };
@@ -78,5 +83,39 @@ describe('env validation local-env policy', () => {
         });
 
         expect(output).toContain('"ok": true');
+    });
+
+    it('rejects production builds with a non-canonical public site origin', () => {
+        const workspaceDir = createTempScriptWorkspace();
+
+        expect(() => {
+            execFileSync(process.execPath, ['scripts/validate-public-site-origin.mjs'], {
+                cwd: workspaceDir,
+                env: {
+                    ...process.env,
+                    VERCEL_ENV: 'production',
+                    NEXT_PUBLIC_SITE_URL: 'https://fintechterms.com',
+                },
+                stdio: 'pipe',
+            });
+        }).toThrow();
+    });
+
+    it('accepts production builds with the canonical public site origin', () => {
+        const workspaceDir = createTempScriptWorkspace();
+
+        const output = execFileSync(process.execPath, ['scripts/validate-public-site-origin.mjs'], {
+            cwd: workspaceDir,
+            env: {
+                ...process.env,
+                VERCEL_ENV: 'production',
+                NEXT_PUBLIC_SITE_URL: 'https://www.fintechterms.com',
+            },
+            encoding: 'utf8',
+            stdio: 'pipe',
+        });
+
+        expect(output).toContain('"ok": true');
+        expect(output).toContain('"enforced": true');
     });
 });

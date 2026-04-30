@@ -76,6 +76,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
     ));
 
+    const topicTermIndexEntries = locales.flatMap((locale) => (
+        topics.map((topic) => buildLocalizedSitemapEntry({
+            siteUrl,
+            locale,
+            suffix: `/topics/${topic.slug}/terms`,
+            lastModified: topic.updated_at,
+            changeFrequency: 'weekly',
+            priority: 0.72,
+        }))
+    ));
+
     const contributorEntries = locales.flatMap((locale) => (
         contributors.map((contributor) => buildLocalizedSitemapEntry({
             siteUrl,
@@ -110,6 +121,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         ...localeEntries,
         ...topicEntries,
+        ...topicTermIndexEntries,
         ...contributorEntries,
         ...termEntries,
     ];
