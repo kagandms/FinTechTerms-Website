@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -57,13 +58,18 @@ export default async function CorrectionsPage({
         notFound();
     }
 
-    const copy = pageCopy[rawLocale];
+    const locale = rawLocale;
+    const copy = pageCopy[locale];
 
     return (
-        <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
-            <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{copy.title}</h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{copy.description}</p>
-            <p className="mt-8 max-w-3xl text-sm leading-8 text-slate-600">{copy.body}</p>
-        </section>
+        <div className="space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix="/corrections" />
+
+            <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
+                <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{copy.title}</h1>
+                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{copy.description}</p>
+                <p className="mt-8 max-w-3xl text-sm leading-8 text-slate-600">{copy.body}</p>
+            </section>
+        </div>
     );
 }

@@ -4,6 +4,7 @@
 
 import {
     buildAbsoluteLocaleAlternates,
+    buildAbsolutePublicLocaleAlternates,
     buildAbsoluteXDefaultAlternates,
     buildLocaleAlternates,
     buildLocalePath,
@@ -41,6 +42,12 @@ describe('seo routing helpers', () => {
 
     it('builds absolute localized alternates for metadata consumers', () => {
         expect(buildAbsoluteLocaleAlternates('/glossary/tokenization')).toEqual({
+            ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
+            en: 'https://fintechterms.example.com/en/glossary/tokenization',
+            tr: 'https://fintechterms.example.com/tr/glossary/tokenization',
+        });
+        expect(buildAbsolutePublicLocaleAlternates('/glossary/tokenization')).toEqual({
+            'x-default': 'https://fintechterms.example.com/ru/glossary/tokenization',
             ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
             en: 'https://fintechterms.example.com/en/glossary/tokenization',
             tr: 'https://fintechterms.example.com/tr/glossary/tokenization',

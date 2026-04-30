@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -71,10 +72,10 @@ const pageCopy: Record<Language, {
         description: 'FinTechTerms’in çok dilli fintek sözlük içeriğini nasıl yazdığı, incelediği ve yapılandırdığı.',
         backLabel: 'FinTechTerms',
         eyebrow: 'Editoryal sistem',
-        structureLabel: 'Yapi',
-        structureValue: '3 metodoloji katmani',
-        outcomeLabel: 'Cikti',
-        outcomeValue: 'Aranabilir, incelenebilir ve kaynak destekli icerik',
+        structureLabel: 'Yapı',
+        structureValue: '3 metodoloji katmanı',
+        outcomeLabel: 'Çıktı',
+        outcomeValue: 'Aranabilir, incelenebilir ve kaynak destekli içerik',
         layerLabel: 'Katman',
         sections: [
             {
@@ -125,12 +126,15 @@ export default async function MethodologyPage({
         notFound();
     }
 
-    const copy = pageCopy[rawLocale];
+    const locale = rawLocale;
+    const copy = pageCopy[locale];
 
     return (
         <div className="space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix="/methodology" />
+
             <a
-                href={buildLocalePath(rawLocale)}
+                href={buildLocalePath(locale)}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950"
             >
                 <ArrowLeft className="h-4 w-4" />

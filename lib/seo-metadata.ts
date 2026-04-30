@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { buildAbsoluteLocaleAlternates, buildAbsoluteUrl, formatSeoTitle, getOpenGraphLocale } from '@/lib/seo-routing';
+import { buildAbsolutePublicLocaleAlternates, buildAbsoluteUrl, formatSeoTitle, getOpenGraphLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
 interface SeoMetadataOptions {
@@ -27,7 +27,7 @@ export const buildSeoMetadata = ({
     description,
     alternates: {
         canonical: buildAbsoluteUrl(path),
-        languages: buildAbsoluteLocaleAlternates(path.replace(`/${locale}`, '')),
+        languages: buildAbsolutePublicLocaleAlternates(path.replace(`/${locale}`, '')),
     },
     robots: noindex ? {
         index: false,

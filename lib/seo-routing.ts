@@ -1,6 +1,5 @@
-import type { Metadata } from 'next';
 import { getSiteUrl } from '@/lib/site-url';
-import { SUPPORTED_LANGUAGES } from '@/lib/language';
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from '@/lib/language';
 import type { Language } from '@/types';
 
 const OG_LOCALES: Record<Language, 'en_US' | 'ru_RU' | 'tr_TR'> = {
@@ -44,24 +43,29 @@ export const buildSiblingLocalePath = (
     return rewrittenPath || buildLocalePath(targetLocale);
 };
 
-export const buildLocaleAlternates = (suffix = ''): NonNullable<Metadata['alternates']>['languages'] => ({
+export const buildLocaleAlternates = (suffix = ''): Record<Language, string> => ({
     ru: buildLocalePath('ru', suffix),
     en: buildLocalePath('en', suffix),
     tr: buildLocalePath('tr', suffix),
 });
 
-export const buildAbsoluteLocaleAlternates = (suffix = ''): NonNullable<Metadata['alternates']>['languages'] => ({
+export const buildAbsoluteLocaleAlternates = (suffix = ''): Record<Language, string> => ({
     ru: buildAbsoluteUrl(buildLocalePath('ru', suffix)),
     en: buildAbsoluteUrl(buildLocalePath('en', suffix)),
     tr: buildAbsoluteUrl(buildLocalePath('tr', suffix)),
 });
 
-export const buildXDefaultAlternates = (): NonNullable<Metadata['alternates']>['languages'] => ({
+export const buildAbsolutePublicLocaleAlternates = (suffix = ''): Record<Language | 'x-default', string> => ({
+    'x-default': buildAbsoluteUrl(buildLocalePath(DEFAULT_LANGUAGE, suffix)),
+    ...buildAbsoluteLocaleAlternates(suffix),
+});
+
+export const buildXDefaultAlternates = (): Record<Language | 'x-default', string> => ({
     'x-default': '/',
     ...buildLocaleAlternates(),
 });
 
-export const buildAbsoluteXDefaultAlternates = (): NonNullable<Metadata['alternates']>['languages'] => ({
+export const buildAbsoluteXDefaultAlternates = (): Record<Language | 'x-default', string> => ({
     'x-default': getSiteUrl(),
     ...buildAbsoluteLocaleAlternates(),
 });

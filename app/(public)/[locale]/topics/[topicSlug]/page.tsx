@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import { getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, getSeoSourceById, getSeoTopicBySlug, listStaticTopicSlugs, listTopicTerms } from '@/lib/public-seo-catalog';
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
-import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
 import type { Language, Term, Topic } from '@/types';
 
 const TOPIC_TERM_PREVIEW_LIMIT = 24;
@@ -28,10 +28,12 @@ const buildTopicTermPreview = (terms: readonly Term[], topic: Topic): readonly T
     return [...priorityTerms, ...fallbackTerms].slice(0, TOPIC_TERM_PREVIEW_LIMIT);
 };
 
-export async function generateStaticParams(): Promise<Array<{ topicSlug: string }>> {
+export async function generateStaticParams(): Promise<Array<{ locale: Language; topicSlug: string }>> {
     const topicSlugs = await listStaticTopicSlugs();
 
-    return topicSlugs.map((topicSlug) => ({ topicSlug }));
+    return PUBLIC_LOCALES.flatMap((locale) => (
+        topicSlugs.map((topicSlug) => ({ locale, topicSlug }))
+    ));
 }
 
 export async function generateMetadata({
@@ -65,7 +67,6 @@ export default async function TopicPage({
     params: Promise<{ locale: string; topicSlug: string }>;
 }) {
     const { locale: rawLocale, topicSlug } = await params;
-    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -89,6 +90,8 @@ export default async function TopicPage({
 
     return (
         <div className="space-y-14 md:space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix={`/topics/${topic.slug}`} />
+
             <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <PublicSeoHeroMark />
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -155,7 +158,6 @@ export default async function TopicPage({
             </section>
 
             <script
-                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: serializeJsonLd({

@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -64,12 +65,12 @@ const pageCopy: Record<Language, {
         backLabel: 'FinTechTerms',
         eyebrow: 'Kamusal proje profili',
         focusLabel: 'Odak',
-        focusValue: 'Cok dilli fintek sozlugu',
+        focusValue: 'Çok dilli fintek sözlüğü',
         standardLabel: 'Standart',
-        standardValue: 'Kamusal guven ve inceleme sinyalleri',
-        missionLabel: 'Temel cerceve',
+        standardValue: 'Kamusal güven ve inceleme sinyalleri',
+        missionLabel: 'Temel çerçeve',
         architectureLabel: 'Teslim modeli',
-        peopleLabel: 'Inceleme katmani',
+        peopleLabel: 'İnceleme katmanı',
         missionTitle: 'Misyon',
         missionBody: 'FinTechTerms; fintek, finans ve teknoloji terminolojisi için güçlü kamusal güven sinyallerine sahip çok dilli bir sözlük ve öğrenme altyapısı olarak geliştirilir.',
         architectureTitle: 'Mimari',
@@ -115,6 +116,8 @@ export default async function AboutPage({
 
     return (
         <div className="space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix="/about" />
+
             <a
                 href={buildLocalePath(locale)}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950"

@@ -25,6 +25,17 @@ interface SeoCatalog {
     readonly sourceById: ReadonlyMap<string, SourceRef>;
 }
 
+type SeoContentBlock = Pick<
+    Term,
+    | 'expanded_definition'
+    | 'why_it_matters'
+    | 'how_it_works'
+    | 'risks_and_pitfalls'
+    | 'regional_notes'
+    | 'seo_title'
+    | 'seo_description'
+>;
+
 const WIDE_MARKET_TOPICS = new Set<string>([
     'cards-payments',
     'open-banking',
@@ -43,6 +54,110 @@ const TOPIC_KEYWORDS: Record<string, readonly string[]> = {
     'market-microstructure': ['market', 'spread', 'slippage', 'order', 'latency', 'liquidity', 'arbitrage', 'trading'],
     'fraud-identity-security': ['fraud', 'security', 'phishing', 'private key', 'biometric', '2fa', 'authentication', 'blind signing'],
     'ai-data-finance': ['ai', 'machine learning', 'data', 'analytics', 'algorithm', 'predictive', 'language processing'],
+};
+
+const CATEGORY_CONTEXT: Record<Term['category'], LocalizedText> = {
+    Finance: {
+        en: 'valuation, risk, reporting, and market interpretation',
+        ru: 'оценкой стоимости, риском, отчётностью и интерпретацией рынка',
+        tr: 'değerleme, risk, raporlama ve piyasa yorumu',
+    },
+    Fintech: {
+        en: 'digital financial products, regulated infrastructure, and user-facing transaction flows',
+        ru: 'цифровыми финансовыми продуктами, регулируемой инфраструктурой и пользовательскими транзакционными потоками',
+        tr: 'dijital finans ürünleri, düzenlemeye tabi altyapı ve kullanıcıya dönük işlem akışları',
+    },
+    Technology: {
+        en: 'system design, data infrastructure, security, and operational reliability',
+        ru: 'архитектурой систем, инфраструктурой данных, безопасностью и операционной надёжностью',
+        tr: 'sistem tasarımı, veri altyapısı, güvenlik ve operasyonel güvenilirlik',
+    },
+};
+
+const TOPIC_SEARCH_INTENT: Record<string, LocalizedText> = {
+    'cards-payments': {
+        en: 'authorization, capture, settlement, refunds, merchant risk, and checkout conversion',
+        ru: 'авторизацию, capture, settlement, возвраты, merchant risk и конверсию checkout',
+        tr: 'yetkilendirme, tahsilat, mutabakat, iade, üye işyeri riski ve ödeme dönüşümü',
+    },
+    'open-banking': {
+        en: 'consent, account access, regulated APIs, payment initiation, and bank connectivity',
+        ru: 'согласие, доступ к счетам, регулируемые API, инициацию платежей и банковскую связность',
+        tr: 'rıza, hesap erişimi, regüle API’ler, ödeme başlatma ve banka bağlantısı',
+    },
+    'regtech-compliance': {
+        en: 'identity checks, compliance controls, reporting duties, and supervisory expectations',
+        ru: 'проверки личности, комплаенс-контроли, отчётные обязанности и ожидания надзора',
+        tr: 'kimlik kontrolleri, uyum kontrolleri, raporlama yükümlülükleri ve denetleyici beklentiler',
+    },
+    'crypto-infrastructure': {
+        en: 'wallets, protocols, on-chain execution, custody, and blockchain settlement risk',
+        ru: 'кошельки, протоколы, on-chain исполнение, custody и settlement-риск блокчейна',
+        tr: 'cüzdanlar, protokoller, zincir üstü yürütme, saklama ve blokzincir mutabakat riski',
+    },
+    'rwa-tokenization': {
+        en: 'asset representation, issuance, custody, redemption, and reserve transparency',
+        ru: 'представление активов, выпуск, custody, погашение и прозрачность резервов',
+        tr: 'varlık temsili, ihraç, saklama, itfa ve rezerv şeffaflığı',
+    },
+    'market-microstructure': {
+        en: 'order flow, liquidity, spreads, execution quality, and market data interpretation',
+        ru: 'поток заявок, ликвидность, спреды, качество исполнения и интерпретацию рыночных данных',
+        tr: 'emir akışı, likidite, spread, yürütme kalitesi ve piyasa verisi yorumu',
+    },
+    'fraud-identity-security': {
+        en: 'authentication, credential safety, transaction approval, and fraud-loss prevention',
+        ru: 'аутентификацию, защиту credential, подтверждение транзакций и предотвращение fraud loss',
+        tr: 'kimlik doğrulama, kimlik bilgisi güvenliği, işlem onayı ve dolandırıcılık kaybı önleme',
+    },
+    'ai-data-finance': {
+        en: 'data quality, model behavior, analytics decisions, automation limits, and governance',
+        ru: 'качество данных, поведение моделей, аналитические решения, лимиты автоматизации и governance',
+        tr: 'veri kalitesi, model davranışı, analitik kararlar, otomasyon sınırları ve yönetişim',
+    },
+};
+
+const TOPIC_RISK_CONTEXT: Record<string, LocalizedText> = {
+    'cards-payments': {
+        en: 'Confusing the step in the payment lifecycle can create reconciliation errors, chargeback exposure, or misleading conversion analysis.',
+        ru: 'Смешение этапов платёжного жизненного цикла приводит к ошибкам reconciliation, chargeback-риску или неверному анализу конверсии.',
+        tr: 'Ödeme yaşam döngüsündeki adımı karıştırmak mutabakat hatası, chargeback riski veya yanıltıcı dönüşüm analizi üretebilir.',
+    },
+    'open-banking': {
+        en: 'The common failure is to ignore consent scope, API role boundaries, or the difference between account data and payment initiation.',
+        ru: 'Типичная ошибка — игнорировать scope согласия, границы API-ролей или различие между account data и payment initiation.',
+        tr: 'Yaygın hata, rıza kapsamını, API rol sınırlarını veya hesap verisi ile ödeme başlatma farkını göz ardı etmektir.',
+    },
+    'regtech-compliance': {
+        en: 'Weak definitions can blur legal duty, product control, and operational evidence, which matters in regulated workflows.',
+        ru: 'Слабые определения размывают юридическую обязанность, продуктовый контроль и операционные доказательства в регулируемых процессах.',
+        tr: 'Zayıf tanımlar hukuki yükümlülüğü, ürün kontrolünü ve operasyonel kanıtı regüle süreçlerde bulanıklaştırır.',
+    },
+    'crypto-infrastructure': {
+        en: 'Surface-level usage can hide custody, signing, protocol, liquidity, or settlement assumptions.',
+        ru: 'Поверхностное использование скрывает допущения по custody, подписи, протоколу, ликвидности или settlement.',
+        tr: 'Yüzeysel kullanım saklama, imzalama, protokol, likidite veya mutabakat varsayımlarını gizleyebilir.',
+    },
+    'rwa-tokenization': {
+        en: 'The main risk is separating the token narrative from enforceable asset rights, reserves, custody, and redemption mechanics.',
+        ru: 'Главный риск — отделить token narrative от исполнимых прав на актив, резервов, custody и механики погашения.',
+        tr: 'Ana risk, token anlatısını uygulanabilir varlık hakları, rezervler, saklama ve itfa mekaniklerinden koparmaktır.',
+    },
+    'market-microstructure': {
+        en: 'A vague reading can misstate execution cost, liquidity quality, or the reliability of a trading signal.',
+        ru: 'Расплывчатое понимание искажает стоимость исполнения, качество ликвидности или надёжность торгового сигнала.',
+        tr: 'Belirsiz okuma yürütme maliyetini, likidite kalitesini veya işlem sinyalinin güvenilirliğini yanlış gösterebilir.',
+    },
+    'fraud-identity-security': {
+        en: 'Teams can overtrust a control if they do not separate identity proof, possession, authorization, and transaction intent.',
+        ru: 'Команды переоценивают контроль, если не разделяют proof of identity, possession, authorization и transaction intent.',
+        tr: 'Kimlik kanıtı, sahiplik, yetkilendirme ve işlem niyeti ayrılmazsa ekipler bir kontrole fazla güvenebilir.',
+    },
+    'ai-data-finance': {
+        en: 'The key pitfall is treating model output as neutral without checking data lineage, explainability, monitoring, and governance limits.',
+        ru: 'Ключевая ошибка — считать вывод модели нейтральным без проверки data lineage, explainability, мониторинга и governance-лимитов.',
+        tr: 'Temel hata, veri soyu, açıklanabilirlik, izleme ve yönetişim sınırları kontrol edilmeden model çıktısını nötr kabul etmektir.',
+    },
 };
 
 const PRIORITY_SLUG_TO_TOPICS = seoTopics.reduce<Map<string, Set<string>>>((map, topic) => {
@@ -145,30 +260,30 @@ const getPrimaryTopic = (topicIds: readonly string[]): Topic => {
     return fallbackTopic;
 };
 
-const buildPriorityBlock = (
+const buildSeoContentBlock = (
     term: Term,
     topic: Topic,
     regionalMarkets: readonly RegionalMarket[]
-): Pick<Term, 'expanded_definition' | 'why_it_matters' | 'how_it_works' | 'risks_and_pitfalls' | 'regional_notes' | 'seo_title' | 'seo_description'> => ({
+): SeoContentBlock => ({
     expanded_definition: {
-        en: `${term.definition_en} Within FinTechTerms, ${term.term_en} is grouped under ${topic.title.en.toLowerCase()} to explain where the concept sits in financial products, infrastructure, and market operations. ${term.example_sentence_en}`.trim(),
-        ru: `${term.definition_ru} В FinTechTerms термин ${term.term_ru} отнесён к теме «${topic.title.ru.toLowerCase()}», чтобы показать его место в финансовых продуктах, инфраструктуре и рыночных процессах. ${term.example_sentence_ru}`.trim(),
-        tr: `${term.definition_tr} FinTechTerms içinde ${term.term_tr}, finansal ürünler, altyapı ve piyasa operasyonları içindeki yerini göstermek için ${topic.title.tr.toLowerCase()} başlığı altında ele alınır. ${term.example_sentence_tr}`.trim(),
+        en: `${term.definition_en} Within the ${topic.title.en.toLowerCase()} cluster, ${term.term_en} helps explain ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. ${term.example_sentence_en}`.trim(),
+        ru: `${term.definition_ru} В кластере «${topic.title.ru.toLowerCase()}» термин «${term.term_ru}» помогает объяснить ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. ${term.example_sentence_ru}`.trim(),
+        tr: `${term.definition_tr} ${topic.title.tr.toLowerCase()} kümesi içinde ${term.term_tr}, ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} konusunu açıklamaya yardım eder. ${term.example_sentence_tr}`.trim(),
     },
     why_it_matters: {
-        en: `${term.term_en} matters because it changes how teams evaluate product risk, user experience, compliance exposure, and financial interpretation.`,
-        ru: `${term.term_ru} важен, потому что меняет подход к оценке продуктового риска, пользовательского опыта, комплаенс-нагрузки и финансовой интерпретации.`,
-        tr: `${term.term_tr}, ürün riski, kullanıcı deneyimi, uyum yükü ve finansal yorumun nasıl değerlendirileceğini değiştirdiği için önemlidir.`,
+        en: `${term.term_en} matters because it connects ${CATEGORY_CONTEXT[term.category].en} with the practical decisions teams make inside ${topic.title.en.toLowerCase()}.`,
+        ru: `Термин «${term.term_ru}» важен, потому что связывает ${CATEGORY_CONTEXT[term.category].ru} с практическими решениями внутри темы «${topic.title.ru.toLowerCase()}».`,
+        tr: `${term.term_tr}, ${CATEGORY_CONTEXT[term.category].tr} ile ${topic.title.tr.toLowerCase()} içindeki pratik kararları bağladığı için önemlidir.`,
     },
     how_it_works: {
-        en: `In practice, ${term.term_en} is understood through its operational role, the systems it touches, and the market actors that depend on it.`,
-        ru: `На практике ${term.term_ru} понимается через его операционную роль, затрагиваемые системы и рыночных участников, которые от него зависят.`,
-        tr: `Pratikte ${term.term_tr}, operasyonel rolü, etkilediği sistemler ve ona bağlı piyasa aktörleri üzerinden anlaşılır.`,
+        en: `In practice, ${term.term_en} is read through its definition, the systems or market actors it touches, and the way it changes decisions around ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}.`,
+        ru: `На практике термин «${term.term_ru}» читается через определение, затрагиваемые системы или участников рынка и влияние на решения про ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}.`,
+        tr: `Pratikte ${term.term_tr}; tanımı, temas ettiği sistemler veya piyasa aktörleri ve ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} üzerindeki karar etkisiyle okunur.`,
     },
     risks_and_pitfalls: {
-        en: `The main pitfall is to use ${term.term_en} as a buzzword without understanding the underlying controls, limits, and cross-border implications.`,
-        ru: `Главная ошибка — использовать ${term.term_ru} как модное слово, не понимая базовых контролей, ограничений и трансграничных последствий.`,
-        tr: `Temel hata, ${term.term_tr} kavramını altyapı kontrollerini, limitleri ve sınır ötesi etkileri anlamadan slogan gibi kullanmaktır.`,
+        en: TOPIC_RISK_CONTEXT[topic.id]?.en ?? `A common mistake is to use ${term.term_en} without understanding the underlying controls, limits, and cross-border implications.`,
+        ru: TOPIC_RISK_CONTEXT[topic.id]?.ru ?? `Распространённая ошибка — использовать термин «${term.term_ru}», не понимая базовых контролей, ограничений и трансграничных последствий.`,
+        tr: TOPIC_RISK_CONTEXT[topic.id]?.tr ?? `Yaygın hata, ${term.term_tr} kavramını temel kontrolleri, sınırları ve sınır ötesi etkileri anlamadan kullanmaktır.`,
     },
     regional_notes: {
         en: `This concept appears across ${regionalMarkets.join(', ')} contexts, but implementation can change with local regulation, payment rails, and institutional practice.`,
@@ -191,7 +306,7 @@ const enrichTerm = (term: Term): Term => {
     const priorityRecord = getPriorityRecord(term);
     const topicIds = resolveTopicIds(term);
     const regionalMarkets = resolveRegionalMarkets(term, topicIds);
-    const priorityBlock = buildPriorityBlock(term, getPrimaryTopic(topicIds), regionalMarkets);
+    const contentBlock = buildSeoContentBlock(term, getPrimaryTopic(topicIds), regionalMarkets);
     const sourceRefs = priorityRecord?.requiredSourceIds
         ?? (term.source_refs.length > 0
         ? term.source_refs
@@ -206,9 +321,9 @@ const enrichTerm = (term: Term): Term => {
         regional_market: getPrimaryMarket(regionalMarkets),
         source_refs: sourceRefs,
         index_priority: indexPriority,
+        ...contentBlock,
         comparison_term_id: term.comparison_term_id,
         prerequisite_term_id: term.prerequisite_term_id,
-        ...(indexPriority === 'high' ? priorityBlock : {}),
     };
 };
 

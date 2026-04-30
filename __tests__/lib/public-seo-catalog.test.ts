@@ -48,6 +48,15 @@ describe('public seo catalog', () => {
         expect(priorityTerms.every((term) => term.prerequisite_term_id)).toBe(true);
     });
 
+    it('enriches standard long-tail terms with topic-aware public SEO copy', async () => {
+        const terms = await listSeoTerms();
+        const standardTerm = terms.find((term) => term.index_priority !== 'high');
+
+        expect(standardTerm?.expanded_definition.en).toContain('Within the');
+        expect(standardTerm?.why_it_matters.en).not.toContain('product decisions, and industry communication');
+        expect(standardTerm?.risks_and_pitfalls.en.length).toBeGreaterThan(80);
+    });
+
     it('returns finite topic and contributor slug catalogs for static generation', async () => {
         const [topicSlugs, contributorSlugs] = await Promise.all([
             listStaticTopicSlugs(),

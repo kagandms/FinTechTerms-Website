@@ -11,14 +11,14 @@ import {
     getSeoSourceById,
     getSeoTermBySlug,
     getSeoTopicById,
-    listStaticPriorityTermSlugs,
+    listSeoTerms,
     listRelatedTerms,
 } from '@/lib/public-seo-catalog';
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
-import { getScriptNonce } from '@/lib/script-nonce';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
 import { formatUtcDateForLocale } from '@/lib/time';
 import type { Contributor, Language, SourceRef, Term, Topic } from '@/types';
 
@@ -92,17 +92,19 @@ const termCopy: Record<Language, {
     },
 };
 
-export const dynamicParams = true;
+export const dynamicParams = false;
 
 interface TermFaqItem {
     readonly question: string;
     readonly answer: string;
 }
 
-export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
-    const priorityTermSlugs = await listStaticPriorityTermSlugs();
+export async function generateStaticParams(): Promise<Array<{ locale: Language; slug: string }>> {
+    const terms = await listSeoTerms();
 
-    return priorityTermSlugs.map((slug) => ({ slug }));
+    return PUBLIC_LOCALES.flatMap((locale) => (
+        terms.map((term) => ({ locale, slug: term.slug }))
+    ));
 }
 
 const getPrimaryTopic = async (term: Term): Promise<Topic | null> => {
@@ -131,8 +133,8 @@ const buildTermFaqItems = (term: Term, locale: Language): readonly TermFaqItem[]
         ],
         ru: [
             { question: `Что означает ${termLabel}?`, answer: definition },
-            { question: `Почему ${termLabel} важен для финтеха?`, answer: getLocalizedSection(term.why_it_matters, locale) },
-            { question: `Какие риски связаны с ${termLabel}?`, answer: getLocalizedSection(term.risks_and_pitfalls, locale) },
+            { question: `Почему термин «${termLabel}» важен для финтеха?`, answer: getLocalizedSection(term.why_it_matters, locale) },
+            { question: `Какие риски связаны с термином «${termLabel}»?`, answer: getLocalizedSection(term.risks_and_pitfalls, locale) },
         ],
         tr: [
             { question: `${termLabel} ne anlama gelir?`, answer: definition },
@@ -206,7 +208,6 @@ export default async function SeoTermPage({
     params: Promise<{ locale: string; slug: string }>;
 }) {
     const { locale: rawLocale, slug } = await params;
-    const nonce = await getScriptNonce();
 
     if (!isPublicLocale(rawLocale)) {
         notFound();
@@ -227,7 +228,7 @@ export default async function SeoTermPage({
     const termLabel = getLocalizedTermLabel(term, locale);
     const definition = getLocalizedTermDefinition(term, locale);
     const canonicalPath = buildLocalePath(locale, `/glossary/${term.slug}`);
-    const faqItems = buildTermFaqItems(term, locale);
+    const faqItems = term.index_priority === 'high' ? buildTermFaqItems(term, locale) : [];
     const breadcrumbItems = [
         { name: 'FinTechTerms', url: buildLocalePath(locale) },
         { name: copy.glossary, url: buildLocalePath(locale, '/glossary') },
@@ -249,6 +250,8 @@ export default async function SeoTermPage({
                     </span>
                 ))}
             </nav>
+
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix={`/glossary/${term.slug}`} />
 
             <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-8">
                 <PublicSeoHeroMark />
@@ -380,20 +383,21 @@ export default async function SeoTermPage({
                 </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-2xl font-bold text-slate-950">{copy.faqTitle}</h2>
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                    {faqItems.map((item) => (
-                        <article key={item.question} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                            <h3 className="text-base font-semibold leading-6 text-slate-950">{item.question}</h3>
-                            <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
-                        </article>
-                    ))}
-                </div>
-            </section>
+            {faqItems.length > 0 ? (
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 className="text-2xl font-bold text-slate-950">{copy.faqTitle}</h2>
+                    <div className="mt-5 grid gap-4 md:grid-cols-3">
+                        {faqItems.map((item) => (
+                            <article key={item.question} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                                <h3 className="text-base font-semibold leading-6 text-slate-950">{item.question}</h3>
+                                <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+            ) : null}
 
             <script
-                nonce={nonce}
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: serializeJsonLd([
@@ -443,7 +447,7 @@ export default async function SeoTermPage({
                                 item: buildAbsoluteUrl(item.url),
                             })),
                         },
-                        {
+                        ...(faqItems.length > 0 ? [{
                             '@context': 'https://schema.org',
                             '@type': 'FAQPage',
                             mainEntity: faqItems.map((item) => ({
@@ -454,7 +458,7 @@ export default async function SeoTermPage({
                                     text: item.answer,
                                 },
                             })),
-                        },
+                        }] : []),
                     ]),
                 }}
             />

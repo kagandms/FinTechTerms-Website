@@ -13,6 +13,8 @@
     "lint": "eslint app components contexts hooks lib types utils proxy.ts scripts --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "test": "jest",
     "audit:seo": "node scripts/lighthouse-seo-budget.mjs",
+    "audit:seo:technical": "node scripts/public-seo-contract.mjs",
+    "audit:seo:full": "npm run audit:seo:technical && npm run audit:seo",
     "guard:local-secrets": "node scripts/guard-local-secrets.mjs",
     "guard:artifact-sourcemaps": "node scripts/guard-artifact-sourcemaps.mjs",
     "test:e2e:guest": "playwright test --grep-invert @auth-required",

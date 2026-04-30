@@ -53,6 +53,7 @@ describe('public SEO metadata and route assets', () => {
 
         expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/topics/cards-payments');
         expect(metadata.alternates?.languages).toEqual({
+            'x-default': 'https://fintechterms.example.com/ru/topics/cards-payments',
             ru: 'https://fintechterms.example.com/ru/topics/cards-payments',
             en: 'https://fintechterms.example.com/en/topics/cards-payments',
             tr: 'https://fintechterms.example.com/tr/topics/cards-payments',
@@ -69,6 +70,7 @@ describe('public SEO metadata and route assets', () => {
 
         expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/authors/kagan-samet-durmus');
         expect(metadata.alternates?.languages).toEqual({
+            'x-default': 'https://fintechterms.example.com/ru/authors/kagan-samet-durmus',
             ru: 'https://fintechterms.example.com/ru/authors/kagan-samet-durmus',
             en: 'https://fintechterms.example.com/en/authors/kagan-samet-durmus',
             tr: 'https://fintechterms.example.com/tr/authors/kagan-samet-durmus',
@@ -149,6 +151,20 @@ describe('public SEO metadata and route assets', () => {
         expect(urls.has('https://fintechterms.example.com/en/topics/cards-payments')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/tr/authors/kagan-samet-durmus')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/glossary/tokenization')).toBe(true);
+    });
+
+    it('adds multilingual alternates to sitemap entries', async () => {
+        const { default: sitemap } = await import('@/app/sitemap');
+
+        const entries = await sitemap();
+        const termEntry = entries.find((entry) => entry.url === 'https://fintechterms.example.com/en/glossary/tokenization');
+
+        expect(termEntry?.alternates?.languages).toEqual({
+            'x-default': 'https://fintechterms.example.com/ru/glossary/tokenization',
+            ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
+            en: 'https://fintechterms.example.com/en/glossary/tokenization',
+            tr: 'https://fintechterms.example.com/tr/glossary/tokenization',
+        });
     });
 
     it('uses stable content-backed freshness for non-term sitemap entries', async () => {

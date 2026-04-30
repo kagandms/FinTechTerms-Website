@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { listGlossaryTerms, getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, listSeoTopics } from '@/lib/public-seo-catalog';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language, Term } from '@/types';
 
 const pageCopy: Record<Language, {
@@ -92,6 +94,8 @@ export default async function GlossaryPage({
 
     return (
         <div className="space-y-14 md:space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} suffix="/glossary" />
+
             <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {copy.eyebrow}
@@ -153,6 +157,32 @@ export default async function GlossaryPage({
                     </div>
                 ))}
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd({
+                        '@context': 'https://schema.org',
+                        '@type': 'DefinedTermSet',
+                        name: copy.title,
+                        description: copy.description,
+                        url: buildAbsoluteUrl(buildLocalePath(locale, '/glossary')),
+                        inLanguage: locale,
+                        numberOfItems: terms.length,
+                        publisher: {
+                            '@type': 'Organization',
+                            name: 'FinTechTerms',
+                            url: buildAbsoluteUrl(''),
+                        },
+                        hasDefinedTerm: terms.slice(0, 100).map((term) => ({
+                            '@type': 'DefinedTerm',
+                            name: getLocalizedTermLabel(term, locale),
+                            description: getLocalizedTermDefinition(term, locale),
+                            url: buildAbsoluteUrl(buildLocalePath(locale, `/glossary/${term.slug}`)),
+                        })),
+                    }),
+                }}
+            />
         </div>
     );
 }

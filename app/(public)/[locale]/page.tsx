@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import { listPrioritySeoTerms, listSeoTopics, getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText } from '@/lib/public-seo-catalog';
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
+import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
+import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
 const pageCopy: Record<Language, {
@@ -88,6 +90,8 @@ export default async function LocaleHomePage({
 
     return (
         <div className="space-y-14 md:space-y-8">
+            <PublicSiblingLocaleLinks currentLocale={locale} />
+
             <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <PublicSeoHeroMark />
                 <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -142,6 +146,36 @@ export default async function LocaleHomePage({
                     </div>
                 </div>
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'WebSite',
+                            name: 'FinTechTerms',
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale)),
+                            inLanguage: locale,
+                            publisher: {
+                                '@type': 'Organization',
+                                name: 'FinTechTerms',
+                                url: buildAbsoluteUrl(''),
+                            },
+                        },
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'Organization',
+                            name: 'FinTechTerms',
+                            url: buildAbsoluteUrl(''),
+                            sameAs: [
+                                'https://t.me/FinTechTermsBot',
+                            ],
+                        },
+                    ]),
+                }}
+            />
         </div>
     );
 }
