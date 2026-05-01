@@ -51,6 +51,24 @@ The Telegram bot must use `SUPABASE_ANON_KEY`. Admin scripts and server-side mai
 - Validate the production runtime contract with `python -m bot.validate_runtime`.
 - When `RENDER=1`, `REDIS_URL` and `BOT_SENTRY_DSN` are required in addition to the core bot credentials.
 
+## Render deployment
+
+Use the repository-level `render.yaml` for the canonical Render service definition. It deploys the bot as a Docker web service from `telegram-bot/`, binds the Flask health endpoint at `/health`, and avoids accidentally building the Next.js repository root as a Python app.
+
+If configuring Render manually instead of using the Blueprint, use these settings:
+
+| Field | Value |
+|---|---|
+| Service type | Web Service |
+| Runtime | Docker |
+| Root Directory | `telegram-bot` |
+| Health Check Path | `/health` |
+| Dockerfile | `Dockerfile` |
+
+For native Python fallback only, keep `Root Directory` as `telegram-bot`, set `PYTHON_VERSION=3.13` or rely on `.python-version`, set the build command to `pip install -r requirements.txt`, and set the start command to `python -m bot`. Docker remains preferred because the image installs `ffmpeg` for TTS audio generation.
+
+For always-on polling, use a paid Render instance or keep an uptime monitor pointed at `/health`; free web services can sleep after inactivity.
+
 ## Tech Stack
 
 - Python 3.13+

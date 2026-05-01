@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: fintechterms-telegram-bot
+    runtime: docker
+    rootDir: telegram-bot
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: WEB_APP_URL
+        value: https://www.fintechterms.com
+      - key: REDIS_URL
+        sync: false
+      - key: BOT_SENTRY_DSN
+        sync: false
+      - key: DEFAULT_LANGUAGE
+        value: ru
+      - key: DAILY_TERM_HOUR
+        value: "9"
