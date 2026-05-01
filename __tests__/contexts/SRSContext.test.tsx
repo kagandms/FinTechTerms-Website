@@ -17,6 +17,7 @@ const mockUpdateTermInStorage = jest.fn();
 const mockGetUserProgress = jest.fn();
 const mockToggleFavoriteInStorage = jest.fn();
 const mockAddQuizAttemptToStorage = jest.fn();
+const mockSaveGuestQuizReview = jest.fn();
 const mockSaveUserProgress = jest.fn();
 const mockGetGuestQuizPreview = jest.fn();
 const mockRecordGuestQuizPreviewAttempt = jest.fn();
@@ -51,6 +52,7 @@ jest.mock('@/utils/storage', () => ({
     getUserProgress: (...args: unknown[]) => mockGetUserProgress(...args),
     toggleFavorite: (...args: unknown[]) => mockToggleFavoriteInStorage(...args),
     addQuizAttempt: (...args: unknown[]) => mockAddQuizAttemptToStorage(...args),
+    saveGuestQuizReview: (...args: unknown[]) => mockSaveGuestQuizReview(...args),
     saveUserProgress: (...args: unknown[]) => mockSaveUserProgress(...args),
     getGuestQuizPreview: () => mockGetGuestQuizPreview(),
     recordGuestQuizPreviewAttempt: (...args: unknown[]) => mockRecordGuestQuizPreviewAttempt(...args),
@@ -273,6 +275,11 @@ describe('SRSContext', () => {
         });
         mockToggleFavoriteInStorage.mockReturnValue(baseProgress);
         mockAddQuizAttemptToStorage.mockReturnValue(baseProgress);
+        mockSaveGuestQuizReview.mockReturnValue({
+            ok: true,
+            terms: [baseTerm],
+            progress: baseProgress,
+        });
         mockUpdateTermInStorage.mockReturnValue([baseTerm]);
     });
 
@@ -522,7 +529,7 @@ describe('SRSContext', () => {
             expect(screen.getByTestId('submit-error')).toHaveTextContent('Review mode is unavailable');
         });
 
-        expect(mockAddQuizAttemptToStorage).not.toHaveBeenCalled();
+        expect(mockSaveGuestQuizReview).not.toHaveBeenCalled();
     });
 
     it('queues an auth-expired review without mutating canonical local study state', async () => {

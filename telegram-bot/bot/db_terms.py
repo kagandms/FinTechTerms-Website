@@ -24,6 +24,12 @@ logger = logging.getLogger(__name__)
 TERM_ID_CACHE_TTL_SECONDS = 15 * 60
 QUIZ_TERM_FETCH_LIMIT = 64
 TERM_ID_CACHE_FETCH_LIMIT = 512
+TERM_PAGE_FETCH_LIMIT = 500
+CATEGORY_TERM_FETCH_LIMIT = 50
+PUBLIC_TERM_COLUMNS = (
+    "id,term_en,term_ru,term_tr,definition_en,definition_ru,definition_tr,"
+    "category,regional_market,context_tags,is_academic"
+)
 _TERM_ID_CACHE: list[str] = []
 _TERM_ID_CACHE_LOADED_AT = 0.0
 
@@ -193,7 +199,7 @@ def build_academic_search_filters(query: str) -> list[dict[str, Any]]:
 
 
 async def fetch_all_terms() -> list[dict[str, Any]]:
-    """Fetch all public terms from the Supabase `terms` table."""
+    """Fetch public terms from the Supabase `terms` table using bounded pages."""
     return await fetch_all_terms_limited(limit=None)
 
 
@@ -203,13 +209,25 @@ async def fetch_all_terms_limited(limit: int | None) -> list[dict[str, Any]]:
         return await fetch_quiz_candidate_terms(limit=limit)
 
     def _fetch():
-        return apply_academic_quarantine(
-            get_public_client().table("terms").select("*")
-        ).execute()
+        client = get_public_client()
+        rows: list[dict[str, Any]] = []
+        start_index = 0
+
+        while True:
+            response = apply_academic_quarantine(
+                client.table("terms").select(PUBLIC_TERM_COLUMNS)
+            ).order("id").range(start_index, start_index + TERM_PAGE_FETCH_LIMIT - 1).execute()
+            page_rows = response.data if isinstance(response.data, list) else []
+            rows.extend(page_rows)
+
+            if len(page_rows) < TERM_PAGE_FETCH_LIMIT:
+                return rows
+
+            start_index += TERM_PAGE_FETCH_LIMIT
 
     try:
         response = await execute_public_query(_fetch)
-        return normalize_public_terms(response.data)
+        return normalize_public_terms(response)
     except Exception as e:
         logger.error("Failed to fetch all terms (Database Unreachable): %s", e)
         raise ConnectionError("VERİTABANI_BAĞLANTISI_YOK")
@@ -223,7 +241,7 @@ async def fetch_quiz_candidate_terms(limit: int = QUIZ_TERM_FETCH_LIMIT) -> list
         response = apply_academic_quarantine(
             get_public_client()
             .table("terms")
-            .select("id,term_en,term_ru,term_tr,definition_en,definition_ru,definition_tr,is_academic")
+            .select(PUBLIC_TERM_COLUMNS)
             .in_("id", sample_ids)
         ).execute()
         return normalize_public_terms(response.data)
@@ -260,7 +278,7 @@ async def fetch_term_by_id(term_id: str) -> Optional[dict[str, Any]]:
     """Fetch a single public term by its ID."""
     def _fetch():
         return apply_academic_quarantine(
-            get_public_client().table("terms").select("*")
+            get_public_client().table("terms").select(PUBLIC_TERM_COLUMNS)
         ).eq("id", term_id).limit(1).execute()
 
     try:
@@ -298,7 +316,7 @@ async def search_terms(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
         for filter_spec in academic_filters:
             query_builder = apply_academic_quarantine(
-                client.table("terms").select("*")
+                client.table("terms").select(PUBLIC_TERM_COLUMNS)
             )
 
             if filter_spec.get("regional_market"):
@@ -349,8 +367,8 @@ async def get_terms_by_category(category: str) -> list[dict[str, Any]]:
     """Fetch public terms filtered by category (Fintech / Finance / Technology)."""
     def _fetch():
         return apply_academic_quarantine(
-            get_public_client().table("terms").select("*")
-        ).eq("category", category).execute()
+            get_public_client().table("terms").select(PUBLIC_TERM_COLUMNS)
+        ).eq("category", category).limit(CATEGORY_TERM_FETCH_LIMIT).execute()
 
     try:
         response = await execute_public_query(_fetch)

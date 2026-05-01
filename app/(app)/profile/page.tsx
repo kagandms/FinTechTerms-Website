@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/user';
 import { safeGetSupabaseUser } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
+import { hasCompleteMemberProfile } from '@/lib/member-profile-completion';
 import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
 
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,7 @@ const loadInitialProfileData = async (): Promise<{
     const user = authState.user;
 
     let fullName = '';
+    let persistedFullName = '';
     let birthDate = '';
     const metadataFullName = getSupabaseUserMetadataName(user);
 
@@ -102,7 +104,8 @@ const loadInitialProfileData = async (): Promise<{
         warningCode = 'PROFILE_DATA_PARTIAL';
     } else if (profileData) {
         if (typeof profileData.full_name === 'string' && profileData.full_name.trim().length > 0) {
-            fullName = String(profileData.full_name).trim();
+            persistedFullName = String(profileData.full_name).trim();
+            fullName = persistedFullName;
         }
         if (hasPersistedBirthDate(profileData.birth_date)) {
             birthDate = toDateInputValue(profileData.birth_date);
@@ -127,10 +130,11 @@ const loadInitialProfileData = async (): Promise<{
         birthDate,
     };
 
-    const hasCompleteData = Boolean(resolvedData.name.trim())
-        && Boolean(resolvedData.surname.trim())
-        && Boolean(resolvedData.birthDate.trim())
-        && resolvedData.email !== null;
+    const hasCompleteData = hasCompleteMemberProfile({
+        fullName: persistedFullName,
+        birthDate: resolvedData.birthDate,
+        email: resolvedData.email,
+    });
 
     return {
         data: resolvedData,

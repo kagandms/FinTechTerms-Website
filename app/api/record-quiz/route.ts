@@ -271,23 +271,6 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    mutationClient = await createRequestScopedClient(request);
-    if (!mutationClient) {
-        logger.error('QUIZ_ROUTE_REQUEST_CLIENT_UNAVAILABLE', {
-            requestId,
-            route: '/api/record-quiz',
-            retryable: true,
-        });
-        return errorResponse({
-            status: 503,
-            code: 'QUIZ_PERSIST_FAILED',
-            message: 'Unable to record quiz attempt.',
-            requestId,
-            retryable: true,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
-        });
-    }
-    const routeSupabase = mutationClient;
     const {
         term_id,
         is_correct,
@@ -315,43 +298,6 @@ export async function POST(request: NextRequest) {
         });
     }
     const normalizedOccurredAt = occurredAtResult.value;
-
-    const inspection = await inspectIdempotentRequest({
-        supabaseAdmin: routeSupabase,
-        userId: user.id,
-        action: 'quiz_submission',
-        idempotencyKey,
-        payload: {
-            term_id,
-            is_correct,
-            response_time_ms,
-            quiz_type,
-            occurred_at: normalizedOccurredAt,
-            session_id: session_id ?? null,
-        },
-    });
-
-    if (inspection.kind === 'replay') {
-        return successResponse(
-            inspection.responseBody,
-            requestId,
-            {
-                status: inspection.statusCode,
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
-            }
-        );
-    }
-
-    if (inspection.kind === 'conflict') {
-        return errorResponse({
-            status: 409,
-            code: inspection.code,
-            message: inspection.message,
-            requestId,
-            retryable: inspection.code === 'REQUEST_IN_PROGRESS',
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
-        });
-    }
 
     const limitCheck = await apiRouteRateLimiter.check(`record-quiz:${ip}`);
 
@@ -415,6 +361,61 @@ export async function POST(request: NextRequest) {
                 ...guardedHeaders,
                 'Retry-After': writeLimitCheck.retryAfter.toString(),
             },
+        });
+    }
+
+    mutationClient = await createRequestScopedClient(request);
+    if (!mutationClient) {
+        logger.error('QUIZ_ROUTE_REQUEST_CLIENT_UNAVAILABLE', {
+            requestId,
+            route: '/api/record-quiz',
+            retryable: true,
+        });
+        return errorResponse({
+            status: 503,
+            code: 'QUIZ_PERSIST_FAILED',
+            message: 'Unable to record quiz attempt.',
+            requestId,
+            retryable: true,
+            headers: guardedHeaders,
+        });
+    }
+    const routeSupabase = mutationClient;
+
+    const inspection = await inspectIdempotentRequest({
+        supabaseAdmin: routeSupabase,
+        userId: user.id,
+        action: 'quiz_submission',
+        idempotencyKey,
+        payload: {
+            term_id,
+            is_correct,
+            response_time_ms,
+            quiz_type,
+            occurred_at: normalizedOccurredAt,
+            session_id: session_id ?? null,
+        },
+    });
+
+    if (inspection.kind === 'replay') {
+        return successResponse(
+            inspection.responseBody,
+            requestId,
+            {
+                status: inspection.statusCode,
+                headers: guardedHeaders,
+            }
+        );
+    }
+
+    if (inspection.kind === 'conflict') {
+        return errorResponse({
+            status: 409,
+            code: inspection.code,
+            message: inspection.message,
+            requestId,
+            retryable: inspection.code === 'REQUEST_IN_PROGRESS',
+            headers: guardedHeaders,
         });
     }
 

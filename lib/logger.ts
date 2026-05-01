@@ -111,6 +111,16 @@ const logToConsole = (
         return;
     }
 
+    if (method === 'warn') {
+        if (normalizedContext) {
+            console.warn(message, normalizedContext);
+            return;
+        }
+
+        console.warn(message);
+        return;
+    }
+
     if (normalizedContext) {
         console.warn(message, normalizedContext);
         return;
@@ -125,12 +135,10 @@ const emitLog = (
     context?: LoggerBaseContext
 ): void => {
     if (level === 'debug') {
-        logToConsole('warn', message, context);
         return;
     }
 
     if (level === 'info') {
-        logToConsole('warn', message, context);
         return;
     }
 

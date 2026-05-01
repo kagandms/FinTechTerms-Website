@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { z } from 'zod';
 import {
     createRequestId,
@@ -17,6 +18,10 @@ import {
     enforceSameOriginRoute,
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
+import {
+    getExpiredPasswordRecoveryCookieOptions,
+    PASSWORD_RECOVERY_COOKIE_NAME,
+} from '@/lib/auth/password-recovery-cookie';
 import { getPublicEnv } from '@/lib/public-env';
 import { supportsPasswordSignIn } from '@/lib/auth/user';
 import { authUpdatePasswordRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
@@ -108,7 +113,22 @@ export async function POST(request: Request) {
             });
         }
 
-        if (parsed.data.currentPassword) {
+        const cookieStore = await cookies();
+        const isRecoverySession = cookieStore.get(PASSWORD_RECOVERY_COOKIE_NAME)?.value === '1';
+        const currentPassword = parsed.data.currentPassword;
+
+        if (!isRecoverySession) {
+            if (!currentPassword) {
+                return errorResponse({
+                    status: 400,
+                    code: 'CURRENT_PASSWORD_REQUIRED',
+                    message: 'Current password is required.',
+                    requestId,
+                    retryable: false,
+                    headers: UPDATE_PASSWORD_HEADERS,
+                });
+            }
+
             const env = getPublicEnv();
             const verificationClient = createSupabaseClient(
                 env.supabaseUrl!,
@@ -123,7 +143,7 @@ export async function POST(request: Request) {
             );
             const { error: signInError } = await verificationClient.auth.signInWithPassword({
                 email: userState.user.email ?? '',
-                password: parsed.data.currentPassword,
+                password: currentPassword,
             });
 
             if (signInError) {
@@ -153,9 +173,18 @@ export async function POST(request: Request) {
             });
         }
 
-        return applyCookies(successResponse({ success: true }, requestId, {
+        const response = successResponse({ success: true }, requestId, {
             headers: UPDATE_PASSWORD_HEADERS,
-        }));
+        });
+        if (isRecoverySession) {
+            response.cookies.set(
+                PASSWORD_RECOVERY_COOKIE_NAME,
+                '',
+                getExpiredPasswordRecoveryCookieOptions()
+            );
+        }
+
+        return applyCookies(response);
     } catch (error) {
         return handleRouteError(error, {
             requestId,

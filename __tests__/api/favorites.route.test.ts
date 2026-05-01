@@ -127,7 +127,7 @@ describe('favorites route', () => {
         expect(limit).toHaveBeenCalledWith(MAX_FAVORITES_RESPONSE_ITEMS + 1);
     });
 
-    it('replays cached POST responses before touching route or write rate limiters', async () => {
+    it('replays cached POST responses after route and write rate limits pass', async () => {
         const routeLimitSpy = jest.spyOn(apiRouteRateLimiter, 'check');
         const writeLimitSpy = jest.spyOn(favoritesMutationRateLimiter, 'check');
         mockInspectIdempotentRequest.mockResolvedValue({
@@ -156,8 +156,8 @@ describe('favorites route', () => {
             termId: 'term-1',
             favorites: ['term-1'],
         });
-        expect(routeLimitSpy).not.toHaveBeenCalled();
-        expect(writeLimitSpy).not.toHaveBeenCalled();
+        expect(routeLimitSpy).toHaveBeenCalled();
+        expect(writeLimitSpy).toHaveBeenCalledWith('user-1');
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
 
         routeLimitSpy.mockRestore();
@@ -228,6 +228,7 @@ describe('favorites route', () => {
             code: 'RATE_LIMITER_UNAVAILABLE',
             retryable: true,
         });
+        expect(mockInspectIdempotentRequest).not.toHaveBeenCalled();
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 

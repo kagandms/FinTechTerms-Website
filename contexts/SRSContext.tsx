@@ -6,10 +6,9 @@ import {
     type GuestQuizPreview,
     getTerms,
     saveTerms,
-    updateTerm as updateTermInStorage,
     getUserProgress as getLocalUserProgress,
     toggleFavorite as toggleFavoriteInStorage,
-    addQuizAttempt as addQuizAttemptToStorage,
+    saveGuestQuizReview,
     saveUserProgress as saveLocalUserProgress,
     getGuestQuizPreview,
     recordGuestQuizPreviewAttempt as recordGuestQuizPreviewAttemptInStorage,
@@ -60,6 +59,10 @@ interface FavoriteToggleResult {
     error?: string;
     authExpired?: boolean;
 }
+
+type LocalReviewApplyResult =
+    | { readonly ok: true }
+    | { readonly ok: false; readonly reason: 'term_missing' | 'storage_failed' };
 
 export interface ReviewSubmissionResult {
     persistence: 'persisted' | 'queued';
@@ -281,24 +284,21 @@ export function SRSProvider({ children }: SRSProviderProps) {
         termId: string,
         isCorrect: boolean,
         attempt: QuizAttempt
-    ): boolean => {
+    ): LocalReviewApplyResult => {
         const term = terms.find((entry) => entry.id === termId);
         if (!term) {
-            return false;
+            return { ok: false, reason: 'term_missing' };
         }
 
         const updatedTerm = updateTermAfterReview(term, isCorrect);
-        const updatedTerms = terms.map((entry) => (
-            entry.id === termId
-                ? updatedTerm
-                : entry
-        ));
-        updateTermInStorage(updatedTerm, userId);
-        const updatedProgress = addQuizAttemptToStorage(attempt, userId);
+        const saveResult = saveGuestQuizReview(updatedTerm, attempt, userId);
+        if (!saveResult.ok || !saveResult.terms || !saveResult.progress) {
+            return { ok: false, reason: 'storage_failed' };
+        }
 
-        setTerms(updatedTerms);
-        setUserProgress(updatedProgress);
-        return true;
+        setTerms([...saveResult.terms]);
+        setUserProgress(saveResult.progress);
+        return { ok: true };
     }, [terms, userId]);
 
     const broadcastCommittedReview = useCallback((message: SrsSyncMessage) => {
@@ -985,10 +985,14 @@ export function SRSProvider({ children }: SRSProviderProps) {
         };
 
         if (!isAuthenticated || !userId) {
-            const didApplyLocalReview = applyLocalReview(termId, isCorrect, attempt);
-            if (!didApplyLocalReview) {
+            const localReviewResult = applyLocalReview(termId, isCorrect, attempt);
+            if (!localReviewResult.ok) {
                 removePendingReview(reviewId);
                 clearReviewKey(reviewId);
+                if (localReviewResult.reason === 'storage_failed') {
+                    showToast('Progress could not be saved on this device. Please free storage and try again.', 'error');
+                    throw new Error('QUIZ_LOCAL_PERSIST_FAILED: Progress could not be saved on this device.');
+                }
                 throw new Error('QUIZ_TERM_MISSING: Quiz term is unavailable. Refresh the study data and try again.');
             }
             clearReviewKey(reviewId);

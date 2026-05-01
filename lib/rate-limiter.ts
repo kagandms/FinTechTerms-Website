@@ -251,6 +251,9 @@ export const authSignupRateLimiter = createRateLimiter('auth-signup', 5, 10 * 60
 export const authResetPasswordRateLimiter = createRateLimiter('auth-reset-password', 5, 10 * 60 * 1000, '10 m', {
     strictInProduction: true,
 });
+export const authRecoveryExchangeRateLimiter = createRateLimiter('auth-recovery-exchange', 10, 10 * 60 * 1000, '10 m', {
+    strictInProduction: true,
+});
 export const authResendOtpRateLimiter = createRateLimiter('auth-resend-otp', 5, 10 * 60 * 1000, '10 m', {
     strictInProduction: true,
 });

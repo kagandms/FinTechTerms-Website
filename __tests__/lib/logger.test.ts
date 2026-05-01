@@ -49,10 +49,7 @@ describe('logger', () => {
         expect(mockWithScope).not.toHaveBeenCalled();
         expect(mockCaptureMessage).not.toHaveBeenCalled();
         expect(mockCaptureException).not.toHaveBeenCalled();
-        expect(consoleWarnSpy).toHaveBeenCalledWith('AUTH_LOGIN_SUCCEEDED', {
-            route: 'POST /api/auth/login',
-            userId: 'user-1',
-        });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
 
     it('still sends warning messages to Sentry', async () => {

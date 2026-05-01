@@ -3,7 +3,7 @@ import 'server-only';
 import { createRequestScopedClient, resolveAuthenticatedUser } from '@/lib/supabaseAdmin';
 import { logger } from '@/lib/logger';
 import { resolveMemberEntitlements, type MemberEntitlements } from '@/lib/member-entitlements';
-import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
+import { hasCompleteMemberProfile } from '@/lib/member-profile-completion';
 
 export interface RequestMemberProfileSnapshot {
     fullName: string | null;
@@ -105,11 +105,15 @@ export const resolveRequestMemberEntitlements = async (
         };
     }
 
-    const requiresProfileCompletion = !hasPersistedBirthDate(data?.birth_date);
     const profile = {
         fullName: normalizeProfileField(data?.full_name),
         birthDate: normalizeProfileField(data?.birth_date),
     };
+    const requiresProfileCompletion = !hasCompleteMemberProfile({
+        fullName: profile.fullName,
+        birthDate: profile.birthDate,
+        email: user.email,
+    });
 
     return {
         user,

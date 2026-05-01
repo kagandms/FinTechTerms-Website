@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
     createRequestId,
     errorResponse,
+    getClientIp,
     handleRouteError,
     readJsonRequest,
     successResponse,
@@ -12,22 +13,32 @@ import {
     getAuthRouteHeaders,
 } from '@/lib/auth/route-handler';
 import {
+    createAuthRateLimitError,
     enforceSameOriginRoute,
     isJsonRequestValid,
 } from '@/lib/auth/route-protection';
+import {
+    getPasswordRecoveryCookieOptions,
+    PASSWORD_RECOVERY_COOKIE_NAME,
+} from '@/lib/auth/password-recovery-cookie';
+import { authRecoveryExchangeRateLimiter, isRateLimiterUnavailable } from '@/lib/rate-limiter';
 
 const RecoveryExchangeSchema = z.object({
     accessToken: z.string().min(1),
     refreshToken: z.string().min(1),
 });
 
-const RECOVERY_EXCHANGE_HEADERS = getAuthRouteHeaders();
+const RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS = {
+    ...getAuthRouteHeaders(),
+    'X-RateLimit-Limit': '10',
+    'X-RateLimit-Policy': '10;w=600',
+};
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const originResponse = enforceSameOriginRoute(request, {
         requestId,
-        headers: RECOVERY_EXCHANGE_HEADERS,
+        headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
     });
 
     if (originResponse) {
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
         const jsonResult = await readJsonRequest<unknown>(request, {
             requestId,
             message: 'Invalid JSON payload.',
-            headers: RECOVERY_EXCHANGE_HEADERS,
+            headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
         });
         if (!isJsonRequestValid(jsonResult)) {
             return jsonResult.response;
@@ -52,7 +63,22 @@ export async function POST(request: Request) {
                 message: 'Recovery exchange payload is invalid.',
                 requestId,
                 retryable: false,
-                headers: RECOVERY_EXCHANGE_HEADERS,
+                headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
+            });
+        }
+
+        const ip = getClientIp(request);
+        const limitCheck = await authRecoveryExchangeRateLimiter.check(ip);
+        if (isRateLimiterUnavailable(limitCheck) || !limitCheck.allowed) {
+            return createAuthRateLimitError(limitCheck, {
+                requestId,
+                headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
+                code: isRateLimiterUnavailable(limitCheck)
+                    ? 'RATE_LIMITER_UNAVAILABLE'
+                    : 'RATE_LIMITED',
+                message: isRateLimiterUnavailable(limitCheck)
+                    ? 'Authentication is temporarily unavailable.'
+                    : 'RATE_LIMITED',
             });
         }
 
@@ -74,13 +100,20 @@ export async function POST(request: Request) {
                 message: 'Unable to establish the recovery session.',
                 requestId,
                 retryable: false,
-                headers: RECOVERY_EXCHANGE_HEADERS,
+                headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
             });
         }
 
-        return applyCookies(successResponse({ success: true }, requestId, {
-            headers: RECOVERY_EXCHANGE_HEADERS,
-        }));
+        const response = successResponse({ success: true }, requestId, {
+            headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
+        });
+        response.cookies.set(
+            PASSWORD_RECOVERY_COOKIE_NAME,
+            '1',
+            getPasswordRecoveryCookieOptions()
+        );
+
+        return applyCookies(response);
     } catch (error) {
         return handleRouteError(error, {
             requestId,
@@ -88,7 +121,7 @@ export async function POST(request: Request) {
             message: 'Unable to establish the recovery session.',
             retryable: true,
             status: 503,
-            headers: RECOVERY_EXCHANGE_HEADERS,
+            headers: RECOVERY_EXCHANGE_RATE_LIMIT_HEADERS,
             logLabel: 'AUTH_RECOVERY_EXCHANGE_ROUTE_FAILED',
         });
     }

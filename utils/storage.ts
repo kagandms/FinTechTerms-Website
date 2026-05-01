@@ -124,17 +124,23 @@ const getMistakeReviewQueueStorageKey = (userId: string | null | undefined): str
     return `${STORAGE_KEYS.MISTAKE_REVIEW_QUEUE_PREFIX}:auth:${scopeUserId}`;
 };
 
-const countMasteredFavoriteTerms = (
-    terms: readonly Term[],
-    favoriteIds: readonly string[]
+const countMasteredTerms = (
+    terms: readonly Term[]
 ): number => {
-    const favoriteIdSet = new Set(favoriteIds);
-
     return terms.reduce((count, term) => (
-        favoriteIdSet.has(term.id) && term.srs_level >= 4
+        term.srs_level >= 4
             ? count + 1
             : count
     ), 0);
+};
+
+const restoreStorageSnapshot = (key: string, value: string | null): void => {
+    if (value === null) {
+        localStorage.removeItem(key);
+        return;
+    }
+
+    localStorage.setItem(key, value);
 };
 
 const createDefaultProgress = (userId?: string | null): UserProgress => {
@@ -407,8 +413,8 @@ export function getTerms(userId?: string | null): Term[] {
 /**
  * Save terms to storage
  */
-export function saveTerms(terms: Term[], userId?: string | null): void {
-    if (!isLocalStorageAvailable()) return;
+export function saveTerms(terms: Term[], userId?: string | null): boolean {
+    if (!isLocalStorageAvailable()) return false;
 
     try {
         localStorage.setItem(
@@ -416,11 +422,13 @@ export function saveTerms(terms: Term[], userId?: string | null): void {
             JSON.stringify(filterAcademicTerms(terms))
         );
         localStorage.setItem(getTermsVersionStorageKey(userId), DATA_VERSION);
+        return true;
     } catch (error) {
         logger.error('STORAGE_SAVE_TERMS_FAILED', {
             route: 'storage',
             error: error instanceof Error ? error : undefined,
         });
+        return false;
     }
 }
 
@@ -475,8 +483,8 @@ export function getUserProgress(userId?: string | null): UserProgress {
 /**
  * Save user progress to storage
  */
-export function saveUserProgress(progress: UserProgress, userId?: string | null): void {
-    if (!isLocalStorageAvailable()) return;
+export function saveUserProgress(progress: UserProgress, userId?: string | null): boolean {
+    if (!isLocalStorageAvailable()) return false;
 
     try {
         const scopeUserId = resolveProgressScopeUserId(userId ?? progress.user_id);
@@ -516,12 +524,98 @@ export function saveUserProgress(progress: UserProgress, userId?: string | null)
         }
 
         localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
+        return true;
     } catch (error) {
         logger.error('STORAGE_SAVE_PROGRESS_FAILED', {
             route: 'storage',
             error: error instanceof Error ? error : undefined,
         });
+        return false;
     }
+}
+
+const buildProgressAfterQuizAttempt = (
+    progress: UserProgress,
+    attempt: QuizAttempt,
+    terms: readonly Term[]
+): UserProgress => {
+    const nextQuizHistory = clampQuizHistory([
+        ...progress.quiz_history,
+        attempt,
+    ]);
+    const updatedProgress: UserProgress = {
+        ...progress,
+        quiz_history: nextQuizHistory,
+    };
+    const today = startOfUtcDay(new Date()).getTime();
+    const lastStudy = updatedProgress.last_study_date
+        ? startOfUtcDay(updatedProgress.last_study_date).getTime()
+        : null;
+
+    if (lastStudy !== today) {
+        const yesterday = startOfUtcDay(new Date(Date.now() - (24 * 60 * 60 * 1000))).getTime();
+        updatedProgress.current_streak = lastStudy === yesterday ? updatedProgress.current_streak + 1 : 1;
+        updatedProgress.last_study_date = toUtcDateKey(new Date());
+    }
+
+    updatedProgress.total_words_learned = countMasteredTerms(terms);
+    return updatedProgress;
+};
+
+export interface GuestQuizReviewSaveResult {
+    readonly ok: boolean;
+    readonly terms?: readonly Term[];
+    readonly progress?: UserProgress;
+}
+
+/**
+ * Persist a guest quiz review as one visible operation.
+ */
+export function saveGuestQuizReview(
+    updatedTerm: Term,
+    attempt: QuizAttempt,
+    userId?: string | null
+): GuestQuizReviewSaveResult {
+    if (!isLocalStorageAvailable()) {
+        return { ok: false };
+    }
+
+    const terms = getTerms(userId);
+    const updatedTerms = terms.map((term) => (
+        term.id === updatedTerm.id ? updatedTerm : term
+    ));
+    const updatedProgress = buildProgressAfterQuizAttempt(
+        getUserProgress(userId),
+        attempt,
+        updatedTerms
+    );
+    const termsKey = getTermsStorageKey(userId);
+    const versionKey = getTermsVersionStorageKey(userId);
+    const progressKey = getProgressStorageKey(userId ?? updatedProgress.user_id);
+    const previousTerms = localStorage.getItem(termsKey);
+    const previousVersion = localStorage.getItem(versionKey);
+    const previousProgress = localStorage.getItem(progressKey);
+
+    if (!saveTerms(updatedTerms, userId) || !saveUserProgress(updatedProgress, userId)) {
+        try {
+            restoreStorageSnapshot(termsKey, previousTerms);
+            restoreStorageSnapshot(versionKey, previousVersion);
+            restoreStorageSnapshot(progressKey, previousProgress);
+        } catch (error) {
+            logger.error('STORAGE_GUEST_QUIZ_REVIEW_ROLLBACK_FAILED', {
+                route: 'storage',
+                error: error instanceof Error ? error : undefined,
+            });
+        }
+
+        return { ok: false };
+    }
+
+    return {
+        ok: true,
+        terms: updatedTerms,
+        progress: updatedProgress,
+    };
 }
 
 /**
@@ -548,36 +642,7 @@ export function toggleFavorite(termId: string, userId?: string | null): UserProg
  */
 export function addQuizAttempt(attempt: QuizAttempt, userId?: string | null): UserProgress {
     const progress = getUserProgress(userId);
-    const nextQuizHistory = clampQuizHistory([
-        ...progress.quiz_history,
-        attempt,
-    ]);
-    const updatedProgress: UserProgress = {
-        ...progress,
-        quiz_history: nextQuizHistory,
-    };
-
-    // Update streak
-    const today = startOfUtcDay(new Date()).getTime();
-    const lastStudy = updatedProgress.last_study_date
-        ? startOfUtcDay(updatedProgress.last_study_date).getTime()
-        : null;
-
-    if (lastStudy !== today) {
-        const yesterday = startOfUtcDay(new Date(Date.now() - (24 * 60 * 60 * 1000))).getTime();
-
-        if (lastStudy === yesterday) {
-            updatedProgress.current_streak += 1;
-        } else {
-            updatedProgress.current_streak = 1;
-        }
-        updatedProgress.last_study_date = toUtcDateKey(new Date());
-    }
-
-    updatedProgress.total_words_learned = countMasteredFavoriteTerms(
-        getTerms(userId),
-        updatedProgress.favorites
-    );
+    const updatedProgress = buildProgressAfterQuizAttempt(progress, attempt, getTerms(userId));
 
     saveUserProgress(updatedProgress, userId);
     return updatedProgress;

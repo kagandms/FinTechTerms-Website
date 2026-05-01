@@ -17,7 +17,9 @@ const mockAuthSignupCheck = jest.fn();
 const mockAuthResetPasswordCheck = jest.fn();
 const mockAuthResendOtpCheck = jest.fn();
 const mockAuthVerifyOtpCheck = jest.fn();
+const mockAuthRecoveryExchangeCheck = jest.fn();
 const mockAuthUpdatePasswordCheck = jest.fn();
+const mockCookieGet = jest.fn();
 
 jest.mock('@/lib/auth/route-handler', () => ({
     createAuthRouteClient: () => mockCreateAuthRouteClient(),
@@ -52,11 +54,21 @@ jest.mock('@/lib/rate-limiter', () => ({
         check: (...args: unknown[]) => mockAuthVerifyOtpCheck(...args),
         reset: jest.fn(),
     },
+    authRecoveryExchangeRateLimiter: {
+        check: (...args: unknown[]) => mockAuthRecoveryExchangeCheck(...args),
+        reset: jest.fn(),
+    },
     authUpdatePasswordRateLimiter: {
         check: (...args: unknown[]) => mockAuthUpdatePasswordCheck(...args),
         reset: jest.fn(),
     },
     isRateLimiterUnavailable: (result: { unavailable?: boolean }) => result.unavailable === true,
+}));
+
+jest.mock('next/headers', () => ({
+    cookies: jest.fn(async () => ({
+        get: (...args: unknown[]) => mockCookieGet(...args),
+    })),
 }));
 
 const createJsonRequest = (
@@ -110,12 +122,19 @@ describe('auth routes hardening', () => {
             retryAfter: 0,
             unavailable: false,
         });
+        mockAuthRecoveryExchangeCheck.mockResolvedValue({
+            allowed: true,
+            remaining: 9,
+            retryAfter: 0,
+            unavailable: false,
+        });
         mockAuthUpdatePasswordCheck.mockResolvedValue({
             allowed: true,
             remaining: 4,
             retryAfter: 0,
             unavailable: false,
         });
+        mockCookieGet.mockReturnValue(undefined);
     });
 
     it('rejects cross-origin login requests before auth execution', async () => {
@@ -249,7 +268,7 @@ describe('auth routes hardening', () => {
         });
     });
 
-    it('reports existing email when the provider suppresses identities', async () => {
+    it('returns signup success when the provider suppresses identities', async () => {
         mockCreateAuthRouteClient.mockResolvedValue({
             supabase: {
                 auth: {
@@ -277,13 +296,45 @@ describe('auth routes hardening', () => {
         }));
         const body = await response.json();
 
-        expect(response.status).toBe(409);
+        expect(response.status).toBe(200);
         expect(body).toEqual({
-            code: 'EMAIL_ALREADY_REGISTERED',
-            message: 'EMAIL_ALREADY_REGISTERED',
-            requestId: expect.any(String),
-            retryable: false,
+            success: true,
+            needsOTPVerification: true,
         });
+        expect(response.headers.get('x-request-id')).toEqual(expect.any(String));
+    });
+
+    it('returns signup success when the provider reports an existing email', async () => {
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    signUp: jest.fn().mockResolvedValue({
+                        data: {
+                            user: null,
+                            session: null,
+                        },
+                        error: new Error('User already registered'),
+                    }),
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/signup/route');
+        const response = await POST(createJsonRequest('/api/auth/signup', {
+            email: 'existing@example.com',
+            password: 'Secret123!',
+            name: 'Alex Stone',
+            birthDate: '2000-01-01',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            success: true,
+            needsOTPVerification: true,
+        });
+        expect(response.headers.get('x-request-id')).toEqual(expect.any(String));
     });
 
     it('returns stable signup error codes without exposing provider details', async () => {
@@ -361,5 +412,104 @@ describe('auth routes hardening', () => {
             message: 'RATE_LIMITED',
             retryable: true,
         });
+    });
+
+    it('marks a successful recovery exchange as a password recovery session', async () => {
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    setSession: jest.fn().mockResolvedValue({
+                        error: null,
+                    }),
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/recovery/exchange/route');
+        const response = await POST(createJsonRequest('/api/auth/recovery/exchange', {
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
+        }));
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('set-cookie')).toContain('ftt_password_recovery=1');
+        expect(mockAuthRecoveryExchangeCheck).toHaveBeenCalledWith('unknown');
+    });
+
+    it('rejects normal password updates without the current password', async () => {
+        const updateUser = jest.fn();
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    getUser: jest.fn().mockResolvedValue({
+                        data: {
+                            user: {
+                                id: 'user-1',
+                                email: 'user@example.com',
+                                app_metadata: {
+                                    provider: 'email',
+                                    providers: ['email'],
+                                },
+                            },
+                        },
+                        error: null,
+                    }),
+                    updateUser,
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/update-password/route');
+        const response = await POST(createJsonRequest('/api/auth/update-password', {
+            password: 'NewPassword1!',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'CURRENT_PASSWORD_REQUIRED',
+            retryable: false,
+        });
+        expect(updateUser).not.toHaveBeenCalled();
+    });
+
+    it('allows recovery password updates without the current password and clears the marker cookie', async () => {
+        const updateUser = jest.fn().mockResolvedValue({ error: null });
+        mockCookieGet.mockReturnValue({ value: '1' });
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    getUser: jest.fn().mockResolvedValue({
+                        data: {
+                            user: {
+                                id: 'user-1',
+                                email: 'user@example.com',
+                                app_metadata: {
+                                    provider: 'email',
+                                    providers: ['email'],
+                                },
+                            },
+                        },
+                        error: null,
+                    }),
+                    updateUser,
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/update-password/route');
+        const response = await POST(createJsonRequest('/api/auth/update-password', {
+            password: 'NewPassword1!',
+        }));
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body).toEqual({ success: true });
+        expect(updateUser).toHaveBeenCalledWith({ password: 'NewPassword1!' });
+        expect(response.headers.get('set-cookie')).toContain('ftt_password_recovery=');
+        expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
     });
 });

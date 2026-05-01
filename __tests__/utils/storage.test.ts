@@ -390,7 +390,7 @@ describe('addQuizAttempt', () => {
         expect(progress.quiz_history[RECENT_QUIZ_HISTORY_LIMIT - 1]?.id).toBe('attempt_latest');
     });
 
-    it('recalculates mastered words when a local favorite term is promoted and later demoted', () => {
+    it('recalculates mastered words from all local SRS terms', () => {
         const seededTerm = getTerms()[0];
 
         expect(seededTerm).toBeDefined();
@@ -400,7 +400,7 @@ describe('addQuizAttempt', () => {
 
         saveUserProgress(createProgress({
             user_id: 'guest',
-            favorites: [seededTerm.id],
+            favorites: [],
             total_words_learned: 0,
         }));
 
@@ -419,6 +419,9 @@ describe('addQuizAttempt', () => {
         });
 
         expect(promotedProgress.total_words_learned).toBe(1);
+
+        toggleFavorite(seededTerm.id);
+        toggleFavorite(seededTerm.id);
 
         updateTerm({
             ...getTerms()[0]!,

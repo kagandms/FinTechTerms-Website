@@ -128,7 +128,7 @@ describe('record-quiz route', () => {
         });
     });
 
-    it('replays cached responses before touching route or write rate limiters', async () => {
+    it('replays cached responses after route and write rate limits pass', async () => {
         const routeLimitSpy = jest.spyOn(apiRouteRateLimiter, 'check');
         const writeLimitSpy = jest.spyOn(quizMutationRateLimiter, 'check');
         mockInspectIdempotentRequest.mockResolvedValue({
@@ -151,8 +151,8 @@ describe('record-quiz route', () => {
             state: { cached: true },
             message: 'Recorded successfully',
         });
-        expect(routeLimitSpy).not.toHaveBeenCalled();
-        expect(writeLimitSpy).not.toHaveBeenCalled();
+        expect(routeLimitSpy).toHaveBeenCalled();
+        expect(writeLimitSpy).toHaveBeenCalledWith('user_123');
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
 
         routeLimitSpy.mockRestore();
@@ -481,6 +481,7 @@ describe('record-quiz route', () => {
             code: 'RATE_LIMITER_UNAVAILABLE',
             retryable: true,
         });
+        expect(mockInspectIdempotentRequest).not.toHaveBeenCalled();
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 

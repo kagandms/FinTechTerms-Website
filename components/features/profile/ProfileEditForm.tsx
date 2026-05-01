@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { toSafeUserError } from '@/lib/errors';
 import { getTranslationString } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
-import { hasPersistedBirthDate } from '@/lib/profile-birth-date';
+import { hasCompleteMemberProfile } from '@/lib/member-profile-completion';
 
 interface ProfileEditFormProps {
     language: 'tr' | 'en' | 'ru';
@@ -51,10 +51,12 @@ const buildProfileFormDefaults = (
 const hasCompleteProfileInitialData = (
     initialData?: ProfileFormInitialData | null
 ): initialData is ProfileFormInitialData => (
-    Boolean(initialData?.name.trim())
-    && Boolean(initialData?.surname.trim())
-    && Boolean(initialData?.birthDate.trim())
-    && initialData?.email !== null
+    hasCompleteMemberProfile({
+        name: initialData?.name,
+        surname: initialData?.surname,
+        birthDate: initialData?.birthDate,
+        email: initialData?.email,
+    })
 );
 
 const toDateInputValue = (value: unknown): string => {

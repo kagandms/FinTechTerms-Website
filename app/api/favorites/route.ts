@@ -146,57 +146,7 @@ export async function POST(request: Request) {
             });
         }
         authenticatedUserId = user.id;
-        requestScopedClient = await createRequestScopedClient(request);
-        if (!requestScopedClient) {
-            logger.error('POST_FAVORITES_REQUEST_CLIENT_UNAVAILABLE', {
-                route: 'POST /api/favorites',
-                userId: user.id,
-            });
-            return errorResponse({
-                status: 503,
-                code: 'FAVORITES_UPDATE_FAILED',
-                message: 'Unable to update favorites.',
-                requestId,
-                retryable: true,
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
-            });
-        }
-        const supabaseClient = requestScopedClient;
-
         const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
-
-        const inspection = await inspectIdempotentRequest({
-            supabaseAdmin: supabaseClient,
-            userId: user.id,
-            action: 'favorite_mutation',
-            idempotencyKey,
-            payload: {
-                termId,
-                shouldFavorite,
-            },
-        });
-
-        if (inspection.kind === 'replay') {
-            return successResponse(
-                inspection.responseBody,
-                requestId,
-                {
-                    status: inspection.statusCode,
-                    headers: GLOBAL_RATE_LIMIT_HEADERS,
-                }
-            );
-        }
-
-        if (inspection.kind === 'conflict') {
-            return errorResponse({
-                status: 409,
-                code: inspection.code,
-                message: inspection.message,
-                requestId,
-                retryable: inspection.code === 'REQUEST_IN_PROGRESS',
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
-            });
-        }
 
         const limitCheck = await apiRouteRateLimiter.check(`favorites:${ip}`);
 
@@ -248,6 +198,7 @@ export async function POST(request: Request) {
             'X-Write-RateLimit-Limit': WRITE_RATE_LIMIT.toString(),
             'X-Write-RateLimit-Remaining': writeLimitCheck.remaining.toString(),
         };
+        headers = guardedHeaders;
 
         if (!writeLimitCheck.allowed) {
             return errorResponse({
@@ -260,6 +211,56 @@ export async function POST(request: Request) {
                     ...guardedHeaders,
                     'Retry-After': writeLimitCheck.retryAfter.toString(),
                 },
+            });
+        }
+
+        requestScopedClient = await createRequestScopedClient(request);
+        if (!requestScopedClient) {
+            logger.error('POST_FAVORITES_REQUEST_CLIENT_UNAVAILABLE', {
+                route: 'POST /api/favorites',
+                userId: user.id,
+            });
+            return errorResponse({
+                status: 503,
+                code: 'FAVORITES_UPDATE_FAILED',
+                message: 'Unable to update favorites.',
+                requestId,
+                retryable: true,
+                headers: guardedHeaders,
+            });
+        }
+        const supabaseClient = requestScopedClient;
+
+        const inspection = await inspectIdempotentRequest({
+            supabaseAdmin: supabaseClient,
+            userId: user.id,
+            action: 'favorite_mutation',
+            idempotencyKey,
+            payload: {
+                termId,
+                shouldFavorite,
+            },
+        });
+
+        if (inspection.kind === 'replay') {
+            return successResponse(
+                inspection.responseBody,
+                requestId,
+                {
+                    status: inspection.statusCode,
+                    headers: guardedHeaders,
+                }
+            );
+        }
+
+        if (inspection.kind === 'conflict') {
+            return errorResponse({
+                status: 409,
+                code: inspection.code,
+                message: inspection.message,
+                requestId,
+                retryable: inspection.code === 'REQUEST_IN_PROGRESS',
+                headers: guardedHeaders,
             });
         }
 

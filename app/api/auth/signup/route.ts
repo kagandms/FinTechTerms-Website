@@ -141,6 +141,20 @@ export async function POST(request: Request) {
                 });
             }
 
+            if (safeCode === 'EMAIL_ALREADY_REGISTERED') {
+                logger.warn('AUTH_SIGNUP_EMAIL_ALREADY_REGISTERED_SUPPRESSED', {
+                    requestId,
+                    route: '/api/auth/signup',
+                });
+
+                return successResponse({
+                    success: true,
+                    needsOTPVerification: true,
+                }, requestId, {
+                    headers: SIGNUP_RATE_LIMIT_HEADERS,
+                });
+            }
+
             return errorResponse({
                 status: safeCode === 'AUTH_SERVICE_ERROR' ? 503 : 400,
                 code: safeCode,
@@ -151,15 +165,11 @@ export async function POST(request: Request) {
             });
         }
 
-        // Prevent silent failure due to Supabase's obfuscated user enumeration prevention
         if (data.user && data.user.identities && data.user.identities.length === 0) {
-            return errorResponse({
-                status: 409,
-                code: 'EMAIL_ALREADY_REGISTERED',
-                message: 'EMAIL_ALREADY_REGISTERED',
+            logger.warn('AUTH_SIGNUP_IDENTITIES_SUPPRESSED', {
                 requestId,
-                retryable: false,
-                headers: SIGNUP_RATE_LIMIT_HEADERS,
+                route: '/api/auth/signup',
+                userId: data.user.id,
             });
         }
 

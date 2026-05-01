@@ -270,6 +270,7 @@ jobs:
             -e SUPABASE_URL=https://validation.supabase.co \
             -e SUPABASE_ANON_KEY=validation-anon-key \
             -e WEB_APP_URL=https://preview.fintechterms.app \
+            -e REDIS_URL=redis://validation-redis:6379/0 \
             -e BOT_SENTRY_DSN=https://public-validation-key@o123456.ingest.sentry.io/123456 \
             -e RENDER=1 \
             fintechterms-bot-ci python -m bot.validate_runtime
