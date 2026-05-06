@@ -9,6 +9,7 @@ import {
 } from '@/lib/public-seo-catalog';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
 import type { Language, Term, Topic } from '@/types';
@@ -142,7 +143,7 @@ export default async function TopicTermsPage({
                         className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-900 hover:bg-slate-50"
                     >
                         <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
+                        <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
                     </a>
                 ))}
             </section>
@@ -150,24 +151,36 @@ export default async function TopicTermsPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'CollectionPage',
-                        name: title,
-                        description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}/terms`)),
-                        inLanguage: locale,
-                        isPartOf: {
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
                             '@type': 'CollectionPage',
-                            name: getLocalizedText(topic.title, locale),
-                            url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}`)),
+                            name: title,
+                            description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}/terms`)),
+                            inLanguage: locale,
+                            isPartOf: {
+                                '@type': 'CollectionPage',
+                                name: getLocalizedText(topic.title, locale),
+                                url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}`)),
+                            },
+                            mainEntity: {
+                                '@type': 'ItemList',
+                                numberOfItems: terms.length,
+                                itemListElement: terms.map((term, index) => buildTermItem(term, locale, index + 1)),
+                            },
                         },
-                        mainEntity: {
-                            '@type': 'ItemList',
-                            numberOfItems: terms.length,
-                            itemListElement: terms.map((term, index) => buildTermItem(term, locale, index + 1)),
-                        },
-                    }),
+                        buildBreadcrumbJsonLd(locale, [
+                            {
+                                name: getLocalizedText(topic.title, locale),
+                                path: buildLocalePath(locale, `/topics/${topic.slug}`),
+                            },
+                            {
+                                name: title,
+                                path: buildLocalePath(locale, `/topics/${topic.slug}/terms`),
+                            },
+                        ]),
+                    ]),
                 }}
             />
         </div>

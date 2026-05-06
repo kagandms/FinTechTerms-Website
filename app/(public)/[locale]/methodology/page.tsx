@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -200,7 +201,7 @@ export default async function MethodologyPage({
                                     {copy.layerLabel} {index + 1}
                                 </p>
                                 <h2 className="mt-2 text-2xl font-bold text-slate-950">{section.title}</h2>
-                                <p className="mt-4 text-sm leading-7 text-slate-600">{section.body}</p>
+                                <p className="mt-4 text-base leading-7 text-slate-600">{section.body}</p>
                             </div>
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
                                 <Brain className="h-6 w-6" />
@@ -213,26 +214,25 @@ export default async function MethodologyPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'WebPage',
-                        name: copy.title,
-                        description: copy.description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, '/methodology')),
-                        inLanguage: locale,
-                        about: 'editorial methodology',
-                        publisher: {
-                            '@type': 'Organization',
-                            name: 'FinTechTerms',
-                            url: buildAbsoluteUrl(''),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'WebPage',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/methodology')),
+                            inLanguage: locale,
+                            about: 'editorial methodology',
+                            publisher: buildOrganizationJsonLd(locale),
+                            hasPart: copy.sections.map((section, index) => ({
+                                '@type': 'WebPageElement',
+                                position: index + 1,
+                                name: section.title,
+                                text: section.body,
+                            })),
                         },
-                        hasPart: copy.sections.map((section, index) => ({
-                            '@type': 'WebPageElement',
-                            position: index + 1,
-                            name: section.title,
-                            text: section.body,
-                        })),
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/methodology') }]),
+                    ]),
                 }}
             />
         </div>

@@ -34,6 +34,7 @@ describe('public SEO JSON-LD markup', () => {
 
         expect(markup).toContain('application/ld+json');
         expect(markup).toContain('"@type":"CollectionPage"');
+        expect(markup).toContain('"@type":"BreadcrumbList"');
     });
 
     it('renders full topic term index schema markup', async () => {
@@ -45,6 +46,7 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('application/ld+json');
         expect(markup).toContain('"@type":"CollectionPage"');
         expect(markup).toContain('"@type":"ItemList"');
+        expect(markup).toContain('"@type":"BreadcrumbList"');
         expect(markup).toContain('/en/glossary/payment-gateway');
     });
 
@@ -57,12 +59,14 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('application/ld+json');
         expect(markup).toContain('"@type":"CollectionPage"');
         expect(markup).toContain('"@type":"CreativeWork"');
+        expect(markup).toContain('"@type":"BreadcrumbList"');
     });
 
     it('renders editorial trust page schema markup', async () => {
         const EditorialPolicyPage = (await import('@/app/(public)/[locale]/editorial-policy/page')).default;
         const CorrectionsPage = (await import('@/app/(public)/[locale]/corrections/page')).default;
         const MethodologyPage = (await import('@/app/(public)/[locale]/methodology/page')).default;
+        const AboutPage = (await import('@/app/(public)/[locale]/about/page')).default;
 
         const editorialMarkup = renderToStaticMarkup(await EditorialPolicyPage({
             params: Promise.resolve({ locale: 'en' }),
@@ -73,11 +77,44 @@ describe('public SEO JSON-LD markup', () => {
         const methodologyMarkup = renderToStaticMarkup(await MethodologyPage({
             params: Promise.resolve({ locale: 'en' }),
         }));
+        const aboutMarkup = renderToStaticMarkup(await AboutPage({
+            params: Promise.resolve({ locale: 'en' }),
+        }));
 
         expect(editorialMarkup).toContain('"@type":"WebPage"');
         expect(editorialMarkup).toContain('"@type":"WebPageElement"');
+        expect(editorialMarkup).toContain('"@type":"BreadcrumbList"');
         expect(correctionsMarkup).toContain('"@type":"WebPage"');
+        expect(correctionsMarkup).toContain('"@type":"BreadcrumbList"');
         expect(methodologyMarkup).toContain('"@type":"WebPageElement"');
+        expect(methodologyMarkup).toContain('"@type":"BreadcrumbList"');
+        expect(aboutMarkup).toContain('"@type":"AboutPage"');
+        expect(aboutMarkup).toContain('"@type":"Organization"');
+        expect(aboutMarkup).toContain('"@type":"BreadcrumbList"');
+    });
+
+    it('renders support page schema markup for privacy, terms, and contact pages', async () => {
+        const PrivacyPage = (await import('@/app/(public)/[locale]/privacy/page')).default;
+        const TermsPage = (await import('@/app/(public)/[locale]/terms/page')).default;
+        const ContactPage = (await import('@/app/(public)/[locale]/contact/page')).default;
+
+        const privacyMarkup = renderToStaticMarkup(await PrivacyPage({
+            params: Promise.resolve({ locale: 'en' }),
+        }));
+        const termsMarkup = renderToStaticMarkup(await TermsPage({
+            params: Promise.resolve({ locale: 'en' }),
+        }));
+        const contactMarkup = renderToStaticMarkup(await ContactPage({
+            params: Promise.resolve({ locale: 'en' }),
+        }));
+
+        expect(privacyMarkup).toContain('"@type":"WebPage"');
+        expect(privacyMarkup).toContain('"@type":"BreadcrumbList"');
+        expect(termsMarkup).toContain('"@type":"WebPage"');
+        expect(termsMarkup).toContain('"@type":"BreadcrumbList"');
+        expect(contactMarkup).toContain('"@type":"ContactPage"');
+        expect(contactMarkup).toContain('"@type":"ContactPoint"');
+        expect(contactMarkup).toContain('"@type":"BreadcrumbList"');
     });
 
     it('renders person or organization schema markup for localized author pages', async () => {
@@ -89,5 +126,25 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('application/ld+json');
         expect(markup).toContain('"@type":"Person"');
         expect(markup).toContain('Kağan Samet Durmuş');
+        expect(markup).toContain('"@type":"BreadcrumbList"');
+    });
+
+    it('limits FAQPage schema to high-priority term pages', async () => {
+        const { listSeoTerms } = await import('@/lib/public-seo-catalog');
+        const SeoTermPage = (await import('@/app/(public)/[locale]/glossary/[slug]/page')).default;
+        const terms = await listSeoTerms();
+        const standardTerm = terms.find((term) => term.index_priority !== 'high');
+
+        expect(standardTerm).toBeDefined();
+
+        const priorityMarkup = renderToStaticMarkup(await SeoTermPage({
+            params: Promise.resolve({ locale: 'en', slug: 'tokenization' }),
+        }));
+        const standardMarkup = renderToStaticMarkup(await SeoTermPage({
+            params: Promise.resolve({ locale: 'en', slug: standardTerm?.slug ?? '' }),
+        }));
+
+        expect(priorityMarkup).toContain('"@type":"FAQPage"');
+        expect(standardMarkup).not.toContain('"@type":"FAQPage"');
     });
 });

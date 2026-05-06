@@ -53,5 +53,7 @@ describe('public SEO static params', () => {
         expect(routeModule.dynamicParams).toBe(false);
         await expect(routeModule.generateStaticParams()).resolves.toEqual(expectedParams);
         expect(expectedParams).toHaveLength(terms.length * PUBLIC_LOCALES.length);
+        expect(expectedParams).toContainEqual({ locale: 'ru', slug: 'market-index' });
+        expect(expectedParams).not.toContainEqual({ locale: 'ru', slug: 'index' });
     });
 });

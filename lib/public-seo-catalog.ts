@@ -3,6 +3,7 @@ import 'server-only';
 import { fullRepoTerms } from '@/data/terms/repo-catalog';
 import { seoContributors } from '@/data/seo/contributors';
 import { getEditorialAuthorityOverride } from '@/data/seo/editorial-authority';
+import { getSearchIntentMetadataOverride } from '@/data/seo/search-intent-overrides';
 import {
     PRIORITY_TERM_COUNT,
     priorityTermRecordBySlug,
@@ -36,6 +37,10 @@ type SeoContentBlock = Pick<
     | 'seo_title'
     | 'seo_description'
 >;
+
+const SEO_REMEDIATION_REVIEWED_AT = '2026-05-04T00:00:00.000Z';
+
+const seoSourceById = new Map(seoSources.map((source) => [source.id, source] as const));
 
 const WIDE_MARKET_TOPICS = new Set<string>([
     'cards-payments',
@@ -161,6 +166,69 @@ const TOPIC_RISK_CONTEXT: Record<string, LocalizedText> = {
     },
 };
 
+const SEO_TITLE_MAX_BASE_LENGTH = 44;
+
+const buildTermSeoTitle = (
+    label: string,
+    longSuffix: string,
+    shortSuffix: string
+): string => {
+    const longTitle = `${label} ${longSuffix}`;
+
+    if (longTitle.length <= SEO_TITLE_MAX_BASE_LENGTH) {
+        return longTitle;
+    }
+
+    const shortTitle = `${label}: ${shortSuffix}`;
+
+    if (shortTitle.length <= SEO_TITLE_MAX_BASE_LENGTH) {
+        return shortTitle;
+    }
+
+    return label;
+};
+
+const normalizeDateValue = (value: string): string => (
+    value.includes('T') ? value : `${value}T00:00:00.000Z`
+);
+
+const selectLatestIsoDate = (values: readonly string[]): string => (
+    values.reduce((latestValue, value) => {
+        const normalizedValue = normalizeDateValue(value);
+        const latestTime = Date.parse(latestValue);
+        const valueTime = Date.parse(normalizedValue);
+
+        if (Number.isNaN(valueTime)) {
+            return latestValue;
+        }
+
+        if (Number.isNaN(latestTime) || valueTime > latestTime) {
+            return new Date(valueTime).toISOString();
+        }
+
+        return latestValue;
+    }, values[0] ? normalizeDateValue(values[0]) : SEO_REMEDIATION_REVIEWED_AT)
+);
+
+const resolveSeoFreshness = (
+    term: Term,
+    sourceRefs: readonly string[],
+    hasReviewedOverride: boolean
+): Pick<Term, 'reviewed_at' | 'updated_at'> => {
+    const sourceDates = sourceRefs
+        .map((sourceId) => seoSourceById.get(sourceId)?.last_verified)
+        .filter((value): value is string => Boolean(value));
+    const reviewedAt = hasReviewedOverride
+        ? selectLatestIsoDate([term.reviewed_at, SEO_REMEDIATION_REVIEWED_AT, ...sourceDates])
+        : selectLatestIsoDate([term.reviewed_at, ...sourceDates]);
+    const updatedAt = selectLatestIsoDate([term.updated_at, reviewedAt, ...sourceDates]);
+
+    return {
+        reviewed_at: reviewedAt,
+        updated_at: updatedAt,
+    };
+};
+
 const PRIORITY_SLUG_TO_TOPICS = seoTopics.reduce<Map<string, Set<string>>>((map, topic) => {
     for (const slug of topic.priorityTermSlugs) {
         const topicIds = map.get(slug) ?? new Set<string>();
@@ -267,39 +335,39 @@ const buildSeoContentBlock = (
     regionalMarkets: readonly RegionalMarket[]
 ): SeoContentBlock => ({
     expanded_definition: {
-        en: `${term.definition_en} Within the ${topic.title.en.toLowerCase()} cluster, ${term.term_en} helps explain ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. ${term.example_sentence_en}`.trim(),
-        ru: `${term.definition_ru} В кластере «${topic.title.ru.toLowerCase()}» термин «${term.term_ru}» помогает объяснить ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. ${term.example_sentence_ru}`.trim(),
-        tr: `${term.definition_tr} ${topic.title.tr.toLowerCase()} kümesi içinde ${term.term_tr}, ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} konusunu açıklamaya yardım eder. ${term.example_sentence_tr}`.trim(),
+        en: `${term.definition_en} Within the ${topic.title.en.toLowerCase()} cluster, ${term.term_en} helps explain ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. The term is useful when comparing products, controls, markets, or system design because it gives teams a shared label for a specific financial or technical decision point. ${term.example_sentence_en}`.trim(),
+        ru: `${term.definition_ru} В кластере «${topic.title.ru.toLowerCase()}» термин «${term.term_ru}» помогает объяснить ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Термин полезен при сравнении продуктов, контролей, рынков или архитектуры систем, потому что задаёт общее название для конкретной финансовой или технической точки решения. ${term.example_sentence_ru}`.trim(),
+        tr: `${term.definition_tr} ${topic.title.tr.toLowerCase()} kümesi içinde ${term.term_tr}, ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} konusunu açıklamaya yardım eder. Terim; ürünleri, kontrolleri, piyasaları veya sistem tasarımını karşılaştırırken belirli bir finansal ya da teknik karar noktası için ortak ad verdiği için kullanışlıdır. ${term.example_sentence_tr}`.trim(),
     },
     why_it_matters: {
-        en: `${term.term_en} matters because it connects ${CATEGORY_CONTEXT[term.category].en} with the practical decisions teams make inside ${topic.title.en.toLowerCase()}.`,
-        ru: `Термин «${term.term_ru}» важен, потому что связывает ${CATEGORY_CONTEXT[term.category].ru} с практическими решениями внутри темы «${topic.title.ru.toLowerCase()}».`,
-        tr: `${term.term_tr}, ${CATEGORY_CONTEXT[term.category].tr} ile ${topic.title.tr.toLowerCase()} içindeki pratik kararları bağladığı için önemlidir.`,
+        en: `${term.term_en} matters because it connects ${CATEGORY_CONTEXT[term.category].en} with the practical decisions teams make inside ${topic.title.en.toLowerCase()}. A weak understanding can lead to poor product framing, misleading market interpretation, incomplete compliance checks, or incorrect assumptions about how a financial workflow behaves.`,
+        ru: `Термин «${term.term_ru}» важен, потому что связывает ${CATEGORY_CONTEXT[term.category].ru} с практическими решениями внутри темы «${topic.title.ru.toLowerCase()}». Слабое понимание может привести к неверному product framing, искажённой интерпретации рынка, неполным compliance checks или ошибочным предположениям о поведении финансового процесса.`,
+        tr: `${term.term_tr}, ${CATEGORY_CONTEXT[term.category].tr} ile ${topic.title.tr.toLowerCase()} içindeki pratik kararları bağladığı için önemlidir. Zayıf anlama; ürün çerçevesini, piyasa yorumunu, uyum kontrollerini veya finansal iş akışının nasıl davrandığına dair varsayımları hatalı hale getirebilir.`,
     },
     how_it_works: {
-        en: `In practice, ${term.term_en} is read through its definition, the systems or market actors it touches, and the way it changes decisions around ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}.`,
-        ru: `На практике термин «${term.term_ru}» читается через определение, затрагиваемые системы или участников рынка и влияние на решения про ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}.`,
-        tr: `Pratikte ${term.term_tr}; tanımı, temas ettiği sistemler veya piyasa aktörleri ve ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} üzerindeki karar etkisiyle okunur.`,
+        en: `In practice, ${term.term_en} is read through its definition, the systems or market actors it touches, and the way it changes decisions around ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. A useful review asks who uses the term, what data or obligation it changes, which control owns the outcome, and whether the meaning differs across product, market, and regulatory contexts.`,
+        ru: `На практике термин «${term.term_ru}» читается через определение, затрагиваемые системы или участников рынка и влияние на решения про ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Полезная проверка задаёт вопросы: кто использует термин, какие данные или обязанности он меняет, какой контроль отвечает за результат и отличается ли смысл в продукте, рынке и регулировании.`,
+        tr: `Pratikte ${term.term_tr}; tanımı, temas ettiği sistemler veya piyasa aktörleri ve ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} üzerindeki karar etkisiyle okunur. Sağlam inceleme; terimi kimin kullandığını, hangi veri ya da yükümlülüğü değiştirdiğini, sonucu hangi kontrolün sahiplendiğini ve anlamın ürün, piyasa ve regülasyon bağlamında değişip değişmediğini sorar.`,
     },
     risks_and_pitfalls: {
-        en: TOPIC_RISK_CONTEXT[topic.id]?.en ?? `A common mistake is to use ${term.term_en} without understanding the underlying controls, limits, and cross-border implications.`,
-        ru: TOPIC_RISK_CONTEXT[topic.id]?.ru ?? `Распространённая ошибка — использовать термин «${term.term_ru}», не понимая базовых контролей, ограничений и трансграничных последствий.`,
-        tr: TOPIC_RISK_CONTEXT[topic.id]?.tr ?? `Yaygın hata, ${term.term_tr} kavramını temel kontrolleri, sınırları ve sınır ötesi etkileri anlamadan kullanmaktır.`,
+        en: `${TOPIC_RISK_CONTEXT[topic.id]?.en ?? `A common mistake is to use ${term.term_en} without understanding the underlying controls, limits, and cross-border implications.`} The risk increases when the same label is reused across banking, crypto, capital markets, software, and analytics without checking whether the operational meaning is still the same.`,
+        ru: `${TOPIC_RISK_CONTEXT[topic.id]?.ru ?? `Распространённая ошибка — использовать термин «${term.term_ru}», не понимая базовых контролей, ограничений и трансграничных последствий.`} Риск растёт, когда один и тот же ярлык используют в banking, crypto, capital markets, software и analytics без проверки, сохраняется ли операционный смысл.`,
+        tr: `${TOPIC_RISK_CONTEXT[topic.id]?.tr ?? `Yaygın hata, ${term.term_tr} kavramını temel kontrolleri, sınırları ve sınır ötesi etkileri anlamadan kullanmaktır.`} Aynı etiketin bankacılık, kripto, sermaye piyasaları, yazılım ve analitik alanlarında operasyonel anlamı değişmeden kullanılıp kullanılmadığı kontrol edilmezse risk artar.`,
     },
     regional_notes: {
-        en: `This concept appears across ${regionalMarkets.join(', ')} contexts, but implementation can change with local regulation, payment rails, and institutional practice.`,
-        ru: `Концепт встречается в контекстах ${regionalMarkets.join(', ')}, но реализация меняется в зависимости от локального регулирования, платёжных рельсов и институциональной практики.`,
-        tr: `Bu kavram ${regionalMarkets.join(', ')} bağlamlarında görülür; ancak uygulama, yerel düzenleme, ödeme rayları ve kurumsal pratiğe göre değişebilir.`,
+        en: `This concept appears across ${regionalMarkets.join(', ')} contexts, but implementation can change with local regulation, payment rails, trading venues, data availability, and institutional practice. For BIST, MOEX, and global comparisons, the safest approach is to keep the definition stable while checking market-specific rules and infrastructure before drawing conclusions.`,
+        ru: `Концепт встречается в контекстах ${regionalMarkets.join(', ')}, но реализация меняется в зависимости от локального регулирования, платёжных рельсов, торговых площадок, доступности данных и институциональной практики. Для сравнений BIST, MOEX и global безопаснее сохранять стабильное определение, но отдельно проверять правила и инфраструктуру рынка.`,
+        tr: `Bu kavram ${regionalMarkets.join(', ')} bağlamlarında görülür; ancak uygulama, yerel düzenleme, ödeme rayları, işlem yerleri, veri erişimi ve kurumsal pratiğe göre değişebilir. BIST, MOEX ve global karşılaştırmalarda en güvenli yaklaşım tanımı sabit tutup sonuç çıkarmadan önce piyasa kurallarını ve altyapıyı ayrıca kontrol etmektir.`,
     },
     seo_title: {
-        en: `${term.term_en} meaning in fintech and finance`,
-        ru: `${term.term_ru}: значение в финтехе и финансах`,
-        tr: `${term.term_tr} nedir: fintek ve finans anlamı`,
+        en: buildTermSeoTitle(term.term_en, 'meaning in fintech and finance', 'meaning'),
+        ru: buildTermSeoTitle(term.term_ru, 'значение в финтехе и финансах', 'значение'),
+        tr: buildTermSeoTitle(term.term_tr, 'fintek ve finans anlamı', 'anlamı'),
     },
     seo_description: {
-        en: `Learn ${term.term_en} with definition, why it matters, how it works, risks, and ${regionalMarkets.join('/')} context.`,
-        ru: `Изучите термин ${term.term_ru}: определение, значение, принцип работы, риски и контекст ${regionalMarkets.join('/')}.`,
-        tr: `${term.term_tr} terimini tanım, önem, çalışma mantığı, riskler ve ${regionalMarkets.join('/')} bağlamıyla öğrenin.`,
+        en: `Learn ${term.term_en} with a clear definition, practical fintech context, why it matters, how it works, key risks, and ${regionalMarkets.join('/')} market relevance.`,
+        ru: `Разберите термин ${term.term_ru}: определение, практический финтех-контекст, значение, принцип работы, ключевые риски и рынок ${regionalMarkets.join('/')}.`,
+        tr: `${term.term_tr} terimini net tanım, pratik fintek bağlamı, neden önemli olduğu, çalışma mantığı, temel riskler ve ${regionalMarkets.join('/')} piyasa ilgisiyle öğrenin.`,
     },
 });
 
@@ -310,12 +378,18 @@ const enrichTerm = (term: Term): Term => {
     const editorialOverride = getEditorialAuthorityOverride(term.slug);
     const contentBlock = editorialOverride?.content
         ?? buildSeoContentBlock(term, getPrimaryTopic(topicIds), regionalMarkets);
+    const searchIntentMetadataOverride = getSearchIntentMetadataOverride(term.slug);
     const sourceRefs = editorialOverride?.sourceIds
         ?? priorityRecord?.requiredSourceIds
         ?? (term.source_refs.length > 0
         ? term.source_refs
         : getPrimaryTopic(topicIds).sourceIds.slice(0, 3));
     const indexPriority = priorityRecord ? 'high' : (PRIORITY_SLUG_TO_TOPICS.has(term.slug) ? 'high' : term.index_priority);
+    const freshness = resolveSeoFreshness(
+        term,
+        sourceRefs,
+        Boolean(editorialOverride || searchIntentMetadataOverride)
+    );
 
     return {
         ...term,
@@ -325,7 +399,9 @@ const enrichTerm = (term: Term): Term => {
         regional_market: getPrimaryMarket(regionalMarkets),
         source_refs: sourceRefs,
         index_priority: indexPriority,
+        ...freshness,
         ...contentBlock,
+        ...(searchIntentMetadataOverride ?? {}),
         comparison_term_id: term.comparison_term_id,
         prerequisite_term_id: term.prerequisite_term_id,
     };

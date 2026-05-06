@@ -3,27 +3,9 @@
  */
 
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { CONSENT_GRANTED_EVENT } from '@/components/ConsentModal';
-
-jest.mock('next/script', () => {
-    return function MockScript({
-        children,
-        id,
-        src,
-    }: {
-        children?: React.ReactNode;
-        id?: string;
-        src?: string;
-    }) {
-        return (
-            <script data-testid={id || src || 'script'}>
-                {children}
-            </script>
-        );
-    };
-});
 
 const CONSENT_KEY = 'fintechterms_research_consent';
 const GA_ID = 'G-TEST123456';
@@ -39,16 +21,19 @@ const setConsent = (given: boolean) => {
 describe('GoogleAnalytics', () => {
     beforeEach(() => {
         localStorage.clear();
+        document.head.innerHTML = '';
+        window.dataLayer = undefined;
+        window.gtag = undefined;
         process.env.NEXT_PUBLIC_GA_ID = GA_ID;
     });
 
-    it('does not render analytics scripts before consent is granted', () => {
+    it('does not load analytics before consent is granted', () => {
         render(<GoogleAnalytics />);
 
-        expect(screen.queryByTestId('google-analytics')).not.toBeInTheDocument();
+        expect(document.getElementById('google-analytics-loader')).not.toBeInTheDocument();
     });
 
-    it('renders analytics scripts immediately when consentGranted fires in the same tab', async () => {
+    it('loads analytics immediately when consentGranted fires in the same tab', async () => {
         render(<GoogleAnalytics />);
         const getItemSpy = jest.spyOn(Storage.prototype, 'getItem');
 
@@ -59,10 +44,14 @@ describe('GoogleAnalytics', () => {
 
         expect(getItemSpy).toHaveBeenCalledTimes(1);
         await waitFor(() => {
-            expect(screen.getByTestId('google-analytics')).toBeInTheDocument();
-            expect(
-                screen.getByTestId(`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`)
-            ).toBeInTheDocument();
+            const script = document.getElementById('google-analytics-loader');
+            expect(script).toHaveAttribute(
+                'src',
+                `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
+            );
+            expect(window.dataLayer).toEqual(expect.arrayContaining([
+                ['config', GA_ID],
+            ]));
         });
 
         getItemSpy.mockRestore();

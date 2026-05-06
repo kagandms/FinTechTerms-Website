@@ -42,7 +42,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Ödeme kabulünün yetkilendirmeden iadeye ve platform riskine kadar nasıl işlediğini anlayın.',
         },
         relatedTopicIds: ['open-banking', 'fraud-identity-security', 'regtech-compliance'],
-        sourceIds: ['stripe-tokenization-101', 'stripe-merchant-of-record', 'stripe-payment-facilitator', 'adyen-payment-glossary', 'emv-3ds'],
+        sourceIds: ['stripe-tokenization-101', 'visa-developer-glossary', 'bis-pfmi', 'stripe-payment-facilitator', 'emv-3ds'],
         priorityTermSlugs: priorityClusters['cards-payments'].slugs,
         sections: [
             section(
@@ -140,7 +140,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Fintek ürün tasarımını ve pazara erişimi şekillendiren düzenleyici kontrol dilini öğrenin.',
         },
         relatedTopicIds: ['open-banking', 'fraud-identity-security', 'cards-payments'],
-        sourceIds: ['eba-sca', 'european-commission-mica', 'google-helpful-content'],
+        sourceIds: ['fatf-recommendations', 'eba-sca', 'european-commission-mica'],
         priorityTermSlugs: priorityClusters['regtech-compliance'].slugs,
         sections: [
             section(
@@ -189,7 +189,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Kripto sistemlerin temel katman uzlaşısından uygulamaya özel ölçekleme ve güvenlik varsayımlarına nasıl geçtiğini izleyin.',
         },
         relatedTopicIds: ['rwa-tokenization', 'fraud-identity-security', 'ai-data-finance'],
-        sourceIds: ['coinbase-crypto-glossary', 'european-commission-mica', 'google-helpful-content'],
+        sourceIds: ['bitcoin-whitepaper', 'ethereum-whitepaper', 'european-commission-mica'],
         priorityTermSlugs: priorityClusters['crypto-infrastructure'].slugs,
         sections: [
             section(
@@ -287,7 +287,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Borsalar arasında fiyat oluşumu, işlem riski ve algoritmik etkileşim için bir söz varlığı oluşturun.',
         },
         relatedTopicIds: ['ai-data-finance', 'cards-payments'],
-        sourceIds: ['google-helpful-content', 'google-title-links', 'adyen-payment-glossary'],
+        sourceIds: ['sec-market-structure-algorithmic-trading', 'bis-pfmi', 'sec-private-funds'],
         priorityTermSlugs: priorityClusters['market-microstructure'].slugs,
         sections: [
             section(
@@ -336,7 +336,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Ödeme ve cüzdan güvenliği akışlarında güven ve hata noktalarının dilini anlayın.',
         },
         relatedTopicIds: ['cards-payments', 'regtech-compliance', 'crypto-infrastructure'],
-        sourceIds: ['emv-3ds', 'eba-sca', 'coinbase-crypto-glossary'],
+        sourceIds: ['emv-3ds', 'fatf-recommendations', 'coinbase-crypto-glossary'],
         priorityTermSlugs: priorityClusters['fraud-identity-security'].slugs,
         sections: [
             section(
@@ -385,7 +385,7 @@ export const seoTopics: readonly Topic[] = [
             tr: 'Makine zekası, analitik ve finansal yorumu ortak bir çalışma söz varlığıyla birleştirin.',
         },
         relatedTopicIds: ['market-microstructure', 'crypto-infrastructure'],
-        sourceIds: ['google-helpful-content', 'google-title-links', 'coinbase-crypto-glossary'],
+        sourceIds: ['nist-ai-rmf', 'oecd-ai-principles', 'bis-pfmi'],
         priorityTermSlugs: priorityClusters['ai-data-finance'].slugs,
         sections: [
             section(

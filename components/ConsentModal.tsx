@@ -4,15 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { BookOpen, Shield, X, Check } from 'lucide-react';
 import { useAccessibleDialog } from '@/hooks/use-accessible-dialog';
-
-const CONSENT_KEY = 'fintechterms_research_consent';
-export const CONSENT_GRANTED_EVENT = 'consentGranted';
-
-interface ConsentData {
-    given: boolean;
-    timestamp: string;
-    version: string;
-}
+import {
+    hasResearchConsent as hasStoredResearchConsent,
+    readResearchConsent,
+    writeResearchConsent,
+} from '@/lib/research-consent';
+export { CONSENT_GRANTED_EVENT } from '@/lib/research-consent';
 
 export default function ConsentModal() {
     const { language } = useLanguage();
@@ -39,8 +36,8 @@ export default function ConsentModal() {
                 }
             }
 
-            const stored = localStorage.getItem(CONSENT_KEY);
-            if (!stored) {
+            const consentDecision = readResearchConsent();
+            if (consentDecision === null) {
                 // Delay showing modal for better UX
                 timer = setTimeout(() => setIsOpen(true), 1500);
             }
@@ -59,31 +56,12 @@ export default function ConsentModal() {
     }, []);
 
     const handleAccept = () => {
-        const consentData: ConsentData = {
-            given: true,
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-        };
-        try {
-            localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
-            window.dispatchEvent(new CustomEvent(CONSENT_GRANTED_EVENT));
-        } catch {
-            // Silently fail if localStorage not available
-        }
+        writeResearchConsent(true);
         handleClose();
     };
 
     const handleDecline = () => {
-        const consentData: ConsentData = {
-            given: false,
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-        };
-        try {
-            localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
-        } catch {
-            // Silently fail
-        }
+        writeResearchConsent(false);
         handleClose();
     };
 
@@ -250,14 +228,5 @@ export default function ConsentModal() {
  * Check if user has given consent
  */
 export function hasResearchConsent(): boolean {
-    try {
-        const stored = localStorage.getItem(CONSENT_KEY);
-        if (stored) {
-            const data: ConsentData = JSON.parse(stored);
-            return data.given === true;
-        }
-    } catch {
-        // localStorage not available
-    }
-    return false;
+    return hasStoredResearchConsent();
 }

@@ -377,4 +377,140 @@ export const seoSources: readonly SourceRef[] = [
         ),
         last_verified: '2026-03-15',
     },
+    {
+        id: 'fatf-recommendations',
+        title: {
+            en: 'FATF: The FATF Recommendations',
+            ru: 'FATF: Рекомендации FATF',
+            tr: 'FATF: FATF Tavsiyeleri',
+        },
+        publisher: 'Financial Action Task Force',
+        url: 'https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html',
+        type: 'regulation',
+        note: note(
+            'Primary international AML/CFT framework for customer due diligence, sanctions screening, and financial crime controls.',
+            'Первичная международная AML/CFT-рамка для customer due diligence, санкционного скрининга и контроля financial crime.',
+            'Müşteri tanıma, yaptırım taraması ve finansal suç kontrolleri için birincil uluslararası AML/CFT çerçevesi.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'bis-pfmi',
+        title: {
+            en: 'BIS CPMI-IOSCO: Principles for financial market infrastructures',
+            ru: 'BIS CPMI-IOSCO: Принципы для инфраструктур финансового рынка',
+            tr: 'BIS CPMI-IOSCO: Finansal piyasa altyapıları ilkeleri',
+        },
+        publisher: 'Bank for International Settlements',
+        url: 'https://www.bis.org/cpmi/info_pfmi.htm',
+        type: 'documentation',
+        note: note(
+            'International standards for payment systems, settlement systems, central counterparties, and trade repositories.',
+            'Международные стандарты для payment systems, settlement systems, central counterparties и trade repositories.',
+            'Ödeme sistemleri, mutabakat sistemleri, merkezi karşı taraflar ve işlem kayıt merkezleri için uluslararası standart.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'sec-market-structure-algorithmic-trading',
+        title: {
+            en: 'SEC: Market Structure and Algorithmic Trading',
+            ru: 'SEC: Market Structure and Algorithmic Trading',
+            tr: 'SEC: Market Structure and Algorithmic Trading',
+        },
+        publisher: 'U.S. Securities and Exchange Commission',
+        url: 'https://www.sec.gov/file/market-structure-and-algorithmic-trading',
+        type: 'documentation',
+        note: note(
+            'Primary regulator source for market structure, algorithmic trading, execution quality, and trading-system risk context.',
+            'Первичный источник регулятора по market structure, algorithmic trading, execution quality и рискам торговых систем.',
+            'Piyasa yapısı, algoritmik işlem, emir icra kalitesi ve işlem sistemi riskleri için birincil düzenleyici kaynak.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'nist-ai-rmf',
+        title: {
+            en: 'NIST: AI Risk Management Framework',
+            ru: 'NIST: AI Risk Management Framework',
+            tr: 'NIST: AI Risk Management Framework',
+        },
+        publisher: 'National Institute of Standards and Technology',
+        url: 'https://www.nist.gov/itl/ai-risk-management-framework',
+        type: 'documentation',
+        note: note(
+            'Primary AI risk-management framework for trustworthy AI, model governance, measurement, and operational controls.',
+            'Первичная рамка AI risk management для trustworthy AI, model governance, измерения и операционных контролей.',
+            'Güvenilir AI, model yönetişimi, ölçümleme ve operasyonel kontroller için birincil AI risk yönetimi çerçevesi.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'oecd-ai-principles',
+        title: {
+            en: 'OECD: AI Principles',
+            ru: 'OECD: Принципы ИИ',
+            tr: 'OECD: AI İlkeleri',
+        },
+        publisher: 'OECD',
+        url: 'https://www.oecd.org/en/topics/ai-principles.html',
+        type: 'documentation',
+        note: note(
+            'Intergovernmental standard for trustworthy AI principles, policy alignment, accountability, and human-centered deployment.',
+            'Межправительственный стандарт по trustworthy AI principles, policy alignment, accountability и human-centered deployment.',
+            'Güvenilir AI ilkeleri, politika uyumu, hesap verebilirlik ve insan odaklı dağıtım için hükümetler arası standart.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'bitcoin-whitepaper',
+        title: {
+            en: 'Bitcoin: A Peer-to-Peer Electronic Cash System',
+            ru: 'Bitcoin: A Peer-to-Peer Electronic Cash System',
+            tr: 'Bitcoin: A Peer-to-Peer Electronic Cash System',
+        },
+        publisher: 'Bitcoin.org',
+        url: 'https://bitcoin.org/en/bitcoin-paper.pdf',
+        type: 'research',
+        note: note(
+            'Original Bitcoin whitepaper for peer-to-peer cash, proof of work, transaction ordering, and settlement assumptions.',
+            'Оригинальный whitepaper Bitcoin про peer-to-peer cash, proof of work, порядок транзакций и assumptions settlement.',
+            'Peer-to-peer nakit, proof of work, işlem sıralaması ve mutabakat varsayımları için özgün Bitcoin whitepaper kaynağı.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'ethereum-whitepaper',
+        title: {
+            en: 'Ethereum Whitepaper',
+            ru: 'Ethereum Whitepaper',
+            tr: 'Ethereum Whitepaper',
+        },
+        publisher: 'Ethereum.org',
+        url: 'https://ethereum.org/whitepaper/',
+        type: 'documentation',
+        note: note(
+            'Ethereum source for smart contracts, programmable settlement, accounts, decentralized applications, and protocol design assumptions.',
+            'Источник Ethereum по smart contracts, programmable settlement, accounts, decentralized applications и protocol design assumptions.',
+            'Akıllı sözleşmeler, programlanabilir mutabakat, hesaplar, merkeziyetsiz uygulamalar ve protokol tasarım varsayımları için Ethereum kaynağı.'
+        ),
+        last_verified: '2026-05-04',
+    },
+    {
+        id: 'sec-private-funds',
+        title: {
+            en: 'SEC: Private Funds',
+            ru: 'SEC: Private Funds',
+            tr: 'SEC: Private Funds',
+        },
+        publisher: 'U.S. Securities and Exchange Commission',
+        url: 'https://www.sec.gov/resources-small-businesses/capital-raising-building-blocks/private-funds',
+        type: 'documentation',
+        note: note(
+            'Regulator source for private funds, venture capital fund context, exempt advisers, fundraising, and investor-risk framing.',
+            'Источник регулятора по private funds, venture capital fund context, exempt advisers, fundraising и investor-risk framing.',
+            'Özel fonlar, venture capital fund bağlamı, muaf danışmanlar, fon toplama ve yatırımcı riski çerçevesi için düzenleyici kaynak.'
+        ),
+        last_verified: '2026-05-04',
+    },
 ];

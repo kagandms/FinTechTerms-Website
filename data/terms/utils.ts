@@ -137,14 +137,14 @@ export const createTerm = (
         `${tr}, ödeme altyapısı, düzenleme ve piyasa uygulamalarına göre farklılaşabilir.`
     ),
     seo_title: options?.seo_title ?? buildLocalizedText(
-        `${en} meaning in fintech`,
-        `${ru}: определение в финтехе`,
-        `${tr} nedir: fintek tanımı`
+        `${en} meaning in fintech and finance`,
+        `${ru}: значение в финтехе и финансах`,
+        `${tr} nedir: fintek ve finans anlamı`
     ),
     seo_description: options?.seo_description ?? buildLocalizedText(
-        `${en} explained in fintech, finance, and technology contexts.`,
-        `${ru}: объяснение в контексте финтеха, финансов и технологий.`,
-        `${tr}, fintek, finans ve teknoloji bağlamında açıklanır.`
+        `${en} explained with definition, fintech and finance context, practical usage, risk signals, and technology relevance.`,
+        `${ru}: определение, финтех- и финансовый контекст, практическое применение, риски и технологическая релевантность.`,
+        `${tr}; tanım, fintek ve finans bağlamı, pratik kullanım, risk sinyalleri ve teknoloji ilgisiyle açıklanır.`
     ),
     context_tags: {
         ...cloneContextTags(category),

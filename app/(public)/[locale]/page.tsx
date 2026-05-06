@@ -3,6 +3,7 @@ import { listPrioritySeoTerms, listSeoTopics, getLocalizedTermDefinition, getLoc
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -16,6 +17,10 @@ const pageCopy: Record<Language, {
     topics: string;
     featuredTerms: string;
     browseAll: string;
+    trustLayer: string;
+    corrections: string;
+    sources: string;
+    contact: string;
 }> = {
     en: {
         title: 'FinTechTerms English glossary',
@@ -26,6 +31,10 @@ const pageCopy: Record<Language, {
         topics: 'Topic hubs',
         featuredTerms: 'Priority terms',
         browseAll: 'Browse full glossary',
+        trustLayer: 'Editorial trust layer',
+        corrections: 'Corrections policy',
+        sources: 'Primary sources',
+        contact: 'Contact',
     },
     ru: {
         title: 'FinTechTerms: русский глоссарий',
@@ -36,6 +45,10 @@ const pageCopy: Record<Language, {
         topics: 'Тематические хабы',
         featuredTerms: 'Приоритетные термины',
         browseAll: 'Открыть полный глоссарий',
+        trustLayer: 'Редакционный trust-слой',
+        corrections: 'Политика исправлений',
+        sources: 'Первичные источники',
+        contact: 'Контакты',
     },
     tr: {
         title: 'FinTechTerms Türkçe sözlük',
@@ -46,6 +59,10 @@ const pageCopy: Record<Language, {
         topics: 'Topic hub’lar',
         featuredTerms: 'Öncelikli terimler',
         browseAll: 'Tam sözlüğü aç',
+        trustLayer: 'Editoryal güven katmanı',
+        corrections: 'Düzeltme politikası',
+        sources: 'Birincil kaynaklar',
+        contact: 'İletişim',
     },
 };
 
@@ -100,7 +117,7 @@ export default async function LocaleHomePage({
                 <h1 className="mt-4 max-w-4xl text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                     {copy.hero}
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
                     {copy.subhero}
                 </p>
                 <a
@@ -122,7 +139,7 @@ export default async function LocaleHomePage({
                                 className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                             >
                                 <p className="text-lg font-semibold text-slate-950">{getLocalizedText(topic.title, locale)}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
+                                <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
                             </a>
                         ))}
                     </div>
@@ -138,12 +155,36 @@ export default async function LocaleHomePage({
                                 className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                             >
                                 <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                <p className="mt-2 text-base leading-7 text-slate-600">
                                     {getLocalizedTermDefinition(term, locale)}
                                 </p>
                             </a>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-bold text-slate-950">{copy.trustLayer}</h2>
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    <a
+                        href={buildLocalePath(locale, '/corrections')}
+                        className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-base font-semibold text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-950"
+                    >
+                        {copy.corrections}
+                    </a>
+                    <a
+                        href={buildLocalePath(locale, '/sources')}
+                        className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-base font-semibold text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-950"
+                    >
+                        {copy.sources}
+                    </a>
+                    <a
+                        href={buildLocalePath(locale, '/contact')}
+                        className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-base font-semibold text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-950"
+                    >
+                        {copy.contact}
+                    </a>
                 </div>
             </section>
 
@@ -158,21 +199,10 @@ export default async function LocaleHomePage({
                             description: copy.description,
                             url: buildAbsoluteUrl(buildLocalePath(locale)),
                             inLanguage: locale,
-                            publisher: {
-                                '@type': 'Organization',
-                                name: 'FinTechTerms',
-                                url: buildAbsoluteUrl(''),
-                            },
+                            publisher: buildOrganizationJsonLd(locale),
                         },
-                        {
-                            '@context': 'https://schema.org',
-                            '@type': 'Organization',
-                            name: 'FinTechTerms',
-                            url: buildAbsoluteUrl(''),
-                            sameAs: [
-                                'https://t.me/FinTechTermsBot',
-                            ],
-                        },
+                        buildOrganizationJsonLd(locale),
+                        buildBreadcrumbJsonLd(locale, []),
                     ]),
                 }}
             />

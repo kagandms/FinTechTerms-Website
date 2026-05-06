@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { listGlossaryTerms, getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, listSeoTopics } from '@/lib/public-seo-catalog';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language, Term } from '@/types';
@@ -114,7 +115,7 @@ export default async function GlossaryPage({
                             className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                         >
                             <p className="text-base font-semibold text-slate-950">{getLocalizedText(topic.title, locale)}</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
+                            <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
                         </a>
                     ))}
                 </div>
@@ -150,7 +151,7 @@ export default async function GlossaryPage({
                                     className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                                 >
                                     <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                                    <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
+                                    <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
                                 </a>
                             ))}
                         </div>
@@ -161,26 +162,25 @@ export default async function GlossaryPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'DefinedTermSet',
-                        name: copy.title,
-                        description: copy.description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, '/glossary')),
-                        inLanguage: locale,
-                        numberOfItems: terms.length,
-                        publisher: {
-                            '@type': 'Organization',
-                            name: 'FinTechTerms',
-                            url: buildAbsoluteUrl(''),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'DefinedTermSet',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/glossary')),
+                            inLanguage: locale,
+                            numberOfItems: terms.length,
+                            publisher: buildOrganizationJsonLd(locale),
+                            hasDefinedTerm: terms.slice(0, 100).map((term) => ({
+                                '@type': 'DefinedTerm',
+                                name: getLocalizedTermLabel(term, locale),
+                                description: getLocalizedTermDefinition(term, locale),
+                                url: buildAbsoluteUrl(buildLocalePath(locale, `/glossary/${term.slug}`)),
+                            })),
                         },
-                        hasDefinedTerm: terms.slice(0, 100).map((term) => ({
-                            '@type': 'DefinedTerm',
-                            name: getLocalizedTermLabel(term, locale),
-                            description: getLocalizedTermDefinition(term, locale),
-                            url: buildAbsoluteUrl(buildLocalePath(locale, `/glossary/${term.slug}`)),
-                        })),
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/glossary') }]),
+                    ]),
                 }}
             />
         </div>

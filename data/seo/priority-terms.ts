@@ -21,7 +21,7 @@ const buildLocaleStatus = (status: EditorialStatus): Record<Language, EditorialS
 export const priorityClusters: Record<TopicId, ClusterConfig> = {
     'cards-payments': {
         anchorCount: 8,
-        sourceIds: ['stripe-tokenization-101', 'stripe-merchant-of-record', 'adyen-payment-glossary'],
+        sourceIds: ['stripe-tokenization-101', 'visa-developer-glossary', 'bis-pfmi'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             '3d-secure',
@@ -70,7 +70,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
     },
     'regtech-compliance': {
         anchorCount: 5,
-        sourceIds: ['eba-sca', 'european-commission-mica', 'google-helpful-content'],
+        sourceIds: ['fatf-recommendations', 'eba-sca', 'european-commission-mica'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             'regtech',
@@ -92,7 +92,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
     },
     'crypto-infrastructure': {
         anchorCount: 5,
-        sourceIds: ['coinbase-crypto-glossary', 'european-commission-mica', 'google-helpful-content'],
+        sourceIds: ['bitcoin-whitepaper', 'ethereum-whitepaper', 'european-commission-mica'],
         regionalMarkets: ['GLOBAL'],
         slugs: [
             'blockchain',
@@ -131,7 +131,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
     },
     'market-microstructure': {
         anchorCount: 2,
-        sourceIds: ['google-helpful-content', 'adyen-payment-glossary', 'google-title-links'],
+        sourceIds: ['sec-market-structure-algorithmic-trading', 'bis-pfmi', 'sec-private-funds'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             'algorithmic-trading',
@@ -148,7 +148,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
     },
     'fraud-identity-security': {
         anchorCount: 2,
-        sourceIds: ['emv-3ds', 'eba-sca', 'coinbase-crypto-glossary'],
+        sourceIds: ['emv-3ds', 'fatf-recommendations', 'coinbase-crypto-glossary'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             'private-key',
@@ -165,7 +165,7 @@ export const priorityClusters: Record<TopicId, ClusterConfig> = {
     },
     'ai-data-finance': {
         anchorCount: 2,
-        sourceIds: ['google-helpful-content', 'google-title-links', 'coinbase-crypto-glossary'],
+        sourceIds: ['nist-ai-rmf', 'oecd-ai-principles', 'bis-pfmi'],
         regionalMarkets: ['BIST', 'MOEX', 'GLOBAL'],
         slugs: [
             'ai',

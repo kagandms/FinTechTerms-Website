@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -69,26 +70,25 @@ export default async function CorrectionsPage({
             <section className="rounded-[2rem] border border-slate-200 bg-white px-5 py-6 shadow-sm md:rounded-[2.5rem] md:px-10 md:py-10">
                 <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{copy.title}</h1>
                 <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{copy.description}</p>
-                <p className="mt-8 max-w-3xl text-sm leading-8 text-slate-600">{copy.body}</p>
+                <p className="mt-8 max-w-3xl text-base leading-8 text-slate-600">{copy.body}</p>
             </section>
 
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'WebPage',
-                        name: copy.title,
-                        description: copy.description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, '/corrections')),
-                        inLanguage: locale,
-                        about: 'corrections policy',
-                        publisher: {
-                            '@type': 'Organization',
-                            name: 'FinTechTerms',
-                            url: buildAbsoluteUrl(''),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'WebPage',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/corrections')),
+                            inLanguage: locale,
+                            about: 'corrections policy',
+                            publisher: buildOrganizationJsonLd(locale),
                         },
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/corrections') }]),
+                    ]),
                 }}
             />
         </div>

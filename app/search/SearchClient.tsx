@@ -7,8 +7,6 @@ import { useSRS } from '@/contexts/SRSContext';
 import SearchBar from '@/components/SearchBar';
 import SmartCard from '@/components/SmartCard';
 import DataStateCard from '@/components/DataStateCard';
-import { serializeJsonLd } from '@/lib/json-ld';
-import { getSiteUrl } from '@/lib/site-url';
 import { RegionalMarket } from '@/types';
 import { Search as SearchIcon, Loader2, RefreshCw } from 'lucide-react';
 import {
@@ -24,10 +22,9 @@ interface SearchPageProps {
     nonce?: string;
 }
 
-export default function SearchPage({ nonce }: SearchPageProps) {
+export default function SearchPage({}: SearchPageProps) {
     const { language, t } = useLanguage();
     const { terms, termsStatus, refreshData } = useSRS();
-    const siteUrl = getSiteUrl();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -110,21 +107,6 @@ export default function SearchPage({ nonce }: SearchPageProps) {
 
     return (
         <div className="page-content px-4 py-6">
-            <script
-                nonce={nonce}
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'WebSite',
-                        potentialAction: {
-                            '@type': 'SearchAction',
-                            target: `${siteUrl}/search?q={search_term_string}`,
-                            'query-input': 'required name=search_term_string'
-                        }
-                    }),
-                }}
-            />
             {/* Header */}
             <header className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">

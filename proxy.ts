@@ -9,6 +9,7 @@ import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options';
 
 // Intentionally empty: authenticated surfaces enforce access per page/API boundary, not here.
 const PROTECTED_PATHS: string[] = [];
+const X_DEFAULT_ROOT_LANGUAGE = 'en';
 
 const isProtectedPath = (pathname: string): boolean => (
     PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
@@ -39,6 +40,10 @@ const applySecurityHeaders = (
 };
 
 const resolveRequestLocale = (request: NextRequest) => {
+    if (request.nextUrl.pathname === '/') {
+        return X_DEFAULT_ROOT_LANGUAGE;
+    }
+
     const queryLocale = normalizeLanguage(request.nextUrl.searchParams.get('lang'));
 
     if (queryLocale) {
@@ -61,6 +66,10 @@ const applyLocalizedHeaders = (request: NextRequest, response: NextResponse): Ne
     const language = resolveRequestLocale(request);
 
     response.headers.set('Content-Language', language);
+    if (request.nextUrl.pathname === '/') {
+        return response;
+    }
+
     appendVaryHeader(response, 'Accept-Language');
     appendVaryHeader(response, 'Cookie');
     return response;

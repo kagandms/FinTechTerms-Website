@@ -3,6 +3,7 @@ import { getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, ge
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
 import type { Language, Term, Topic } from '@/types';
@@ -100,7 +101,7 @@ export default async function TopicPage({
                 <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                     {getLocalizedText(topic.title, locale)}
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
                     {getLocalizedText(topic.hero, locale)}
                 </p>
             </section>
@@ -110,7 +111,7 @@ export default async function TopicPage({
                     {topic.sections.map((section) => (
                         <article key={getLocalizedText(section.title, locale)} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{getLocalizedText(section.title, locale)}</h2>
-                            <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base sm:leading-8">{getLocalizedText(section.body, locale)}</p>
+                            <p className="mt-4 text-base leading-8 text-slate-600">{getLocalizedText(section.body, locale)}</p>
                         </article>
                     ))}
                 </div>
@@ -128,7 +129,7 @@ export default async function TopicPage({
                             >
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{source.publisher}</p>
                                 <p className="mt-1 text-lg font-semibold text-slate-950">{getLocalizedText(source.title, locale)}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedText(source.note, locale)}</p>
+                                <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedText(source.note, locale)}</p>
                             </a>
                         ))}
                     </div>
@@ -145,7 +146,7 @@ export default async function TopicPage({
                             className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                         >
                             <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
+                            <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
                         </a>
                     ))}
                 </div>
@@ -160,22 +161,28 @@ export default async function TopicPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'CollectionPage',
-                        name: getLocalizedText(topic.title, locale),
-                        description: getLocalizedText(topic.description, locale),
-                        url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}`)),
-                        mainEntity: {
-                            '@type': 'ItemList',
-                            itemListElement: terms.map((term, index) => ({
-                                '@type': 'ListItem',
-                                position: index + 1,
-                                url: buildAbsoluteUrl(buildLocalePath(locale, `/glossary/${term.slug}`)),
-                                name: getLocalizedTermLabel(term, locale),
-                            })),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'CollectionPage',
+                            name: getLocalizedText(topic.title, locale),
+                            description: getLocalizedText(topic.description, locale),
+                            url: buildAbsoluteUrl(buildLocalePath(locale, `/topics/${topic.slug}`)),
+                            mainEntity: {
+                                '@type': 'ItemList',
+                                itemListElement: terms.map((term, index) => ({
+                                    '@type': 'ListItem',
+                                    position: index + 1,
+                                    url: buildAbsoluteUrl(buildLocalePath(locale, `/glossary/${term.slug}`)),
+                                    name: getLocalizedTermLabel(term, locale),
+                                })),
+                            },
                         },
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{
+                            name: getLocalizedText(topic.title, locale),
+                            path: buildLocalePath(locale, `/topics/${topic.slug}`),
+                        }]),
+                    ]),
                 }}
             />
         </div>

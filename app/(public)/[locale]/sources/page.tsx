@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { getLocalizedText, listSeoSources } from '@/lib/public-seo-catalog';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language, SourceRef } from '@/types';
@@ -100,7 +101,7 @@ export default async function SourcesPage({
                         </span>
                 </div>
                         <h2 className="mt-2 text-xl font-bold text-slate-950">{getLocalizedText(source.title, locale)}</h2>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{getLocalizedText(source.note, locale)}</p>
+                        <p className="mt-3 text-base leading-7 text-slate-600">{getLocalizedText(source.note, locale)}</p>
                     </a>
                 ))}
             </section>
@@ -108,18 +109,22 @@ export default async function SourcesPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'CollectionPage',
-                        name: copy.title,
-                        description: copy.description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, '/sources')),
-                        inLanguage: locale,
-                        mainEntity: {
-                            '@type': 'ItemList',
-                            itemListElement: sources.map((source, index) => buildSourceItem(source, locale, index + 1)),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'CollectionPage',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/sources')),
+                            inLanguage: locale,
+                            publisher: buildOrganizationJsonLd(locale),
+                            mainEntity: {
+                                '@type': 'ItemList',
+                                itemListElement: sources.map((source, index) => buildSourceItem(source, locale, index + 1)),
+                            },
                         },
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/sources') }]),
+                    ]),
                 }}
             />
         </div>

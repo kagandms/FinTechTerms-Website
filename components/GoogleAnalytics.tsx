@@ -1,28 +1,51 @@
 'use client';
 
-import Script from 'next/script';
 import { useCallback, useEffect, useState } from 'react';
-import { CONSENT_GRANTED_EVENT } from './ConsentModal';
+import {
+    CONSENT_GRANTED_EVENT,
+    RESEARCH_CONSENT_KEY,
+    hasResearchConsent,
+} from '@/lib/research-consent';
 import { getPublicEnv } from '@/lib/public-env';
 
-const CONSENT_KEY = 'fintechterms_research_consent';
+const SCRIPT_ID = 'google-analytics-loader';
+
+type GtagCommand =
+    | ['js', Date]
+    | ['config', string];
+
+declare global {
+    interface Window {
+        dataLayer?: GtagCommand[];
+        gtag?: (...args: GtagCommand) => void;
+    }
+}
 
 const readConsentState = (): boolean => {
-    if (typeof window === 'undefined') {
-        return false;
+    return hasResearchConsent();
+};
+
+const appendGoogleAnalyticsScript = (gaId: string): void => {
+    if (document.getElementById(SCRIPT_ID)) {
+        return;
     }
 
-    try {
-        const stored = localStorage.getItem(CONSENT_KEY);
-        if (!stored) {
-            return false;
-        }
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
+    document.head.appendChild(script);
+};
 
-        const data = JSON.parse(stored);
-        return data.given === true;
-    } catch {
-        return false;
-    }
+const initializeGoogleAnalytics = (gaId: string): void => {
+    window.dataLayer = window.dataLayer ?? [];
+    window.gtag = window.gtag ?? ((...args: GtagCommand): void => {
+        window.dataLayer?.push(args);
+    });
+
+    window.gtag('js', new Date());
+    window.gtag('config', gaId);
+    appendGoogleAnalyticsScript(gaId);
 };
 
 interface GoogleAnalyticsProps {
@@ -34,7 +57,7 @@ interface GoogleAnalyticsProps {
  * Checks localStorage for consent flag set by ConsentModal.
  * Compliant with GDPR/KVKK regulations.
  */
-export default function GoogleAnalytics({ nonce }: GoogleAnalyticsProps) {
+export default function GoogleAnalytics({ nonce: _nonce }: GoogleAnalyticsProps) {
     const gaId = getPublicEnv().gaId;
     const [hasConsent, setHasConsent] = useState(readConsentState);
     const syncConsentState = useCallback(() => {
@@ -44,7 +67,7 @@ export default function GoogleAnalytics({ nonce }: GoogleAnalyticsProps) {
     useEffect(() => {
         // Listen for consent changes (in case user accepts while page is open)
         const handleStorage = (e: StorageEvent) => {
-            if (e.key === CONSENT_KEY && e.newValue) {
+            if (e.key === RESEARCH_CONSENT_KEY && e.newValue) {
                 syncConsentState();
             }
         };
@@ -61,23 +84,13 @@ export default function GoogleAnalytics({ nonce }: GoogleAnalyticsProps) {
         };
     }, [syncConsentState]);
 
-    if (!gaId || !hasConsent) return null;
+    useEffect(() => {
+        if (!gaId || !hasConsent) {
+            return;
+        }
 
-    return (
-        <>
-            <Script
-                src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-                strategy="afterInteractive"
-                nonce={nonce}
-            />
-            <Script id="google-analytics" strategy="afterInteractive" nonce={nonce}>
-                {`
-                    window.dataLayer = window.dataLayer || [];
-                    function gtag(){dataLayer.push(arguments);}
-                    gtag('js', new Date());
-                    gtag('config', '${gaId}');
-                `}
-            </Script>
-        </>
-    );
+        initializeGoogleAnalytics(gaId);
+    }, [gaId, hasConsent]);
+
+    return null;
 }

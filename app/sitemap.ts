@@ -13,6 +13,9 @@ const STATIC_LOCALE_PAGES = [
     { suffix: '/corrections', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.corrections, priority: 0.8 },
     { suffix: '/methodology', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.methodology, priority: 0.8 },
     { suffix: '/about', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.about, priority: 0.8 },
+    { suffix: '/privacy', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.privacy, priority: 0.45 },
+    { suffix: '/terms', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.terms, priority: 0.45 },
+    { suffix: '/contact', updatedAt: STATIC_PUBLIC_PAGE_UPDATED_AT.contact, priority: 0.5 },
 ] as const;
 
 export const revalidate = 3600;

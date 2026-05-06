@@ -14,9 +14,7 @@ import AiChatPanel from '@/components/home/AiChatPanel';
 import Image from 'next/image';
 import Link from 'next/link';
 import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
-import { serializeJsonLd } from '@/lib/json-ld';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
-import { getSiteUrl } from '@/lib/site-url';
 
 import { Term } from '@/types';
 import type { LearningStatsActionResult } from '@/types/gamification';
@@ -51,14 +49,13 @@ const shuffleTerms = (terms: Term[]): Term[] => {
 const MOBILE_HERO_ACTION_CLASS = 'flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-[#1f5f8d] bg-[#123f65] p-2 text-white shadow-md shadow-[#0b2236]/15 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70';
 const DESKTOP_HERO_ACTION_CLASS = 'flex h-14 w-full items-center justify-center rounded-2xl border border-[#1f5f8d] bg-[#123f65] p-3 text-white shadow-lg shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70';
 
-export default function HomePage({ initialTerms = [], nonce, learningStats = null }: HomeClientProps) {
+export default function HomePage({ initialTerms = [], learningStats = null }: HomeClientProps) {
     const { t } = useLanguage();
     const { terms, userProgress, stats, quizPreview } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
     const { entitlements, isAuthenticated } = useAuth();
 
     const displayTerms = terms.length > 0 ? terms : initialTerms;
-    const siteUrl = getSiteUrl();
     const exactAccuracy = isAuthenticated && learningStats?.ok
         ? learningStats.data.accuracy
         : null;
@@ -123,23 +120,6 @@ export default function HomePage({ initialTerms = [], nonce, learningStats = nul
 
     return (
         <div className="page-content px-4 py-6">
-            <script
-                nonce={nonce}
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'WebSite',
-                        name: 'FinTechTerms',
-                        url: siteUrl,
-                        potentialAction: {
-                            '@type': 'SearchAction',
-                            target: `${siteUrl}/search?q={search_term_string}`,
-                            'query-input': 'required name=search_term_string'
-                        }
-                    }),
-                }}
-            />
             {/* Mobile Header (Prominent Logo) */}
             <header className="flex md:hidden flex-col items-center justify-center mb-8 gap-4 pt-4 relative">
                 <Image

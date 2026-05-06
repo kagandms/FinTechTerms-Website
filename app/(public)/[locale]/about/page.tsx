@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
+import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 import { ArrowLeft, Blocks, Network, ShieldCheck } from 'lucide-react';
 
@@ -188,7 +190,7 @@ export default async function AboutPage({
                             <h2 className="text-2xl font-bold text-slate-950">{copy.missionTitle}</h2>
                         </div>
                     </div>
-                    <p className="mt-5 text-sm leading-7 text-slate-600">{copy.missionBody}</p>
+                    <p className="mt-5 text-base leading-7 text-slate-600">{copy.missionBody}</p>
                 </article>
                 <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex items-center gap-3">
@@ -202,7 +204,7 @@ export default async function AboutPage({
                             <h2 className="text-2xl font-bold text-slate-950">{copy.architectureTitle}</h2>
                         </div>
                     </div>
-                    <p className="mt-5 text-sm leading-7 text-slate-600">{copy.architectureBody}</p>
+                    <p className="mt-5 text-base leading-7 text-slate-600">{copy.architectureBody}</p>
                 </article>
 
                 <article className="rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
@@ -210,7 +212,7 @@ export default async function AboutPage({
                         {copy.peopleLabel}
                     </p>
                     <h2 className="mt-2 text-2xl font-bold">{copy.peopleTitle}</h2>
-                    <div className="mt-5 space-y-3 text-sm leading-7 text-slate-300">
+                    <div className="mt-5 space-y-3 text-base leading-7 text-slate-300">
                         <a href={buildLocalePath(locale, '/authors/kagan-samet-durmus')} className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-sky-300 transition-colors hover:border-sky-300/50 hover:text-white">
                             Kağan Samet Durmuş
                         </a>
@@ -220,6 +222,25 @@ export default async function AboutPage({
                     </div>
                 </article>
             </section>
+
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'AboutPage',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/about')),
+                            inLanguage: locale,
+                            about: buildOrganizationJsonLd(locale),
+                            publisher: buildOrganizationJsonLd(locale),
+                        },
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/about') }]),
+                    ]),
+                }}
+            />
         </div>
     );
 }

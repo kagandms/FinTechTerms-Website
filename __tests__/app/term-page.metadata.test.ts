@@ -61,14 +61,14 @@ describe('localized glossary metadata', () => {
         });
         expect(metadata.openGraph?.images).toEqual([
             {
-                url: 'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image',
+                url: 'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image-1miyui',
                 width: 1200,
                 height: 630,
                 alt: 'Токенизация: значение в финтехе и финансах | FinTechTerms',
             },
         ]);
         expect(metadata.twitter?.images).toEqual([
-            'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image',
+            'https://fintechterms.example.com/ru/glossary/tokenization/opengraph-image-1miyui',
         ]);
     });
 });

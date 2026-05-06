@@ -18,7 +18,7 @@ import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
-import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
+import { buildAbsoluteUrl, buildGlossaryOpenGraphImagePath, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
 import { formatUtcDateForLocale } from '@/lib/time';
 import type { Contributor, Language, SourceRef, Term, Topic } from '@/types';
 
@@ -209,7 +209,7 @@ export async function generateMetadata({
         description: getLocalizedTermSeoDescription(term, rawLocale),
         path: buildLocalePath(rawLocale, `/glossary/${term.slug}`),
         type: 'article',
-        imagePath: buildLocalePath(rawLocale, `/glossary/${term.slug}/opengraph-image`),
+        imagePath: buildGlossaryOpenGraphImagePath(rawLocale, term.slug),
     });
 }
 
@@ -280,10 +280,10 @@ export default async function SeoTermPage({
                     </span>
                 </div>
                 <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">{termLabel}</h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-lg sm:leading-8">{definition}</p>
+                <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">{definition}</p>
             </section>
 
-            <aside className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 sm:text-sm sm:leading-6">
+            <aside className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-7 text-amber-900">
                 {copy.disclaimer}
             </aside>
 
@@ -297,7 +297,7 @@ export default async function SeoTermPage({
                     ].map((section) => (
                         <section key={section.title} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-950">{section.title}</h2>
-                            <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base sm:leading-8">{section.content}</p>
+                            <p className="mt-4 text-base leading-8 text-slate-600">{section.content}</p>
                         </section>
                     ))}
                 </div>
@@ -335,7 +335,7 @@ export default async function SeoTermPage({
                                     className="block rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                                 >
                                     <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(relatedTerm, locale)}</p>
-                                    <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedTermDefinition(relatedTerm, locale)}</p>
+                                    <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedTermDefinition(relatedTerm, locale)}</p>
                                 </a>
                             ))}
                         </div>
@@ -359,7 +359,7 @@ export default async function SeoTermPage({
                                         </span>
                                     </div>
                                     <p className="mt-1 text-lg font-semibold text-slate-950">{getLocalizedText(source.title, locale)}</p>
-                                    <p className="mt-2 text-sm leading-6 text-slate-600">{getLocalizedText(source.note, locale)}</p>
+                                    <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedText(source.note, locale)}</p>
                                 </a>
                             ))}
                         </div>
@@ -373,7 +373,7 @@ export default async function SeoTermPage({
                                     <a href={buildLocalePath(locale, `/authors/${dependencies.author.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
                                         {dependencies.author.name}
                                     </a>
-                                    <p className="mt-1 text-sm leading-6 text-slate-600">{getLocalizedText(dependencies.author.title, locale)}</p>
+                                    <p className="mt-1 text-base leading-7 text-slate-600">{getLocalizedText(dependencies.author.title, locale)}</p>
                                 </div>
                             ) : null}
                             {dependencies.reviewer ? (
@@ -382,12 +382,12 @@ export default async function SeoTermPage({
                                     <a href={buildLocalePath(locale, `/authors/${dependencies.reviewer.slug}`)} className="mt-2 block text-lg font-semibold text-slate-950 hover:text-sky-700">
                                         {dependencies.reviewer.name}
                                     </a>
-                                    <p className="mt-1 text-sm leading-6 text-slate-600">{getLocalizedText(dependencies.reviewer.title, locale)}</p>
+                                    <p className="mt-1 text-base leading-7 text-slate-600">{getLocalizedText(dependencies.reviewer.title, locale)}</p>
                                 </div>
                             ) : null}
                             <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.reviewedAt}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{formatUtcDateForLocale(term.reviewed_at, locale)}</p>
+                                <p className="mt-2 text-base leading-7 text-slate-600">{formatUtcDateForLocale(term.reviewed_at, locale)}</p>
                             </div>
                         </div>
                     </section>
@@ -401,7 +401,7 @@ export default async function SeoTermPage({
                         {faqItems.map((item) => (
                             <article key={item.question} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                                 <h3 className="text-base font-semibold leading-6 text-slate-950">{item.question}</h3>
-                                <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+                                <p className="mt-3 text-base leading-7 text-slate-600">{item.answer}</p>
                             </article>
                         ))}
                     </div>

@@ -8,6 +8,9 @@ const OG_LOCALES: Record<Language, 'en_US' | 'ru_RU' | 'tr_TR'> = {
     tr: 'tr_TR',
 };
 
+const GLOSSARY_OPEN_GRAPH_IMAGE_ROUTE = 'opengraph-image-1miyui';
+const PUBLIC_OPEN_GRAPH_IMAGE_ROUTE = 'opengraph-image-o1kegr';
+
 export const PUBLIC_LOCALES: readonly Language[] = SUPPORTED_LANGUAGES;
 
 export const isPublicLocale = (value: string): value is Language => (
@@ -56,7 +59,9 @@ export const buildAbsoluteLocaleAlternates = (suffix = ''): Record<Language, str
 });
 
 export const buildAbsolutePublicLocaleAlternates = (suffix = ''): Record<Language | 'x-default', string> => ({
-    'x-default': buildAbsoluteUrl(buildLocalePath(DEFAULT_LANGUAGE, suffix)),
+    'x-default': suffix
+        ? buildAbsoluteUrl(buildLocalePath(DEFAULT_LANGUAGE, suffix))
+        : getSiteUrl(),
     ...buildAbsoluteLocaleAlternates(suffix),
 });
 
@@ -71,6 +76,14 @@ export const buildAbsoluteXDefaultAlternates = (): Record<Language | 'x-default'
 });
 
 export const buildAbsoluteUrl = (path: string): string => `${getSiteUrl()}${path}`;
+
+export const buildGlossaryOpenGraphImagePath = (locale: Language, slug: string): string => (
+    buildLocalePath(locale, `/glossary/${slug}/${GLOSSARY_OPEN_GRAPH_IMAGE_ROUTE}`)
+);
+
+export const buildPublicOpenGraphImagePath = (locale: Language): string => (
+    buildLocalePath(locale, `/${PUBLIC_OPEN_GRAPH_IMAGE_ROUTE}`)
+);
 
 export const getOpenGraphLocale = (locale: Language): 'en_US' | 'ru_RU' | 'tr_TR' => (
     OG_LOCALES[locale]

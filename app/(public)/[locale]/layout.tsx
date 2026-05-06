@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import '@/app/globals.css';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
+import PublicAnalyticsConsent from '@/components/PublicAnalyticsConsent';
 import { PUBLIC_LOCALES, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
@@ -10,6 +12,11 @@ const layoutCopy: Record<Language, {
     about: string;
     sources: string;
     editorial: string;
+    corrections: string;
+    privacy: string;
+    terms: string;
+    contact: string;
+    support: string;
     languageLabel: string;
     footer: string;
 }> = {
@@ -20,6 +27,11 @@ const layoutCopy: Record<Language, {
         about: 'About',
         sources: 'Sources',
         editorial: 'Editorial policy',
+        corrections: 'Corrections',
+        privacy: 'Privacy',
+        terms: 'Terms',
+        contact: 'Contact',
+        support: 'Support',
         languageLabel: 'Language',
         footer: 'Multilingual fintech glossary for academic and production-grade learning.',
     },
@@ -30,6 +42,11 @@ const layoutCopy: Record<Language, {
         about: 'О проекте',
         sources: 'Источники',
         editorial: 'Редакционная политика',
+        corrections: 'Исправления',
+        privacy: 'Конфиденциальность',
+        terms: 'Условия',
+        contact: 'Контакты',
+        support: 'Поддержка',
         languageLabel: 'Язык',
         footer: 'Многоязычный финтех-глоссарий для академического и прикладного обучения.',
     },
@@ -40,6 +57,11 @@ const layoutCopy: Record<Language, {
         about: 'Proje',
         sources: 'Kaynaklar',
         editorial: 'Editoryal politika',
+        corrections: 'Düzeltmeler',
+        privacy: 'Gizlilik',
+        terms: 'Şartlar',
+        contact: 'İletişim',
+        support: 'Destek',
         languageLabel: 'Dil',
         footer: 'Akademik ve üretim kalitesinde öğrenim için çok dilli fintek sözlüğü.',
     },
@@ -87,6 +109,7 @@ export default async function LocaleLayout({
                                     <a href={buildLocalePath(locale, '/about')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.about}</a>
                                     <a href={buildLocalePath(locale, '/sources')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.sources}</a>
                                     <a href={buildLocalePath(locale, '/editorial-policy')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.editorial}</a>
+                                    <a href={buildLocalePath(locale, '/corrections')} className="rounded-full px-3 py-2 transition-colors hover:bg-slate-100 hover:text-slate-950">{copy.corrections}</a>
                                 </nav>
                             </div>
                             <div className="mt-3 hidden flex-wrap items-center gap-2 border-t border-slate-200 pt-3 sm:flex md:mt-4 md:pt-4">
@@ -114,9 +137,22 @@ export default async function LocaleLayout({
                             </div>
                         </header>
                         <main className="mt-4 md:mt-8">{children}</main>
+                        <footer className="mt-10 border-t border-slate-200 py-8">
+                            <div className="grid gap-5 md:grid-cols-[1.2fr_0.8fr] md:items-start">
+                                <p className="max-w-xl text-base leading-7 text-slate-600">{copy.footer}</p>
+                                <nav aria-label={copy.support} className="flex flex-wrap gap-2 md:justify-end">
+                                    <a href={buildLocalePath(locale, '/corrections')} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950">{copy.corrections}</a>
+                                    <a href={buildLocalePath(locale, '/privacy')} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950">{copy.privacy}</a>
+                                    <a href={buildLocalePath(locale, '/terms')} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950">{copy.terms}</a>
+                                    <a href={buildLocalePath(locale, '/contact')} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950">{copy.contact}</a>
+                                </nav>
+                            </div>
+                        </footer>
                     </div>
                 </div>
                 <script src="/public-locale-switcher.js" defer />
+                <PublicAnalyticsConsent language={locale} />
+                <GoogleAnalytics />
             </body>
         </html>
     );

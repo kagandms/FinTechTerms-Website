@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -113,7 +114,7 @@ export default async function EditorialPolicyPage({
                 {copy.sections.map((section) => (
                     <article key={section.title} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                         <h2 className="text-2xl font-bold text-slate-950">{section.title}</h2>
-                        <p className="mt-4 text-sm leading-7 text-slate-600">{section.body}</p>
+                        <p className="mt-4 text-base leading-7 text-slate-600">{section.body}</p>
                     </article>
                 ))}
             </section>
@@ -121,30 +122,29 @@ export default async function EditorialPolicyPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                    __html: serializeJsonLd({
-                        '@context': 'https://schema.org',
-                        '@type': 'WebPage',
-                        name: copy.title,
-                        description: copy.description,
-                        url: buildAbsoluteUrl(buildLocalePath(locale, '/editorial-policy')),
-                        inLanguage: locale,
-                        about: [
-                            'source selection',
-                            'editorial review',
-                            'YMYL educational content',
-                        ],
-                        publisher: {
-                            '@type': 'Organization',
-                            name: 'FinTechTerms',
-                            url: buildAbsoluteUrl(''),
+                    __html: serializeJsonLd([
+                        {
+                            '@context': 'https://schema.org',
+                            '@type': 'WebPage',
+                            name: copy.title,
+                            description: copy.description,
+                            url: buildAbsoluteUrl(buildLocalePath(locale, '/editorial-policy')),
+                            inLanguage: locale,
+                            about: [
+                                'source selection',
+                                'editorial review',
+                                'YMYL educational content',
+                            ],
+                            publisher: buildOrganizationJsonLd(locale),
+                            hasPart: copy.sections.map((section, index) => ({
+                                '@type': 'WebPageElement',
+                                position: index + 1,
+                                name: section.title,
+                                text: section.body,
+                            })),
                         },
-                        hasPart: copy.sections.map((section, index) => ({
-                            '@type': 'WebPageElement',
-                            position: index + 1,
-                            name: section.title,
-                            text: section.body,
-                        })),
-                    }),
+                        buildBreadcrumbJsonLd(locale, [{ name: copy.title, path: buildLocalePath(locale, '/editorial-policy') }]),
+                    ]),
                 }}
             />
         </div>

@@ -6,8 +6,10 @@ import {
     buildAbsoluteLocaleAlternates,
     buildAbsolutePublicLocaleAlternates,
     buildAbsoluteXDefaultAlternates,
+    buildGlossaryOpenGraphImagePath,
     buildLocaleAlternates,
     buildLocalePath,
+    buildPublicOpenGraphImagePath,
     buildSiblingLocalePath,
     formatSeoTitle,
 } from '@/lib/seo-routing';
@@ -58,6 +60,22 @@ describe('seo routing helpers', () => {
             en: 'https://fintechterms.example.com/en',
             tr: 'https://fintechterms.example.com/tr',
         });
+    });
+
+    it('uses the root URL as x-default for locale home alternates', () => {
+        expect(buildAbsolutePublicLocaleAlternates()).toEqual({
+            'x-default': 'https://fintechterms.example.com',
+            ru: 'https://fintechterms.example.com/ru',
+            en: 'https://fintechterms.example.com/en',
+            tr: 'https://fintechterms.example.com/tr',
+        });
+    });
+
+    it('builds the published glossary Open Graph image route for route-group metadata files', () => {
+        expect(buildGlossaryOpenGraphImagePath('ru', 'tokenization')).toBe(
+            '/ru/glossary/tokenization/opengraph-image-1miyui'
+        );
+        expect(buildPublicOpenGraphImagePath('en')).toBe('/en/opengraph-image-o1kegr');
     });
 
     it('rewrites localized sibling paths across public routes', () => {

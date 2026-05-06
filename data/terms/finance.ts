@@ -1579,7 +1579,12 @@ export const financeTerms: Term[] = [
                 'Piyasa bölümü performans ölçüsü.',
                 'S&P 500 is a stock index.',
                 'S&P 500 — фондовый индекс.',
-                'S&P 500 bir borsa endeksidir.'),
+                'S&P 500 bir borsa endeksidir.',
+                undefined,
+                undefined,
+                undefined,
+                2.5,
+                { slug: 'market-index' }),
 
         createTerm('term_474', 'ETF', 'ETF', 'ETF (Borsa Yatırım Fonu)', 'Finance',
                 'Exchange Traded Fund.',

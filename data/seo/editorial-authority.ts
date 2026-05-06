@@ -819,7 +819,7 @@ export const editorialAuthorityOverrides: Record<EditorialAuthorityPilotSlug, Ed
         ),
     },
     'seed-phrase': {
-        sourceIds: ['coinbase-crypto-glossary', 'google-helpful-content', 'google-title-links'],
+        sourceIds: ['coinbase-crypto-glossary', 'bitcoin-whitepaper', 'ethereum-whitepaper'],
         searchIntent: text(
             'Explain seed phrase meaning, wallet recovery, private-key control, custody responsibility, and user-security risk.',
             'Объяснить seed phrase, wallet recovery, private-key control, custody responsibility и user-security risk.',
@@ -869,7 +869,7 @@ export const editorialAuthorityOverrides: Record<EditorialAuthorityPilotSlug, Ed
         ),
     },
     'blind-signing': {
-        sourceIds: ['coinbase-crypto-glossary', 'google-helpful-content', 'google-title-links'],
+        sourceIds: ['coinbase-crypto-glossary', 'ethereum-whitepaper', 'bitcoin-whitepaper'],
         searchIntent: text(
             'Explain blind signing, unreadable transaction approval, wallet risk, malicious contract exposure, and user education needs.',
             'Объяснить blind signing, approval нечитаемой транзакции, wallet risk, malicious contract exposure и user education needs.',
@@ -919,7 +919,7 @@ export const editorialAuthorityOverrides: Record<EditorialAuthorityPilotSlug, Ed
         ),
     },
     'iso-20022': {
-        sourceIds: ['swift-iso-20022', 'open-banking-uk-standard', 'google-helpful-content'],
+        sourceIds: ['swift-iso-20022', 'open-banking-uk-standard', 'bis-pfmi'],
         searchIntent: text(
             'Explain ISO 20022 as a financial messaging standard, migration context, richer data model, and payment operations impact.',
             'Объяснить ISO 20022 как financial messaging standard, migration context, richer data model и влияние на payment operations.',
@@ -969,7 +969,7 @@ export const editorialAuthorityOverrides: Record<EditorialAuthorityPilotSlug, Ed
         ),
     },
     psd2: {
-        sourceIds: ['eba-sca', 'open-banking-uk-standard', 'google-helpful-content'],
+        sourceIds: ['eba-sca', 'open-banking-uk-standard', 'bis-pfmi'],
         searchIntent: text(
             'Explain PSD2 meaning, open banking role, SCA requirement, account access permissions, and payment initiation context.',
             'Объяснить PSD2, роль в open banking, SCA requirement, account access permissions и payment initiation context.',
@@ -1019,7 +1019,7 @@ export const editorialAuthorityOverrides: Record<EditorialAuthorityPilotSlug, Ed
         ),
     },
     'buy-now-pay-later': {
-        sourceIds: ['adyen-payment-glossary', 'stripe-payment-facilitator', 'google-helpful-content'],
+        sourceIds: ['adyen-payment-glossary', 'stripe-payment-facilitator', 'visa-developer-glossary'],
         searchIntent: text(
             'Explain BNPL as a checkout-credit model, merchant conversion tool, consumer-credit risk, and regulatory-sensitive payment method.',
             'Объяснить BNPL как checkout-credit model, merchant conversion tool, consumer-credit risk и regulatory-sensitive payment method.',

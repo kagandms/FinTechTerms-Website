@@ -1,16 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
-import dynamic from 'next/dynamic';
 import '@/app/globals.css';
+import GoogleAnalytics from '@/components/GoogleAnalytics';
+import PublicAnalyticsConsent from '@/components/PublicAnalyticsConsent';
 import { inter, jetbrainsMono } from '@/lib/fonts';
-import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
-import { getScriptNonce } from '@/lib/script-nonce';
 import { getSiteUrl } from '@/lib/site-url';
-import { buildAbsoluteXDefaultAlternates } from '@/lib/seo-routing';
-import { getThemeBootstrapScript } from '@/lib/theme-bootstrap';
+import { buildAbsoluteUrl, buildAbsoluteXDefaultAlternates, buildPublicOpenGraphImagePath } from '@/lib/seo-routing';
 
 const siteUrl = getSiteUrl();
-const RootAppShell = dynamic(() => import('@/components/root-app-shell'));
+const rootOpenGraphImagePath = buildPublicOpenGraphImagePath('en');
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
@@ -36,18 +33,18 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/icons/icon-512.png',
-                width: 512,
-                height: 512,
-                alt: 'FinTechTerms Logo',
+                url: buildAbsoluteUrl(rootOpenGraphImagePath),
+                width: 1200,
+                height: 630,
+                alt: 'FinTechTerms public glossary',
             },
         ],
     },
     twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title: 'FinTechTerms | Multilingual FinTech Glossary',
         description: 'Public glossary architecture for fintech, finance, and technology terms across Russian, English, and Turkish.',
-        images: ['/icons/icon-512.png'],
+        images: [buildAbsoluteUrl(rootOpenGraphImagePath)],
         creator: '@fintechterms',
         site: '@fintechterms',
     },
@@ -64,20 +61,12 @@ export default async function RootSurfaceLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const cookieStore = await cookies();
-    const nonce = await getScriptNonce();
-    const htmlLanguage = normalizeLanguage(cookieStore.get('ftt-language')?.value) ?? DEFAULT_LANGUAGE;
-
     return (
-        <html lang={htmlLanguage}>
-            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
-                <script
-                    nonce={nonce}
-                    dangerouslySetInnerHTML={{ __html: getThemeBootstrapScript() }}
-                />
-                <RootAppShell nonce={nonce}>
-                    {children}
-                </RootAppShell>
+        <html lang="en">
+            <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+                {children}
+                <PublicAnalyticsConsent language="en" />
+                <GoogleAnalytics />
             </body>
         </html>
     );

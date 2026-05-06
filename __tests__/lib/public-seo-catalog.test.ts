@@ -13,6 +13,7 @@ import {
     listStaticTopicSlugs,
     listSeoTerms,
 } from '@/lib/public-seo-catalog';
+import { searchIntentMetadataOverrides } from '@/data/seo/search-intent-overrides';
 
 describe('public seo catalog', () => {
     it('keeps slugs unique across the full catalog', async () => {
@@ -39,10 +40,14 @@ describe('public seo catalog', () => {
 
     it('keeps an explicit top-100 priority registry with minimum ontology completeness', async () => {
         const priorityTerms = await listPrioritySeoTerms(200);
+        const genericSearchSourceIds = new Set(['google-helpful-content', 'google-title-links']);
 
         expect(getPriorityTermCount()).toBe(100);
         expect(priorityTerms.length).toBe(100);
         expect(priorityTerms.every((term) => term.source_refs.length >= 3)).toBe(true);
+        expect(priorityTerms.every((term) => (
+            term.source_refs.every((sourceId) => !genericSearchSourceIds.has(sourceId))
+        ))).toBe(true);
         expect(priorityTerms.every((term) => term.related_term_ids.length >= 3)).toBe(true);
         expect(priorityTerms.every((term) => term.comparison_term_id)).toBe(true);
         expect(priorityTerms.every((term) => term.prerequisite_term_id)).toBe(true);
@@ -55,6 +60,43 @@ describe('public seo catalog', () => {
         expect(standardTerm?.expanded_definition.en).toContain('Within the');
         expect(standardTerm?.why_it_matters.en).not.toContain('product decisions, and industry communication');
         expect(standardTerm?.risks_and_pitfalls.en.length).toBeGreaterThan(80);
+        expect(standardTerm?.seo_description.en.length).toBeGreaterThanOrEqual(120);
+        expect(standardTerm?.seo_description.ru.length).toBeGreaterThanOrEqual(120);
+        expect(standardTerm?.seo_description.tr.length).toBeGreaterThanOrEqual(120);
+        expect(standardTerm?.seo_title.en.length).toBeLessThanOrEqual(44);
+        expect([
+            standardTerm?.expanded_definition.en,
+            standardTerm?.why_it_matters.en,
+            standardTerm?.how_it_works.en,
+            standardTerm?.risks_and_pitfalls.en,
+            standardTerm?.regional_notes.en,
+        ].join(' ').split(/\s+/).length).toBeGreaterThanOrEqual(180);
+    });
+
+    it('separates metadata intent for known cannibalization-prone term pairs', async () => {
+        const terms = await listSeoTerms();
+        const slugs = Object.keys(searchIntentMetadataOverrides);
+        const reviewedTerms = slugs.map((slug) => terms.find((term) => term.slug === slug));
+
+        expect(reviewedTerms.every(Boolean)).toBe(true);
+
+        for (const locale of ['en', 'ru', 'tr'] as const) {
+            const titleSet = new Set(reviewedTerms.map((term) => term?.seo_title[locale]));
+            const descriptionSet = new Set(reviewedTerms.map((term) => term?.seo_description[locale]));
+
+            expect(titleSet.size).toBe(reviewedTerms.length);
+            expect(descriptionSet.size).toBe(reviewedTerms.length);
+        }
+    });
+
+    it('derives public SEO freshness from source and reviewed override dates', async () => {
+        const terms = await listSeoTerms();
+        const kycTerm = terms.find((term) => term.slug === 'kyc');
+        const uniqueUpdatedAtValues = new Set(terms.map((term) => term.updated_at));
+
+        expect(uniqueUpdatedAtValues.size).toBeGreaterThan(1);
+        expect(kycTerm?.reviewed_at).toBe('2026-05-04T00:00:00.000Z');
+        expect(kycTerm?.updated_at).toBe('2026-05-04T00:00:00.000Z');
     });
 
     it('returns finite topic and contributor slug catalogs for static generation', async () => {

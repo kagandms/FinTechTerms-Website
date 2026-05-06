@@ -79,6 +79,23 @@ describe('proxy locale headers', () => {
         expect(response.headers.get('Content-Language')).toBe('ru');
     });
 
+    it('keeps the root x-default surface language-neutral for caching and canonical stability', async () => {
+        const { NextRequest } = await import('next/server');
+        const { proxy } = await import('@/proxy');
+
+        const request = new NextRequest('https://fintechterms.app/', {
+            headers: {
+                cookie: 'ftt-language=tr',
+                'accept-language': 'ru-RU,ru;q=0.9,tr;q=0.8',
+            },
+        });
+
+        const response = await proxy(request);
+
+        expect(response.headers.get('Content-Language')).toBe('en');
+        expect(response.headers.get('Vary')).toBeNull();
+    });
+
     it('redirects legacy about requests permanently using the persisted locale', async () => {
         const { NextRequest } = await import('next/server');
         const { proxy } = await import('@/proxy');
@@ -128,6 +145,18 @@ describe('proxy locale headers', () => {
 
         expect(response.status).toBe(308);
         expect(response.headers.get('location')).toBe('https://fintechterms.app/en/glossary/open-banking');
+        expect(response.headers.get('Content-Language')).toBe('en');
+    });
+
+    it('does not redirect unknown legacy term requests', async () => {
+        const { NextRequest } = await import('next/server');
+        const { proxy } = await import('@/proxy');
+
+        const request = new NextRequest('https://fintechterms.app/term/missing-term?lang=en');
+        const response = await proxy(request);
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('location')).toBeNull();
         expect(response.headers.get('Content-Language')).toBe('en');
     });
 
