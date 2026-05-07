@@ -12,11 +12,12 @@ const SCRIPT_ID = 'google-analytics-loader';
 
 type GtagCommand =
     | ['js', Date]
-    | ['config', string];
+    | ['config', string]
+    | ['event', string, Record<string, unknown>?];
 
 declare global {
     interface Window {
-        dataLayer?: GtagCommand[];
+        dataLayer?: Array<IArguments | Record<string, unknown>>;
         gtag?: (...args: GtagCommand) => void;
     }
 }
@@ -39,13 +40,13 @@ const appendGoogleAnalyticsScript = (gaId: string): void => {
 
 const initializeGoogleAnalytics = (gaId: string): void => {
     window.dataLayer = window.dataLayer ?? [];
-    window.gtag = window.gtag ?? ((...args: GtagCommand): void => {
-        window.dataLayer?.push(args);
-    });
+    window.gtag = window.gtag ?? function gtag(..._args: GtagCommand): void {
+        window.dataLayer?.push(arguments);
+    };
 
+    appendGoogleAnalyticsScript(gaId);
     window.gtag('js', new Date());
     window.gtag('config', gaId);
-    appendGoogleAnalyticsScript(gaId);
 };
 
 interface GoogleAnalyticsProps {

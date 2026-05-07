@@ -18,6 +18,16 @@ const setConsent = (given: boolean) => {
     }));
 };
 
+const normalizeDataLayerCommands = (): unknown[][] => (
+    (window.dataLayer ?? [])
+        .filter((entry): entry is IArguments => (
+            typeof entry === 'object'
+            && entry !== null
+            && Object.prototype.hasOwnProperty.call(entry, 'callee')
+        ))
+        .map((entry) => Array.from(entry))
+);
+
 describe('GoogleAnalytics', () => {
     beforeEach(() => {
         localStorage.clear();
@@ -49,7 +59,7 @@ describe('GoogleAnalytics', () => {
                 'src',
                 `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
             );
-            expect(window.dataLayer).toEqual(expect.arrayContaining([
+            expect(normalizeDataLayerCommands()).toEqual(expect.arrayContaining([
                 ['config', GA_ID],
             ]));
         });
