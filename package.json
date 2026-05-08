@@ -22,6 +22,7 @@
     "guard:artifact-sourcemaps": "node scripts/guard-artifact-sourcemaps.mjs",
     "test:e2e:guest": "playwright test --grep-invert @auth-required",
     "test:e2e:auth": "playwright test --grep @auth-required",
+    "test:load:staging": "node scripts/staging-load-check.mjs",
     "smoke:staging": "node scripts/staging-smoke.mjs",
     "validate:runtime-env": "node scripts/validate-runtime-env.mjs",
     "validate:release-gate-env": "node scripts/validate-release-gate-env.mjs",

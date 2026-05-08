@@ -31,11 +31,11 @@ const pageCopy: Record<Language, {
     },
     ru: {
         title: 'Редакционная политика',
-        description: 'Как FinTechTerms управляет выбором источников, ревью, обновлениями и YMYL trust-сигналами.',
+        description: 'Как FinTechTerms управляет выбором источников, ревью, обновлениями и сигналами доверия YMYL.',
         sections: [
             {
                 title: 'Порог источников',
-                body: 'Приоритетные терминологические страницы требуют как минимум трёх первичных или институционально сильных источников. Приоритет отдается официальной документации, регулированию, стандартам и first-party educational material.',
+                body: 'Приоритетные терминологические страницы требуют как минимум трёх первичных или институционально сильных источников. Приоритет отдается официальной документации, регулированию, стандартам и образовательным материалам из первоисточников.',
             },
             {
                 title: 'Процесс ревью',
@@ -43,7 +43,7 @@ const pageCopy: Record<Language, {
             },
             {
                 title: 'Работа с YMYL',
-                body: 'Финансово чувствительные страницы пишутся как образовательный справочный материал, а не как персонализированная рекомендация. Определения должны быть точными, ограниченными по scope и подтверждёнными источниками.',
+                body: 'Финансово чувствительные страницы пишутся как образовательный справочный материал, а не как персонализированная рекомендация. Определения должны быть точными, с чёткими границами применения и подтверждёнными источниками.',
             },
         ],
     },
@@ -53,7 +53,7 @@ const pageCopy: Record<Language, {
         sections: [
             {
                 title: 'Kaynak eşiği',
-                body: 'Öncelikli terim sayfaları en az üç birincil veya kurumsal olarak güçlü kaynak gerektirir. Resmi dokümantasyon, düzenleme, standart kurumları ve first-party educational material tercih edilir.',
+                body: 'Öncelikli terim sayfaları en az üç birincil veya kurumsal olarak güçlü kaynak gerektirir. Resmi dokümantasyon, düzenleme, standart kurumları ve birinci el eğitim materyalleri tercih edilir.',
             },
             {
                 title: 'İnceleme akışı',

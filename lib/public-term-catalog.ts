@@ -113,7 +113,10 @@ const getPublicCatalogRpcClient = (): SupabaseClient => {
         env.supabaseAnonKey!,
         {
             global: {
-                fetch: createTimeoutFetch(),
+                fetch: createTimeoutFetch(undefined, {
+                    dependency: 'supabase',
+                    route: 'public-term-catalog',
+                }),
             },
         }
     );

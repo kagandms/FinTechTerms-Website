@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import '@/app/globals.css';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
-import PublicAnalyticsConsent from '@/components/PublicAnalyticsConsent';
+import PublicAnalyticsGate from '@/components/PublicAnalyticsGate';
 import { inter, jetbrainsMono } from '@/lib/fonts';
+import { getPublicEnv } from '@/lib/public-env';
 import { getSiteUrl } from '@/lib/site-url';
 import { buildAbsoluteUrl, buildAbsoluteXDefaultAlternates, buildPublicOpenGraphImagePath } from '@/lib/seo-routing';
 
 const siteUrl = getSiteUrl();
 const rootOpenGraphImagePath = buildPublicOpenGraphImagePath('en');
+const publicGaId = getPublicEnv().gaId;
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
     },
     icons: {
         icon: [
-            { url: '/icons/icon-512.png', type: 'image/png', sizes: '512x512' },
+            { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
         ],
         shortcut: '/icons/icon-192.png',
         apple: '/icons/icon-192.png',
@@ -65,8 +66,7 @@ export default async function RootSurfaceLayout({
         <html lang="en">
             <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
                 {children}
-                <PublicAnalyticsConsent language="en" />
-                <GoogleAnalytics />
+                {publicGaId ? <PublicAnalyticsGate language="en" gaId={publicGaId} /> : null}
             </body>
         </html>
     );

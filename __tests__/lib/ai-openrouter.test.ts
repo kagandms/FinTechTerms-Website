@@ -1,6 +1,7 @@
 describe('generateStructuredAiResponse', () => {
     const originalEnv = process.env;
     const originalFetch = global.fetch;
+    let consoleInfoSpy: jest.SpyInstance;
 
     class MockHeaders {
         private readonly values = new Map<string, string>();
@@ -55,10 +56,12 @@ describe('generateStructuredAiResponse', () => {
             OPENROUTER_REFERER: 'https://fintechterms.com',
             OPENROUTER_APP_NAME: 'FinTechTerms',
         };
+        consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
     });
 
     afterEach(() => {
         global.fetch = originalFetch;
+        consoleInfoSpy.mockRestore();
     });
 
     afterAll(() => {
@@ -105,5 +108,73 @@ describe('generateStructuredAiResponse', () => {
         expect(result.model).toBe('fallback-model');
         expect(result.usedFallback).toBe(true);
         expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('reuses a cached structured response when a cache key is provided', async () => {
+        const fetchMock = jest.fn().mockResolvedValue(new MockResponse(JSON.stringify({
+            choices: [
+                {
+                    message: {
+                        content: '{"answer":"cached ok"}',
+                    },
+                },
+            ],
+        }), {
+            status: 200,
+        }));
+
+        global.fetch = fetchMock as typeof fetch;
+
+        const { z } = await import('zod');
+        const { generateStructuredAiResponse } = await import('@/lib/ai/openrouter');
+        const request = {
+            route: '/api/test',
+            requestId: 'req-cache-1',
+            messages: [{ role: 'user' as const, content: 'test' }],
+            outputContract: '{ "answer": string }',
+            schema: z.object({
+                answer: z.string(),
+            }),
+            cache: {
+                key: 'term:term-1:en:simple',
+                ttlMs: 60_000,
+            },
+        };
+
+        const firstResult = await generateStructuredAiResponse(request);
+        const secondResult = await generateStructuredAiResponse(request);
+
+        expect(firstResult).toMatchObject({
+            data: { answer: 'cached ok' },
+            cacheStatus: 'miss',
+        });
+        expect(secondResult).toMatchObject({
+            data: { answer: 'cached ok' },
+            cacheStatus: 'hit',
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails before calling OpenRouter when the latency budget is already exhausted', async () => {
+        const fetchMock = jest.fn();
+        global.fetch = fetchMock as typeof fetch;
+
+        const { z } = await import('zod');
+        const {
+            AiLatencyBudgetExceededError,
+            generateStructuredAiResponse,
+        } = await import('@/lib/ai/openrouter');
+
+        await expect(generateStructuredAiResponse({
+            route: '/api/test',
+            requestId: 'req-budget-1',
+            messages: [{ role: 'user', content: 'test' }],
+            outputContract: '{ "answer": string }',
+            schema: z.object({
+                answer: z.string(),
+            }),
+            latencyBudgetMs: 0,
+        })).rejects.toThrow(AiLatencyBudgetExceededError);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });

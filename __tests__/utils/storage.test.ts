@@ -74,7 +74,8 @@ describe('getTerms', () => {
 
     it('should initialize localStorage with mock data on first call', () => {
         getTerms();
-        expect(localStorageMock.setItem).toHaveBeenCalled();
+        expect(localStorageMock.getItem('globalfinterm_terms:guest')).toBeNull();
+        expect(localStorageMock.getItem('globalfinterm_data_version:guest')).not.toBeNull();
     });
 
     it('should preserve compatible local SRS fields when migrating cached terms to a new data version', () => {
@@ -117,7 +118,19 @@ describe('getTerms', () => {
             times_reviewed: 12,
             times_correct: 11,
         });
-        expect(localStorageMock.getItem('globalfinterm_terms:guest')).not.toBeNull();
+        const migratedSnapshot = JSON.parse(localStorageMock.getItem('globalfinterm_terms:guest') ?? '{}');
+
+        expect(migratedSnapshot).toMatchObject({
+            schema: 'term-state-overrides-v1',
+            overrides: [
+                expect.objectContaining({
+                    id: baselineTerm.id,
+                    srs_level: 4,
+                    times_reviewed: 12,
+                    times_correct: 11,
+                }),
+            ],
+        });
         expect(localStorageMock.getItem('globalfinterm_data_version:guest')).toBe(baselineVersion);
         expect(localStorageMock.getItem('globalfinterm_terms')).toBeNull();
         expect(localStorageMock.getItem('globalfinterm_data_version')).toBeNull();
@@ -162,7 +175,20 @@ describe('getTerms', () => {
             times_reviewed: 14,
             times_correct: 13,
         });
-        expect(JSON.parse(localStorageMock.getItem('globalfinterm_terms:guest') ?? '[]')).toHaveLength(baselineTerms.length);
+        const repairedSnapshot = JSON.parse(localStorageMock.getItem('globalfinterm_terms:guest') ?? '{}');
+
+        expect(repairedSnapshot).toMatchObject({
+            schema: 'term-state-overrides-v1',
+            overrides: [
+                expect.objectContaining({
+                    id: baselineTerm.id,
+                    srs_level: 5,
+                    times_reviewed: 14,
+                    times_correct: 13,
+                }),
+            ],
+        });
+        expect(repairedSnapshot.overrides).toHaveLength(1);
     });
 
     it('should isolate authenticated terms from guest cached term state', () => {
@@ -201,13 +227,39 @@ describe('getTerms', () => {
 // saveTerms
 // ══════════════════════════════════════════════════════════
 describe('saveTerms', () => {
-    it('should save terms to localStorage', () => {
+    it('should save only term state overrides to localStorage', () => {
         const terms = getTerms();
-        saveTerms(terms);
-        expect(localStorageMock.setItem).toHaveBeenCalledWith(
-            'globalfinterm_terms:guest',
-            expect.any(String)
-        );
+        const firstTerm = terms[0];
+
+        expect(firstTerm).toBeDefined();
+        if (!firstTerm) {
+            throw new Error('Expected at least one term.');
+        }
+
+        saveTerms([
+            {
+                ...firstTerm,
+                times_reviewed: firstTerm.times_reviewed + 3,
+                times_correct: firstTerm.times_correct + 2,
+            },
+            ...terms.slice(1),
+        ]);
+
+        const storedSnapshot = localStorageMock.getItem('globalfinterm_terms:guest');
+        const parsedSnapshot = JSON.parse(storedSnapshot ?? '{}');
+
+        expect(parsedSnapshot).toMatchObject({
+            schema: 'term-state-overrides-v1',
+            overrides: [
+                expect.objectContaining({
+                    id: firstTerm.id,
+                    times_reviewed: firstTerm.times_reviewed + 3,
+                    times_correct: firstTerm.times_correct + 2,
+                }),
+            ],
+        });
+        expect(parsedSnapshot.overrides).toHaveLength(1);
+        expect(storedSnapshot).not.toContain(firstTerm.term_en);
     });
 });
 

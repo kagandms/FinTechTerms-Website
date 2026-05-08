@@ -2,6 +2,7 @@ import type {
     AiChatMessage,
     AiTermExplainResponse,
 } from '@/types/ai';
+import { logger } from '@/lib/logger';
 
 export type AiGuestTeaserKey = 'quiz-feedback' | 'term-explain' | 'chat-message';
 
@@ -20,6 +21,24 @@ const AI_GUEST_USAGE_STORAGE_KEY = 'fintechterms_ai_guest_usage';
 const AI_TERM_EXPLAIN_CACHE_KEY = 'fintechterms_ai_term_explain_cache';
 const AI_CHAT_HISTORY_KEY = 'fintechterms_ai_chat_history';
 const TERM_EXPLAIN_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const emitTermExplainCacheMetric = (
+    cacheStatus: 'hit' | 'miss',
+    cacheKey: string,
+    reason?: 'missing' | 'expired' | 'unavailable'
+): void => {
+    logger.performance(
+        cacheStatus === 'hit'
+            ? 'AI_TERM_EXPLAIN_CACHE_HIT'
+            : 'AI_TERM_EXPLAIN_CACHE_MISS',
+        {
+            route: 'ai-session',
+            cacheKey,
+            cacheStatus,
+            reason,
+        }
+    );
+};
 
 export const createDefaultAiGuestTeaserUsage = (): AiGuestTeaserUsageState => ({
     quizFeedbackCount: 0,
@@ -98,10 +117,19 @@ export const getCachedTermExplainResponse = (
     const cache = readJsonValue<Record<string, CachedTermExplainEntry>>(AI_TERM_EXPLAIN_CACHE_KEY);
     const entry = cache?.[cacheKey];
 
-    if (!entry || entry.expiresAt <= Date.now()) {
+    if (!cache || !entry) {
+        emitTermExplainCacheMetric('miss', cacheKey, cache ? 'missing' : 'unavailable');
         return null;
     }
 
+    if (entry.expiresAt <= Date.now()) {
+        const { [cacheKey]: _expiredEntry, ...nextCache } = cache;
+        writeJsonValue(AI_TERM_EXPLAIN_CACHE_KEY, nextCache);
+        emitTermExplainCacheMetric('miss', cacheKey, 'expired');
+        return null;
+    }
+
+    emitTermExplainCacheMetric('hit', cacheKey);
     return entry.payload;
 };
 

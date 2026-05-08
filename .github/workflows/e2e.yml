@@ -257,6 +257,11 @@ jobs:
       SENTRY_SMOKE_EMAIL: ${{ vars.SENTRY_SMOKE_EMAIL || secrets.SENTRY_SMOKE_EMAIL }}
       SENTRY_SMOKE_PASSWORD: ${{ secrets.SENTRY_SMOKE_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      LOAD_TEST_CONCURRENCY: ${{ vars.LOAD_TEST_CONCURRENCY || '4' }}
+      LOAD_TEST_ITERATIONS: ${{ vars.LOAD_TEST_ITERATIONS || '12' }}
+      LOAD_TEST_P95_MS: ${{ vars.LOAD_TEST_P95_MS || '1500' }}
+      LOAD_TEST_P99_MS: ${{ vars.LOAD_TEST_P99_MS || '2500' }}
+      LOAD_TEST_MAX_ERROR_RATE: ${{ vars.LOAD_TEST_MAX_ERROR_RATE || '0' }}
 
     steps:
       - name: Checkout
@@ -278,6 +283,9 @@ jobs:
 
       - name: Run preview runtime check
         run: node scripts/preview_runtime_check.mjs
+
+      - name: Run staging load check
+        run: npm run test:load:staging
 
   playwright-guest:
     name: Playwright Guest Suite

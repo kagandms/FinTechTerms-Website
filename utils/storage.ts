@@ -9,7 +9,6 @@ import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME, normalizeLanguage } from '@/lib
 import { defaultUserProgress } from '@/data/mockData';
 import { filterAcademicTerms } from '@/lib/academicQuarantine';
 import { RECENT_QUIZ_HISTORY_LIMIT, userProgressSchema } from '@/lib/userProgress';
-import { createSafeTerm } from '@/utils/termUtils';
 import { startOfUtcDay, toUtcDateKey } from '@/lib/time';
 import { logger } from '@/lib/logger';
 
@@ -64,7 +63,8 @@ function isSessionStorageAvailable(): boolean {
     }
 }
 
-const DATA_VERSION = '2026-04-09-v6'; // Force refresh after restoring the full runtime catalog
+const DATA_VERSION = '2026-05-07-v7';
+const TERM_STATE_OVERRIDES_SCHEMA = 'term-state-overrides-v1';
 
 const TERM_STATE_FIELDS = [
     'srs_level',
@@ -75,6 +75,14 @@ const TERM_STATE_FIELDS = [
     'times_reviewed',
     'times_correct',
 ] as const;
+type TermStateField = typeof TERM_STATE_FIELDS[number];
+type TermStateValues = Pick<Term, TermStateField>;
+type TermStateOverride = { id: string } & Partial<TermStateValues>;
+
+interface ParsedTermOverrides {
+    overrides: TermStateOverride[];
+    requiresRewrite: boolean;
+}
 
 const isGuestProgressUserId = (userId: string | null | undefined): boolean => (
     !userId || GUEST_PROGRESS_USER_IDS.has(userId)
@@ -192,40 +200,103 @@ const clearCorruptedProgress = (userId?: string | null): UserProgress => {
     return createDefaultProgress(userId);
 };
 
-const parseStoredTerms = (stored: string | null): Term[] => {
-    if (!stored) {
-        return [];
+const parseTermStateOverride = (value: unknown): TermStateOverride | null => {
+    if (!value || typeof value !== 'object') {
+        return null;
     }
 
-    return (JSON.parse(stored) as Array<Partial<Term>>)
-        .map((term) => createSafeTerm(term))
-        .filter((term): term is Term => Boolean(term));
+    const candidate = value as Partial<Term>;
+    if (typeof candidate.id !== 'string' || candidate.id.trim().length === 0) {
+        return null;
+    }
+
+    const override: TermStateOverride = { id: candidate.id.trim() };
+
+    TERM_STATE_FIELDS.forEach((field) => {
+        const fieldValue = candidate[field];
+
+        if (field === 'last_reviewed') {
+            if (typeof fieldValue === 'string' || fieldValue === null) {
+                Object.assign(override, { [field]: fieldValue });
+            }
+            return;
+        }
+
+        if (field === 'next_review_date') {
+            if (typeof fieldValue === 'string' && Number.isFinite(Date.parse(fieldValue))) {
+                Object.assign(override, { [field]: fieldValue });
+            }
+            return;
+        }
+
+        if (typeof fieldValue === 'number' && Number.isFinite(fieldValue)) {
+            Object.assign(override, { [field]: fieldValue });
+        }
+    });
+
+    return override;
 };
 
-const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[] => {
-    const storedTermsById = new Map(storedTerms.map((term) => [term.id, term] as const));
+const parseStoredTermOverrides = (stored: string | null): ParsedTermOverrides => {
+    if (!stored) {
+        return {
+            overrides: [],
+            requiresRewrite: false,
+        };
+    }
+
+    const parsed = JSON.parse(stored) as unknown;
+
+    if (Array.isArray(parsed)) {
+        return {
+            overrides: parsed
+                .map((entry) => parseTermStateOverride(entry))
+                .filter((entry): entry is TermStateOverride => Boolean(entry)),
+            requiresRewrite: true,
+        };
+    }
+
+    if (
+        parsed
+        && typeof parsed === 'object'
+        && 'schema' in parsed
+        && parsed.schema === TERM_STATE_OVERRIDES_SCHEMA
+        && 'overrides' in parsed
+        && Array.isArray(parsed.overrides)
+    ) {
+        return {
+            overrides: parsed.overrides
+                .map((entry) => parseTermStateOverride(entry))
+                .filter((entry): entry is TermStateOverride => Boolean(entry)),
+            requiresRewrite: false,
+        };
+    }
+
+    return {
+        overrides: [],
+        requiresRewrite: true,
+    };
+};
+
+const mergeTermStudyState = (fallbackTerms: Term[], storedOverrides: readonly TermStateOverride[]): Term[] => {
+    const storedOverridesById = new Map(storedOverrides.map((term) => [term.id, term] as const));
 
     return fallbackTerms.map((fallbackTerm) => {
-        const storedTerm = storedTermsById.get(fallbackTerm.id);
-        if (!storedTerm) {
+        const storedOverride = storedOverridesById.get(fallbackTerm.id);
+        if (!storedOverride) {
             return fallbackTerm;
         }
 
-        const preservedState = TERM_STATE_FIELDS.reduce<Pick<Term, typeof TERM_STATE_FIELDS[number]>>(
-            (result, field) => ({
-                ...result,
-                [field]: storedTerm[field],
-            }),
-            {
-                srs_level: fallbackTerm.srs_level,
-                next_review_date: fallbackTerm.next_review_date,
-                last_reviewed: fallbackTerm.last_reviewed,
-                difficulty_score: fallbackTerm.difficulty_score,
-                retention_rate: fallbackTerm.retention_rate,
-                times_reviewed: fallbackTerm.times_reviewed,
-                times_correct: fallbackTerm.times_correct,
+        const preservedState = TERM_STATE_FIELDS.reduce<Partial<TermStateValues>>((result, field) => {
+            if (!Object.prototype.hasOwnProperty.call(storedOverride, field)) {
+                return result;
             }
-        );
+
+            return {
+                ...result,
+                [field]: storedOverride[field],
+            };
+        }, {});
 
         return {
             ...fallbackTerm,
@@ -234,29 +305,72 @@ const mergeTermStudyState = (fallbackTerms: Term[], storedTerms: Term[]): Term[]
     });
 };
 
-const hasCatalogDrift = (fallbackTerms: readonly Term[], storedTerms: readonly Term[]): boolean => {
-    if (storedTerms.length !== fallbackTerms.length) {
-        return true;
-    }
+const buildTermStateOverride = (
+    term: Term,
+    fallbackTerm: Term
+): TermStateOverride | null => {
+    const override: TermStateOverride = { id: term.id };
+    let hasChangedState = false;
 
-    const fallbackTermIds = new Set(fallbackTerms.map((term) => term.id));
-    return storedTerms.some((term) => !fallbackTermIds.has(term.id));
+    TERM_STATE_FIELDS.forEach((field) => {
+        if (term[field] === fallbackTerm[field]) {
+            return;
+        }
+
+        Object.assign(override, { [field]: term[field] });
+        hasChangedState = true;
+    });
+
+    return hasChangedState ? override : null;
 };
 
-const persistReconciledTerms = (
-    fallbackTerms: Term[],
-    storedTerms: Term[],
+const persistTermStateOverrides = (
+    terms: readonly Term[],
+    fallbackTerms: readonly Term[],
     termsStorageKey: string,
     versionStorageKey: string,
     isGuestScope: boolean
-): Term[] => {
-    const reconciledTerms = mergeTermStudyState(fallbackTerms, storedTerms);
-    localStorage.setItem(termsStorageKey, JSON.stringify(reconciledTerms));
+): void => {
+    const fallbackTermsById = new Map(fallbackTerms.map((term) => [term.id, term] as const));
+    const overrides = terms
+        .map((term) => {
+            const fallbackTerm = fallbackTermsById.get(term.id);
+            return fallbackTerm ? buildTermStateOverride(term, fallbackTerm) : null;
+        })
+        .filter((override): override is TermStateOverride => Boolean(override));
+
+    if (overrides.length === 0) {
+        localStorage.removeItem(termsStorageKey);
+    } else {
+        localStorage.setItem(termsStorageKey, JSON.stringify({
+            schema: TERM_STATE_OVERRIDES_SCHEMA,
+            version: DATA_VERSION,
+            overrides,
+        }));
+    }
+
     localStorage.setItem(versionStorageKey, DATA_VERSION);
 
     if (isGuestScope) {
         clearLegacyTermsCache();
     }
+};
+
+const persistReconciledTerms = (
+    fallbackTerms: Term[],
+    storedOverrides: readonly TermStateOverride[],
+    termsStorageKey: string,
+    versionStorageKey: string,
+    isGuestScope: boolean
+): Term[] => {
+    const reconciledTerms = mergeTermStudyState(fallbackTerms, storedOverrides);
+    persistTermStateOverrides(
+        reconciledTerms,
+        fallbackTerms,
+        termsStorageKey,
+        versionStorageKey,
+        isGuestScope
+    );
 
     return reconciledTerms;
 };
@@ -286,8 +400,13 @@ const applyGuestEntitlementPolicyMigration = (fallbackTerms: Term[]): void => {
         updated_at: new Date().toISOString(),
     };
 
-    localStorage.setItem(getTermsStorageKey(null), JSON.stringify(fallbackTerms));
-    localStorage.setItem(getTermsVersionStorageKey(null), DATA_VERSION);
+    persistTermStateOverrides(
+        fallbackTerms,
+        fallbackTerms,
+        getTermsStorageKey(null),
+        getTermsVersionStorageKey(null),
+        true
+    );
     localStorage.setItem(guestProgressKey, JSON.stringify(migratedGuestProgress));
     localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS_LEGACY);
     clearLegacyTermsCache();
@@ -366,45 +485,28 @@ export function getTerms(userId?: string | null): Term[] {
             storedVersion = storedVersion ?? localStorage.getItem(STORAGE_KEYS.TERMS_VERSION_LEGACY);
         }
 
-        const parsedTerms = parseStoredTerms(stored);
+        const parsedOverrides = parseStoredTermOverrides(stored);
 
         // Refresh content schema while preserving compatible local SRS state.
-        if (storedVersion !== DATA_VERSION) {
+        if (storedVersion !== DATA_VERSION || parsedOverrides.requiresRewrite) {
             return persistReconciledTerms(
                 fallbackTerms,
-                parsedTerms,
+                parsedOverrides.overrides,
                 termsStorageKey,
                 versionStorageKey,
                 isGuestScope
             );
         }
 
-        if (parsedTerms.length > 0) {
-            if (hasCatalogDrift(fallbackTerms, parsedTerms)) {
-                return persistReconciledTerms(
-                    fallbackTerms,
-                    parsedTerms,
-                    termsStorageKey,
-                    versionStorageKey,
-                    isGuestScope
-                );
-            }
-
-            localStorage.setItem(termsStorageKey, JSON.stringify(parsedTerms));
-            localStorage.setItem(versionStorageKey, storedVersion ?? DATA_VERSION);
-            if (isGuestScope) {
-                clearLegacyTermsCache();
-            }
-            return filterAcademicTerms(parsedTerms);
-        }
-
-        // Initialize with mock data
-        localStorage.setItem(termsStorageKey, JSON.stringify(fallbackTerms));
-        localStorage.setItem(versionStorageKey, DATA_VERSION);
         if (isGuestScope) {
             clearLegacyTermsCache();
         }
-        return fallbackTerms;
+
+        if (!storedVersion) {
+            localStorage.setItem(versionStorageKey, DATA_VERSION);
+        }
+
+        return mergeTermStudyState(fallbackTerms, parsedOverrides.overrides);
     } catch {
         return fallbackTerms;
     }
@@ -417,11 +519,14 @@ export function saveTerms(terms: Term[], userId?: string | null): boolean {
     if (!isLocalStorageAvailable()) return false;
 
     try {
-        localStorage.setItem(
+        const fallbackTerms = filterAcademicTerms(catalogTerms);
+        persistTermStateOverrides(
+            filterAcademicTerms(terms),
+            fallbackTerms,
             getTermsStorageKey(userId),
-            JSON.stringify(filterAcademicTerms(terms))
+            getTermsVersionStorageKey(userId),
+            resolveProgressScopeUserId(userId) === null
         );
-        localStorage.setItem(getTermsVersionStorageKey(userId), DATA_VERSION);
         return true;
     } catch (error) {
         logger.error('STORAGE_SAVE_TERMS_FAILED', {

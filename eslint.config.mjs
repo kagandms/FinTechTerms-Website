@@ -5,7 +5,7 @@ export default [
     {
         files: ['**/*.{js,jsx,ts,tsx}'],
         rules: {
-            'no-console': ['warn', { allow: ['warn', 'error'] }],
+            'no-console': ['warn', { allow: ['info', 'warn', 'error'] }],
             '@next/next/no-img-element': 'warn',
             'react-hooks/exhaustive-deps': 'warn',
         },

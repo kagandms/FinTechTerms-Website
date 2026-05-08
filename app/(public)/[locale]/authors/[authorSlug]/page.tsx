@@ -5,12 +5,12 @@ import { serializeJsonLd } from '@/lib/json-ld';
 import { buildBreadcrumbJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale, PUBLIC_LOCALES } from '@/lib/seo-routing';
-import type { Language } from '@/types';
+import type { Contributor, Language } from '@/types';
 
-const authorCopy: Record<Language, { expertise: string; disclosure: string; languages: string; written: string; reviewed: string }> = {
-    en: { expertise: 'Expertise', disclosure: 'Disclosure', languages: 'Languages', written: 'Published terms', reviewed: 'Reviewed terms' },
-    ru: { expertise: 'Экспертиза', disclosure: 'Раскрытие', languages: 'Языки', written: 'Опубликованные термины', reviewed: 'Проверенные термины' },
-    tr: { expertise: 'Uzmanlık', disclosure: 'Açıklama', languages: 'Diller', written: 'Yayınlanan terimler', reviewed: 'İncelenen terimler' },
+const authorCopy: Record<Language, { expertise: string; disclosure: string; languages: string; credential: string; affiliation: string; written: string; reviewed: string }> = {
+    en: { expertise: 'Expertise', disclosure: 'Disclosure', languages: 'Languages', credential: 'Credential', affiliation: 'Affiliation', written: 'Published terms', reviewed: 'Reviewed terms' },
+    ru: { expertise: 'Экспертиза', disclosure: 'Раскрытие', languages: 'Языки', credential: 'Квалификация', affiliation: 'Аффилиация', written: 'Опубликованные термины', reviewed: 'Проверенные термины' },
+    tr: { expertise: 'Uzmanlık', disclosure: 'Açıklama', languages: 'Diller', credential: 'Yetkinlik', affiliation: 'Bağlantı', written: 'Yayınlanan terimler', reviewed: 'İncelenen terimler' },
 };
 
 const authorMetadataCopy: Record<Language, { titleSuffix: string; descriptionPrefix: string }> = {
@@ -30,6 +30,45 @@ const buildAuthorMetadataDescription = (
 ): string => (
     `${authorMetadataCopy[locale].descriptionPrefix} ${name}. ${title}`
 );
+
+const buildContributorAffiliationJsonLd = (contributor: Contributor, locale: Language) => {
+    if (!contributor.affiliation) {
+        return undefined;
+    }
+
+    return {
+        '@type': 'Organization',
+        name: getLocalizedText(contributor.affiliation, locale),
+        url: contributor.affiliationPath
+            ? buildAbsoluteUrl(buildLocalePath(locale, contributor.affiliationPath))
+            : buildAbsoluteUrl(buildLocalePath(locale)),
+    };
+};
+
+const buildContributorCredentialJsonLd = (contributor: Contributor, locale: Language) => (
+    contributor.credential ? {
+        '@type': 'EducationalOccupationalCredential',
+        name: getLocalizedText(contributor.credential, locale),
+    } : undefined
+);
+
+const buildContributorJsonLd = (contributor: Contributor, locale: Language) => ({
+    '@context': 'https://schema.org',
+    '@type': contributor.kind === 'person' ? 'Person' : 'Organization',
+    name: contributor.name,
+    description: getLocalizedText(contributor.bio, locale),
+    email: contributor.email,
+    url: buildAbsoluteUrl(buildLocalePath(locale, `/authors/${contributor.slug}`)),
+    sameAs: contributor.sameAs,
+    knowsAbout: contributor.expertise,
+    hasCredential: buildContributorCredentialJsonLd(contributor, locale),
+    affiliation: buildContributorAffiliationJsonLd(contributor, locale),
+    worksFor: contributor.kind === 'person' ? {
+        '@type': 'Organization',
+        name: contributor.organization,
+        url: buildAbsoluteUrl(buildLocalePath(locale)),
+    } : undefined,
+});
 
 export const dynamicParams = false;
 
@@ -104,7 +143,7 @@ export default async function AuthorPage({
                 <p className="mt-4 text-lg leading-8 text-slate-600">{getLocalizedText(contributor.title, locale)}</p>
                 <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600">{getLocalizedText(contributor.bio, locale)}</p>
 
-                <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <section className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
                         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.expertise}</h2>
                         <ul className="mt-4 space-y-2 text-base leading-7 text-slate-600">
@@ -121,6 +160,27 @@ export default async function AuthorPage({
                         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.disclosure}</h2>
                         <p className="mt-4 text-base leading-7 text-slate-600">{getLocalizedText(contributor.disclosure, locale)}</p>
                     </section>
+                    {contributor.credential ? (
+                        <section className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+                            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.credential}</h2>
+                            <p className="mt-4 text-base leading-7 text-slate-600">{getLocalizedText(contributor.credential, locale)}</p>
+                        </section>
+                    ) : null}
+                    {contributor.affiliation ? (
+                        <section className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+                            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.affiliation}</h2>
+                            {contributor.affiliationPath ? (
+                                <a
+                                    href={buildLocalePath(locale, contributor.affiliationPath)}
+                                    className="mt-4 block text-base font-semibold leading-7 text-slate-700 hover:text-sky-700"
+                                >
+                                    {getLocalizedText(contributor.affiliation, locale)}
+                                </a>
+                            ) : (
+                                <p className="mt-4 text-base leading-7 text-slate-600">{getLocalizedText(contributor.affiliation, locale)}</p>
+                            )}
+                        </section>
+                    ) : null}
                 </div>
 
                 <div className="mt-8 grid gap-4 lg:grid-cols-2">
@@ -159,15 +219,7 @@ export default async function AuthorPage({
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
                     __html: serializeJsonLd([
-                        {
-                            '@context': 'https://schema.org',
-                            '@type': contributor.kind === 'person' ? 'Person' : 'Organization',
-                            name: contributor.name,
-                            description: getLocalizedText(contributor.bio, locale),
-                            email: contributor.email,
-                            worksFor: contributor.organization,
-                            url: buildAbsoluteUrl(buildLocalePath(locale, `/authors/${contributor.slug}`)),
-                        },
+                        buildContributorJsonLd(contributor, locale),
                         buildBreadcrumbJsonLd(locale, [{
                             name: contributor.name,
                             path: buildLocalePath(locale, `/authors/${contributor.slug}`),

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import '@/app/globals.css';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
-import PublicAnalyticsConsent from '@/components/PublicAnalyticsConsent';
+import PublicAnalyticsGate from '@/components/PublicAnalyticsGate';
+import { getPublicEnv } from '@/lib/public-env';
 import { PUBLIC_LOCALES, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
@@ -68,6 +68,8 @@ const layoutCopy: Record<Language, {
 };
 
 export const dynamicParams = false;
+
+const publicGaId = getPublicEnv().gaId;
 
 export function generateStaticParams(): Array<{ locale: Language }> {
     return PUBLIC_LOCALES.map((locale) => ({ locale }));
@@ -151,8 +153,7 @@ export default async function LocaleLayout({
                     </div>
                 </div>
                 <script src="/public-locale-switcher.js" defer />
-                <PublicAnalyticsConsent language={locale} />
-                <GoogleAnalytics />
+                {publicGaId ? <PublicAnalyticsGate language={locale} gaId={publicGaId} /> : null}
             </body>
         </html>
     );

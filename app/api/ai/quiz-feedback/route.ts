@@ -12,6 +12,7 @@ import { buildQuizFeedbackFallback } from '@/lib/ai/fallbacks';
 import { buildQuizFeedbackMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 import { resolveRequestAiAccess } from '@/lib/server-member-entitlements';
+import { logger } from '@/lib/logger';
 
 const QuizFeedbackRequestSchema = z.object({
     termId: z.string().min(1),
@@ -29,11 +30,15 @@ const QuizFeedbackResponseSchema = z.object({
 const RATE_LIMIT_HEADERS = {
     'X-RateLimit-Limit': '12',
     'X-RateLimit-Policy': '12;w=60',
+    'Cache-Control': 'private, no-store',
 };
+const AI_ROUTE_LATENCY_BUDGET_MS = 12_000;
+const QUIZ_FEEDBACK_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    const startedAtMs = Date.now();
     let body: unknown;
 
     try {
@@ -136,6 +141,11 @@ export async function POST(request: Request) {
                 schema: QuizFeedbackResponseSchema,
                 maxTokens: 420,
                 temperature: 0.2,
+                latencyBudgetMs: AI_ROUTE_LATENCY_BUDGET_MS,
+                cache: {
+                    key: `${term.id}:${language}:${selectedWrongLabel ?? 'none'}`,
+                    ttlMs: QUIZ_FEEDBACK_CACHE_TTL_MS,
+                },
             });
 
             return successResponse({
@@ -146,7 +156,14 @@ export async function POST(request: Request) {
             }, requestId, {
                 headers: RATE_LIMIT_HEADERS,
             });
-        } catch {
+        } catch (error) {
+            logger.performance('AI_ROUTE_FALLBACK_USED', {
+                route: '/api/ai/quiz-feedback',
+                requestId,
+                reason: error instanceof Error ? error.name : 'unknown',
+                duration_ms: Date.now() - startedAtMs,
+                latency_budget_ms: AI_ROUTE_LATENCY_BUDGET_MS,
+            });
             return successResponse({
                 feedback: buildQuizFeedbackFallback(term, language, selectedWrongLabel),
                 model: null,

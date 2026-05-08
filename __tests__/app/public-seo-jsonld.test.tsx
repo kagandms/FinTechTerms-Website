@@ -13,6 +13,19 @@ jest.mock('next/link', () => ({
 }));
 
 describe('public SEO JSON-LD markup', () => {
+    it('renders locale homepage schema without a single-item breadcrumb', async () => {
+        const LocaleHomePage = (await import('@/app/(public)/[locale]/page')).default;
+        const markup = renderToStaticMarkup(await LocaleHomePage({
+            params: Promise.resolve({ locale: 'en' }),
+        }));
+
+        expect(markup).toContain('application/ld+json');
+        expect(markup).toContain('"@type":"WebSite"');
+        expect(markup).toContain('"@type":"Organization"');
+        expect(markup).toContain('"logo":"http://localhost:3000/icons/icon-512.png"');
+        expect(markup).not.toContain('"@type":"BreadcrumbList"');
+    });
+
     it('renders glossary term schema markup for localized term pages', async () => {
         const SeoTermPage = (await import('@/app/(public)/[locale]/glossary/[slug]/page')).default;
         const markup = renderToStaticMarkup(await SeoTermPage({
@@ -24,6 +37,23 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('"@type":"BreadcrumbList"');
         expect(markup).toContain('"citation"');
         expect(markup).toContain('"@type":"CreativeWork"');
+    });
+
+    it('renders glossary letter group schema markup', async () => {
+        const GlossaryLetterPage = (await import('@/app/(public)/[locale]/glossary/letter/[group]/page')).default;
+        const markup = renderToStaticMarkup(await GlossaryLetterPage({
+            params: Promise.resolve({ locale: 'en', group: 'p' }),
+        }));
+        const ruMarkup = renderToStaticMarkup(await GlossaryLetterPage({
+            params: Promise.resolve({ locale: 'ru', group: '%D0%B0' }),
+        }));
+
+        expect(markup).toContain('application/ld+json');
+        expect(markup).toContain('"@type":"DefinedTermSet"');
+        expect(markup).toContain('"@type":"BreadcrumbList"');
+        expect(markup).toContain('/en/glossary/payment-gateway');
+        expect(ruMarkup).toContain('"@type":"DefinedTermSet"');
+        expect(ruMarkup).toContain('/ru/glossary/');
     });
 
     it('renders collection schema markup for localized topic pages', async () => {
@@ -47,7 +77,10 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('"@type":"CollectionPage"');
         expect(markup).toContain('"@type":"ItemList"');
         expect(markup).toContain('"@type":"BreadcrumbList"');
+        expect(markup).toContain('Acceptance stack');
+        expect(markup).toContain('All terms in this topic');
         expect(markup).toContain('/en/glossary/payment-gateway');
+        expect(markup).not.toContain('Service processing credit card transactions.');
     });
 
     it('renders source library collection schema markup', async () => {
@@ -126,6 +159,9 @@ describe('public SEO JSON-LD markup', () => {
         expect(markup).toContain('application/ld+json');
         expect(markup).toContain('"@type":"Person"');
         expect(markup).toContain('Kağan Samet Durmuş');
+        expect(markup).toContain('"knowsAbout"');
+        expect(markup).toContain('"hasCredential"');
+        expect(markup).toContain('"affiliation"');
         expect(markup).toContain('"@type":"BreadcrumbList"');
     });
 

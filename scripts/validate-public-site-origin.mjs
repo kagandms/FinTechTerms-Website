@@ -18,7 +18,7 @@ const getConfiguredSiteUrl = () => (
     normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? '')
 );
 
-loadLocalEnv();
+loadLocalEnv({ allowLocalEnv: true });
 
 if (!shouldEnforcePublicOrigin()) {
     console.log(JSON.stringify({

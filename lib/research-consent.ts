@@ -1,5 +1,6 @@
 export const RESEARCH_CONSENT_KEY = 'fintechterms_research_consent';
 export const CONSENT_GRANTED_EVENT = 'consentGranted';
+export const CONSENT_UPDATED_EVENT = 'researchConsentUpdated';
 
 const CONSENT_VERSION = '1.0';
 
@@ -82,6 +83,8 @@ export function writeResearchConsent(given: boolean): boolean {
     } catch {
         return false;
     }
+
+    window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT));
 
     if (given) {
         window.dispatchEvent(new CustomEvent(CONSENT_GRANTED_EVENT));

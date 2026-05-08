@@ -118,4 +118,26 @@ describe('env validation local-env policy', () => {
         expect(output).toContain('"ok": true');
         expect(output).toContain('"enforced": true');
     });
+
+    it('allows public-origin enforcement to read repo-local site origin only', () => {
+        const workspaceDir = createTempScriptWorkspace();
+        fs.writeFileSync(
+            path.join(workspaceDir, '.env.local'),
+            'NEXT_PUBLIC_SITE_URL=https://www.fintechterms.com\n'
+        );
+
+        const output = execFileSync(process.execPath, ['scripts/validate-public-site-origin.mjs'], {
+            cwd: workspaceDir,
+            env: {
+                ...process.env,
+                ENFORCE_PUBLIC_SITE_ORIGIN: '1',
+                NEXT_PUBLIC_SITE_URL: '',
+            },
+            encoding: 'utf8',
+            stdio: 'pipe',
+        });
+
+        expect(output).toContain('"ok": true');
+        expect(output).toContain('"enforced": true');
+    });
 });

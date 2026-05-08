@@ -1,5 +1,9 @@
 import { createClient as createSupabaseClient, type SupabaseClient, type User } from '@supabase/supabase-js';
-import { createTimeoutFetch } from '@/lib/api-response';
+import {
+    createTimeoutFetch,
+    getRegisteredRouteMetricContext,
+    type RegisteredRouteMetricContext,
+} from '@/lib/api-response';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
 import { getServerEnv } from '@/lib/server-env';
@@ -12,13 +16,18 @@ import {
 const createRouteSupabaseClient = (
     projectUrl: string,
     apiKey: string,
-    bearerToken?: string
+    bearerToken?: string,
+    metricContext?: RegisteredRouteMetricContext | null
 ) => createSupabaseClient(
     projectUrl,
     apiKey,
     {
         global: {
-            fetch: createTimeoutFetch(),
+            fetch: createTimeoutFetch(undefined, {
+                dependency: 'supabase',
+                requestId: metricContext?.requestId,
+                route: metricContext?.route,
+            }),
             headers: bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined,
         },
     }
@@ -64,17 +73,20 @@ export const createRequestScopedClient = async (
         return createRouteSupabaseClient(
             publicEnv.supabaseUrl!,
             publicEnv.supabaseAnonKey!,
-            bearerToken
+            bearerToken,
+            getRegisteredRouteMetricContext(request)
         );
     }
 
     if (hasRequestAuthCookies(request)) {
-        return await createServerClient();
+        return await createServerClient(getRegisteredRouteMetricContext(request));
     }
 
     return createRouteSupabaseClient(
         publicEnv.supabaseUrl!,
-        publicEnv.supabaseAnonKey!
+        publicEnv.supabaseAnonKey!,
+        undefined,
+        getRegisteredRouteMetricContext(request)
     );
 };
 
@@ -126,7 +138,8 @@ export const resolveRequestAuthState = async (request: Request): Promise<Request
         const tokenSupabase = createRouteSupabaseClient(
             publicEnv.supabaseUrl!,
             publicEnv.supabaseAnonKey!,
-            bearerToken
+            bearerToken,
+            getRegisteredRouteMetricContext(request)
         );
 
         const tokenUserState = await safeGetSupabaseUser(tokenSupabase);
@@ -142,7 +155,7 @@ export const resolveRequestAuthState = async (request: Request): Promise<Request
     }
 
     if (hasRequestAuthCookies(request)) {
-        const cookieSupabase = await createServerClient();
+        const cookieSupabase = await createServerClient(getRegisteredRouteMetricContext(request));
         const cookieUserState = await safeGetSupabaseUser(cookieSupabase);
 
         if (cookieUserState.user) {

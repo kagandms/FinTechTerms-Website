@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { ROOT_SITEMAP_UPDATED_AT, STATIC_PUBLIC_PAGE_UPDATED_AT } from '@/lib/public-sitemap-freshness';
 import { getSiteUrl } from '@/lib/site-url';
 import { buildAbsolutePublicLocaleAlternates, buildAbsoluteXDefaultAlternates, buildLocalePath } from '@/lib/seo-routing';
-import { listSeoContributors, listSeoTerms, listSeoTopics } from '@/lib/public-seo-catalog';
+import { listGlossaryLetterGroups, listSeoContributors, listSeoTerms, listSeoTopics } from '@/lib/public-seo-catalog';
 import type { Language } from '@/types';
 
 const STATIC_LOCALE_PAGES = [
@@ -50,12 +50,13 @@ const buildLocalizedSitemapEntry = ({
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const siteUrl = getSiteUrl();
-    const [terms, topics, contributors] = await Promise.all([
+    const locales = ['ru', 'en', 'tr'] as const;
+    const [terms, topics, contributors, glossaryLetterGroupSets] = await Promise.all([
         listSeoTerms(),
         listSeoTopics(),
         listSeoContributors(),
+        Promise.all(locales.map((locale) => listGlossaryLetterGroups(locale))),
     ]);
-    const locales = ['ru', 'en', 'tr'] as const;
 
     const localeEntries = locales.flatMap((locale) => (
         STATIC_LOCALE_PAGES.map((page) => buildLocalizedSitemapEntry({
@@ -101,6 +102,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
     ));
 
+    const glossaryLetterEntries = locales.flatMap((locale, index) => (
+        (glossaryLetterGroupSets[index] ?? []).map((group) => buildLocalizedSitemapEntry({
+            siteUrl,
+            locale,
+            suffix: `/glossary/letter/${group.key}`,
+            lastModified: STATIC_PUBLIC_PAGE_UPDATED_AT.glossary,
+            changeFrequency: 'weekly',
+            priority: 0.62,
+        }))
+    ));
+
     const termEntries = locales.flatMap((locale) => (
         terms.map((term) => buildLocalizedSitemapEntry({
             siteUrl,
@@ -126,6 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ...topicEntries,
         ...topicTermIndexEntries,
         ...contributorEntries,
+        ...glossaryLetterEntries,
         ...termEntries,
     ];
 }

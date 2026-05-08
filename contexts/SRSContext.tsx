@@ -42,6 +42,7 @@ import {
     hasPendingRetryEntries,
     markPendingReviewActionRequired,
     markPendingReviewRetryPending,
+    MAX_PENDING_REVIEW_QUEUE_SIZE,
     readPendingReviewQueueSnapshotFromStorage,
     removePendingReviewQueueEntry,
     upsertPendingReviewQueueEntry,
@@ -216,6 +217,13 @@ export function SRSProvider({ children }: SRSProviderProps) {
 
     const persistPendingReview = useCallback((pendingReview: PendingReview) => {
         const nextQueue = upsertPendingReviewQueueEntry(userId, pendingReview);
+        logger.warn('SRS_PENDING_REVIEW_QUEUE_DEPTH', {
+            route: 'SRSContext',
+            userId,
+            reviewId: pendingReview.reviewId,
+            queueDepth: nextQueue.length,
+            maxPendingReviewQueueSize: MAX_PENDING_REVIEW_QUEUE_SIZE,
+        });
         syncPendingReviewQueue(nextQueue);
         pendingReviewReplayReadyRef.current = false;
     }, [syncPendingReviewQueue, userId]);

@@ -13,7 +13,7 @@ const TOPIC_TERM_PREVIEW_LIMIT = 24;
 const topicCopy: Record<Language, { title: string; terms: string; sources: string; browseAll: string }> = {
     en: { title: 'Topic hub', terms: 'Core terms in this hub', sources: 'Source framework', browseAll: 'Browse all topic terms' },
     ru: { title: 'Тематический хаб', terms: 'Ключевые термины хаба', sources: 'Источник и рамка', browseAll: 'Открыть все термины темы' },
-    tr: { title: 'Topic hub', terms: 'Hub içindeki temel terimler', sources: 'Kaynak çerçevesi', browseAll: 'Tüm topic terimlerini aç' },
+    tr: { title: 'Konu merkezi', terms: 'Bu merkezdeki temel terimler', sources: 'Kaynak çerçevesi', browseAll: 'Tüm konu terimlerini aç' },
 };
 
 export const dynamicParams = false;
@@ -104,6 +104,12 @@ export default async function TopicPage({
                 <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
                     {getLocalizedText(topic.hero, locale)}
                 </p>
+                <a
+                    href={buildLocalePath(locale, `/topics/${topic.slug}/terms`)}
+                    className="mt-5 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+                >
+                    {copy.browseAll}
+                </a>
             </section>
 
             <section className="grid gap-4 lg:grid-cols-[1fr,0.9fr]">

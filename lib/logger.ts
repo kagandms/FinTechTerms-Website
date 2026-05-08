@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/nextjs';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-type ConsoleMethod = 'warn' | 'error';
+type ConsoleMethod = 'info' | 'warn' | 'error';
 
 interface LoggerBaseContext {
     readonly requestId?: string;
@@ -101,6 +101,15 @@ const logToConsole = (
 ): void => {
     const normalizedContext = normalizeContext(context);
 
+    if (method === 'info') {
+        console.info(JSON.stringify({
+            level: 'info',
+            message,
+            ...(normalizedContext ?? {}),
+        }));
+        return;
+    }
+
     if (method === 'error') {
         if (normalizedContext) {
             console.error(message, normalizedContext);
@@ -158,6 +167,9 @@ export const logger = {
     },
     error(message: string, context?: LoggerBaseContext): void {
         emitLog('error', message, context);
+    },
+    performance(message: string, context?: LoggerBaseContext): void {
+        logToConsole('info', message, context);
     },
 };
 

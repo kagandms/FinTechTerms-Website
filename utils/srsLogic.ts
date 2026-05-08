@@ -83,12 +83,13 @@ export function calculateNextReview(
  * @param favoriteIds - Array of favorite term IDs (only favorites are quizzed)
  * @returns Terms that need to be reviewed
  */
-export function getTermsDueForReview(terms: Term[], favoriteIds: string[]): Term[] {
+export function getTermsDueForReview(terms: Term[], favoriteIds: readonly string[]): Term[] {
     const now = endOfUtcDay(new Date());
+    const favoriteIdSet = new Set(favoriteIds);
 
     return terms.filter(term => {
         // Only include favorited terms
-        if (!favoriteIds.includes(term.id)) return false;
+        if (!favoriteIdSet.has(term.id)) return false;
 
         // Check if review is due
         const reviewDate = new Date(term.next_review_date);
@@ -207,7 +208,7 @@ export function getMasteryLevel(level: number, language: 'tr' | 'en' | 'ru'): st
  */
 export function calculateProgressStats(
     terms: Term[],
-    favoriteIds: string[]
+    favoriteIds: readonly string[]
 ): {
     totalFavorites: number;
     mastered: number;
@@ -215,20 +216,39 @@ export function calculateProgressStats(
     dueToday: number;
     averageRetention: number;
 } {
-    const favoriteTerms = terms.filter(t => favoriteIds.includes(t.id));
+    const favoriteIdSet = new Set(favoriteIds);
     const now = endOfUtcDay(new Date());
+    let totalFavorites = 0;
+    let mastered = 0;
+    let learning = 0;
+    let dueToday = 0;
+    let totalRetention = 0;
 
-    const mastered = favoriteTerms.filter(t => t.srs_level >= 4).length;
-    const learning = favoriteTerms.filter(t => t.srs_level < 4).length;
-    const dueToday = favoriteTerms.filter(t => new Date(t.next_review_date) <= now).length;
+    terms.forEach((term) => {
+        if (!favoriteIdSet.has(term.id)) {
+            return;
+        }
 
-    const totalRetention = favoriteTerms.reduce((sum, t) => sum + t.retention_rate, 0);
-    const averageRetention = favoriteTerms.length > 0
-        ? Math.round((totalRetention / favoriteTerms.length) * 100)
+        totalFavorites += 1;
+        totalRetention += term.retention_rate;
+
+        if (term.srs_level >= 4) {
+            mastered += 1;
+        } else {
+            learning += 1;
+        }
+
+        if (new Date(term.next_review_date) <= now) {
+            dueToday += 1;
+        }
+    });
+
+    const averageRetention = totalFavorites > 0
+        ? Math.round((totalRetention / totalFavorites) * 100)
         : 0;
 
     return {
-        totalFavorites: favoriteTerms.length,
+        totalFavorites,
         mastered,
         learning,
         dueToday,

@@ -1,5 +1,5 @@
 import { getSiteUrl } from '@/lib/site-url';
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from '@/lib/language';
+import { SUPPORTED_LANGUAGES } from '@/lib/language';
 import type { Language } from '@/types';
 
 const OG_LOCALES: Record<Language, 'en_US' | 'ru_RU' | 'tr_TR'> = {
@@ -59,9 +59,7 @@ export const buildAbsoluteLocaleAlternates = (suffix = ''): Record<Language, str
 });
 
 export const buildAbsolutePublicLocaleAlternates = (suffix = ''): Record<Language | 'x-default', string> => ({
-    'x-default': suffix
-        ? buildAbsoluteUrl(buildLocalePath(DEFAULT_LANGUAGE, suffix))
-        : getSiteUrl(),
+    'x-default': getSiteUrl(),
     ...buildAbsoluteLocaleAlternates(suffix),
 });
 
@@ -89,8 +87,44 @@ export const getOpenGraphLocale = (locale: Language): 'en_US' | 'ru_RU' | 'tr_TR
     OG_LOCALES[locale]
 );
 
+const SEO_TITLE_SUFFIX = ' | FinTechTerms';
+const MAX_SEO_TITLE_LENGTH = 60;
+const MAX_SEO_TITLE_BASE_LENGTH = MAX_SEO_TITLE_LENGTH - SEO_TITLE_SUFFIX.length;
+const MIN_WORD_SAFE_TITLE_LENGTH = 24;
+const TRAILING_TITLE_STOPWORDS = /\s+(and|or|in|for|with|without|ve|veya|ile|için|и|или|для|с)$/i;
+const TRAILING_TITLE_PUNCTUATION = /[\s,;:|-]+$/;
+
+const normalizeTitleValue = (value: string): string => (
+    value.trim().replace(/\s+/g, ' ')
+);
+
+const removeTitleSuffix = (value: string): string => (
+    value.endsWith(SEO_TITLE_SUFFIX)
+        ? value.slice(0, -SEO_TITLE_SUFFIX.length)
+        : value
+);
+
+const cleanShortTitleBase = (value: string): string => (
+    value.replace(TRAILING_TITLE_STOPWORDS, '').replace(TRAILING_TITLE_PUNCTUATION, '')
+);
+
+const shortenTitleBase = (value: string): string => {
+    const normalizedValue = normalizeTitleValue(value);
+
+    if (normalizedValue.length <= MAX_SEO_TITLE_BASE_LENGTH) {
+        return normalizedValue;
+    }
+
+    const clippedValue = normalizedValue.slice(0, MAX_SEO_TITLE_BASE_LENGTH).trimEnd();
+    const lastWordBreakIndex = clippedValue.lastIndexOf(' ');
+
+    if (lastWordBreakIndex >= MIN_WORD_SAFE_TITLE_LENGTH) {
+        return cleanShortTitleBase(clippedValue.slice(0, lastWordBreakIndex));
+    }
+
+    return cleanShortTitleBase(clippedValue);
+};
+
 export const formatSeoTitle = (value: string): string => (
-    value.endsWith(' | FinTechTerms')
-        ? value
-        : `${value} | FinTechTerms`
+    `${shortenTitleBase(removeTitleSuffix(value))}${SEO_TITLE_SUFFIX}`
 );

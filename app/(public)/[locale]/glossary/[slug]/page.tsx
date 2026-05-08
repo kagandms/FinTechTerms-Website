@@ -99,6 +99,8 @@ interface TermFaqItem {
     readonly answer: string;
 }
 
+const TERM_FAQ_SCHEMA_MIN_SOURCE_COUNT = 3;
+
 export async function generateStaticParams(): Promise<Array<{ locale: Language; slug: string }>> {
     const terms = await listSeoTerms();
 
@@ -156,6 +158,12 @@ const buildTermFaqItems = (term: Term, locale: Language): readonly TermFaqItem[]
 
     return questions[locale];
 };
+
+const shouldRenderTermFaqSchema = (term: Term): boolean => (
+    term.index_priority === 'high'
+    && term.source_refs.length >= TERM_FAQ_SCHEMA_MIN_SOURCE_COUNT
+    && Boolean(term.author_id && term.reviewer_id)
+);
 
 const loadTermDependencies = async (term: Term): Promise<{
     relatedTerms: readonly Term[];
@@ -239,7 +247,7 @@ export default async function SeoTermPage({
     const termLabel = getLocalizedTermLabel(term, locale);
     const definition = getLocalizedTermDefinition(term, locale);
     const canonicalPath = buildLocalePath(locale, `/glossary/${term.slug}`);
-    const faqItems = term.index_priority === 'high' ? buildTermFaqItems(term, locale) : [];
+    const faqItems = shouldRenderTermFaqSchema(term) ? buildTermFaqItems(term, locale) : [];
     const breadcrumbItems = [
         { name: 'FinTechTerms', url: buildLocalePath(locale) },
         { name: copy.glossary, url: buildLocalePath(locale, '/glossary') },

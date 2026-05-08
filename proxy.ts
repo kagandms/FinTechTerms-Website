@@ -104,6 +104,19 @@ const buildPermanentRedirectResponse = (
     NextResponse.redirect(new URL(redirectPath, request.url), 308)
 ), nonce);
 
+const buildNotFoundResponse = (
+    request: NextRequest,
+    nonce: string
+): NextResponse => applySecurityHeaders(applyLocalizedHeaders(
+    request,
+    new NextResponse('Legacy term not found.', {
+        status: 404,
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+        },
+    })
+), nonce);
+
 const buildRedirectResponse = (
     request: NextRequest,
     supabaseResponse: NextResponse,
@@ -184,7 +197,7 @@ const buildLegacyLocaleRedirect = (
     });
 
     if (!redirectPath) {
-        return null;
+        return buildNotFoundResponse(request, nonce);
     }
 
     return buildPermanentRedirectResponse(request, redirectPath, nonce);

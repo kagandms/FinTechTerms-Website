@@ -12,6 +12,7 @@ import { buildScopedChatMessages, getAiScopeRefusal } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 import { isAiDomainQuestion } from '@/lib/ai/grounding';
 import { resolveRequestAiAccess } from '@/lib/server-member-entitlements';
+import { logger } from '@/lib/logger';
 
 const ChatRequestSchema = z.object({
     language: z.enum(['tr', 'en', 'ru']),
@@ -29,11 +30,14 @@ const ChatResponseSchema = z.object({
 const RATE_LIMIT_HEADERS = {
     'X-RateLimit-Limit': '12',
     'X-RateLimit-Policy': '12;w=60',
+    'Cache-Control': 'private, no-store',
 };
+const AI_ROUTE_LATENCY_BUDGET_MS = 12_000;
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    const startedAtMs = Date.now();
     let body: unknown;
 
     try {
@@ -139,6 +143,7 @@ export async function POST(request: Request) {
                 schema: ChatResponseSchema,
                 maxTokens: 650,
                 temperature: 0.3,
+                latencyBudgetMs: AI_ROUTE_LATENCY_BUDGET_MS,
             });
 
             return successResponse({
@@ -151,7 +156,14 @@ export async function POST(request: Request) {
             }, requestId, {
                 headers: RATE_LIMIT_HEADERS,
             });
-        } catch {
+        } catch (error) {
+            logger.performance('AI_ROUTE_FALLBACK_USED', {
+                route: '/api/ai/chat',
+                requestId,
+                reason: error instanceof Error ? error.name : 'unknown',
+                duration_ms: Date.now() - startedAtMs,
+                latency_budget_ms: AI_ROUTE_LATENCY_BUDGET_MS,
+            });
             const fallback = buildChatFallback(language, message);
 
             return successResponse({

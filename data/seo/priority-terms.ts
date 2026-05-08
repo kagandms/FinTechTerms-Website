@@ -1,5 +1,7 @@
 import type { EditorialStatus, Language, PriorityTermRecord, RegionalMarket, TopicId } from '@/types';
 
+export const DEFAULT_GSC_TARGET_TERM_COUNT = 50;
+
 type ClusterConfig = {
     readonly anchorCount: number;
     readonly sourceIds: readonly string[];
@@ -323,3 +325,6 @@ export const priorityTermRecordBySlug = new Map(
 
 export const PRIORITY_TERM_COUNT = priorityTermRecords.length;
 export const PRIORITY_ANCHOR_COUNT = priorityTermRecords.filter((record) => record.tier === 'anchor').length;
+export const defaultGscTargetTermSlugs: readonly string[] = priorityTermRecords
+    .slice(0, DEFAULT_GSC_TARGET_TERM_COUNT)
+    .map((record) => record.slug);

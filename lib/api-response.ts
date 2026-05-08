@@ -36,11 +36,34 @@ export interface ReadJsonRequestOptions {
     headers?: HeadersInit;
 }
 
+export interface RegisteredRouteMetricContext {
+    readonly requestId: string;
+    readonly route: string;
+    readonly method: string;
+}
+
+export interface UpstreamMetricOptions {
+    readonly dependency: string;
+    readonly requestId?: string;
+    readonly route?: string;
+}
+
 export type ReadJsonRequestResult<T> =
     | { ok: true; data: T }
     | { ok: false; response: NextResponse<ApiErrorResponseBody> };
 
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 8_000;
+const ROUTE_METRIC_TTL_MS = 60_000;
+const MAX_ROUTE_METRIC_ENTRIES = 1_000;
+
+interface RouteMetricContext {
+    readonly route: string;
+    readonly method: string;
+    readonly startedAtMs: number;
+}
+
+const routeMetricContextByRequestId = new Map<string, RouteMetricContext>();
+const routeMetricContextByRequest = new WeakMap<Request, RegisteredRouteMetricContext>();
 
 export class UpstreamTimeoutError extends Error {
     constructor(message = 'Upstream request timed out.') {
@@ -49,9 +72,81 @@ export class UpstreamTimeoutError extends Error {
     }
 }
 
+const getCurrentTimeMs = (): number => Date.now();
+
+const cleanupStaleRouteMetrics = (nowMs: number): void => {
+    if (routeMetricContextByRequestId.size < MAX_ROUTE_METRIC_ENTRIES) {
+        return;
+    }
+
+    for (const [requestId, context] of routeMetricContextByRequestId.entries()) {
+        if (nowMs - context.startedAtMs > ROUTE_METRIC_TTL_MS) {
+            routeMetricContextByRequestId.delete(requestId);
+        }
+    }
+};
+
+const resolveRoutePath = (request: Request): string => {
+    try {
+        return new URL(request.url).pathname;
+    } catch {
+        return 'unknown';
+    }
+};
+
+const registerRouteMetricContext = (
+    requestId: string,
+    request: Request
+): void => {
+    const nowMs = getCurrentTimeMs();
+    const route = resolveRoutePath(request);
+    const method = request.method;
+
+    cleanupStaleRouteMetrics(nowMs);
+    routeMetricContextByRequestId.set(requestId, {
+        route,
+        method,
+        startedAtMs: nowMs,
+    });
+    routeMetricContextByRequest.set(request, {
+        requestId,
+        route,
+        method,
+    });
+};
+
+const emitRoutePerformanceMetric = (
+    requestId: string,
+    status: number
+): void => {
+    const context = routeMetricContextByRequestId.get(requestId);
+    if (!context) {
+        return;
+    }
+
+    routeMetricContextByRequestId.delete(requestId);
+    logger.performance('API_ROUTE_COMPLETED', {
+        requestId,
+        route: context.route,
+        method: context.method,
+        status,
+        duration_ms: getCurrentTimeMs() - context.startedAtMs,
+    });
+};
+
+export const getRegisteredRouteMetricContext = (
+    request: Request
+): RegisteredRouteMetricContext | null => routeMetricContextByRequest.get(request) ?? null;
+
 export const createRequestId = (request?: Request): string => {
     const requestId = request?.headers.get('x-request-id')?.trim();
-    return requestId || crypto.randomUUID();
+    const resolvedRequestId = requestId || crypto.randomUUID();
+
+    if (request) {
+        registerRouteMetricContext(resolvedRequestId, request);
+    }
+
+    return resolvedRequestId;
 };
 
 const normalizeIpCandidate = (value: string | null | undefined): string | null => {
@@ -165,13 +260,33 @@ export const getDeviceFingerprint = (request: Request): string | null => {
 };
 
 export const createTimeoutFetch = (
-    timeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS
+    timeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS,
+    metricOptions?: UpstreamMetricOptions
 ): typeof fetch => {
     return async (input, init = {}) => {
+        const startedAtMs = getCurrentTimeMs();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const upstreamSignal = init.signal;
         const relayAbort = () => controller.abort();
+        const emitUpstreamMetric = (
+            status: number | null,
+            outcome: 'success' | 'error' | 'timeout'
+        ): void => {
+            if (!metricOptions) {
+                return;
+            }
+
+            logger.performance('UPSTREAM_REQUEST_COMPLETED', {
+                dependency: metricOptions.dependency,
+                requestId: metricOptions.requestId,
+                route: metricOptions.route,
+                status,
+                outcome,
+                duration_ms: getCurrentTimeMs() - startedAtMs,
+                timeout_ms: timeoutMs,
+            });
+        };
 
         if (upstreamSignal) {
             if (upstreamSignal.aborted) {
@@ -182,17 +297,21 @@ export const createTimeoutFetch = (
         }
 
         try {
-            return await fetch(input, {
+            const response = await fetch(input, {
                 ...init,
                 signal: controller.signal,
             });
+            emitUpstreamMetric(response.status, 'success');
+            return response;
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
+                emitUpstreamMetric(null, 'timeout');
                 throw new UpstreamTimeoutError(
                     `Upstream request timed out after ${timeoutMs}ms.`
                 );
             }
 
+            emitUpstreamMetric(null, 'error');
             throw error;
         } finally {
             clearTimeout(timeoutId);
@@ -220,10 +339,14 @@ export const successResponse = <T>(
     data: T,
     requestId: string,
     init: ResponseInit = {}
-) => NextResponse.json(data, {
-    ...init,
-    headers: withRequestIdHeaders(requestId, init.headers),
-});
+) => {
+    const status = init.status ?? 200;
+    emitRoutePerformanceMetric(requestId, status);
+    return NextResponse.json(data, {
+        ...init,
+        headers: withRequestIdHeaders(requestId, init.headers),
+    });
+};
 
 export const errorResponse = ({
     status,
@@ -232,18 +355,21 @@ export const errorResponse = ({
     requestId,
     retryable,
     headers,
-}: ErrorResponseOptions) => NextResponse.json<ApiErrorResponseBody>(
-    {
-        code,
-        message,
-        requestId,
-        retryable,
-    },
-    {
-        status,
-        headers: withRequestIdHeaders(requestId, headers),
-    }
-);
+}: ErrorResponseOptions) => {
+    emitRoutePerformanceMetric(requestId, status);
+    return NextResponse.json<ApiErrorResponseBody>(
+        {
+            code,
+            message,
+            requestId,
+            retryable,
+        },
+        {
+            status,
+            headers: withRequestIdHeaders(requestId, headers),
+        }
+    );
+};
 
 export const readJsonRequest = async <T>(
     request: Request,

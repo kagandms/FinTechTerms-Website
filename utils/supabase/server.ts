@@ -1,16 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createTimeoutFetch } from '@/lib/api-response'
+import { createTimeoutFetch, type RegisteredRouteMetricContext } from '@/lib/api-response'
 import { getPublicEnv } from '@/lib/public-env'
 import { logger } from '@/lib/logger'
 import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const timeoutFetch = createTimeoutFetch()
-
 type ServerSupabaseClient = SupabaseClient
 
-export async function createOptionalClient(): Promise<ServerSupabaseClient | null> {
+export async function createOptionalClient(
+    metricContext?: RegisteredRouteMetricContext | null
+): Promise<ServerSupabaseClient | null> {
     const cookieStore = await cookies()
     const env = getPublicEnv()
 
@@ -42,14 +42,20 @@ export async function createOptionalClient(): Promise<ServerSupabaseClient | nul
                 },
             },
             global: {
-                fetch: timeoutFetch,
+                fetch: createTimeoutFetch(undefined, {
+                    dependency: 'supabase',
+                    requestId: metricContext?.requestId,
+                    route: metricContext?.route,
+                }),
             },
         }
     )
 }
 
-export async function createClient(): Promise<ServerSupabaseClient> {
-    const supabaseClient = await createOptionalClient()
+export async function createClient(
+    metricContext?: RegisteredRouteMetricContext | null
+): Promise<ServerSupabaseClient> {
+    const supabaseClient = await createOptionalClient(metricContext)
 
     if (!supabaseClient) {
         throw new Error('Supabase server client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')

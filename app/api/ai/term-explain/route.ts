@@ -12,6 +12,7 @@ import { buildTermExplainFallback } from '@/lib/ai/fallbacks';
 import { buildTermExplainMessages } from '@/lib/ai/prompts';
 import { generateStructuredAiResponse } from '@/lib/ai/openrouter';
 import { resolveRequestAiAccess } from '@/lib/server-member-entitlements';
+import { logger } from '@/lib/logger';
 
 const TermExplainRequestSchema = z.object({
     termId: z.string().min(1),
@@ -29,11 +30,15 @@ const TermExplainResponseSchema = z.object({
 const RATE_LIMIT_HEADERS = {
     'X-RateLimit-Limit': '12',
     'X-RateLimit-Policy': '12;w=60',
+    'Cache-Control': 'private, no-store',
 };
+const AI_ROUTE_LATENCY_BUDGET_MS = 12_000;
+const TERM_EXPLAIN_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const ip = getClientIp(request);
+    const startedAtMs = Date.now();
     let body: unknown;
 
     try {
@@ -136,6 +141,11 @@ export async function POST(request: Request) {
                 schema: TermExplainResponseSchema,
                 maxTokens: 500,
                 temperature: 0.25,
+                latencyBudgetMs: AI_ROUTE_LATENCY_BUDGET_MS,
+                cache: {
+                    key: `${term.id}:${language}:${mode}`,
+                    ttlMs: TERM_EXPLAIN_CACHE_TTL_MS,
+                },
             });
 
             return successResponse({
@@ -146,7 +156,14 @@ export async function POST(request: Request) {
             }, requestId, {
                 headers: RATE_LIMIT_HEADERS,
             });
-        } catch {
+        } catch (error) {
+            logger.performance('AI_ROUTE_FALLBACK_USED', {
+                route: '/api/ai/term-explain',
+                requestId,
+                reason: error instanceof Error ? error.name : 'unknown',
+                duration_ms: Date.now() - startedAtMs,
+                latency_budget_ms: AI_ROUTE_LATENCY_BUDGET_MS,
+            });
             return successResponse({
                 explanation: buildTermExplainFallback(term, language, mode),
                 model: null,

@@ -27,6 +27,18 @@ interface SeoCatalog {
     readonly sourceById: ReadonlyMap<string, SourceRef>;
 }
 
+interface SeoCatalogBuildIndexes {
+    readonly termBySlug: ReadonlyMap<string, Term>;
+    readonly termsByTopicId: ReadonlyMap<string, readonly Term[]>;
+    readonly termsByCategory: ReadonlyMap<Term['category'], readonly Term[]>;
+}
+
+export interface GlossaryLetterGroup {
+    readonly key: string;
+    readonly label: string;
+    readonly terms: readonly Term[];
+}
+
 type SeoContentBlock = Pick<
     Term,
     | 'expanded_definition'
@@ -39,8 +51,12 @@ type SeoContentBlock = Pick<
 >;
 
 const SEO_REMEDIATION_REVIEWED_AT = '2026-05-04T00:00:00.000Z';
-
-const seoSourceById = new Map(seoSources.map((source) => [source.id, source] as const));
+const NUMBER_GLOSSARY_GROUP_KEY = '0-9';
+const OTHER_GLOSSARY_GROUP_KEY = 'other';
+const RELATED_TERM_LIMIT = 6;
+const RELATED_TOPIC_WEIGHT = 100;
+const RELATED_CATEGORY_WEIGHT = 20;
+const RELATED_DIRECT_RELATION_WEIGHT = 15;
 
 const WIDE_MARKET_TOPICS = new Set<string>([
     'cards-payments',
@@ -212,16 +228,14 @@ const selectLatestIsoDate = (values: readonly string[]): string => (
 
 const resolveSeoFreshness = (
     term: Term,
-    sourceRefs: readonly string[],
     hasReviewedOverride: boolean
 ): Pick<Term, 'reviewed_at' | 'updated_at'> => {
-    const sourceDates = sourceRefs
-        .map((sourceId) => seoSourceById.get(sourceId)?.last_verified)
-        .filter((value): value is string => Boolean(value));
     const reviewedAt = hasReviewedOverride
-        ? selectLatestIsoDate([term.reviewed_at, SEO_REMEDIATION_REVIEWED_AT, ...sourceDates])
-        : selectLatestIsoDate([term.reviewed_at, ...sourceDates]);
-    const updatedAt = selectLatestIsoDate([term.updated_at, reviewedAt, ...sourceDates]);
+        ? selectLatestIsoDate([term.reviewed_at, SEO_REMEDIATION_REVIEWED_AT])
+        : normalizeDateValue(term.reviewed_at);
+    const updatedAt = hasReviewedOverride
+        ? selectLatestIsoDate([term.updated_at, reviewedAt])
+        : normalizeDateValue(term.updated_at);
 
     return {
         reviewed_at: reviewedAt,
@@ -333,43 +347,47 @@ const buildSeoContentBlock = (
     term: Term,
     topic: Topic,
     regionalMarkets: readonly RegionalMarket[]
-): SeoContentBlock => ({
-    expanded_definition: {
-        en: `${term.definition_en} Within the ${topic.title.en.toLowerCase()} cluster, ${term.term_en} helps explain ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. The term is useful when comparing products, controls, markets, or system design because it gives teams a shared label for a specific financial or technical decision point. ${term.example_sentence_en}`.trim(),
-        ru: `${term.definition_ru} В кластере «${topic.title.ru.toLowerCase()}» термин «${term.term_ru}» помогает объяснить ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Термин полезен при сравнении продуктов, контролей, рынков или архитектуры систем, потому что задаёт общее название для конкретной финансовой или технической точки решения. ${term.example_sentence_ru}`.trim(),
-        tr: `${term.definition_tr} ${topic.title.tr.toLowerCase()} kümesi içinde ${term.term_tr}, ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} konusunu açıklamaya yardım eder. Terim; ürünleri, kontrolleri, piyasaları veya sistem tasarımını karşılaştırırken belirli bir finansal ya da teknik karar noktası için ortak ad verdiği için kullanışlıdır. ${term.example_sentence_tr}`.trim(),
-    },
-    why_it_matters: {
-        en: `${term.term_en} matters because it connects ${CATEGORY_CONTEXT[term.category].en} with the practical decisions teams make inside ${topic.title.en.toLowerCase()}. A weak understanding can lead to poor product framing, misleading market interpretation, incomplete compliance checks, or incorrect assumptions about how a financial workflow behaves.`,
-        ru: `Термин «${term.term_ru}» важен, потому что связывает ${CATEGORY_CONTEXT[term.category].ru} с практическими решениями внутри темы «${topic.title.ru.toLowerCase()}». Слабое понимание может привести к неверному product framing, искажённой интерпретации рынка, неполным compliance checks или ошибочным предположениям о поведении финансового процесса.`,
-        tr: `${term.term_tr}, ${CATEGORY_CONTEXT[term.category].tr} ile ${topic.title.tr.toLowerCase()} içindeki pratik kararları bağladığı için önemlidir. Zayıf anlama; ürün çerçevesini, piyasa yorumunu, uyum kontrollerini veya finansal iş akışının nasıl davrandığına dair varsayımları hatalı hale getirebilir.`,
-    },
-    how_it_works: {
-        en: `In practice, ${term.term_en} is read through its definition, the systems or market actors it touches, and the way it changes decisions around ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. A useful review asks who uses the term, what data or obligation it changes, which control owns the outcome, and whether the meaning differs across product, market, and regulatory contexts.`,
-        ru: `На практике термин «${term.term_ru}» читается через определение, затрагиваемые системы или участников рынка и влияние на решения про ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Полезная проверка задаёт вопросы: кто использует термин, какие данные или обязанности он меняет, какой контроль отвечает за результат и отличается ли смысл в продукте, рынке и регулировании.`,
-        tr: `Pratikte ${term.term_tr}; tanımı, temas ettiği sistemler veya piyasa aktörleri ve ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} üzerindeki karar etkisiyle okunur. Sağlam inceleme; terimi kimin kullandığını, hangi veri ya da yükümlülüğü değiştirdiğini, sonucu hangi kontrolün sahiplendiğini ve anlamın ürün, piyasa ve regülasyon bağlamında değişip değişmediğini sorar.`,
-    },
-    risks_and_pitfalls: {
-        en: `${TOPIC_RISK_CONTEXT[topic.id]?.en ?? `A common mistake is to use ${term.term_en} without understanding the underlying controls, limits, and cross-border implications.`} The risk increases when the same label is reused across banking, crypto, capital markets, software, and analytics without checking whether the operational meaning is still the same.`,
-        ru: `${TOPIC_RISK_CONTEXT[topic.id]?.ru ?? `Распространённая ошибка — использовать термин «${term.term_ru}», не понимая базовых контролей, ограничений и трансграничных последствий.`} Риск растёт, когда один и тот же ярлык используют в banking, crypto, capital markets, software и analytics без проверки, сохраняется ли операционный смысл.`,
-        tr: `${TOPIC_RISK_CONTEXT[topic.id]?.tr ?? `Yaygın hata, ${term.term_tr} kavramını temel kontrolleri, sınırları ve sınır ötesi etkileri anlamadan kullanmaktır.`} Aynı etiketin bankacılık, kripto, sermaye piyasaları, yazılım ve analitik alanlarında operasyonel anlamı değişmeden kullanılıp kullanılmadığı kontrol edilmezse risk artar.`,
-    },
-    regional_notes: {
-        en: `This concept appears across ${regionalMarkets.join(', ')} contexts, but implementation can change with local regulation, payment rails, trading venues, data availability, and institutional practice. For BIST, MOEX, and global comparisons, the safest approach is to keep the definition stable while checking market-specific rules and infrastructure before drawing conclusions.`,
-        ru: `Концепт встречается в контекстах ${regionalMarkets.join(', ')}, но реализация меняется в зависимости от локального регулирования, платёжных рельсов, торговых площадок, доступности данных и институциональной практики. Для сравнений BIST, MOEX и global безопаснее сохранять стабильное определение, но отдельно проверять правила и инфраструктуру рынка.`,
-        tr: `Bu kavram ${regionalMarkets.join(', ')} bağlamlarında görülür; ancak uygulama, yerel düzenleme, ödeme rayları, işlem yerleri, veri erişimi ve kurumsal pratiğe göre değişebilir. BIST, MOEX ve global karşılaştırmalarda en güvenli yaklaşım tanımı sabit tutup sonuç çıkarmadan önce piyasa kurallarını ve altyapıyı ayrıca kontrol etmektir.`,
-    },
-    seo_title: {
-        en: buildTermSeoTitle(term.term_en, 'meaning in fintech and finance', 'meaning'),
-        ru: buildTermSeoTitle(term.term_ru, 'значение в финтехе и финансах', 'значение'),
-        tr: buildTermSeoTitle(term.term_tr, 'fintek ve finans anlamı', 'anlamı'),
-    },
-    seo_description: {
-        en: `Learn ${term.term_en} with a clear definition, practical fintech context, why it matters, how it works, key risks, and ${regionalMarkets.join('/')} market relevance.`,
-        ru: `Разберите термин ${term.term_ru}: определение, практический финтех-контекст, значение, принцип работы, ключевые риски и рынок ${regionalMarkets.join('/')}.`,
-        tr: `${term.term_tr} terimini net tanım, pratik fintek bağlamı, neden önemli olduğu, çalışma mantığı, temel riskler ve ${regionalMarkets.join('/')} piyasa ilgisiyle öğrenin.`,
-    },
-});
+): SeoContentBlock => {
+    const marketLabel = regionalMarkets.join('/');
+
+    return {
+        expanded_definition: {
+            en: `${term.definition_en} Within the ${topic.title.en.toLowerCase()} cluster, ${term.term_en} helps explain ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. The term is useful when comparing products, controls, markets, or system design because it gives teams a shared label for a specific financial or technical decision point. ${term.example_sentence_en}`.trim(),
+            ru: `${term.definition_ru} В кластере «${topic.title.ru.toLowerCase()}» термин «${term.term_ru}» помогает объяснить ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Термин полезен при сравнении продуктов, контролей, рынков или архитектуры систем, потому что задаёт общее название для конкретной финансовой или технической точки решения. ${term.example_sentence_ru}`.trim(),
+            tr: `${term.definition_tr} ${topic.title.tr.toLowerCase()} kümesi içinde ${term.term_tr}, ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} konusunu açıklamaya yardım eder. Terim; ürünleri, kontrolleri, piyasaları veya sistem tasarımını karşılaştırırken belirli bir finansal ya da teknik karar noktası için ortak ad verdiği için kullanışlıdır. ${term.example_sentence_tr}`.trim(),
+        },
+        why_it_matters: {
+            en: `${term.term_en} matters because it connects ${CATEGORY_CONTEXT[term.category].en} with the practical decisions teams make inside ${topic.title.en.toLowerCase()}. A weak understanding can lead to poor product framing, misleading market interpretation, incomplete compliance checks, or incorrect assumptions about how a financial workflow behaves.`,
+            ru: `Термин «${term.term_ru}» важен, потому что связывает ${CATEGORY_CONTEXT[term.category].ru} с практическими решениями внутри темы «${topic.title.ru.toLowerCase()}». Слабое понимание может привести к неверному product framing, искажённой интерпретации рынка, неполным compliance checks или ошибочным предположениям о поведении финансового процесса.`,
+            tr: `${term.term_tr}, ${CATEGORY_CONTEXT[term.category].tr} ile ${topic.title.tr.toLowerCase()} içindeki pratik kararları bağladığı için önemlidir. Zayıf anlama; ürün çerçevesini, piyasa yorumunu, uyum kontrollerini veya finansal iş akışının nasıl davrandığına dair varsayımları hatalı hale getirebilir.`,
+        },
+        how_it_works: {
+            en: `In practice, ${term.term_en} is read through its definition, the systems or market actors it touches, and the way it changes decisions around ${TOPIC_SEARCH_INTENT[topic.id]?.en ?? CATEGORY_CONTEXT[term.category].en}. A useful review asks who uses the term, what data or obligation it changes, which control owns the outcome, and whether the meaning differs across product, market, and regulatory contexts.`,
+            ru: `На практике термин «${term.term_ru}» читается через определение, затрагиваемые системы или участников рынка и влияние на решения про ${TOPIC_SEARCH_INTENT[topic.id]?.ru ?? CATEGORY_CONTEXT[term.category].ru}. Полезная проверка задаёт вопросы: кто использует термин, какие данные или обязанности он меняет, какой контроль отвечает за результат и отличается ли смысл в продукте, рынке и регулировании.`,
+            tr: `Pratikte ${term.term_tr}; tanımı, temas ettiği sistemler veya piyasa aktörleri ve ${TOPIC_SEARCH_INTENT[topic.id]?.tr ?? CATEGORY_CONTEXT[term.category].tr} üzerindeki karar etkisiyle okunur. Sağlam inceleme; terimi kimin kullandığını, hangi veri ya da yükümlülüğü değiştirdiğini, sonucu hangi kontrolün sahiplendiğini ve anlamın ürün, piyasa ve regülasyon bağlamında değişip değişmediğini sorar.`,
+        },
+        risks_and_pitfalls: {
+            en: `${TOPIC_RISK_CONTEXT[topic.id]?.en ?? `A common mistake is to use ${term.term_en} without understanding the underlying controls, limits, and cross-border implications.`} The risk increases when the same label is reused across banking, crypto, capital markets, software, and analytics without checking whether the operational meaning is still the same.`,
+            ru: `${TOPIC_RISK_CONTEXT[topic.id]?.ru ?? `Распространённая ошибка — использовать термин «${term.term_ru}», не понимая базовых контролей, ограничений и трансграничных последствий.`} Риск растёт, когда один и тот же ярлык используют в banking, crypto, capital markets, software и analytics без проверки, сохраняется ли операционный смысл.`,
+            tr: `${TOPIC_RISK_CONTEXT[topic.id]?.tr ?? `Yaygın hata, ${term.term_tr} kavramını temel kontrolleri, sınırları ve sınır ötesi etkileri anlamadan kullanmaktır.`} Aynı etiketin bankacılık, kripto, sermaye piyasaları, yazılım ve analitik alanlarında operasyonel anlamı değişmeden kullanılıp kullanılmadığı kontrol edilmezse risk artar.`,
+        },
+        regional_notes: {
+            en: `This concept appears across ${regionalMarkets.join(', ')} contexts, but implementation can change with local regulation, payment rails, trading venues, data availability, and institutional practice. For BIST, MOEX, and global comparisons, the safest approach is to keep the definition stable while checking market-specific rules and infrastructure before drawing conclusions.`,
+            ru: `Концепт встречается в контекстах ${regionalMarkets.join(', ')}, но реализация меняется в зависимости от локального регулирования, платёжных рельсов, торговых площадок, доступности данных и институциональной практики. Для сравнений BIST, MOEX и global безопаснее сохранять стабильное определение, но отдельно проверять правила и инфраструктуру рынка.`,
+            tr: `Bu kavram ${regionalMarkets.join(', ')} bağlamlarında görülür; ancak uygulama, yerel düzenleme, ödeme rayları, işlem yerleri, veri erişimi ve kurumsal pratiğe göre değişebilir. BIST, MOEX ve global karşılaştırmalarda en güvenli yaklaşım tanımı sabit tutup sonuç çıkarmadan önce piyasa kurallarını ve altyapıyı ayrıca kontrol etmektir.`,
+        },
+        seo_title: {
+            en: buildTermSeoTitle(term.term_en, 'meaning in fintech and finance', 'meaning'),
+            ru: buildTermSeoTitle(term.term_ru, 'значение в финтехе и финансах', 'значение'),
+            tr: buildTermSeoTitle(term.term_tr, 'fintek ve finans anlamı', 'anlamı'),
+        },
+        seo_description: {
+            en: `${term.term_en}: fintech definition, practical context, key risks, and ${marketLabel} market relevance.`,
+            ru: `${term.term_ru}: определение, финтех-контекст, ключевые риски и значение для рынков ${marketLabel}.`,
+            tr: `${term.term_tr}: tanım, fintek bağlamı, temel riskler ve ${marketLabel} piyasalarıyla ilişkisi.`,
+        },
+    };
+};
 
 const enrichTerm = (term: Term): Term => {
     const priorityRecord = getPriorityRecord(term);
@@ -387,7 +405,6 @@ const enrichTerm = (term: Term): Term => {
     const indexPriority = priorityRecord ? 'high' : (PRIORITY_SLUG_TO_TOPICS.has(term.slug) ? 'high' : term.index_priority);
     const freshness = resolveSeoFreshness(
         term,
-        sourceRefs,
         Boolean(editorialOverride || searchIntentMetadataOverride)
     );
 
@@ -407,65 +424,149 @@ const enrichTerm = (term: Term): Term => {
     };
 };
 
-const buildRelatedTermIds = (catalog: readonly Term[], currentTerm: Term): readonly string[] => {
+const buildSeoCatalogIndexes = (catalog: readonly Term[]): SeoCatalogBuildIndexes => {
+    const termsByTopicId = new Map<string, Term[]>();
+    const termsByCategory = new Map<Term['category'], Term[]>();
+
+    catalog.forEach((term) => {
+        term.topic_ids.forEach((topicId) => {
+            const topicTerms = termsByTopicId.get(topicId) ?? [];
+            topicTerms.push(term);
+            termsByTopicId.set(topicId, topicTerms);
+        });
+
+        const categoryTerms = termsByCategory.get(term.category) ?? [];
+        categoryTerms.push(term);
+        termsByCategory.set(term.category, categoryTerms);
+    });
+
+    return {
+        termBySlug: new Map(catalog.map((term) => [term.slug, term] as const)),
+        termsByTopicId,
+        termsByCategory,
+    };
+};
+
+const listRelatedCandidates = (
+    indexes: SeoCatalogBuildIndexes,
+    currentTerm: Term
+): Term[] => {
+    const candidatesById = new Map<string, Term>();
+
+    currentTerm.topic_ids.forEach((topicId) => {
+        indexes.termsByTopicId.get(topicId)?.forEach((candidate) => {
+            candidatesById.set(candidate.id, candidate);
+        });
+    });
+
+    indexes.termsByCategory.get(currentTerm.category)?.forEach((candidate) => {
+        candidatesById.set(candidate.id, candidate);
+    });
+
+    return Array.from(candidatesById.values())
+        .filter((candidate) => isRelatedCandidate(candidate, currentTerm));
+};
+
+const buildRelatedTermIds = (indexes: SeoCatalogBuildIndexes, currentTerm: Term): readonly string[] => {
     const priorityRecord = getPriorityRecord(currentTerm);
 
     if (priorityRecord) {
         return priorityRecord.relatedSlugs
-            .map((slug) => catalog.find((candidate) => candidate.slug === slug)?.id)
+            .map((slug) => indexes.termBySlug.get(slug)?.id)
             .filter((value): value is string => Boolean(value))
-            .slice(0, 6);
+            .slice(0, RELATED_TERM_LIMIT);
     }
 
-    const sameTopic = catalog.filter((candidate) => (
-        candidate.id !== currentTerm.id
-        && candidate.topic_ids.some((topicId) => currentTerm.topic_ids.includes(topicId))
-    ));
-    const sameCategory = catalog.filter((candidate) => (
-        candidate.id !== currentTerm.id
-        && candidate.category === currentTerm.category
-    ));
-    const rankedTerms = [...sameTopic, ...sameCategory]
+    return listRelatedCandidates(indexes, currentTerm)
         .sort((left, right) => {
-            if (left.index_priority === right.index_priority) {
-                return left.term_en.localeCompare(right.term_en);
+            const scoreDelta = scoreRelatedTermCandidate(right, currentTerm)
+                - scoreRelatedTermCandidate(left, currentTerm);
+
+            if (scoreDelta !== 0) {
+                return scoreDelta;
             }
 
-            return left.index_priority === 'high' ? -1 : 1;
-        })
-        .map((term) => term.id);
+            const distanceDelta = getTermDistance(left, currentTerm)
+                - getTermDistance(right, currentTerm);
 
-    return dedupe(rankedTerms).slice(0, 6);
+            if (distanceDelta !== 0) {
+                return distanceDelta;
+            }
+
+            return left.term_en.localeCompare(right.term_en);
+        })
+        .map((term) => term.id)
+        .slice(0, RELATED_TERM_LIMIT);
 };
 
-const buildComparisonTermId = (catalog: readonly Term[], currentTerm: Term): string | null => {
+const isRelatedCandidate = (candidate: Term, currentTerm: Term): boolean => (
+    candidate.id !== currentTerm.id
+    && (
+        countSharedValues(candidate.topic_ids, currentTerm.topic_ids) > 0
+        || candidate.category === currentTerm.category
+    )
+);
+
+const countSharedValues = (
+    leftValues: readonly string[],
+    rightValues: readonly string[]
+): number => {
+    const rightValueSet = new Set(rightValues);
+
+    return leftValues.filter((value) => rightValueSet.has(value)).length;
+};
+
+const hasDirectTermRelation = (candidate: Term, currentTerm: Term): boolean => (
+    currentTerm.comparison_term_id === candidate.id
+    || currentTerm.prerequisite_term_id === candidate.id
+    || candidate.comparison_term_id === currentTerm.id
+    || candidate.prerequisite_term_id === currentTerm.id
+);
+
+const scoreRelatedTermCandidate = (candidate: Term, currentTerm: Term): number => (
+    (countSharedValues(candidate.topic_ids, currentTerm.topic_ids) * RELATED_TOPIC_WEIGHT)
+    + (candidate.category === currentTerm.category ? RELATED_CATEGORY_WEIGHT : 0)
+    + (hasDirectTermRelation(candidate, currentTerm) ? RELATED_DIRECT_RELATION_WEIGHT : 0)
+);
+
+const getTermNumericId = (term: Pick<Term, 'id'>): number => {
+    const numericId = Number.parseInt(term.id.replace(/\D+/g, ''), 10);
+
+    return Number.isNaN(numericId) ? 0 : numericId;
+};
+
+const getTermDistance = (candidate: Term, currentTerm: Term): number => (
+    Math.abs(getTermNumericId(candidate) - getTermNumericId(currentTerm))
+);
+
+const buildComparisonTermId = (indexes: SeoCatalogBuildIndexes, currentTerm: Term): string | null => {
     const priorityRecord = getPriorityRecord(currentTerm);
 
     if (!priorityRecord?.comparisonSlug) {
         return currentTerm.comparison_term_id;
     }
 
-    return catalog.find((candidate) => candidate.slug === priorityRecord.comparisonSlug)?.id ?? null;
+    return indexes.termBySlug.get(priorityRecord.comparisonSlug)?.id ?? null;
 };
 
-const buildPrerequisiteTermId = (catalog: readonly Term[], currentTerm: Term): string | null => {
+const buildPrerequisiteTermId = (indexes: SeoCatalogBuildIndexes, currentTerm: Term): string | null => {
     const priorityRecord = getPriorityRecord(currentTerm);
 
     if (!priorityRecord?.prerequisiteSlug) {
         return currentTerm.prerequisite_term_id;
     }
 
-    return catalog.find((candidate) => candidate.slug === priorityRecord.prerequisiteSlug)?.id ?? null;
+    return indexes.termBySlug.get(priorityRecord.prerequisiteSlug)?.id ?? null;
 };
 
 const validatePriorityRegistry = (catalog: readonly Term[]): void => {
-    const termSlugSet = new Set(catalog.map((term) => term.slug));
+    const termBySlug = new Map(catalog.map((term) => [term.slug, term] as const));
     const sourceIdSet = new Set(seoSources.map((source) => source.id));
     const contributorIdSet = new Set(seoContributors.map((contributor) => contributor.id));
     const reducedCatalog = isReducedTestCatalog(catalog);
     const missingTermSlugs = priorityTermRecords
         .map((record) => record.slug)
-        .filter((slug) => !termSlugSet.has(slug));
+        .filter((slug) => !termBySlug.has(slug));
     const missingSourceIds = priorityTermRecords.flatMap((record) => (
         record.requiredSourceIds.filter((sourceId) => !sourceIdSet.has(sourceId))
     ));
@@ -487,7 +588,7 @@ const validatePriorityRegistry = (catalog: readonly Term[]): void => {
     }
 
     const incompletePriorityTerms = priorityTermRecords.flatMap((record) => {
-        const term = catalog.find((candidate) => candidate.slug === record.slug);
+        const term = termBySlug.get(record.slug);
 
         if (!term) {
             return [];
@@ -521,11 +622,12 @@ const validatePriorityRegistry = (catalog: readonly Term[]): void => {
 
 const buildCatalog = (): SeoCatalog => {
     const enrichedTerms = filterAcademicTerms(fullRepoTerms).map(enrichTerm);
+    const buildIndexes = buildSeoCatalogIndexes(enrichedTerms);
     const catalog = enrichedTerms.map((term) => ({
         ...term,
-        related_term_ids: buildRelatedTermIds(enrichedTerms, term),
-        comparison_term_id: buildComparisonTermId(enrichedTerms, term),
-        prerequisite_term_id: buildPrerequisiteTermId(enrichedTerms, term),
+        related_term_ids: buildRelatedTermIds(buildIndexes, term),
+        comparison_term_id: buildComparisonTermId(buildIndexes, term),
+        prerequisite_term_id: buildPrerequisiteTermId(buildIndexes, term),
     }));
     validatePriorityRegistry(catalog);
 
@@ -555,6 +657,66 @@ export const getLocalizedTermDefinition = (term: Term, locale: Language): string
     locale === 'ru' ? term.definition_ru : locale === 'tr' ? term.definition_tr : term.definition_en
 );
 
+const normalizeGlossaryLetterKey = (label: string, locale: Language): string => {
+    const firstCharacter = Array.from(label.trim())[0] ?? '';
+
+    if (!firstCharacter) {
+        return OTHER_GLOSSARY_GROUP_KEY;
+    }
+
+    if (/\p{Number}/u.test(firstCharacter)) {
+        return NUMBER_GLOSSARY_GROUP_KEY;
+    }
+
+    if (!/\p{Letter}/u.test(firstCharacter)) {
+        return OTHER_GLOSSARY_GROUP_KEY;
+    }
+
+    return firstCharacter
+        .toLocaleLowerCase(locale)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '');
+};
+
+const formatGlossaryLetterLabel = (key: string, fallbackLabel: string, locale: Language): string => {
+    if (key === NUMBER_GLOSSARY_GROUP_KEY) {
+        return NUMBER_GLOSSARY_GROUP_KEY;
+    }
+
+    if (key === OTHER_GLOSSARY_GROUP_KEY) {
+        return '#';
+    }
+
+    return fallbackLabel.toLocaleUpperCase(locale);
+};
+
+const buildGlossaryLetterGroups = (
+    terms: readonly Term[],
+    locale: Language
+): readonly GlossaryLetterGroup[] => {
+    const groupedTerms = new Map<string, { label: string; terms: Term[] }>();
+
+    for (const term of terms) {
+        const label = getLocalizedTermLabel(term, locale).trim();
+        const key = normalizeGlossaryLetterKey(label, locale);
+        const group = groupedTerms.get(key) ?? {
+            label: formatGlossaryLetterLabel(key, Array.from(label)[0] ?? '#', locale),
+            terms: [],
+        };
+
+        group.terms.push(term);
+        groupedTerms.set(key, group);
+    }
+
+    return Array.from(groupedTerms.entries())
+        .map(([key, group]) => ({
+            key,
+            label: group.label,
+            terms: group.terms,
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label, locale));
+};
+
 export const getLocalizedTermSeoTitle = (term: Term, locale: Language): string => (
     getLocalizedText(term.seo_title, locale)
 );
@@ -577,6 +739,17 @@ export const listGlossaryTerms = async (locale: Language): Promise<readonly Term
     [...seoCatalog.terms].sort((left, right) => (
         getLocalizedTermLabel(left, locale).localeCompare(getLocalizedTermLabel(right, locale), locale)
     ))
+);
+
+export const listGlossaryLetterGroups = async (locale: Language): Promise<readonly GlossaryLetterGroup[]> => (
+    buildGlossaryLetterGroups(await listGlossaryTerms(locale), locale)
+);
+
+export const getGlossaryLetterGroup = async (
+    locale: Language,
+    groupKey: string
+): Promise<GlossaryLetterGroup | null> => (
+    (await listGlossaryLetterGroups(locale)).find((group) => group.key === groupKey) ?? null
 );
 
 export const listPrioritySeoTerms = async (limit = 12): Promise<readonly Term[]> => (

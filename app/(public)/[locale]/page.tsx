@@ -3,7 +3,7 @@ import { listPrioritySeoTerms, listSeoTopics, getLocalizedTermDefinition, getLoc
 import PublicSeoHeroMark from '@/components/public-seo-hero-mark';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
-import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
+import { buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
@@ -38,25 +38,25 @@ const pageCopy: Record<Language, {
     },
     ru: {
         title: 'FinTechTerms: русский глоссарий',
-        description: 'Русский финтех-глоссарий с topic hub-архитектурой, trust-сигналами и серверно-рендеримыми терминологическими страницами.',
+        description: 'Русский финтех-глоссарий с тематической архитектурой, сигналами доверия и серверно-рендеримыми терминологическими страницами.',
         eyebrow: 'Публичный SEO-контур',
         hero: 'Тематическая архитектура глоссария для терминов финтеха, финансов и технологий.',
-        subhero: 'Изучайте серверно-рендеримые термины, академические trust-сигналы, редакционную проверку и topic hub-страницы с рыночным контекстом.',
+        subhero: 'Изучайте серверно-рендеримые термины, академические сигналы доверия, редакционную проверку и тематические хабы с рыночным контекстом.',
         topics: 'Тематические хабы',
         featuredTerms: 'Приоритетные термины',
         browseAll: 'Открыть полный глоссарий',
-        trustLayer: 'Редакционный trust-слой',
+        trustLayer: 'Редакционный уровень доверия',
         corrections: 'Политика исправлений',
         sources: 'Первичные источники',
         contact: 'Контакты',
     },
     tr: {
         title: 'FinTechTerms Türkçe sözlük',
-        description: 'Topic hub yapısı, güven sinyalleri ve server-rendered fintech terim sayfalarıyla Türkçe fintek sözlüğü.',
-        eyebrow: 'Public SEO yüzeyi',
+        description: 'Konu merkezi yapısı, güven sinyalleri ve sunucuda işlenen fintek terim sayfalarıyla Türkçe fintek sözlüğü.',
+        eyebrow: 'Açık SEO yüzeyi',
         hero: 'Fintek, finans ve teknoloji terimleri için konu tabanlı bir sözlük mimarisi.',
-        subhero: 'Server-rendered terim sayfalarını, akademik güven sinyallerini, editoryal incelemeyi ve pazar bağlamlı topic hub’ları keşfedin.',
-        topics: 'Topic hub’lar',
+        subhero: 'Sunucuda işlenen terim sayfalarını, akademik güven sinyallerini, editoryal incelemeyi ve pazar bağlamlı konu merkezlerini keşfedin.',
+        topics: 'Konu merkezleri',
         featuredTerms: 'Öncelikli terimler',
         browseAll: 'Tam sözlüğü aç',
         trustLayer: 'Editoryal güven katmanı',
@@ -202,7 +202,6 @@ export default async function LocaleHomePage({
                             publisher: buildOrganizationJsonLd(locale),
                         },
                         buildOrganizationJsonLd(locale),
-                        buildBreadcrumbJsonLd(locale, []),
                     ]),
                 }}
             />

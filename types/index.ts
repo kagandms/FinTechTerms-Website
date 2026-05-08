@@ -69,6 +69,10 @@ export interface Contributor {
     disclosure: LocalizedText;
     languages: readonly Language[];
     expertise: readonly string[];
+    sameAs?: readonly string[];
+    credential?: LocalizedText;
+    affiliation?: LocalizedText;
+    affiliationPath?: string;
     organization: string;
     email: string;
 }

@@ -3,6 +3,7 @@
  */
 
 import {
+    listGlossaryLetterGroups,
     listStaticContributorSlugs,
     listSeoTerms,
     listStaticTopicSlugs,
@@ -41,6 +42,17 @@ describe('public SEO static params', () => {
 
         expect(routeModule.dynamicParams).toBe(false);
         await expect(routeModule.generateStaticParams()).resolves.toEqual(expectedParams);
+    });
+
+    it('glossary letter routes prebuild localized letter groups and disable dynamic params', async () => {
+        const routeModule = await import('@/app/(public)/[locale]/glossary/letter/[group]/page');
+        const expectedParams = (await Promise.all(PUBLIC_LOCALES.map(async (locale) => (
+            (await listGlossaryLetterGroups(locale)).map((group) => ({ locale, group: group.key }))
+        )))).flat();
+
+        expect(routeModule.dynamicParams).toBe(false);
+        await expect(routeModule.generateStaticParams()).resolves.toEqual(expectedParams);
+        expect(expectedParams).toContainEqual({ locale: 'en', group: 'a' });
     });
 
     it('glossary routes prebuild the full localized term corpus and disable dynamic params', async () => {

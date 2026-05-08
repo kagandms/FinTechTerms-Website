@@ -31,50 +31,93 @@ const EXPORT_DOWNLOAD_RATE_LIMIT_HEADERS = {
 
 type RequestScopedSupabase = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
-const loadDownloadAttempts = async (
+type DownloadChunkResult = {
+    readonly chunks: readonly string[];
+    readonly tooLarge: boolean;
+};
+
+type AttemptPageChunk = {
+    readonly chunk: string | null;
+    readonly hasAttemptChunks: boolean;
+};
+
+const buildAttemptPageChunk = (
+    attempts: readonly LearningRecentAttempt[],
+    hasAttemptChunks: boolean
+): AttemptPageChunk => {
+    if (attempts.length === 0) {
+        return {
+            chunk: null,
+            hasAttemptChunks,
+        };
+    }
+
+    const chunkPrefix = hasAttemptChunks ? ',' : '';
+    const serializedAttempts = attempts
+        .map((attempt) => JSON.stringify(attempt))
+        .join(',');
+
+    return {
+        chunk: `${chunkPrefix}${serializedAttempts}`,
+        hasAttemptChunks: true,
+    };
+};
+
+const createJsonChunkStream = (chunks: readonly string[]): ReadableStream<Uint8Array> => {
+    const textEncoder = new TextEncoder();
+
+    return new ReadableStream<Uint8Array>({
+        start(controller): void {
+            chunks.forEach((chunk) => {
+                controller.enqueue(textEncoder.encode(chunk));
+            });
+            controller.close();
+        },
+    });
+};
+
+const loadDownloadChunks = async (
     supabase: RequestScopedSupabase,
-    userId: string
-): Promise<{
-    attempts: LearningRecentAttempt[];
-    snapshotCreatedAt: string;
-    tooLarge: boolean;
-}> => {
+    userId: string,
+    exportedAt: string
+): Promise<DownloadChunkResult> => {
     let cursor: string | null = null;
     let totalAttempts = 0;
-    let snapshotCreatedAt: string | null = null;
-    const attempts: LearningRecentAttempt[] = [];
+    let hasAttemptChunks = false;
+    const chunks: string[] = [
+        `{"exportedAt":${JSON.stringify(exportedAt)},"attempts":[`,
+    ];
 
     do {
         const page = await loadLearningStatsExportAttempts(supabase, userId, {
             cursor,
             limit: EXPORT_PAGE_SIZE,
         });
-        snapshotCreatedAt ??= page.snapshotCreatedAt;
 
         if (totalAttempts + page.attempts.length > MAX_EXPORT_ATTEMPTS) {
             return {
-                attempts: [],
-                snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
+                chunks: [],
                 tooLarge: true,
             };
         }
 
-        attempts.push(...page.attempts);
+        const pageChunk = buildAttemptPageChunk(page.attempts, hasAttemptChunks);
+        if (pageChunk.chunk) {
+            chunks.push(pageChunk.chunk);
+        }
+
+        hasAttemptChunks = pageChunk.hasAttemptChunks;
         totalAttempts += page.attempts.length;
         cursor = page.nextCursor;
     } while (cursor);
 
+    chunks.push(']}');
+
     return {
-        attempts,
-        snapshotCreatedAt: snapshotCreatedAt ?? new Date().toISOString(),
+        chunks,
         tooLarge: false,
     };
 };
-
-const createDownloadPayload = (
-    exportedAt: string,
-    attempts: readonly LearningRecentAttempt[]
-): string => JSON.stringify({ exportedAt, attempts });
 
 /**
  * Export the authenticated user's full quiz attempt history for analytics.
@@ -181,7 +224,7 @@ export async function GET(request: Request) {
 
         if (shouldDownload) {
             const exportedAt = new Date().toISOString();
-            const { attempts, tooLarge } = await loadDownloadAttempts(supabase, user.id);
+            const { chunks, tooLarge } = await loadDownloadChunks(supabase, user.id, exportedAt);
 
             if (tooLarge) {
                 return errorResponse({
@@ -194,7 +237,7 @@ export async function GET(request: Request) {
                 });
             }
 
-            return new Response(createDownloadPayload(exportedAt, attempts), {
+            return new Response(createJsonChunkStream(chunks), {
                 status: 200,
                 headers: {
                     ...rateLimitHeaders,

@@ -52,7 +52,7 @@ const pageCopy: Record<Language, {
         structureLabel: 'Структура',
         structureValue: '3 слоя методологии',
         outcomeLabel: 'Результат',
-        outcomeValue: 'Поисковый, проверяемый и source-backed контент',
+        outcomeValue: 'Поисковый, проверяемый и подтверждённый источниками контент',
         layerLabel: 'Слой',
         sections: [
             {
@@ -64,8 +64,8 @@ const pageCopy: Record<Language, {
                 body: 'Материал закрепляется за автором и слоем проверки. Публикация требует видимой даты обновления, ссылок на источники и ясных образовательных дисклеймеров для YMYL-чувствительных тем.',
             },
             {
-                title: 'Модель discoverability',
-                body: 'Глоссарий связывается через topic hub-страницы, граф связанных терминов и locale-specific server-rendered навигацию, а не через client-only поиск.',
+                title: 'Модель обнаружения',
+                body: 'Глоссарий связывается через тематические хабы, граф связанных терминов и языковую серверно-рендеримую навигацию, а не через поиск только на стороне клиента.',
             },
         ],
     },
@@ -90,7 +90,7 @@ const pageCopy: Record<Language, {
             },
             {
                 title: 'Keşif modeli',
-                body: 'Sözlük sayfaları; topic hub’lar, ilgili terim grafikleri ve locale-specific server-rendered gezinme üzerinden bağlanır; keşif client-only aramaya bırakılmaz.',
+                body: 'Sözlük sayfaları; konu merkezleri, ilgili terim grafikleri ve dile özel sunucuda işlenen gezinme üzerinden bağlanır; keşif yalnızca istemci tarafındaki aramaya bırakılmaz.',
             },
         ],
     },

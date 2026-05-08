@@ -87,9 +87,24 @@ Release may be signed off only when all of the following are true:
 4. If quiz review replay starts accumulating in the device queue, stop the rollout and investigate before queue growth causes user-visible lag or dropped retries.
 5. Communicate degraded behavior in the app and status channels until Supabase recovers.
 
+## Alert thresholds
+
+Configure Sentry/Vercel alert policies before widening staging or production traffic. Every alert must preserve `route`, `requestId` when emitted by an API route, metric name, threshold, and the first response step in the alert description.
+
+| Alert | Source metric | Threshold | Required fields | First response step |
+| --- | --- | --- | --- | --- |
+| API route p95 latency | `API_ROUTE_COMPLETED.duration_ms` grouped by `route` | p95 > 1500 ms for 10 minutes | `route`, `requestId`, `status`; example `route=/api/progress requestId=req-progress-p95-example` | Open structured logs for the sample `requestId`, then compare same-window `UPSTREAM_REQUEST_COMPLETED` events for Supabase/OpenRouter attribution. |
+| API route p99 latency | `API_ROUTE_COMPLETED.duration_ms` grouped by `route` | p99 > 2500 ms for 5 minutes | `route`, `requestId`, `status`; example `route=/api/study-sessions requestId=req-study-p99-example` | Check whether the route has concentrated 5xx/429 responses before treating it as pure latency. |
+| API route error rate | `API_ROUTE_COMPLETED.status` grouped by `route` | 5xx rate > 2% for 10 minutes, or any auth/study write route > 5 errors in 5 minutes | `route`, `requestId`, `status`; example `route=/api/record-quiz requestId=req-record-error-example` | Pull the first failing `requestId`, inspect wrapped error context, and decide rollback vs dependency degradation. |
+| Supabase dependency latency | `UPSTREAM_REQUEST_COMPLETED.duration_ms` where `dependency=supabase` | p95 > 800 ms for 10 minutes or timeout outcome count > 0 | `dependency`, `route`, `requestId`, `status`, `outcome` | Compare affected routes; if writes are failing, disable risky study writes before retry queues grow. |
+| OpenRouter dependency latency | `UPSTREAM_REQUEST_COMPLETED.duration_ms` where `dependency=openrouter` | p95 > 15000 ms for 10 minutes, timeout outcome count > 0, or fallback model rate > 20% | `dependency`, `route`, `requestId`, `status`, `outcome` | Verify provider/model status and confirm AI endpoints are serving explicit degraded responses, not hanging. |
+| Study session retry queue depth | `SESSION_TRACKER_RETRY_QUEUE_ENQUEUED.queueDepth` | `queueDepth >= 10` once, or `queueDepth > 0` for 15 minutes after recovery | `route=SessionTracker`, `queueDepth`, `maxRetryQueueSize`, `action`, `idempotencyKey` | Inspect `/api/study-sessions` 429/5xx events and pause rollout if queue depth keeps rising. |
+| Quiz review queue depth | `SRS_PENDING_REVIEW_QUEUE_DEPTH.queueDepth` | `queueDepth >= 10` once, or `queueDepth > 0` for 15 minutes after recovery | `route=SRSContext`, `userId`, `reviewId`, `queueDepth`, `maxPendingReviewQueueSize` | Inspect `/api/record-quiz` and auth-refresh failures before allowing more quiz traffic. |
+
 ## Alert triage
 
-1. Use `requestId`, route name, and user id from structured logs/Sentry to isolate the failing path.
-2. Prioritize `record-quiz`, `study-sessions`, and auth failures before non-critical UI errors.
-3. If stale content appears, verify the active service worker version and clear old caches before deeper investigation.
-4. During the first 30-60 minutes after rollout, watch `record-quiz`, `favorites`, `study-sessions`, AI routes, bot readiness, and new Sentry error groups before widening traffic.
+1. Start from the firing metric name: `API_ROUTE_COMPLETED`, `UPSTREAM_REQUEST_COMPLETED`, `SESSION_TRACKER_RETRY_QUEUE_ENQUEUED`, or `SRS_PENDING_REVIEW_QUEUE_DEPTH`.
+2. Use `requestId`, route name, and user id from structured logs/Sentry to isolate the failing path.
+3. Prioritize `record-quiz`, `study-sessions`, and auth failures before non-critical UI errors.
+4. If stale content appears, verify the active service worker version and clear old caches before deeper investigation.
+5. During the first 30-60 minutes after rollout, watch `record-quiz`, `favorites`, `study-sessions`, AI routes, bot readiness, and new Sentry error groups before widening traffic.

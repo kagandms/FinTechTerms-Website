@@ -44,6 +44,13 @@ describe('public SEO metadata and route assets', () => {
             tr: 'https://fintechterms.example.com/tr',
         });
         expect(routeModule.metadata.openGraph?.url).toBe('https://fintechterms.example.com');
+        expect(routeModule.metadata.icons).toEqual({
+            icon: [
+                { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+            ],
+            shortcut: '/icons/icon-192.png',
+            apple: '/icons/icon-192.png',
+        });
     });
 
     it('builds localized topic metadata with canonical and hreflang alternates', async () => {
@@ -55,12 +62,24 @@ describe('public SEO metadata and route assets', () => {
 
         expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/topics/cards-payments');
         expect(metadata.alternates?.languages).toEqual({
-            'x-default': 'https://fintechterms.example.com/ru/topics/cards-payments',
+            'x-default': 'https://fintechterms.example.com',
             ru: 'https://fintechterms.example.com/ru/topics/cards-payments',
             en: 'https://fintechterms.example.com/en/topics/cards-payments',
             tr: 'https://fintechterms.example.com/tr/topics/cards-payments',
         });
         expect(metadata.title).toBe('Cards and payments infrastructure | FinTechTerms');
+    });
+
+    it('builds descriptive metadata for localized topic term index pages', async () => {
+        const { generateMetadata } = await import('@/app/(public)/[locale]/topics/[topicSlug]/terms/page');
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({ locale: 'en', topicSlug: 'cards-payments' }),
+        });
+
+        expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/topics/cards-payments/terms');
+        expect(String(metadata.description).length).toBeGreaterThanOrEqual(120);
+        expect(String(metadata.description).length).toBeLessThanOrEqual(155);
     });
 
     it('builds localized author metadata with canonical and hreflang alternates', async () => {
@@ -72,7 +91,7 @@ describe('public SEO metadata and route assets', () => {
 
         expect(metadata.alternates?.canonical).toBe('https://fintechterms.example.com/en/authors/kagan-samet-durmus');
         expect(metadata.alternates?.languages).toEqual({
-            'x-default': 'https://fintechterms.example.com/ru/authors/kagan-samet-durmus',
+            'x-default': 'https://fintechterms.example.com',
             ru: 'https://fintechterms.example.com/ru/authors/kagan-samet-durmus',
             en: 'https://fintechterms.example.com/en/authors/kagan-samet-durmus',
             tr: 'https://fintechterms.example.com/tr/authors/kagan-samet-durmus',
@@ -91,8 +110,9 @@ describe('public SEO metadata and route assets', () => {
         expect(source).not.toContain('BadgeRealtimeNotifier');
         expect(source).not.toContain('PublicLocalePreferenceSync');
         expect(source).not.toContain('jetbrainsMono');
-        expect(source).toContain('PublicAnalyticsConsent');
-        expect(source).toContain('GoogleAnalytics');
+        expect(source).toContain('PublicAnalyticsGate');
+        expect(source).not.toContain('PublicAnalyticsConsent');
+        expect(source).not.toContain('GoogleAnalytics');
     });
 
     it('keeps global error boundaries free of app state and catalog imports', () => {
@@ -171,6 +191,7 @@ describe('public SEO metadata and route assets', () => {
         expect(urls.has('https://fintechterms.example.com/en/contact')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/topics/cards-payments')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/topics/cards-payments/terms')).toBe(true);
+        expect(urls.has('https://fintechterms.example.com/en/glossary/letter/a')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/tr/authors/kagan-samet-durmus')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/glossary/tokenization')).toBe(true);
         expect(urls.has('https://fintechterms.example.com/en/glossary/market-index')).toBe(true);
@@ -184,7 +205,7 @@ describe('public SEO metadata and route assets', () => {
         const termEntry = entries.find((entry) => entry.url === 'https://fintechterms.example.com/en/glossary/tokenization');
 
         expect(termEntry?.alternates?.languages).toEqual({
-            'x-default': 'https://fintechterms.example.com/ru/glossary/tokenization',
+            'x-default': 'https://fintechterms.example.com',
             ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
             en: 'https://fintechterms.example.com/en/glossary/tokenization',
             tr: 'https://fintechterms.example.com/tr/glossary/tokenization',

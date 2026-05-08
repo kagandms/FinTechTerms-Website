@@ -14,6 +14,11 @@ import {
     listSeoTerms,
 } from '@/lib/public-seo-catalog';
 import { searchIntentMetadataOverrides } from '@/data/seo/search-intent-overrides';
+import {
+    DEFAULT_GSC_TARGET_TERM_COUNT,
+    defaultGscTargetTermSlugs,
+    priorityTermRecords,
+} from '@/data/seo/priority-terms';
 
 describe('public seo catalog', () => {
     it('keeps slugs unique across the full catalog', async () => {
@@ -53,6 +58,16 @@ describe('public seo catalog', () => {
         expect(priorityTerms.every((term) => term.prerequisite_term_id)).toBe(true);
     });
 
+    it('publishes the default first-50 priority fallback when no GSC export is available', () => {
+        const expectedFallbackSlugs = priorityTermRecords
+            .slice(0, DEFAULT_GSC_TARGET_TERM_COUNT)
+            .map((record) => record.slug);
+
+        expect(defaultGscTargetTermSlugs).toHaveLength(50);
+        expect(new Set(defaultGscTargetTermSlugs).size).toBe(50);
+        expect(defaultGscTargetTermSlugs).toEqual(expectedFallbackSlugs);
+    });
+
     it('enriches standard long-tail terms with topic-aware public SEO copy', async () => {
         const terms = await listSeoTerms();
         const standardTerm = terms.find((term) => term.index_priority !== 'high');
@@ -60,9 +75,9 @@ describe('public seo catalog', () => {
         expect(standardTerm?.expanded_definition.en).toContain('Within the');
         expect(standardTerm?.why_it_matters.en).not.toContain('product decisions, and industry communication');
         expect(standardTerm?.risks_and_pitfalls.en.length).toBeGreaterThan(80);
-        expect(standardTerm?.seo_description.en.length).toBeGreaterThanOrEqual(120);
-        expect(standardTerm?.seo_description.ru.length).toBeGreaterThanOrEqual(120);
-        expect(standardTerm?.seo_description.tr.length).toBeGreaterThanOrEqual(120);
+        expect(standardTerm?.seo_description.en.length).toBeLessThanOrEqual(155);
+        expect(standardTerm?.seo_description.ru.length).toBeLessThanOrEqual(155);
+        expect(standardTerm?.seo_description.tr.length).toBeLessThanOrEqual(155);
         expect(standardTerm?.seo_title.en.length).toBeLessThanOrEqual(44);
         expect([
             standardTerm?.expanded_definition.en,
@@ -89,14 +104,39 @@ describe('public seo catalog', () => {
         }
     });
 
-    it('derives public SEO freshness from source and reviewed override dates', async () => {
+    it('keeps source verification dates separate from page freshness dates', async () => {
         const terms = await listSeoTerms();
         const kycTerm = terms.find((term) => term.slug === 'kyc');
+        const standardTerm = terms.find((term) => (
+            term.index_priority !== 'high'
+            && !searchIntentMetadataOverrides[term.slug]
+            && term.source_refs.length > 0
+        ));
         const uniqueUpdatedAtValues = new Set(terms.map((term) => term.updated_at));
 
         expect(uniqueUpdatedAtValues.size).toBeGreaterThan(1);
         expect(kycTerm?.reviewed_at).toBe('2026-05-04T00:00:00.000Z');
         expect(kycTerm?.updated_at).toBe('2026-05-04T00:00:00.000Z');
+        expect(standardTerm?.reviewed_at).toBe('2026-03-15T00:00:00.000Z');
+        expect(standardTerm?.updated_at).toBe('2026-03-15T00:00:00.000Z');
+    });
+
+    it('keeps generated related-term links distributed across the catalog', async () => {
+        const terms = await listSeoTerms();
+        const incomingCounts = new Map<string, number>(terms.map((term) => [term.id, 0]));
+
+        for (const term of terms) {
+            for (const relatedTermId of term.related_term_ids) {
+                incomingCounts.set(relatedTermId, (incomingCounts.get(relatedTermId) ?? 0) + 1);
+            }
+        }
+
+        const values = Array.from(incomingCounts.values()).sort((left, right) => left - right);
+        const maxIncomingCount = values[values.length - 1] ?? 0;
+        const orphanCount = values.filter((value) => value === 0).length;
+
+        expect(maxIncomingCount).toBeLessThanOrEqual(80);
+        expect(orphanCount).toBeLessThanOrEqual(80);
     });
 
     it('returns finite topic and contributor slug catalogs for static generation', async () => {

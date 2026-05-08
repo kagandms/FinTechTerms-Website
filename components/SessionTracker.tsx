@@ -321,19 +321,23 @@ export default function SessionTracker() {
         entry: Omit<QueuedSessionMutation, 'queuedAt'>,
         reason: string
     ) => {
-        logger.warn('SESSION_TRACKER_RETRY_QUEUE_ENQUEUED', {
-            route: 'SessionTracker',
-            action: entry.payload.action,
-            idempotencyKey: entry.idempotencyKey,
-            reason,
-        });
-        replaceRetryQueue([
+        const nextQueue = [
             ...readRetryQueue(),
             {
                 ...entry,
                 queuedAt: Date.now(),
             },
-        ]);
+        ];
+
+        logger.warn('SESSION_TRACKER_RETRY_QUEUE_ENQUEUED', {
+            route: 'SessionTracker',
+            action: entry.payload.action,
+            idempotencyKey: entry.idempotencyKey,
+            reason,
+            queueDepth: nextQueue.length,
+            maxRetryQueueSize: MAX_RETRY_QUEUE_SIZE,
+        });
+        replaceRetryQueue(nextQueue);
 
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             return;

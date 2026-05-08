@@ -49,7 +49,7 @@ describe('seo routing helpers', () => {
             tr: 'https://fintechterms.example.com/tr/glossary/tokenization',
         });
         expect(buildAbsolutePublicLocaleAlternates('/glossary/tokenization')).toEqual({
-            'x-default': 'https://fintechterms.example.com/ru/glossary/tokenization',
+            'x-default': 'https://fintechterms.example.com',
             ru: 'https://fintechterms.example.com/ru/glossary/tokenization',
             en: 'https://fintechterms.example.com/en/glossary/tokenization',
             tr: 'https://fintechterms.example.com/tr/glossary/tokenization',
@@ -97,5 +97,12 @@ describe('seo routing helpers', () => {
     it('avoids duplicating the brand suffix in title formatting', () => {
         expect(formatSeoTitle('Tokenization')).toBe('Tokenization | FinTechTerms');
         expect(formatSeoTitle('Tokenization | FinTechTerms')).toBe('Tokenization | FinTechTerms');
+    });
+
+    it('keeps formatted SEO titles within the public title budget', () => {
+        const title = formatSeoTitle('Authorization meaning, approval rate, and card payment flow');
+
+        expect(title.length).toBeLessThanOrEqual(60);
+        expect(title).toBe('Authorization meaning, approval rate | FinTechTerms');
     });
 });

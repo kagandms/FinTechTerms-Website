@@ -142,9 +142,9 @@ export const createTerm = (
         `${tr} nedir: fintek ve finans anlamı`
     ),
     seo_description: options?.seo_description ?? buildLocalizedText(
-        `${en} explained with definition, fintech and finance context, practical usage, risk signals, and technology relevance.`,
-        `${ru}: определение, финтех- и финансовый контекст, практическое применение, риски и технологическая релевантность.`,
-        `${tr}; tanım, fintek ve finans bağlamı, pratik kullanım, risk sinyalleri ve teknoloji ilgisiyle açıklanır.`
+        `${en}: fintech definition, usage context, risk signals, and technology relevance.`,
+        `${ru}: определение, финтех-контекст, практическое применение, риски и технологическая релевантность.`,
+        `${tr}: fintek tanımı, kullanım bağlamı, risk sinyalleri ve teknoloji ilgisi.`
     ),
     context_tags: {
         ...cloneContextTags(category),

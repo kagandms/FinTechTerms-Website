@@ -82,6 +82,7 @@ const createStudySessionClient = (options?: {
 };
 
 describe('study-sessions route', () => {
+    let consoleInfoSpy: jest.SpyInstance;
     let consoleErrorSpy: jest.SpyInstance;
     let consoleWarnSpy: jest.SpyInstance;
 
@@ -89,6 +90,7 @@ describe('study-sessions route', () => {
         jest.clearAllMocks();
         clearEphemeralIdempotencyReservations();
         studySessionRouteRateLimiter.reset();
+        consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         mockHasConfiguredStudySessionEnv.mockReturnValue(true);
@@ -101,6 +103,7 @@ describe('study-sessions route', () => {
     });
 
     afterEach(() => {
+        consoleInfoSpy.mockRestore();
         consoleErrorSpy.mockRestore();
         consoleWarnSpy.mockRestore();
     });

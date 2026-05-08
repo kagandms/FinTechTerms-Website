@@ -148,14 +148,14 @@ describe('proxy locale headers', () => {
         expect(response.headers.get('Content-Language')).toBe('en');
     });
 
-    it('does not redirect unknown legacy term requests', async () => {
+    it('returns not found for unknown legacy term requests', async () => {
         const { NextRequest } = await import('next/server');
         const { proxy } = await import('@/proxy');
 
         const request = new NextRequest('https://fintechterms.app/term/missing-term?lang=en');
         const response = await proxy(request);
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(404);
         expect(response.headers.get('location')).toBeNull();
         expect(response.headers.get('Content-Language')).toBe('en');
     });

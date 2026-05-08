@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation';
-import { listGlossaryTerms, getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, listSeoTopics } from '@/lib/public-seo-catalog';
+import { getLocalizedTermDefinition, getLocalizedTermLabel, getLocalizedText, listGlossaryLetterGroups, listSeoTopics } from '@/lib/public-seo-catalog';
 import PublicSiblingLocaleLinks from '@/components/public-sibling-locale-links';
 import { serializeJsonLd } from '@/lib/json-ld';
 import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '@/lib/public-schema';
 import { buildSeoMetadata } from '@/lib/seo-metadata';
 import { buildAbsoluteUrl, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
-import type { Language, Term } from '@/types';
+import type { Language } from '@/types';
 
 const pageCopy: Record<Language, {
     title: string;
@@ -13,6 +13,9 @@ const pageCopy: Record<Language, {
     eyebrow: string;
     hero: string;
     startHere: string;
+    topicHub: string;
+    topicTerms: string;
+    browseByLetter: string;
 }> = {
     en: {
         title: 'FinTech glossary directory',
@@ -20,37 +23,30 @@ const pageCopy: Record<Language, {
         eyebrow: 'Glossary index',
         hero: 'Browse the full glossary with crawlable alphabetic sections.',
         startHere: 'Start with a topic hub',
+        topicHub: 'Topic hub',
+        topicTerms: 'Term index',
+        browseByLetter: 'Browse by first letter',
     },
     ru: {
         title: 'Каталог финтех-глоссария',
-        description: 'Серверно-рендеримый каталог финтех-глоссария со сканируемыми анкорами по платежам, open banking, криптоинфраструктуре и финансам.',
+        description: 'Серверно-рендеримый каталог финтех-глоссария со сканируемыми ссылками по платежам, открытому банкингу, криптоинфраструктуре и финансам.',
         eyebrow: 'Индекс глоссария',
         hero: 'Просматривайте полный глоссарий через сканируемые алфавитные секции.',
         startHere: 'Начните с тематического хаба',
+        topicHub: 'Хаб темы',
+        topicTerms: 'Индекс терминов',
+        browseByLetter: 'Просмотр по первой букве',
     },
     tr: {
         title: 'Fintek sözlük dizini',
-        description: 'Ödemeler, açık bankacılık, kripto altyapısı ve finans kümelerinde taranabilir anchor’lara sahip server-rendered fintek sözlük dizini.',
+        description: 'Ödemeler, açık bankacılık, kripto altyapısı ve finans kümelerinde taranabilir bağlantılara sahip, sunucuda işlenen fintek sözlük dizini.',
         eyebrow: 'Sözlük indeksi',
         hero: 'Tam sözlüğü taranabilir alfabetik bölümler üzerinden keşfedin.',
-        startHere: 'Bir topic hub ile başlayın',
+        startHere: 'Bir konu merkezi ile başlayın',
+        topicHub: 'Konu merkezi',
+        topicTerms: 'Terim indeksi',
+        browseByLetter: 'İlk harfe göre göz at',
     },
-};
-
-const groupTermsByLetter = (terms: readonly Term[], locale: Language): Array<{ letter: string; terms: readonly Term[] }> => {
-    const groupedTerms = new Map<string, Term[]>();
-
-    for (const term of terms) {
-        const label = getLocalizedTermLabel(term, locale).trim();
-        const letter = (label[0] ?? '#').toUpperCase();
-        const bucket = groupedTerms.get(letter) ?? [];
-        bucket.push(term);
-        groupedTerms.set(letter, bucket);
-    }
-
-    return Array.from(groupedTerms.entries())
-        .sort(([left], [right]) => left.localeCompare(right, locale))
-        .map(([letter, bucket]) => ({ letter, terms: bucket }));
 };
 
 export async function generateMetadata({
@@ -87,11 +83,11 @@ export default async function GlossaryPage({
 
     const locale = rawLocale;
     const copy = pageCopy[locale];
-    const [terms, topics] = await Promise.all([
-        listGlossaryTerms(locale),
+    const [groups, topics] = await Promise.all([
+        listGlossaryLetterGroups(locale),
         listSeoTopics(),
     ]);
-    const groups = groupTermsByLetter(terms, locale);
+    const terms = groups.flatMap((group) => group.terms);
 
     return (
         <div className="space-y-14 md:space-y-8">
@@ -109,54 +105,44 @@ export default async function GlossaryPage({
                 <h2 className="text-2xl font-bold text-slate-950">{copy.startHere}</h2>
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     {topics.map((topic) => (
-                        <a
+                        <article
                             key={topic.id}
-                            href={buildLocalePath(locale, `/topics/${topic.slug}`)}
                             className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
                         >
                             <p className="text-base font-semibold text-slate-950">{getLocalizedText(topic.title, locale)}</p>
                             <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedText(topic.description, locale)}</p>
-                        </a>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <a
+                                    href={buildLocalePath(locale, `/topics/${topic.slug}`)}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950"
+                                >
+                                    {copy.topicHub}
+                                </a>
+                                <a
+                                    href={buildLocalePath(locale, `/topics/${topic.slug}/terms`)}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-950"
+                                >
+                                    {copy.topicTerms}
+                                </a>
+                            </div>
+                        </article>
                     ))}
                 </div>
             </section>
 
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-bold text-slate-950">{copy.browseByLetter}</h2>
                 <div className="flex flex-wrap gap-2">
                     {groups.map((group) => (
                         <a
-                            key={group.letter}
-                            href={`#group-${group.letter}`}
+                            key={group.key}
+                            href={buildLocalePath(locale, `/glossary/letter/${group.key}`)}
                             className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 transition-colors hover:border-slate-900 hover:text-slate-950"
                         >
-                            {group.letter}
+                            {group.label}
                         </a>
                     ))}
                 </div>
-            </section>
-
-            <section className="space-y-6">
-                {groups.map((group) => (
-                    <div
-                        id={`group-${group.letter}`}
-                        key={group.letter}
-                        className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"
-                    >
-                        <h2 className="text-2xl font-black tracking-tight text-slate-950">{group.letter}</h2>
-                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {group.terms.map((term) => (
-                                <a
-                                    key={term.id}
-                                    href={buildLocalePath(locale, `/glossary/${term.slug}`)}
-                                    className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-900 hover:bg-slate-100"
-                                >
-                                    <p className="text-lg font-semibold text-slate-950">{getLocalizedTermLabel(term, locale)}</p>
-                                    <p className="mt-2 text-base leading-7 text-slate-600">{getLocalizedTermDefinition(term, locale)}</p>
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                ))}
             </section>
 
             <script

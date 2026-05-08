@@ -33,7 +33,10 @@ export const createAuthRouteClient = async (): Promise<AuthRouteClientContext | 
     }
 
     const pendingCookies: PendingCookie[] = [];
-    const timeoutFetch = createTimeoutFetch();
+    const timeoutFetch = createTimeoutFetch(undefined, {
+        dependency: 'supabase-auth',
+        route: 'auth-route',
+    });
     const supabase = createServerClient(
         publicEnv.supabaseUrl!,
         publicEnv.supabaseAnonKey!,

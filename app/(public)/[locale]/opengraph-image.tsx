@@ -31,13 +31,13 @@ const imageCopy: Record<Language, OpenGraphCopy> = {
         label: 'FinTechTerms RU',
         title: 'Многоязычный финтех-глоссарий',
         description: 'Тематические хабы, проверенные страницы терминов, ссылки на источники и публичные сигналы доверия.',
-        trustSignal: 'Серверно-рендеримый public SEO слой',
+        trustSignal: 'Серверно-рендеримый публичный SEO-слой',
     },
     tr: {
         label: 'FinTechTerms TR',
         title: 'Çok dilli fintek sözlüğü',
-        description: 'Topic hub yapısı, incelenmiş terim sayfaları, kaynak referansları ve kamusal güven sinyalleri.',
-        trustSignal: 'Server-rendered public SEO katmanı',
+        description: 'Konu merkezi yapısı, incelenmiş terim sayfaları, kaynak referansları ve kamusal güven sinyalleri.',
+        trustSignal: 'Sunucuda işlenen açık SEO katmanı',
     },
 };
 

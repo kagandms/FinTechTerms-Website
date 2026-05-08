@@ -11,8 +11,10 @@ import { AUTH_REQUIRED_MESSAGE } from '@/lib/auth/session';
 import {
     completeEphemeralIdempotentRequest,
     deleteEphemeralIdempotentRequest,
+    IdempotencyStoreUnavailableError,
     inspectEphemeralIdempotentRequest,
     reserveEphemeralIdempotentRequest,
+    type EphemeralIdempotencyCheck,
 } from '@/lib/ephemeral-idempotency';
 import { logger } from '@/lib/logger';
 import {
@@ -116,18 +118,26 @@ const replayCachedResponse = (
     },
 });
 
-const cacheStudySessionResponse = (
+const cacheStudySessionResponse = async (
     scope: string,
     idempotencyKey: string,
     statusCode: number,
     responseBody: SessionCacheableBody
-) => {
-    completeEphemeralIdempotentRequest({
-        scope,
-        idempotencyKey,
-        statusCode,
-        responseBody,
-    });
+): Promise<void> => {
+    try {
+        await completeEphemeralIdempotentRequest({
+            scope,
+            idempotencyKey,
+            statusCode,
+            responseBody,
+        });
+    } catch (error) {
+        logger.error('POST_STUDY_SESSIONS_IDEMPOTENCY_COMPLETE_FAILED', {
+            route: '/api/study-sessions',
+            error: error instanceof Error ? error : undefined,
+            retryable: true,
+        });
+    }
 };
 
 const buildCachedApiError = (
@@ -142,13 +152,13 @@ const buildCachedApiError = (
     retryable,
 });
 
-const respondWithCachedError = (
+const respondWithCachedError = async (
     scope: string,
     idempotencyKey: string,
     statusCode: number,
     responseBody: CachedApiErrorBody
 ) => {
-    cacheStudySessionResponse(scope, idempotencyKey, statusCode, responseBody);
+    await cacheStudySessionResponse(scope, idempotencyKey, statusCode, responseBody);
 
     return errorResponse({
         status: statusCode,
@@ -157,6 +167,74 @@ const respondWithCachedError = (
         requestId: responseBody.requestId,
         retryable: responseBody.retryable,
     });
+};
+
+const resolveIdempotencyResponse = async (
+    reservation: EphemeralIdempotencyCheck,
+    scope: string,
+    idempotencyKey: string,
+    requestId: string
+): Promise<NextResponse | null> => {
+    if (reservation.kind === 'proceed') {
+        return null;
+    }
+
+    if (reservation.kind === 'replay') {
+        if (reservation.isError) {
+            await deleteEphemeralIdempotentRequest(scope, idempotencyKey);
+            return null;
+        }
+
+        return replayCachedResponse(
+            reservation.responseBody as SessionCacheableBody,
+            reservation.statusCode,
+            requestId
+        );
+    }
+
+    return errorResponse({
+        status: 409,
+        code: reservation.code,
+        message: reservation.message,
+        requestId,
+        retryable: reservation.code === 'REQUEST_IN_PROGRESS',
+    });
+};
+
+const reserveStudySessionIdempotency = async (
+    scope: string,
+    idempotencyKey: string,
+    payload: SessionAction,
+    requestId: string
+): Promise<NextResponse | null> => {
+    const reservation = await reserveEphemeralIdempotentRequest({
+        scope,
+        idempotencyKey,
+        payload,
+    });
+    const reservationResponse = await resolveIdempotencyResponse(
+        reservation,
+        scope,
+        idempotencyKey,
+        requestId
+    );
+
+    if (reservationResponse || reservation.kind === 'proceed') {
+        return reservationResponse;
+    }
+
+    const retryReservation = await reserveEphemeralIdempotentRequest({
+        scope,
+        idempotencyKey,
+        payload,
+    });
+
+    return await resolveIdempotencyResponse(
+        retryReservation,
+        scope,
+        idempotencyKey,
+        requestId
+    );
 };
 
 const getSessionNotFoundMessage = (payload: SessionAction): string => (
@@ -171,7 +249,7 @@ const getSessionForbiddenMessage = (payload: SessionAction): string => (
         : 'Study session does not belong to this requester.'
 );
 
-const createSessionErrorResponse = (
+const createSessionErrorResponse = async (
     payload: SessionAction,
     requestId: string,
     scope: string,
@@ -179,7 +257,7 @@ const createSessionErrorResponse = (
     error: { code?: string | null; message?: string | null }
 ) => {
     if (error.code === 'P0002') {
-        return respondWithCachedError(
+        return await respondWithCachedError(
             scope,
             idempotencyKey,
             404,
@@ -193,7 +271,7 @@ const createSessionErrorResponse = (
     }
 
     if (error.code === '42501') {
-        return respondWithCachedError(
+        return await respondWithCachedError(
             scope,
             idempotencyKey,
             403,
@@ -349,32 +427,20 @@ export async function POST(request: Request) {
         const { user, hadCredentials } = await resolveRequestAuthState(request);
         const idempotencyScope = buildScopedIdempotencyKey(ip, payload, user?.id ?? null);
 
-        const reservation = inspectEphemeralIdempotentRequest({
+        const reservation = await inspectEphemeralIdempotentRequest({
             scope: idempotencyScope,
             idempotencyKey: payload.idempotency_key,
             payload,
         });
+        const idempotencyResponse = await resolveIdempotencyResponse(
+            reservation,
+            idempotencyScope,
+            payload.idempotency_key,
+            requestId
+        );
 
-        if (reservation.kind === 'replay') {
-            if (reservation.isError) {
-                deleteEphemeralIdempotentRequest(idempotencyScope, payload.idempotency_key);
-            } else {
-                return replayCachedResponse(
-                    reservation.responseBody as SessionCacheableBody,
-                    reservation.statusCode,
-                    requestId
-                );
-            }
-        }
-
-        if (reservation.kind === 'conflict') {
-            return errorResponse({
-                status: 409,
-                code: reservation.code,
-                message: reservation.message,
-                requestId,
-                retryable: reservation.code === 'REQUEST_IN_PROGRESS',
-            });
+        if (idempotencyResponse) {
+            return idempotencyResponse;
         }
 
         const rateLimitKey = user?.id
@@ -456,11 +522,17 @@ export async function POST(request: Request) {
             }
         }
 
-        reserveEphemeralIdempotentRequest({
-            scope: idempotencyScope,
-            idempotencyKey: payload.idempotency_key,
+        const reservationResponse = await reserveStudySessionIdempotency(
+            idempotencyScope,
+            payload.idempotency_key,
             payload,
-        });
+            requestId
+        );
+
+        if (reservationResponse) {
+            return reservationResponse;
+        }
+
         reservedScope = idempotencyScope;
         reservedIdempotencyKey = payload.idempotency_key;
 
@@ -468,7 +540,7 @@ export async function POST(request: Request) {
             try {
                 const responseBody = await startStudySession(supabase, payload, user?.id ?? null);
 
-                cacheStudySessionResponse(
+                await cacheStudySessionResponse(
                     idempotencyScope,
                     payload.idempotency_key,
                     200,
@@ -482,7 +554,7 @@ export async function POST(request: Request) {
                     && typeof error === 'object'
                     && 'code' in error
                 )
-                    ? createSessionErrorResponse(
+                    ? await createSessionErrorResponse(
                         payload,
                         requestId,
                         idempotencyScope,
@@ -507,7 +579,7 @@ export async function POST(request: Request) {
                 && typeof error === 'object'
                 && 'code' in error
             )
-                ? createSessionErrorResponse(
+                ? await createSessionErrorResponse(
                     payload,
                     requestId,
                     idempotencyScope,
@@ -524,11 +596,34 @@ export async function POST(request: Request) {
         }
 
         const responseBody = { success: true } as const;
-        cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 200, responseBody);
+        await cacheStudySessionResponse(idempotencyScope, payload.idempotency_key, 200, responseBody);
         return successResponse(responseBody, requestId);
     } catch (error) {
         if (reservedScope && reservedIdempotencyKey) {
-            deleteEphemeralIdempotentRequest(reservedScope, reservedIdempotencyKey);
+            await deleteEphemeralIdempotentRequest(reservedScope, reservedIdempotencyKey).catch((cleanupError) => {
+                logger.error('POST_STUDY_SESSIONS_IDEMPOTENCY_CLEANUP_FAILED', {
+                    requestId,
+                    route: '/api/study-sessions',
+                    error: cleanupError instanceof Error ? cleanupError : undefined,
+                    retryable: true,
+                });
+            });
+        }
+
+        if (error instanceof IdempotencyStoreUnavailableError) {
+            logger.error('POST_STUDY_SESSIONS_IDEMPOTENCY_STORE_UNAVAILABLE', {
+                requestId,
+                route: '/api/study-sessions',
+                error,
+                retryable: true,
+            });
+            return errorResponse({
+                status: 503,
+                code: 'IDEMPOTENCY_STORE_UNAVAILABLE',
+                message: 'Study session idempotency is temporarily unavailable.',
+                requestId,
+                retryable: true,
+            });
         }
 
         logger.error('POST_STUDY_SESSIONS_FAILED', {

@@ -33,6 +33,7 @@ export const buildOrganizationJsonLd = (locale: Language) => ({
     '@type': 'Organization',
     name: 'FinTechTerms',
     url: buildAbsoluteUrl(buildLocalePath(locale)),
+    logo: buildAbsoluteUrl('/icons/icon-512.png'),
     sameAs: [
         'https://t.me/FinTechTermsBot',
     ],

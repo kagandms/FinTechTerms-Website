@@ -219,37 +219,61 @@ export default function QuizPage({ nonce }: QuizPageProps) {
     const isRouteLoading = termsStatus === 'loading' && terms.length === 0;
     const showProgressSyncNotice = canUseReviewMode && progressStatus === 'loading' && terms.length > 0;
     const recentQuizHistory = userProgress.quiz_history;
-    const recentWrongTerms = recentQuizHistory
-        .filter((attempt) => !attempt.is_correct)
-        .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
-    const queuedMistakeTerms = mistakeReviewQueue
-        .map((termId) => terms.find((term) => term.id === termId))
-        .filter((term): term is typeof terms[number] => Boolean(term));
-    const historicalMistakeTerms = recentWrongTerms
-        .map((attempt) => terms.find((term) => term.id === attempt.term_id))
-        .filter((term): term is typeof terms[number] => Boolean(term));
-    const mistakeReviewPool = Array.from(
-        new Map(
-            [...queuedMistakeTerms, ...historicalMistakeTerms]
-                .map((term) => [term.id, term] as const)
-        ).values()
-    ).slice(0, 20);
+    const termById = React.useMemo(
+        () => new Map(terms.map((term) => [term.id, term] as const)),
+        [terms]
+    );
+    const favoriteIdSet = React.useMemo(
+        () => new Set(userProgress.favorites),
+        [userProgress.favorites]
+    );
+    const recentWrongAttempts = React.useMemo(
+        () => recentQuizHistory
+            .filter((attempt) => !attempt.is_correct)
+            .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()),
+        [recentQuizHistory]
+    );
+    const mistakeReviewPool = React.useMemo(() => {
+        const selectedTerms: typeof terms = [];
+        const selectedTermIds = new Set<string>();
+        const appendTerm = (termId: string): void => {
+            const term = termById.get(termId);
+            if (!term || selectedTermIds.has(term.id)) {
+                return;
+            }
 
-    const getQuickQuizPool = (category: string | null) => {
-        let pool = [...terms];
+            selectedTermIds.add(term.id);
+            selectedTerms.push(term);
+        };
 
-        if (useOnlyFavorites && canUseProgressData) {
-            pool = pool.filter((term) => userProgress.favorites.includes(term.id));
-        }
+        mistakeReviewQueue.forEach(appendTerm);
+        recentWrongAttempts.forEach((attempt) => appendTerm(attempt.term_id));
 
-        if (category && category !== 'all') {
-            pool = pool.filter((term) => term.category === category);
-        }
+        return selectedTerms.slice(0, 20);
+    }, [mistakeReviewQueue, recentWrongAttempts, termById]);
+
+    const getQuickQuizPool = React.useCallback((category: string | null) => {
+        const pool: typeof terms = [];
+
+        terms.forEach((term) => {
+            if (useOnlyFavorites && canUseProgressData && !favoriteIdSet.has(term.id)) {
+                return;
+            }
+
+            if (category && category !== 'all' && term.category !== category) {
+                return;
+            }
+
+            pool.push(term);
+        });
 
         return pool;
-    };
+    }, [canUseProgressData, favoriteIdSet, terms, useOnlyFavorites]);
 
-    const quickQuizPool = getQuickQuizPool(quickQuizCategory);
+    const quickQuizPool = React.useMemo(
+        () => getQuickQuizPool(quickQuizCategory),
+        [getQuickQuizPool, quickQuizCategory]
+    );
     const quickQuizAvailableCount = quickQuizPool.length;
     const currentTerm = sessionTerms[currentIndex];
     const currentMultipleChoiceQuestion = (
