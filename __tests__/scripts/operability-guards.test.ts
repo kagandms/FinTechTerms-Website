@@ -18,6 +18,7 @@ const syncRepoTermsScriptPath = path.join(process.cwd(), 'scripts/sync_repo_term
 const legacyPruneScriptPath = path.join(process.cwd(), 'tools/prune_supabase.js');
 const packageJsonPath = path.join(process.cwd(), 'package.json');
 const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+const renderConfigPath = path.join(process.cwd(), 'render.yaml');
 
 describe('operability guards', () => {
     const ciWorkflow = fs.readFileSync(ciWorkflowPath, 'utf8');
@@ -33,6 +34,7 @@ describe('operability guards', () => {
     const legacyPruneScript = fs.readFileSync(legacyPruneScriptPath, 'utf8');
     const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
     const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
+    const renderConfig = fs.readFileSync(renderConfigPath, 'utf8');
 
     it('requires release-evaluable runtime secrets before runtime validation and build', () => {
         expect(ciWorkflow).toContain('name: Check Release-Evaluable Runtime Secrets');
@@ -76,6 +78,12 @@ describe('operability guards', () => {
     it('checks bot container health against the readiness endpoint', () => {
         expect(botDockerfile).toContain('/health');
         expect(botDockerfile).not.toContain("socket.create_connection(('localhost'");
+    });
+
+    it('keeps the Telegram bot Render service on the free plan', () => {
+        expect(renderConfig).toMatch(
+            /name:\s+fintechterms-telegram-bot[\s\S]*rootDir:\s+telegram-bot[\s\S]*plan:\s+free/
+        );
     });
 
     it('guards support artifact manifests against leaked server sourcemaps', () => {

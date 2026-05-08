@@ -50,6 +50,55 @@ const RATE_LIMITER_UNAVAILABLE_MESSAGE = 'Rate limiting is temporarily unavailab
 const FAVORITES_LIMIT_REACHED_MESSAGE = 'Favorite limit reached. Complete your member setup to save more terms.';
 type FavoriteMutationClient = NonNullable<Awaited<ReturnType<typeof createRequestScopedClient>>>;
 
+type FavoriteRouteRateLimitResult =
+    | { status: 'allowed'; headers: HeadersInit }
+    | { status: 'blocked'; response: Response };
+
+const enforceFavoriteRouteRateLimit = async (
+    ip: string,
+    requestId: string
+): Promise<FavoriteRouteRateLimitResult> => {
+    const limitCheck = await apiRouteRateLimiter.check(`favorites:${ip}`);
+
+    if (isRateLimiterUnavailable(limitCheck)) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: RATE_LIMITER_UNAVAILABLE_MESSAGE,
+                requestId,
+                retryable: true,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            }),
+        };
+    }
+
+    const headers = {
+        ...GLOBAL_RATE_LIMIT_HEADERS,
+        'X-RateLimit-Remaining': limitCheck.remaining.toString(),
+    };
+
+    if (!limitCheck.allowed) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 429,
+                code: 'RATE_LIMITED',
+                message: 'Rate limit exceeded.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...headers,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            }),
+        };
+    }
+
+    return { status: 'allowed', headers };
+};
+
 const markFavoriteFailure = async (
     supabaseAdmin: FavoriteMutationClient,
     userId: string,
@@ -86,6 +135,12 @@ export async function POST(request: Request) {
     let headers: HeadersInit = GLOBAL_RATE_LIMIT_HEADERS;
     let requestScopedClient: FavoriteMutationClient | null = null;
 
+    const routeLimit = await enforceFavoriteRouteRateLimit(ip, requestId);
+    if (routeLimit.status === 'blocked') {
+        return routeLimit.response;
+    }
+    headers = routeLimit.headers;
+
     let body: unknown;
 
     try {
@@ -101,7 +156,7 @@ export async function POST(request: Request) {
             message: 'Invalid JSON payload.',
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -117,7 +172,7 @@ export async function POST(request: Request) {
             message: 'termId is required.',
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -130,7 +185,7 @@ export async function POST(request: Request) {
                 message: memberState.unavailable.message,
                 requestId,
                 retryable: true,
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
+                headers,
             });
         }
 
@@ -142,43 +197,11 @@ export async function POST(request: Request) {
                 message: AUTH_REQUIRED_MESSAGE,
                 requestId,
                 retryable: false,
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
+                headers,
             });
         }
         authenticatedUserId = user.id;
         const { termId, shouldFavorite, idempotencyKey } = validatedData.data;
-
-        const limitCheck = await apiRouteRateLimiter.check(`favorites:${ip}`);
-
-        if (isRateLimiterUnavailable(limitCheck)) {
-            return errorResponse({
-                status: 503,
-                code: 'RATE_LIMITER_UNAVAILABLE',
-                message: RATE_LIMITER_UNAVAILABLE_MESSAGE,
-                requestId,
-                retryable: true,
-                headers: GLOBAL_RATE_LIMIT_HEADERS,
-            });
-        }
-
-        headers = {
-            ...GLOBAL_RATE_LIMIT_HEADERS,
-            'X-RateLimit-Remaining': limitCheck.remaining.toString(),
-        };
-
-        if (!limitCheck.allowed) {
-            return errorResponse({
-                status: 429,
-                code: 'RATE_LIMITED',
-                message: 'Rate limit exceeded.',
-                requestId,
-                retryable: true,
-                headers: {
-                    ...headers,
-                    'Retry-After': limitCheck.retryAfter.toString(),
-                },
-            });
-        }
 
         const writeLimitCheck = await favoritesMutationRateLimiter.check(user.id);
 

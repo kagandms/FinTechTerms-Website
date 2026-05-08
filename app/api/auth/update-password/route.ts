@@ -37,6 +37,34 @@ const UPDATE_PASSWORD_HEADERS = {
     'X-RateLimit-Policy': '5;w=600',
 };
 
+const CURRENT_PASSWORD_VERIFICATION_TIMEOUT_MS = 5_000;
+
+class CurrentPasswordVerificationTimeoutError extends Error {
+    constructor() {
+        super('Current password verification timed out.');
+        this.name = 'CurrentPasswordVerificationTimeoutError';
+    }
+}
+
+const withCurrentPasswordVerificationTimeout = async <Result>(
+    operation: Promise<Result>
+): Promise<Result> => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeout = new Promise<never>((_resolve, reject) => {
+        timeoutId = setTimeout(() => {
+            reject(new CurrentPasswordVerificationTimeoutError());
+        }, CURRENT_PASSWORD_VERIFICATION_TIMEOUT_MS);
+    });
+
+    try {
+        return await Promise.race([operation, timeout]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+};
+
 export async function POST(request: Request) {
     const requestId = createRequestId(request);
     const originResponse = enforceSameOriginRoute(request, {
@@ -141,10 +169,29 @@ export async function POST(request: Request) {
                     },
                 }
             );
-            const { error: signInError } = await verificationClient.auth.signInWithPassword({
-                email: userState.user.email ?? '',
-                password: currentPassword,
-            });
+            let signInError: unknown;
+            try {
+                const verificationResult = await withCurrentPasswordVerificationTimeout(
+                    verificationClient.auth.signInWithPassword({
+                        email: userState.user.email ?? '',
+                        password: currentPassword,
+                    })
+                );
+                signInError = verificationResult.error;
+            } catch (error) {
+                if (error instanceof CurrentPasswordVerificationTimeoutError) {
+                    return errorResponse({
+                        status: 503,
+                        code: 'CURRENT_PASSWORD_VERIFICATION_TIMEOUT',
+                        message: 'Current password verification timed out.',
+                        requestId,
+                        retryable: true,
+                        headers: UPDATE_PASSWORD_HEADERS,
+                    });
+                }
+
+                throw error;
+            }
 
             if (signInError) {
                 return errorResponse({

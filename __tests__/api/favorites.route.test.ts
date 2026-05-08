@@ -46,6 +46,15 @@ const createPostRequest = (body: Record<string, unknown>) => new Request('http:/
     body: JSON.stringify(body),
 });
 
+const createMalformedPostRequest = () => new Request('http://localhost:3000/api/favorites', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'x-forwarded-for': '203.0.113.10',
+    },
+    body: '{',
+});
+
 describe('favorites route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -162,6 +171,28 @@ describe('favorites route', () => {
 
         routeLimitSpy.mockRestore();
         writeLimitSpy.mockRestore();
+    });
+
+    it('rate limits POST requests before parsing malformed JSON bodies', async () => {
+        const routeLimitSpy = jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: false,
+        });
+
+        const { POST } = await import('@/app/api/favorites/route');
+        const response = await POST(createMalformedPostRequest());
+        const body = await response.json();
+
+        expect(response.status).toBe(429);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITED',
+            retryable: true,
+        });
+        expect(mockResolveRequestMemberEntitlements).not.toHaveBeenCalled();
+
+        routeLimitSpy.mockRestore();
     });
 
     it('uses the authoritative favorite mutation RPC for successful writes', async () => {

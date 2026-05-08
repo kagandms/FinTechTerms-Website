@@ -1,7 +1,35 @@
 import { z } from 'zod';
 import { QUIZ_TYPE_VALUES } from '@/types';
 
-const isValidIsoTimestamp = (value: string): boolean => !Number.isNaN(Date.parse(value));
+const ISO_TIMESTAMP_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(\.\d{1,9})?(Z|[+-]([01]\d|2[0-3]):([0-5]\d))$/;
+
+const isValidCalendarDate = (
+    year: number,
+    month: number,
+    day: number
+): boolean => {
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return date.getUTCFullYear() === year
+        && date.getUTCMonth() === month - 1
+        && date.getUTCDate() === day;
+};
+
+const isValidIsoTimestamp = (value: string): boolean => {
+    const match = ISO_TIMESTAMP_PATTERN.exec(value);
+
+    if (!match) {
+        return false;
+    }
+
+    const [, year, month, day] = match;
+
+    return isValidCalendarDate(
+        Number(year),
+        Number(month),
+        Number(day)
+    ) && Number.isFinite(Date.parse(value));
+};
 
 const ContextTagValueSchema = z.union([
     z.string(),

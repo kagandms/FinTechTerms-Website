@@ -41,6 +41,18 @@ const createRequest = (body: Record<string, unknown>) => new Request(
     }
 );
 
+const createMalformedRequest = () => new Request(
+    'http://localhost:3000/api/record-quiz',
+    {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-forwarded-for': '203.0.113.10',
+        },
+        body: '{',
+    }
+);
+
 const createValidPayload = (overrides: Record<string, unknown> = {}) => ({
     term_id: 'term_123',
     is_correct: true,
@@ -100,6 +112,29 @@ describe('record-quiz route', () => {
         expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 
+    it('rate limits requests before parsing malformed JSON bodies', async () => {
+        const routeLimitSpy = jest.spyOn(apiRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: false,
+        });
+
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createMalformedRequest() as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(429);
+        expect(body).toMatchObject({
+            code: 'RATE_LIMITED',
+            retryable: true,
+        });
+        expect(mockResolveRequestMemberEntitlements).not.toHaveBeenCalled();
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
+
+        routeLimitSpy.mockRestore();
+    });
+
     it('rejects partial study-session context when only session_id is provided', async () => {
         const { POST } = await import('@/app/api/record-quiz/route');
         const response = await POST(createRequest(createValidPayload({
@@ -126,6 +161,26 @@ describe('record-quiz route', () => {
             code: 'VALIDATION_ERROR',
             retryable: false,
         });
+    });
+
+    it.each([
+        ['date-only timestamp', '2026-03-11'],
+        ['timestamp without timezone', '2026-03-11T09:30:00'],
+        ['invalid calendar date', '2026-02-31T09:30:00.000Z'],
+        ['RFC 2822 timestamp', 'Wed, 11 Mar 2026 09:30:00 GMT'],
+    ])('rejects non-ISO occurred_at values: %s', async (_label, occurredAt) => {
+        const { POST } = await import('@/app/api/record-quiz/route');
+        const response = await POST(createRequest(createValidPayload({
+            occurred_at: occurredAt,
+        })) as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(body).toMatchObject({
+            code: 'VALIDATION_ERROR',
+            retryable: false,
+        });
+        expect(mockReserveIdempotentRequest).not.toHaveBeenCalled();
     });
 
     it('replays cached responses after route and write rate limits pass', async () => {

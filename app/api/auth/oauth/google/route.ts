@@ -7,15 +7,17 @@ import {
     createAuthRouteClient,
     createAuthUnavailableResponse,
 } from '@/lib/auth/route-handler';
-import { resolveSafeAuthNextPath } from '@/lib/auth/redirect-target';
+import {
+    resolveAuthRequestOrigin,
+    resolveSafeAuthNextPath,
+} from '@/lib/auth/redirect-target';
 
 export const dynamic = 'force-dynamic';
 
 const resolveGoogleRedirect = (request: Request): string => {
     const requestUrl = new URL(request.url);
     const requestedRedirect = requestUrl.searchParams.get('redirectTo');
-    const forwardedHost = request.headers.get('x-forwarded-host');
-    const origin = forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
+    const origin = resolveAuthRequestOrigin(request);
 
     const nextPath = resolveSafeAuthNextPath(requestedRedirect, origin);
 

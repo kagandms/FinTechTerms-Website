@@ -63,6 +63,55 @@ type OccurredAtNormalizationResult =
     | { ok: true; value: string | null }
     | { ok: false; driftDirection: 'future' | 'past'; driftSeconds: number };
 
+type RecordQuizRouteRateLimitResult =
+    | { status: 'allowed'; headers: HeadersInit }
+    | { status: 'blocked'; response: Response };
+
+const enforceRecordQuizRouteRateLimit = async (
+    ip: string,
+    requestId: string
+): Promise<RecordQuizRouteRateLimitResult> => {
+    const limitCheck = await apiRouteRateLimiter.check(`record-quiz:${ip}`);
+
+    if (isRateLimiterUnavailable(limitCheck)) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Rate limiting is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: GLOBAL_RATE_LIMIT_HEADERS,
+            }),
+        };
+    }
+
+    const headers = {
+        ...GLOBAL_RATE_LIMIT_HEADERS,
+        'X-RateLimit-Remaining': limitCheck.remaining.toString(),
+    };
+
+    if (!limitCheck.allowed) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 429,
+                code: 'RATE_LIMITED',
+                message: 'Rate limit exceeded.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...headers,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            }),
+        };
+    }
+
+    return { status: 'allowed', headers };
+};
+
 const normalizeOccurredAt = (
     occurredAt: string | null | undefined,
     receivedAtMs: number,
@@ -197,6 +246,12 @@ export async function POST(request: NextRequest) {
     const ip = getClientIp(request);
     const receivedAtMs = Date.now();
     let mutationClient: QuizMutationClient | null = null;
+    const routeLimit = await enforceRecordQuizRouteRateLimit(ip, requestId);
+    if (routeLimit.status === 'blocked') {
+        return routeLimit.response;
+    }
+    const headers = routeLimit.headers;
+
     let body: unknown;
     try {
         body = await request.json();
@@ -213,7 +268,7 @@ export async function POST(request: NextRequest) {
             message: 'Invalid JSON payload.',
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -231,7 +286,7 @@ export async function POST(request: NextRequest) {
             message: 'Quiz attempt payload is invalid.',
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -244,7 +299,7 @@ export async function POST(request: NextRequest) {
             message: memberState.unavailable.message,
             requestId,
             retryable: true,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -256,7 +311,7 @@ export async function POST(request: NextRequest) {
             message: AUTH_REQUIRED_MESSAGE,
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -267,7 +322,7 @@ export async function POST(request: NextRequest) {
             message: 'Complete your member setup to unlock review mode.',
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
 
@@ -294,42 +349,10 @@ export async function POST(request: NextRequest) {
             message: OCCURRED_AT_OUT_OF_WINDOW_MESSAGE,
             requestId,
             retryable: false,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
+            headers,
         });
     }
     const normalizedOccurredAt = occurredAtResult.value;
-
-    const limitCheck = await apiRouteRateLimiter.check(`record-quiz:${ip}`);
-
-    if (isRateLimiterUnavailable(limitCheck)) {
-        return errorResponse({
-            status: 503,
-            code: 'RATE_LIMITER_UNAVAILABLE',
-            message: 'Rate limiting is temporarily unavailable.',
-            requestId,
-            retryable: true,
-            headers: GLOBAL_RATE_LIMIT_HEADERS,
-        });
-    }
-
-    const headers = {
-        ...GLOBAL_RATE_LIMIT_HEADERS,
-        'X-RateLimit-Remaining': limitCheck.remaining.toString(),
-    };
-
-    if (!limitCheck.allowed) {
-        return errorResponse({
-            status: 429,
-            code: 'RATE_LIMITED',
-            message: 'Rate limit exceeded.',
-            requestId,
-            retryable: true,
-            headers: {
-                ...headers,
-                'Retry-After': limitCheck.retryAfter.toString(),
-            },
-        });
-    }
 
     const writeLimitCheck = await quizMutationRateLimiter.check(user.id);
 

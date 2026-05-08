@@ -35,6 +35,18 @@ const createRequest = (body: Record<string, unknown>, headers?: Record<string, s
     }
 );
 
+const createMalformedRequest = () => new Request(
+    'http://localhost:3000/api/study-sessions',
+    {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-forwarded-for': '203.0.113.10',
+        },
+        body: '{',
+    }
+);
+
 const createStartPayload = (overrides: Record<string, unknown> = {}) => ({
     action: 'start',
     anonymousId: 'anon_123',
@@ -153,6 +165,30 @@ describe('study-sessions route', () => {
             retryable: false,
         });
         expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
+    });
+
+    it('rate limits requests before parsing malformed JSON bodies', async () => {
+        const routeLimitSpy = jest.spyOn(studySessionRouteRateLimiter, 'check').mockResolvedValueOnce({
+            allowed: false,
+            remaining: 0,
+            retryAfter: 60,
+            unavailable: false,
+        });
+
+        const { POST } = await import('@/app/api/study-sessions/route');
+        const response = await POST(createMalformedRequest());
+        const body = await response.json();
+
+        expect(response.status).toBe(429);
+        expect(body).toMatchObject({
+            code: 'STUDY_SESSION_RATE_LIMITED',
+            retryable: true,
+        });
+        expect(mockHasConfiguredStudySessionEnv).not.toHaveBeenCalled();
+        expect(mockResolveRequestAuthState).not.toHaveBeenCalled();
+        expect(mockCreateRequestScopedClient).not.toHaveBeenCalled();
+
+        routeLimitSpy.mockRestore();
     });
 
     it('does not leak an in-progress reservation when the request-scoped client is unavailable', async () => {

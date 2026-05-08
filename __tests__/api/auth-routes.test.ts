@@ -20,6 +20,12 @@ const mockAuthVerifyOtpCheck = jest.fn();
 const mockAuthRecoveryExchangeCheck = jest.fn();
 const mockAuthUpdatePasswordCheck = jest.fn();
 const mockCookieGet = jest.fn();
+const mockCreateSupabaseClient = jest.fn();
+const mockVerificationSignInWithPassword = jest.fn();
+
+jest.mock('@supabase/supabase-js', () => ({
+    createClient: (...args: unknown[]) => mockCreateSupabaseClient(...args),
+}));
 
 jest.mock('@/lib/auth/route-handler', () => ({
     createAuthRouteClient: () => mockCreateAuthRouteClient(),
@@ -91,6 +97,8 @@ describe('auth routes hardening', () => {
         jest.clearAllMocks();
         mockGetPublicEnv.mockReturnValue({
             siteUrl: 'http://localhost:3000',
+            supabaseUrl: 'https://supabase.example',
+            supabaseAnonKey: 'anon-key',
         });
         mockAuthLoginCheck.mockResolvedValue({
             allowed: true,
@@ -135,6 +143,19 @@ describe('auth routes hardening', () => {
             unavailable: false,
         });
         mockCookieGet.mockReturnValue(undefined);
+        mockVerificationSignInWithPassword.mockResolvedValue({
+            data: { user: { id: 'user-1' } },
+            error: null,
+        });
+        mockCreateSupabaseClient.mockReturnValue({
+            auth: {
+                signInWithPassword: mockVerificationSignInWithPassword,
+            },
+        });
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     it('rejects cross-origin login requests before auth execution', async () => {
@@ -471,6 +492,65 @@ describe('auth routes hardening', () => {
         expect(body).toMatchObject({
             code: 'CURRENT_PASSWORD_REQUIRED',
             retryable: false,
+        });
+        expect(updateUser).not.toHaveBeenCalled();
+    });
+
+    it('times out current password verification before updating the password', async () => {
+        jest.useFakeTimers();
+        const updateUser = jest.fn();
+        mockVerificationSignInWithPassword.mockReturnValue(new Promise(() => {}));
+        mockCreateAuthRouteClient.mockResolvedValue({
+            supabase: {
+                auth: {
+                    getUser: jest.fn().mockResolvedValue({
+                        data: {
+                            user: {
+                                id: 'user-1',
+                                email: 'user@example.com',
+                                app_metadata: {
+                                    provider: 'email',
+                                    providers: ['email'],
+                                },
+                            },
+                        },
+                        error: null,
+                    }),
+                    updateUser,
+                },
+            },
+            applyCookies: <T extends Response>(response: T) => response,
+        });
+
+        const { POST } = await import('@/app/api/auth/update-password/route');
+        const responsePromise = POST(createJsonRequest('/api/auth/update-password', {
+            currentPassword: 'OldPassword1!',
+            password: 'NewPassword1!',
+        }));
+
+        await jest.advanceTimersByTimeAsync(5_000);
+        const response = await responsePromise;
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            code: 'CURRENT_PASSWORD_VERIFICATION_TIMEOUT',
+            retryable: true,
+        });
+        expect(mockCreateSupabaseClient).toHaveBeenCalledWith(
+            'https://supabase.example',
+            'anon-key',
+            expect.objectContaining({
+                auth: expect.objectContaining({
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                }),
+            })
+        );
+        expect(mockVerificationSignInWithPassword).toHaveBeenCalledWith({
+            email: 'user@example.com',
+            password: 'OldPassword1!',
         });
         expect(updateUser).not.toHaveBeenCalled();
     });

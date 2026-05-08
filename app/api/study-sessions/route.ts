@@ -63,6 +63,10 @@ const STUDY_SESSION_RATE_LIMIT_HEADERS = {
     'X-RateLimit-Policy': '30;w=60',
 };
 
+type StudySessionRateLimitResult =
+    | { status: 'allowed' }
+    | { status: 'blocked'; response: Response };
+
 type SessionAction = z.infer<typeof SessionActionSchema>;
 type StartSessionAction = z.infer<typeof StartSessionSchema>;
 type SessionFollowUpAction = Extract<SessionAction, { action: 'heartbeat' | 'end' }>;
@@ -84,6 +88,46 @@ type SessionCacheableBody =
     | StartSessionResponseBody
     | { success: true }
     | CachedApiErrorBody;
+
+const enforceStudySessionBodyRateLimit = async (
+    ip: string,
+    requestId: string
+): Promise<StudySessionRateLimitResult> => {
+    const limitCheck = await studySessionRouteRateLimiter.check(`body:${ip}`);
+
+    if (isRateLimiterUnavailable(limitCheck)) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 503,
+                code: 'RATE_LIMITER_UNAVAILABLE',
+                message: 'Rate limiting is temporarily unavailable.',
+                requestId,
+                retryable: true,
+                headers: STUDY_SESSION_RATE_LIMIT_HEADERS,
+            }),
+        };
+    }
+
+    if (!limitCheck.allowed) {
+        return {
+            status: 'blocked',
+            response: errorResponse({
+                status: 429,
+                code: 'STUDY_SESSION_RATE_LIMITED',
+                message: 'Too many study session requests. Please slow down.',
+                requestId,
+                retryable: true,
+                headers: {
+                    ...STUDY_SESSION_RATE_LIMIT_HEADERS,
+                    'Retry-After': limitCheck.retryAfter.toString(),
+                },
+            }),
+        };
+    }
+
+    return { status: 'allowed' };
+};
 
 const buildScopedIdempotencyKey = (
     ip: string,
@@ -375,6 +419,11 @@ export async function POST(request: Request) {
     let body: unknown;
     let reservedScope: string | null = null;
     let reservedIdempotencyKey: string | null = null;
+
+    const bodyRateLimit = await enforceStudySessionBodyRateLimit(ip, requestId);
+    if (bodyRateLimit.status === 'blocked') {
+        return bodyRateLimit.response;
+    }
 
     try {
         body = await request.json();

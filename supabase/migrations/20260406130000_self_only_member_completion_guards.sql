@@ -10,6 +10,8 @@ declare
     v_request_role text := coalesce(auth.role(), current_setting('request.jwt.claim.role', true), '');
     v_caller_user_id uuid := auth.uid();
     v_target_user_id uuid := coalesce(p_user_id, v_caller_user_id);
+    v_full_name text;
+    v_email text;
     v_birth_date date;
     v_today date := timezone('utc', now())::date;
 begin
@@ -23,10 +25,27 @@ begin
             using errcode = '42501';
     end if;
 
-    select birth_date
-    into v_birth_date
+    select full_name, birth_date
+    into v_full_name, v_birth_date
     from public.profiles
     where id = v_target_user_id;
+
+    select email
+    into v_email
+    from auth.users
+    where id = v_target_user_id;
+
+    if nullif(btrim(v_full_name), '') is null then
+        return false;
+    end if;
+
+    if array_length(regexp_split_to_array(btrim(v_full_name), '[[:space:]]+'), 1) < 2 then
+        return false;
+    end if;
+
+    if nullif(btrim(v_email), '') is null then
+        return false;
+    end if;
 
     if v_birth_date is null then
         return false;
