@@ -130,17 +130,19 @@ describe('public SEO metadata and route assets', () => {
         }
     });
 
-    it('keeps root app shell imports behind dynamic boundaries', () => {
+    it('keeps the root URL attached to the app homepage shell', () => {
         const rootLayoutSource = fs.readFileSync(rootLayoutPath, 'utf8');
         const rootPageSource = fs.readFileSync(rootPagePath, 'utf8');
 
-        expect(rootLayoutSource).not.toContain("@/contexts/AuthContext");
-        expect(rootLayoutSource).not.toContain("@/contexts/SRSContext");
-        expect(rootLayoutSource).not.toContain("@/components/SessionTracker");
-        expect(rootLayoutSource).not.toContain("@/components/root-app-shell");
+        expect(rootLayoutSource).toContain("@/contexts/AuthContext");
+        expect(rootLayoutSource).toContain("@/contexts/SRSContext");
+        expect(rootLayoutSource).toContain("@/components/SessionTracker");
+        expect(rootLayoutSource).toContain("@/components/BottomNav");
+        expect(rootLayoutSource).toContain("getThemeBootstrapScript");
         expect(rootPageSource).not.toContain("nextDynamic");
-        expect(rootPageSource).not.toContain("@/app/HomeClient");
-        expect(rootPageSource).toContain("Public SEO entry points");
+        expect(rootPageSource).toContain("@/app/HomeClient");
+        expect(rootPageSource).toContain("getLearningStats");
+        expect(rootPageSource).not.toContain("Public SEO entry points");
     });
 
     it('keeps client Sentry instrumentation off the initial SEO render path', () => {
