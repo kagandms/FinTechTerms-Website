@@ -12,7 +12,8 @@ import Link from 'next/link';
 import { ContextTagList, MarketBadge } from '@/components/TermTaxonomy';
 import { formatTranslation } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
-import { fetchTermExplainResponse } from '@/lib/ai/client';
+import { fetchTermExplainResponse, isRecoverableAiClientError } from '@/lib/ai/client';
+import { buildLocalTermExplainFallback } from '@/lib/ai/local-fallbacks';
 import { getAiUiCopy } from '@/lib/ai-copy';
 import {
     getCachedTermExplainResponse,
@@ -193,6 +194,21 @@ export default function SmartCard({ term, showFullDetails = false }: SmartCardPr
                 : null);
             setAiExplainStatus('ready');
         } catch (error) {
+            if (isRecoverableAiClientError(error)) {
+                const fallbackResponse = buildLocalTermExplainFallback(term, language, mode);
+                logger.warn('SMART_CARD_AI_CLIENT_FALLBACK_USED', {
+                    route: 'SmartCard',
+                    termId: term.id,
+                    mode,
+                    language,
+                    error: error instanceof Error ? error : undefined,
+                });
+                setAiExplainResponse(fallbackResponse);
+                setAiExplainNotice(fallbackExplainNoticeByLanguage[language] ?? fallbackExplainNoticeByLanguage.en);
+                setAiExplainStatus('ready');
+                return;
+            }
+
             setAiExplainStatus('error');
             setAiExplainError(error instanceof Error ? error.message : aiCopy.genericError);
         }

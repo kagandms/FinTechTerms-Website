@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { useAuthLogic } from '@/hooks/useAuthLogic';
 
@@ -183,5 +183,31 @@ describe('useAuthLogic', () => {
             'The request could not be completed right now. Please try again.',
             'error'
         );
+    });
+
+    it('surfaces OAuth callback errors through the auth modal', async () => {
+        mockUseAuth.mockReturnValue({
+            user: null,
+            isAuthenticated: false,
+            login: jest.fn(),
+            signInWithGoogle: jest.fn(),
+            register: jest.fn(),
+            logout: jest.fn(),
+            verifyOTP: jest.fn(),
+            resendOTP: jest.fn(),
+            pendingVerificationEmail: null,
+            cancelVerification: jest.fn(),
+            resetPassword: jest.fn(),
+            updatePassword: jest.fn(),
+            isPasswordRecovery: false,
+        });
+        mockUseSearchParams.mockReturnValue(new URLSearchParams('error_description=Email%20not%20confirmed'));
+
+        const { result } = renderHook(() => useAuthLogic());
+
+        await waitFor(() => {
+            expect(result.current.showAuthModal).toBe(true);
+            expect(result.current.authError).toBe('Email address not confirmed.');
+        });
     });
 });

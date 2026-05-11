@@ -10,7 +10,6 @@ import React, {
     type ReactNode,
 } from 'react';
 import { getPublicEnv, hasConfiguredPublicSupabaseEnv } from '@/lib/public-env';
-import { createBrowserClient } from '@supabase/ssr';
 import { logger } from '@/lib/logger';
 import { clearLegacyUserProgress, clearStoredUserProgress } from '@/utils/storage';
 import {
@@ -19,6 +18,7 @@ import {
 } from '@/lib/member-entitlements';
 import { type AuthenticatedUser } from '@/lib/auth/user';
 import { type AuthSessionState } from '@/lib/auth/session-state.types';
+import { buildGoogleOAuthStartPath } from '@/lib/auth/google-oauth';
 
 interface AuthContextType {
     user: AuthenticatedUser | null;
@@ -438,30 +438,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
         try {
             const env = getPublicEnv();
-            if (!env.supabaseUrl || !env.supabaseAnonKey) {
-                return { success: false, error: 'Supabase URL/Key missing' };
+            if (!hasConfiguredPublicSupabaseEnv(env)) {
+                return { success: false, error: 'AUTH_UNAVAILABLE' };
             }
-            
-            // Initiate OAuth flow directly from the client to preserve PKCE verification state in local storage/cookies
-            // Point directly to /profile so the browser client can automatically handle the PKCE callback via URL hash!
-            const supabaseBrowser = createBrowserClient(env.supabaseUrl, env.supabaseAnonKey);
-            const redirectTo = `${window.location.origin}/profile?complete=1`;
-            
-            const { error } = await supabaseBrowser.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo,
-                },
-            });
-            
-            if (error) throw error;
+
+            window.location.assign(buildGoogleOAuthStartPath());
             return { success: true };
         } catch (error) {
             logger.error('AUTH_GOOGLE_SIGNIN_EXCEPTION', {
                 route: 'AuthProvider',
                 error: error instanceof Error ? error : undefined,
             });
-            return { success: false, error: 'Google sign-in failed' };
+            return { success: false, error: 'AUTH_SERVICE_ERROR' };
         }
     }, []);
 

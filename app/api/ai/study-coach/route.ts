@@ -41,7 +41,7 @@ const RATE_LIMIT_HEADERS = {
     'X-RateLimit-Policy': '6;w=60',
     'Cache-Control': 'private, no-store',
 };
-const AI_ROUTE_LATENCY_BUDGET_MS = 12_000;
+const AI_ROUTE_LATENCY_BUDGET_MS = 9_000;
 
 export async function POST(request: Request) {
     const requestId = createRequestId(request);

@@ -7,8 +7,8 @@ import { getServerEnv, hasConfiguredAiEnv } from '@/lib/server-env';
 import { logger } from '@/lib/logger';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_AI_TIMEOUT_MS = 10_000;
-const DEFAULT_AI_LATENCY_BUDGET_MS = 12_000;
+const DEFAULT_AI_TIMEOUT_MS = 8_000;
+const DEFAULT_AI_LATENCY_BUDGET_MS = 9_000;
 const MAX_AI_RESPONSE_CACHE_ENTRIES = 100;
 
 interface OpenRouterMessage {

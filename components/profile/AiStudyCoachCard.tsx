@@ -7,7 +7,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useSRS } from '@/contexts/SRSContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAiUiCopy } from '@/lib/ai-copy';
-import { fetchStudyCoachResponse } from '@/lib/ai/client';
+import { fetchStudyCoachResponse, isRecoverableAiClientError } from '@/lib/ai/client';
+import { buildLocalStudyCoachFallback } from '@/lib/ai/local-fallbacks';
+import { logger } from '@/lib/logger';
 import type { LearningStatsActionResult } from '@/types/gamification';
 
 const fallbackCoachNoticeByLanguage = {
@@ -79,6 +81,7 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
         setIsLoading(true);
         setError(null);
         setNotice(null);
+        setCoachResponse(null);
 
         try {
             const response = await fetchStudyCoachResponse(requestPayload);
@@ -87,6 +90,22 @@ export default function AiStudyCoachCard({ learningStats }: AiStudyCoachCardProp
                 ? fallbackCoachNoticeByLanguage[language] ?? fallbackCoachNoticeByLanguage.en
                 : null);
         } catch (nextError) {
+            if (isRecoverableAiClientError(nextError)) {
+                logger.warn('AI_STUDY_COACH_CLIENT_FALLBACK_USED', {
+                    route: 'AiStudyCoachCard',
+                    language,
+                    error: nextError instanceof Error ? nextError : undefined,
+                });
+                setCoachResponse({
+                    coach: buildLocalStudyCoachFallback(language, requestPayload),
+                    model: null,
+                    usedFallback: true,
+                    degraded: true,
+                });
+                setNotice(fallbackCoachNoticeByLanguage[language] ?? fallbackCoachNoticeByLanguage.en);
+                return;
+            }
+
             setError(nextError instanceof Error ? nextError.message : aiCopy.genericError);
         } finally {
             setIsLoading(false);

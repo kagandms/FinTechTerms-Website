@@ -6,7 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { AuthFormState } from '@/components/features/auth/types';
 import { resetAllData } from '@/utils/storage';
 import { isValidRegistrationBirthDate } from '@/lib/validations/auth';
-import { getLocalizedAuthError } from '@/lib/auth/error-messages';
+import { getLocalizedAuthError, getSafeAuthErrorCode } from '@/lib/auth/error-messages';
 import { logger } from '@/lib/logger';
 import {
     createEmptyAuthForm,
@@ -15,6 +15,23 @@ import {
 } from '@/hooks/use-auth-logic-helpers';
 
 export type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password';
+
+const OAUTH_ERROR_QUERY_PARAMS = ['authError', 'error_description', 'error'] as const;
+
+const resolveOAuthSearchParamError = (searchParams: URLSearchParams): string | null => {
+    for (const param of OAUTH_ERROR_QUERY_PARAMS) {
+        const value = searchParams.get(param)?.trim();
+        if (value) {
+            return getSafeAuthErrorCode(value);
+        }
+    }
+
+    if (searchParams.get('oauth') === 'failed') {
+        return 'AUTH_SERVICE_ERROR';
+    }
+
+    return null;
+};
 
 export function useAuthLogic() {
     const {
@@ -97,7 +114,7 @@ export function useAuthLogic() {
             return;
         }
 
-        const authErrorCode = searchParams.get('authError');
+        const authErrorCode = resolveOAuthSearchParamError(searchParams);
         if (!authErrorCode) {
             return;
         }

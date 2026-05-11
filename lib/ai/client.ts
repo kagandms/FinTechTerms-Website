@@ -12,7 +12,48 @@ import type {
 import type { Language } from '@/types';
 import { getAiUiCopy } from '@/lib/ai-copy';
 
-const AI_REQUEST_TIMEOUT_MS = 10_000;
+const AI_REQUEST_TIMEOUT_MS = 20_000;
+
+interface ParsedAiRouteError {
+    readonly message: string;
+    readonly code: string | null;
+}
+
+interface AiClientErrorOptions {
+    readonly code: string;
+    readonly status: number | null;
+    readonly isRecoverable: boolean;
+}
+
+const NON_RECOVERABLE_AI_ERROR_CODES = new Set([
+    'UNAUTHORIZED',
+    'MEMBER_REQUIRED',
+    'RATE_LIMITED',
+    'MEMBER_STATE_UNAVAILABLE',
+]);
+
+export class AiClientError extends Error {
+    readonly code: string;
+    readonly status: number | null;
+    readonly isRecoverable: boolean;
+
+    constructor(message: string, options: AiClientErrorOptions) {
+        super(message);
+        this.name = 'AiClientError';
+        this.code = options.code;
+        this.status = options.status;
+        this.isRecoverable = options.isRecoverable;
+    }
+}
+
+export const isRecoverableAiClientError = (error: unknown): boolean => (
+    Boolean(
+        error
+        && typeof error === 'object'
+        && 'isRecoverable' in error
+        && error.isRecoverable === true
+    )
+);
 
 const resolveLocalizedAiError = (
     language: Language,
@@ -38,17 +79,35 @@ const parseAiError = async (
     response: Response,
     language: Language,
     fallbackMessage: string
-): Promise<string> => {
+): Promise<ParsedAiRouteError> => {
     try {
         const payload = await response.json() as { message?: string; code?: string | null };
         if (payload && typeof payload.message === 'string' && payload.message.trim()) {
-            return resolveLocalizedAiError(language, payload.message, payload.code ?? null);
+            return {
+                message: resolveLocalizedAiError(language, payload.message, payload.code ?? null),
+                code: payload.code ?? null,
+            };
         }
     } catch {
         // Ignore invalid JSON error bodies.
     }
 
-    return resolveLocalizedAiError(language, fallbackMessage, null);
+    return {
+        message: resolveLocalizedAiError(language, fallbackMessage, null),
+        code: null,
+    };
+};
+
+const isRecoverableAiRouteError = (status: number, code: string | null): boolean => {
+    if (code && NON_RECOVERABLE_AI_ERROR_CODES.has(code)) {
+        return false;
+    }
+
+    if (status === 401 || status === 403 || status === 429) {
+        return false;
+    }
+
+    return status === 408 || status >= 500;
 };
 
 const fetchWithTimeout = async (
@@ -67,7 +126,11 @@ const fetchWithTimeout = async (
         });
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('AI request timed out. Please try again.');
+            throw new AiClientError('AI request timed out. Please try again.', {
+                code: 'AI_CLIENT_TIMEOUT',
+                status: null,
+                isRecoverable: true,
+            });
         }
 
         throw error;
@@ -77,17 +140,36 @@ const fetchWithTimeout = async (
 };
 
 const postJson = async <T,>(input: string, body: unknown, language: Language, fallbackMessage: string): Promise<T> => {
-    const response = await fetchWithTimeout(input, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-    });
+    let response: Response;
+
+    try {
+        response = await fetchWithTimeout(input, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+    } catch (error) {
+        if (error instanceof AiClientError) {
+            throw error;
+        }
+
+        throw new AiClientError(resolveLocalizedAiError(language, fallbackMessage, null), {
+            code: 'AI_CLIENT_NETWORK',
+            status: null,
+            isRecoverable: true,
+        });
+    }
 
     if (!response.ok) {
-        throw new Error(await parseAiError(response, language, fallbackMessage));
+        const routeError = await parseAiError(response, language, fallbackMessage);
+        throw new AiClientError(routeError.message, {
+            code: routeError.code ?? `HTTP_${response.status}`,
+            status: response.status,
+            isRecoverable: isRecoverableAiRouteError(response.status, routeError.code),
+        });
     }
 
     return await response.json() as T;

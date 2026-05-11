@@ -678,7 +678,7 @@ export default function QuizPage({ nonce }: QuizPageProps) {
                             </div>
                         ) : null}
 
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+                        <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-2">
                         {/* SRS Review Card — only when dueTerms exist */}
                         {canUseProgressData && dueTerms.length > 0 && (
                             <div className={`${PRACTICE_MODE_CARD_CLASS} bg-gradient-to-r from-emerald-500 to-teal-500`}>

@@ -32,7 +32,7 @@ const RATE_LIMIT_HEADERS = {
     'X-RateLimit-Policy': '12;w=60',
     'Cache-Control': 'private, no-store',
 };
-const AI_ROUTE_LATENCY_BUDGET_MS = 12_000;
+const AI_ROUTE_LATENCY_BUDGET_MS = 9_000;
 const TERM_EXPLAIN_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function POST(request: Request) {
