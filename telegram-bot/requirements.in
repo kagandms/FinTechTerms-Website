@@ -10,3 +10,4 @@ edge-tts
 flask
 redis
 sentry-sdk[flask]
+urllib3>=2.7.0

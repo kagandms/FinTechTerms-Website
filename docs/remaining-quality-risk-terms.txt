@@ -1,6 +1,6 @@
 # Remaining Catalog Quality Risk Notes
 Generated: 2026-04-23
-Scope: Post-cleanup scan of the remaining repo catalog (~1083 active terms including seo-gap terms).
+Scope: Historical post-cleanup scan before the current 956-term curated catalog.
 Purpose: Identify remaining terms that still risk lowering glossary quality through typos, slang, brand-like entries, or overly broad non-core coverage.
 
 ## High Confidence Defects

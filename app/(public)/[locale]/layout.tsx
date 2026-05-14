@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import '@/app/globals.css';
 import PublicAnalyticsGate from '@/components/PublicAnalyticsGate';
 import { getPublicEnv } from '@/lib/public-env';
+import { getSiteUrl } from '@/lib/site-url';
 import { PUBLIC_LOCALES, buildLocalePath, isPublicLocale } from '@/lib/seo-routing';
 import type { Language } from '@/types';
 
@@ -68,6 +70,9 @@ const layoutCopy: Record<Language, {
 };
 
 export const dynamicParams = false;
+export const metadata: Metadata = {
+    metadataBase: new URL(getSiteUrl()),
+};
 
 const publicGaId = getPublicEnv().gaId;
 

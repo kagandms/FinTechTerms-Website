@@ -6,7 +6,7 @@ Telegram bot integrated with [FinTechTerms](https://fintechterms.vercel.app) —
 
 - 📖 **Daily Term** — Automated trilingual term of the day
 - 🎯 **Inline Quiz** — SRS-based flashcard quiz with callback buttons
-- 🔍 **Term Search** — Search 1250+ terms in 3 languages
+- 🔍 **Term Search** — Search 956 curated terms in 3 languages
 - 🗣️ **Voice Pronunciation** — TTS audio for terms in EN/TR/RU
 - 📊 **Progress Stats** — Track your learning progress
 - 🌍 **Language Switch** — Switch interface language on the fly

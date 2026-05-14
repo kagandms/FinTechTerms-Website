@@ -16,9 +16,11 @@ import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { inter, jetbrainsMono } from '@/lib/fonts';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
 import { getScriptNonce } from '@/lib/script-nonce';
+import { getSiteUrl } from '@/lib/site-url';
 import { getThemeBootstrapScript } from '@/lib/theme-bootstrap';
 
 export const metadata: Metadata = {
+    metadataBase: new URL(getSiteUrl()),
     robots: {
         index: false,
         follow: false,
