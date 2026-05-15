@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Language } from '@/types';
 import { getCurrentLanguage, setCurrentLanguage as saveLanguage } from '@/utils/storage';
 import { DEFAULT_LANGUAGE } from '@/lib/language';
@@ -59,12 +59,22 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     const [language, setLanguageState] = useState<Language>(() => getCurrentLanguage());
     const [isHydrated] = useState(() => typeof window !== 'undefined');
     const pathname = usePathname();
+    const searchParams = useSearchParams();
 
     const setLanguage = useCallback((lang: Language) => {
         const nextLanguage = ['ru', 'en', 'tr'].includes(lang) ? lang : DEFAULT_LANGUAGE;
         setLanguageState(nextLanguage);
         saveLanguage(nextLanguage);
     }, []);
+
+    // Override language if ?lang= query parameter is present
+    useEffect(() => {
+        if (!isHydrated) return;
+        const langParam = searchParams.get('lang');
+        if (langParam && ['ru', 'en', 'tr'].includes(langParam) && langParam !== language) {
+            setLanguage(langParam as Language);
+        }
+    }, [isHydrated, searchParams, setLanguage, language]);
 
     // Update document.title and <html lang=...> based on language and current page
     useEffect(() => {

@@ -25,8 +25,8 @@ const rootOpenGraphImagePath = buildPublicOpenGraphImagePath('en');
 
 export const metadata: Metadata = {
     metadataBase: new URL(siteUrl),
-    title: 'FinTechTerms | Multilingual FinTech Glossary',
-    description: 'A multilingual fintech, finance, and technology glossary with localized Russian, English, and Turkish public SEO pages.',
+    title: 'FinTechTerms | Платформа изучения финансовой терминологии',
+    description: 'Интеллектуальная образовательная платформа для изучения финансовой и IT-терминологии с использованием интервального повторения.',
     alternates: {
         canonical: siteUrl,
         languages: buildAbsoluteXDefaultAlternates(),
@@ -40,8 +40,8 @@ export const metadata: Metadata = {
     },
     manifest: '/manifest.json',
     openGraph: {
-        title: 'FinTechTerms | Multilingual FinTech Glossary',
-        description: 'Public glossary architecture for fintech, finance, and technology terms across Russian, English, and Turkish.',
+        title: 'FinTechTerms | Платформа изучения финансовой терминологии',
+        description: 'Интеллектуальная образовательная платформа для изучения финансовой и IT-терминологии с использованием интервального повторения.',
         url: siteUrl,
         siteName: 'FinTechTerms',
         type: 'website',
@@ -56,8 +56,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'FinTechTerms | Multilingual FinTech Glossary',
-        description: 'Public glossary architecture for fintech, finance, and technology terms across Russian, English, and Turkish.',
+        title: 'FinTechTerms | Платформа изучения финансовой терминологии',
+        description: 'Интеллектуальная образовательная платформа для изучения финансовой и IT-терминологии с использованием интервального повторения.',
         images: [buildAbsoluteUrl(rootOpenGraphImagePath)],
         creator: '@fintechterms',
         site: '@fintechterms',

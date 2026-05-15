@@ -1,5 +1,8 @@
 # FinTechTerms — Trilingual Financial Dictionary
 
+> 🎓 **Проект-участник конкурса «Дипломаты русского слова»**
+> Профессиональная образовательная платформа для изучения русской финансовой и IT-терминологии с использованием ИИ и алгоритмов интервального повторения.
+> 
 > 📖 **EN** · **TR** · **RU** — Learn finance, fintech & IT terms with SRS-powered spaced repetition.
 > Production releases are promoted from `main`; branch deployments are used for preview validation.
 
