@@ -1,6 +1,6 @@
 # FinTechTerms Telegram Bot
 
-Telegram bot integrated with [FinTechTerms](https://fintechterms.vercel.app) — a trilingual (EN/TR/RU) finance & technology dictionary PWA.
+Telegram bot integrated with [FinTechTerms](https://www.fintechterms.com) — a trilingual (EN/TR/RU) finance & technology dictionary PWA.
 
 ## Features
 
