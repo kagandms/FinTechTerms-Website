@@ -191,7 +191,14 @@ const resolveSupabaseAccessTokenFromStorage = async (page) => (
     })
 );
 
-const resolveAccessToken = async () => {
+const buildCookieHeader = (cookies) => (
+    cookies
+        .filter((cookie) => cookie.name.startsWith('sb-') && cookie.value)
+        .map((cookie) => `${cookie.name}=${cookie.value}`)
+        .join('; ')
+);
+
+const resolveAuthenticatedHeaders = async () => {
     const browser = await chromium.launch({ headless: true });
     const context = await createBypassedContext(browser);
     const page = await context.newPage();
@@ -201,21 +208,30 @@ const resolveAccessToken = async () => {
         await loginViaProfile(page);
 
         const accessToken = await resolveSupabaseAccessTokenFromStorage(page);
-        if (!accessToken) {
-            throw new Error('Authenticated staging session did not expose a Supabase access token.');
+        if (accessToken) {
+            return {
+                Authorization: `Bearer ${accessToken}`,
+            };
         }
 
-        return accessToken;
+        const cookieHeader = buildCookieHeader(await context.cookies(stagingBaseUrl));
+        if (!cookieHeader) {
+            throw new Error('Authenticated staging session did not expose Supabase auth credentials.');
+        }
+
+        return {
+            Cookie: cookieHeader,
+        };
     } finally {
         await context.close();
         await browser.close();
     }
 };
 
-const createScenarioHeaders = (scenario, accessToken) => {
+const createScenarioHeaders = (scenario, authHeaders) => {
     const headers = {
         Accept: 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        ...authHeaders,
     };
 
     if (scenario.body) {
@@ -229,11 +245,11 @@ const createScenarioHeaders = (scenario, accessToken) => {
     return headers;
 };
 
-const runScenarioRequest = async (scenario, accessToken) => {
+const runScenarioRequest = async (scenario, authHeaders) => {
     const startedAtMs = performance.now();
     const response = await fetch(`${stagingBaseUrl}${scenario.path}`, {
         method: scenario.method,
-        headers: createScenarioHeaders(scenario, accessToken),
+        headers: createScenarioHeaders(scenario, authHeaders),
         body: scenario.body,
     });
     const responseText = await response.text();
@@ -319,16 +335,16 @@ const findBudgetFailures = (summaries) => summaries.filter((summary) => (
 const buildWorkload = () => Array.from({ length: loadConfig.iterations }).flatMap(() => scenarios);
 
 const runStagingLoadCheck = async () => {
-    const accessToken = await resolveAccessToken();
+    const authHeaders = await resolveAuthenticatedHeaders();
     const warmupSamples = await Promise.all(
-        scenarios.map((scenario) => runScenarioRequest(scenario, accessToken))
+        scenarios.map((scenario) => runScenarioRequest(scenario, authHeaders))
     );
     assertWarmupSucceeded(warmupSamples);
 
     const samples = await runWithConcurrency(
         buildWorkload(),
         loadConfig.concurrency,
-        async (scenario) => await runScenarioRequest(scenario, accessToken)
+        async (scenario) => await runScenarioRequest(scenario, authHeaders)
     );
     const summaries = summarizeSamples(samples);
     const budgetFailures = findBudgetFailures(summaries);

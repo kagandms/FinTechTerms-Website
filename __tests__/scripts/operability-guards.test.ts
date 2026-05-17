@@ -15,6 +15,7 @@ const releaseGateValidationScriptPath = path.join(process.cwd(), 'scripts/valida
 const envValidationUtilsPath = path.join(process.cwd(), 'scripts/env-validation-utils.mjs');
 const releaseDbVerificationScriptPath = path.join(process.cwd(), 'scripts/verify-release-db.mjs');
 const syncRepoTermsScriptPath = path.join(process.cwd(), 'scripts/sync_repo_terms.js');
+const stagingLoadCheckScriptPath = path.join(process.cwd(), 'scripts/staging-load-check.mjs');
 const legacyPruneScriptPath = path.join(process.cwd(), 'tools/prune_supabase.js');
 const packageJsonPath = path.join(process.cwd(), 'package.json');
 const nextConfigPath = path.join(process.cwd(), 'next.config.js');
@@ -31,6 +32,7 @@ describe('operability guards', () => {
     const envValidationUtils = fs.readFileSync(envValidationUtilsPath, 'utf8');
     const releaseDbVerificationScript = fs.readFileSync(releaseDbVerificationScriptPath, 'utf8');
     const syncRepoTermsScript = fs.readFileSync(syncRepoTermsScriptPath, 'utf8');
+    const stagingLoadCheckScript = fs.readFileSync(stagingLoadCheckScriptPath, 'utf8');
     const legacyPruneScript = fs.readFileSync(legacyPruneScriptPath, 'utf8');
     const packageJson = fs.readFileSync(packageJsonPath, 'utf8');
     const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
@@ -107,6 +109,14 @@ describe('operability guards', () => {
         expect(syncRepoTermsScript).toContain('--prune-extra');
         expect(syncRepoTermsScript).toContain('affectedReferenceRows');
         expect(legacyPruneScript).toContain('tools/prune_supabase.js is disabled.');
+    });
+
+    it('keeps staging load checks compatible with cookie-based auth sessions', () => {
+        expect(stagingLoadCheckScript).toContain('const resolveAuthenticatedHeaders = async () =>');
+        expect(stagingLoadCheckScript).toContain('Authorization: `Bearer ${accessToken}`');
+        expect(stagingLoadCheckScript).toContain('context.cookies(stagingBaseUrl)');
+        expect(stagingLoadCheckScript).toContain('Cookie: cookieHeader');
+        expect(stagingLoadCheckScript).toContain('Authenticated staging session did not expose Supabase auth credentials.');
     });
 
     it('keeps runtime env docs aligned with the runtime validator contract', () => {
