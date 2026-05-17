@@ -1,10 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Language } from '@/types';
 import { getCurrentLanguage, setCurrentLanguage as saveLanguage } from '@/utils/storage';
-import { DEFAULT_LANGUAGE } from '@/lib/language';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '@/lib/language';
 import { getTranslationString } from '@/lib/i18n';
 
 type TranslationKey = string;
@@ -17,11 +17,51 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+type LanguagePreferenceListener = () => void;
+
+const languagePreferenceListeners = new Set<LanguagePreferenceListener>();
+
+const readLanguagePreference = (): Language => getCurrentLanguage();
+
+const readServerLanguagePreference = (): Language => DEFAULT_LANGUAGE;
+
+const notifyLanguagePreferenceListeners = (): void => {
+    languagePreferenceListeners.forEach((listener) => listener());
+};
+
+const subscribeToLanguagePreference = (
+    listener: LanguagePreferenceListener
+): (() => void) => {
+    languagePreferenceListeners.add(listener);
+
+    return () => {
+        languagePreferenceListeners.delete(listener);
+    };
+};
+
+const writeLanguagePreference = (language: Language): void => {
+    const nextLanguage = normalizeLanguage(language) ?? DEFAULT_LANGUAGE;
+    const previousLanguage = readLanguagePreference();
+
+    saveLanguage(nextLanguage);
+
+    if (previousLanguage === nextLanguage) {
+        return;
+    }
+
+    notifyLanguagePreferenceListeners();
+};
+
 interface LanguageProviderProps {
     children: ReactNode;
 }
 
-// Page-specific titles for each language
+const defaultPageTitles: Record<Language, string> = {
+    en: 'FinTechTerms | Financial & IT Dictionary',
+    tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
+    ru: 'FinTechTerms | Словарь экономики и IT',
+};
+
 const pageTitles: Record<string, Record<Language, string>> = {
     '/dashboard': {
         en: 'FinTechTerms | Financial & IT Dictionary',
@@ -55,48 +95,57 @@ const pageTitles: Record<string, Record<Language, string>> = {
     },
 };
 
-export function LanguageProvider({ children }: LanguageProviderProps) {
-    const [language, setLanguageState] = useState<Language>(() => getCurrentLanguage());
-    const [isHydrated] = useState(() => typeof window !== 'undefined');
+const resolvePageTitle = ({
+    language,
+    pathname,
+}: {
+    readonly language: Language;
+    readonly pathname: string;
+}): string => {
+    const titleByLanguage = pageTitles[pathname] ?? defaultPageTitles;
+    return titleByLanguage[language] ?? titleByLanguage[DEFAULT_LANGUAGE];
+};
+
+const syncDocumentLanguage = ({
+    language,
+    pathname,
+}: {
+    readonly language: Language;
+    readonly pathname: string;
+}): void => {
+    document.documentElement.lang = language;
+    document.title = resolvePageTitle({ language, pathname });
+};
+
+/**
+ * Provides the active UI language from URL overrides, stored preference, and explicit user changes.
+ */
+export function LanguageProvider({ children }: LanguageProviderProps): React.JSX.Element {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const preferredLanguage = useSyncExternalStore(
+        subscribeToLanguagePreference,
+        readLanguagePreference,
+        readServerLanguagePreference
+    );
+    const queryLanguage = normalizeLanguage(searchParams.get('lang'));
+    const language = queryLanguage ?? preferredLanguage;
 
-    const setLanguage = useCallback((lang: Language) => {
-        const nextLanguage = ['ru', 'en', 'tr'].includes(lang) ? lang : DEFAULT_LANGUAGE;
-        setLanguageState(nextLanguage);
-        saveLanguage(nextLanguage);
+    const setLanguage = useCallback((lang: Language): void => {
+        writeLanguagePreference(lang);
     }, []);
 
-    // Override language if ?lang= query parameter is present
     useEffect(() => {
-        if (!isHydrated) return;
-        const langParam = searchParams.get('lang');
-        if (langParam && ['ru', 'en', 'tr'].includes(langParam) && langParam !== language) {
-            setLanguage(langParam as Language);
+        if (!queryLanguage) {
+            return;
         }
-    }, [isHydrated, searchParams, setLanguage, language]);
 
-    // Update document.title and <html lang=...> based on language and current page
+        writeLanguagePreference(queryLanguage);
+    }, [queryLanguage]);
+
     useEffect(() => {
-        if (!isHydrated) return;
-
-        // Update <html lang> attribute
-        document.documentElement.lang = language;
-
-        // Find the best matching page title
-        const pageTitle = pageTitles[pathname];
-        if (pageTitle) {
-            document.title = pageTitle[language] || pageTitle[DEFAULT_LANGUAGE];
-        } else {
-            // Fallback for unknown pages
-            const defaultTitles: Record<Language, string> = {
-                en: 'FinTechTerms | Financial & IT Dictionary',
-                tr: 'FinTechTerms | Finans ve Bilişim Sözlüğü',
-                ru: 'FinTechTerms | Словарь экономики и IT',
-            };
-            document.title = defaultTitles[language] || defaultTitles[DEFAULT_LANGUAGE];
-        }
-    }, [language, isHydrated, pathname]);
+        syncDocumentLanguage({ language, pathname });
+    }, [language, pathname]);
 
     /**
      * Get translation by dot-notation key
@@ -118,7 +167,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 /**
  * Hook to access language context
  */
-export function useLanguage() {
+export function useLanguage(): LanguageContextType {
     const context = useContext(LanguageContext);
     if (context === undefined) {
         throw new Error('useLanguage must be used within a LanguageProvider');
