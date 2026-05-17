@@ -112,10 +112,12 @@ describe('operability guards', () => {
     });
 
     it('keeps staging load checks compatible with cookie-based auth sessions', () => {
-        expect(stagingLoadCheckScript).toContain('const resolveAuthenticatedHeaders = async () =>');
+        expect(stagingLoadCheckScript).toContain('const resolveAuthenticatedRequestContext = async () =>');
+        expect(stagingLoadCheckScript).toContain('const authenticatedBaseUrl = new URL(page.url()).origin;');
         expect(stagingLoadCheckScript).toContain('Authorization: `Bearer ${accessToken}`');
-        expect(stagingLoadCheckScript).toContain('context.cookies(stagingBaseUrl)');
+        expect(stagingLoadCheckScript).toContain('context.cookies(authenticatedBaseUrl)');
         expect(stagingLoadCheckScript).toContain('Cookie: cookieHeader');
+        expect(stagingLoadCheckScript).toContain('`${authContext.baseUrl}${scenario.path}`');
         expect(stagingLoadCheckScript).toContain('Authenticated staging session did not expose Supabase auth credentials.');
     });
 
