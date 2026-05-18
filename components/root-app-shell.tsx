@@ -7,7 +7,6 @@ import { SRSProvider } from '@/contexts/SRSContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import BottomNav from '@/components/BottomNav';
-import ConsentModal from '@/components/ConsentModal';
 import HydrationMarker from '@/components/HydrationMarker';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import SessionTracker from '@/components/SessionTracker';
@@ -34,7 +33,6 @@ export default function RootAppShell({
                                     {children}
                                 </main>
                                 <BottomNav />
-                                <ConsentModal />
                                 <SessionTracker />
                                 <BadgeRealtimeNotifier />
                                 <ServiceWorkerRegistrar />

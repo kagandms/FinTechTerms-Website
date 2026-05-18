@@ -41,6 +41,16 @@ describe('LanguageProvider', () => {
         clearLanguageCookie();
     });
 
+    it('uses Russian as the first-visit language when no preference exists', () => {
+        render(
+            <LanguageProvider>
+                <LanguageConsumer />
+            </LanguageProvider>
+        );
+
+        expect(screen.getByTestId('language-value')).toHaveTextContent('ru');
+    });
+
     it('uses the saved language preference when the URL has no language override', () => {
         setCurrentLanguage('en');
 

@@ -238,6 +238,11 @@ python -m bot
 The root [`.env.example`](.env.example) is the catalog for web app and shared
 script variables. The bot uses `telegram-bot/.env`.
 
+Runtime and release validation require `NEXT_PUBLIC_SITE_URL`,
+`OPENROUTER_API_KEY`, `AI_PRIMARY_MODEL`, and `AI_FALLBACK_MODELS`. For local
+release-gate checks against workstation `.env` files, prefix the command with
+`ALLOW_LOCAL_ENV_VALIDATION=1`.
+
 ### Verification Commands
 
 ```bash

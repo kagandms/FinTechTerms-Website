@@ -102,9 +102,11 @@ jest.mock('@/components/TelegramBanner', () => ({
 jest.mock('@/components/features/profile/ProfileEditForm', () => ({
     ProfileEditForm: () => <div data-testid="profile-edit-form" />,
 }));
-jest.mock('@/components/InstallButton', () => ({
+jest.mock('@/components/profile/install-app-card', () => ({
     __esModule: true,
-    default: () => <div data-testid="install-button" />,
+    default: ({ title }: { title: string }) => (
+        <div data-testid="install-app-card">{title}</div>
+    ),
 }));
 jest.mock('@/components/profile/Heatmap', () => ({
     __esModule: true,
@@ -315,7 +317,7 @@ describe('ProfilePageClient', () => {
         });
     });
 
-    it('renders the shared install button on the profile page', () => {
+    it('renders the install app card on the profile page', () => {
         render(
             <ProfilePageClient
                 initialProfileData={null}
@@ -340,7 +342,7 @@ describe('ProfilePageClient', () => {
             />
         );
 
-        expect(screen.getByTestId('install-button')).toBeInTheDocument();
+        expect(screen.getByTestId('install-app-card')).toHaveTextContent('Install App');
     });
 
     it('passes the integrated profile editor section into settings', () => {

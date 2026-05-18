@@ -39,7 +39,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     profileEditorSection,
 }) => {
     return (
-        <section className="mb-8">
+        <section>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
                 {t('common.settings')}
             </h2>

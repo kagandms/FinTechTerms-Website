@@ -323,23 +323,31 @@ a:focus-visible {
   animation: slideUp 0.4s ease-out;
 }
 
-/* Date input consistency for mobile register form */
-.auth-date-input {
+/* Date input consistency for mobile browser and PWA shells */
+.auth-date-input,
+.app-date-input {
   color-scheme: light;
+  display: block;
+  max-width: 100%;
+  min-width: 0;
 }
 
-.dark .auth-date-input {
+.dark .auth-date-input,
+.dark .app-date-input {
   color-scheme: dark;
 }
 
-.auth-date-input::-webkit-date-and-time-value {
+.auth-date-input::-webkit-date-and-time-value,
+.app-date-input::-webkit-date-and-time-value {
   text-align: left;
 }
 
-.auth-date-input::-webkit-calendar-picker-indicator {
+.auth-date-input::-webkit-calendar-picker-indicator,
+.app-date-input::-webkit-calendar-picker-indicator {
   opacity: 0.85;
 }
 
-.dark .auth-date-input::-webkit-calendar-picker-indicator {
+.dark .auth-date-input::-webkit-calendar-picker-indicator,
+.dark .app-date-input::-webkit-calendar-picker-indicator {
   filter: invert(1);
 }

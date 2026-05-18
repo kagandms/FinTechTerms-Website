@@ -24,13 +24,19 @@ type WindowWithMSStream = Window & {
     MSStream?: unknown;
 };
 
-const isStandaloneDisplayMode = (): boolean => {
+/**
+ * Detects whether the current browser window is already running as an installed PWA.
+ */
+export const isStandaloneDisplayMode = (): boolean => {
     if (typeof window === 'undefined') {
         return false;
     }
 
     const navigatorWithStandalone = window.navigator as NavigatorWithStandalone;
-    return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true;
+    const hasStandaloneDisplayMode = typeof window.matchMedia === 'function'
+        && window.matchMedia('(display-mode: standalone)').matches;
+
+    return hasStandaloneDisplayMode || navigatorWithStandalone.standalone === true;
 };
 
 const canShowIOSInstallInstructions = (): boolean => {
@@ -43,7 +49,7 @@ const canShowIOSInstallInstructions = (): boolean => {
     return isIOSDevice && !isStandaloneDisplayMode();
 };
 
-export default function InstallButton({ variant = 'compact', tone = 'default' }: InstallButtonProps) {
+export default function InstallButton({ variant = 'compact', tone = 'default' }: InstallButtonProps): React.JSX.Element | null {
     const { t } = useLanguage();
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isIOSInstallAvailable, setIsIOSInstallAvailable] = useState(false);
@@ -163,7 +169,7 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
     const buttonClassName = tone === 'hero'
         ? (
             variant === 'prominent'
-                ? 'min-w-[9rem] shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-2xl border border-[#1f5f8d] bg-[#123f65] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70'
+                ? 'w-full min-w-0 shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-2xl border border-[#1f5f8d] bg-[#123f65] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70'
                 : 'shrink-0 flex items-center justify-center gap-2 rounded-xl border border-[#1f5f8d] bg-[#123f65] px-3 py-2 text-sm font-medium text-white shadow-md shadow-[#0b2236]/20 transition-colors hover:bg-[#19517d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70'
         )
         : (
@@ -193,7 +199,7 @@ export default function InstallButton({ variant = 'compact', tone = 'default' }:
                 className={buttonClassName}
             >
                 <Download className="w-4 h-4" />
-                <span className={variant === 'prominent' ? 'text-sm' : 'text-xs sm:text-sm'}>
+                <span className={variant === 'prominent' ? 'min-w-0 truncate text-sm' : 'text-xs sm:text-sm'}>
                     {t('install.cta')}
                 </span>
             </button>

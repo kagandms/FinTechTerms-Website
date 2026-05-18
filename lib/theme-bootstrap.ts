@@ -1,6 +1,7 @@
 import type { Theme } from '@/contexts/ThemeContext';
 
 export const THEME_STORAGE_KEY = 'theme';
+export const DEFAULT_THEME: Theme = 'light';
 
 export const getThemeBootstrapScript = (): string => `
 (() => {
@@ -8,7 +9,7 @@ export const getThemeBootstrapScript = (): string => `
     const storedTheme = window.localStorage.getItem('${THEME_STORAGE_KEY}');
     const theme = storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system'
       ? storedTheme
-      : 'system';
+      : '${DEFAULT_THEME}';
     const resolvedTheme = theme === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : theme;

@@ -20,7 +20,7 @@ import TelegramBanner from '@/components/TelegramBanner';
 import { ProfileEditForm } from '@/components/features/profile/ProfileEditForm';
 import type { ProfileFormInitialData } from '@/components/features/profile/ProfileEditForm';
 import type { LearningStatsActionResult } from '@/types/gamification';
-import InstallButton from '@/components/InstallButton';
+import InstallAppCard from '@/components/profile/install-app-card';
 import Heatmap from '@/components/profile/Heatmap';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 import AiStudyCoachCard from '@/components/profile/AiStudyCoachCard';
@@ -142,7 +142,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
     ];
 
     return (
-        <div className="pb-24 pt-6 px-4 max-w-7xl mx-auto">
+        <div className="mx-auto max-w-7xl px-4 pb-24 pt-6">
             {/* Header */}
             <header className="mb-8 flex items-center justify-between">
                 <div>
@@ -222,10 +222,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
             ) : null}
 
             {/* Main Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
 
                 {/* Left Column (Stats & Favorites) */}
-                <div className="lg:col-span-8 space-y-6 flex flex-col">
+                <div className="flex flex-col gap-5 lg:col-span-8 lg:gap-6">
                     {/* Stats Grid - Always at top */}
                     <section className="order-1">
                         <StatsGrid
@@ -280,7 +280,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                         </Link>
                     </section>
 
-                    <div className="space-y-6 border-t border-gray-100 dark:border-gray-800 pt-6 order-5">
+                    <div className="order-5 border-t border-gray-100 pt-5 dark:border-gray-800 lg:pt-6">
                         {/* App Settings Panel */}
                         <SettingsPanel
                             t={t}
@@ -296,7 +296,7 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                 </div>
 
                 {/* Right Column (Desktop Favorites & Others) */}
-                <div className="lg:col-span-4 space-y-8">
+                <div className="space-y-5 lg:col-span-4 lg:space-y-6">
 
                     {/* View Favorites CTA - Desktop only - shown when not in mobile view */}
                     <section className="hidden lg:flex bg-gradient-to-r from-primary-600 to-blue-500 rounded-2xl p-6 text-white shadow-xl flex-col items-center justify-center text-center gap-3 relative overflow-hidden group">
@@ -324,19 +324,10 @@ function ProfileContent({ initialProfileData, learningStats }: ProfileContentPro
                     </section>
 
                     {/* Install App Button — Profile */}
-                    <section className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                                {t('profile.installTitle')}
-                            </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {t('profile.installDescription')}
-                            </p>
-                        </div>
-                        <div className="w-full sm:w-auto sm:min-w-[9rem]">
-                            <InstallButton variant="prominent" />
-                        </div>
-                    </section>
+                    <InstallAppCard
+                        title={t('profile.installTitle')}
+                        description={t('profile.installDescription')}
+                    />
                 </div>
             </div>
 

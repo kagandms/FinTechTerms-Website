@@ -33,7 +33,7 @@ describe('ThemeProvider', () => {
         document.documentElement.className = '';
     });
 
-    it('uses the system theme on first load when no preference is stored', () => {
+    it('uses light theme on first load when no preference is stored', () => {
         Object.defineProperty(window, 'matchMedia', {
             writable: true,
             value: createMatchMedia(true),
@@ -45,9 +45,9 @@ describe('ThemeProvider', () => {
             </ThemeProvider>
         );
 
-        expect(screen.getByTestId('theme-value')).toHaveTextContent('system');
-        expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
-        expect(document.documentElement).toHaveClass('dark');
+        expect(screen.getByTestId('theme-value')).toHaveTextContent('light');
+        expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
+        expect(document.documentElement).toHaveClass('light');
     });
 
     it('keeps an explicit light preference even if the system is dark', () => {
@@ -66,5 +66,23 @@ describe('ThemeProvider', () => {
         expect(screen.getByTestId('theme-value')).toHaveTextContent('light');
         expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
         expect(document.documentElement).toHaveClass('light');
+    });
+
+    it('keeps an explicit system preference available for users who choose it', () => {
+        window.localStorage.setItem('theme', 'system');
+        Object.defineProperty(window, 'matchMedia', {
+            writable: true,
+            value: createMatchMedia(true),
+        });
+
+        render(
+            <ThemeProvider>
+                <ThemeConsumer />
+            </ThemeProvider>
+        );
+
+        expect(screen.getByTestId('theme-value')).toHaveTextContent('system');
+        expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
+        expect(document.documentElement).toHaveClass('dark');
     });
 });

@@ -11,9 +11,10 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import InstallButton from '@/components/InstallButton';
 import TelegramBanner from '@/components/TelegramBanner';
 import AiChatPanel from '@/components/home/AiChatPanel';
+import TelegramIcon from '@/components/icons/telegram-icon';
 import Image from 'next/image';
 import Link from 'next/link';
-import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon, Send } from 'lucide-react';
+import { BookMarked, BrainCircuit, TrendingUp, Sun, Moon } from 'lucide-react';
 import SRSNotificationCard from '@/components/profile/SRSNotificationCard';
 
 import { Term } from '@/types';
@@ -26,6 +27,10 @@ interface HomeClientProps {
 }
 
 const pickInitialTerms = (terms: Term[]): Term[] => terms.slice(0, 3);
+
+const subscribeToHydrationState = (): (() => void) => () => undefined;
+const readClientHydrationState = (): boolean => true;
+const readServerHydrationState = (): boolean => false;
 
 const shuffleTerms = (terms: Term[]): Term[] => {
     const nextTerms = [...terms];
@@ -54,8 +59,13 @@ export default function HomePage({ initialTerms = [], learningStats = null }: Ho
     const { terms, userProgress, stats, quizPreview } = useSRS();
     const { resolvedTheme, setTheme } = useTheme();
     const { entitlements, isAuthenticated } = useAuth();
+    const hasMounted = React.useSyncExternalStore(
+        subscribeToHydrationState,
+        readClientHydrationState,
+        readServerHydrationState
+    );
 
-    const displayTerms = terms.length > 0 ? terms : initialTerms;
+    const displayTerms = hasMounted && terms.length > 0 ? terms : initialTerms;
     const exactAccuracy = isAuthenticated && learningStats?.ok
         ? learningStats.data.accuracy
         : null;
@@ -149,7 +159,7 @@ export default function HomePage({ initialTerms = [], learningStats = null }: Ho
                         className={MOBILE_HERO_ACTION_CLASS}
                         aria-label={t('shell.telegramIntegration')}
                     >
-                        <Send className="w-5 h-5 text-white" />
+                        <TelegramIcon className="w-5 h-5 text-white" />
                     </a>
                     <div className="flex items-center justify-center">
                         <InstallButton variant="compact" tone="hero" />
@@ -202,7 +212,7 @@ export default function HomePage({ initialTerms = [], learningStats = null }: Ho
                             className={DESKTOP_HERO_ACTION_CLASS}
                             aria-label={t('shell.telegramIntegration')}
                         >
-                            <Send className="w-5 h-5 text-white" />
+                            <TelegramIcon className="w-5 h-5 text-white" />
                         </a>
                         <div className="min-w-0 [&>button]:h-14 [&>button]:w-full [&>button]:justify-center [&>[data-testid='install-button-placeholder']]:h-14 [&>[data-testid='install-button-placeholder']]:w-full">
                             <InstallButton variant="prominent" tone="hero" />

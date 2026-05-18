@@ -4,13 +4,11 @@ import { hasRequestAuthCookies, isAuthSessionError } from '@/lib/auth/session';
 import { buildContentSecurityPolicy, CSP_NONCE_HEADER } from '@/lib/csp';
 import { getPublicEnv } from '@/lib/public-env';
 import { buildLegacyStaticRedirectPath, buildLegacyTermRedirectPath } from '@/lib/legacy-public-routes';
-import { LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
+import { DEFAULT_LANGUAGE, LANGUAGE_COOKIE_NAME, normalizeLanguage, resolvePreferredLanguage } from '@/lib/language';
 import { getSupabaseServerCookieOptions } from '@/lib/supabase-cookie-options';
 
 // Intentionally empty: authenticated surfaces enforce access per page/API boundary, not here.
 const PROTECTED_PATHS: string[] = [];
-const X_DEFAULT_ROOT_LANGUAGE = 'en';
-
 const isProtectedPath = (pathname: string): boolean => (
     PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 );
@@ -40,10 +38,6 @@ const applySecurityHeaders = (
 };
 
 const resolveRequestLocale = (request: NextRequest) => {
-    if (request.nextUrl.pathname === '/') {
-        return X_DEFAULT_ROOT_LANGUAGE;
-    }
-
     const queryLocale = normalizeLanguage(request.nextUrl.searchParams.get('lang'));
 
     if (queryLocale) {
@@ -54,6 +48,10 @@ const resolveRequestLocale = (request: NextRequest) => {
 
     if (pathLocale) {
         return pathLocale;
+    }
+
+    if (request.nextUrl.pathname === '/') {
+        return DEFAULT_LANGUAGE;
     }
 
     return resolvePreferredLanguage({

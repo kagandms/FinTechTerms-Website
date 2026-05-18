@@ -79,7 +79,7 @@ describe('proxy locale headers', () => {
         expect(response.headers.get('Content-Language')).toBe('ru');
     });
 
-    it('keeps the root x-default surface language-neutral for caching and canonical stability', async () => {
+    it('keeps the root surface stable on the Russian default locale', async () => {
         const { NextRequest } = await import('next/server');
         const { proxy } = await import('@/proxy');
 
@@ -92,7 +92,23 @@ describe('proxy locale headers', () => {
 
         const response = await proxy(request);
 
-        expect(response.headers.get('Content-Language')).toBe('en');
+        expect(response.headers.get('Content-Language')).toBe('ru');
+        expect(response.headers.get('Vary')).toBeNull();
+    });
+
+    it('uses Russian for first-time root visits regardless of browser language', async () => {
+        const { NextRequest } = await import('next/server');
+        const { proxy } = await import('@/proxy');
+
+        const request = new NextRequest('https://fintechterms.app/', {
+            headers: {
+                'accept-language': 'en-US,en;q=0.9,tr;q=0.8',
+            },
+        });
+
+        const response = await proxy(request);
+
+        expect(response.headers.get('Content-Language')).toBe('ru');
         expect(response.headers.get('Vary')).toBeNull();
     });
 

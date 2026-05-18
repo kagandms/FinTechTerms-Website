@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { isThemeValue, THEME_STORAGE_KEY } from '@/lib/theme-bootstrap';
+import { DEFAULT_THEME, isThemeValue, THEME_STORAGE_KEY } from '@/lib/theme-bootstrap';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -16,11 +16,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [theme, setThemeState] = useState<Theme>(() => {
         if (typeof window === 'undefined') {
-            return 'system';
+            return DEFAULT_THEME;
         }
 
         const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-        return isThemeValue(storedTheme) ? storedTheme : 'system';
+        return isThemeValue(storedTheme) ? storedTheme : DEFAULT_THEME;
     });
     const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => {
         if (typeof document !== 'undefined') {

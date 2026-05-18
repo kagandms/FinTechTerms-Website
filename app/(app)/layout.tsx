@@ -7,7 +7,6 @@ import { SRSProvider } from '@/contexts/SRSContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import BottomNav from '@/components/BottomNav';
-import ConsentModal from '@/components/ConsentModal';
 import HydrationMarker from '@/components/HydrationMarker';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import SessionTracker from '@/components/SessionTracker';
@@ -37,7 +36,7 @@ export default async function AppLayout({
     const htmlLanguage = normalizeLanguage(cookieStore.get('ftt-language')?.value) ?? DEFAULT_LANGUAGE;
 
     return (
-        <html lang={htmlLanguage}>
+        <html lang={htmlLanguage} suppressHydrationWarning>
             <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
                 <script
                     nonce={nonce}
@@ -53,7 +52,6 @@ export default async function AppLayout({
                                             {children}
                                         </main>
                                         <BottomNav />
-                                        <ConsentModal />
                                         <SessionTracker />
                                         <BadgeRealtimeNotifier />
                                         <ServiceWorkerRegistrar />

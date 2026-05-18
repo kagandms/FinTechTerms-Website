@@ -124,6 +124,7 @@ describe('ProfileEditForm submit flow', () => {
             expect(screen.getByTestId('profile-surname')).toHaveValue('Stone');
             expect(screen.getByDisplayValue('alex@example.com')).toBeInTheDocument();
         });
+        expect(screen.getByTestId('profile-birth-date')).toHaveClass('app-date-input');
     });
 
     it('hydrates profile fields from the authenticated fallback when server initial data is incomplete', async () => {
