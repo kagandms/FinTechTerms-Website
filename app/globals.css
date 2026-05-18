@@ -326,10 +326,17 @@ a:focus-visible {
 /* Date input consistency for mobile browser and PWA shells */
 .auth-date-input,
 .app-date-input {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
   color-scheme: light;
   display: block;
+  font: inherit;
+  inline-size: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+  width: 100%;
 }
 
 .dark .auth-date-input,
@@ -339,6 +346,10 @@ a:focus-visible {
 
 .auth-date-input::-webkit-date-and-time-value,
 .app-date-input::-webkit-date-and-time-value {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   text-align: left;
 }
 
